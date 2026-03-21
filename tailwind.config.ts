@@ -10,10 +10,10 @@ const config: Config = {
     extend: {
       colors: {
         kira: {
-          warm: '#FF6B4A',
-          coral: '#FF8A70',
-          peach: '#FFB59A',
-          cream: '#FFF8F5',
+          warm: '#22c55e',
+          coral: '#4ade80',
+          peach: '#86efac',
+          cream: '#f0fdf4',
           dark: '#2D2A26',
           charcoal: '#4A4541',
           soft: '#7D756D',
@@ -21,8 +21,9 @@ const config: Config = {
         },
       },
       fontFamily: {
-        display: ['Fraunces', 'serif'],
-        body: ['DM Sans', 'sans-serif'],
+        sans: ['Inter', 'sans-serif'],
+        display: ['Inter', 'sans-serif'],
+        body: ['Inter', 'sans-serif'],
       },
       animation: {
         'float': 'float 6s ease-in-out infinite',

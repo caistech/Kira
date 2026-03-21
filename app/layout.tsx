@@ -1,5 +1,10 @@
 import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
 import './globals.css';
+import { CorporateHeader } from '@/components/corporate/CorporateHeader';
+import { CorporateFooter } from '@/components/corporate/CorporateFooter';
+
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
@@ -20,7 +25,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className={inter.className}>
+        <div className="min-h-screen flex flex-col">
+          <CorporateHeader productName="Kira" productAcronym="K" />
+          <main className="flex-1">{children}</main>
+          <CorporateFooter productName="Kira" />
+        </div>
+      </body>
     </html>
   );
 }
