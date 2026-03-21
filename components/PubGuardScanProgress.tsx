@@ -522,7 +522,7 @@ export default function PubGuardScanProgress({ targetUrl, userType, onComplete, 
               {progress.trafficLight.toUpperCase()}
             </div>
             <div className="text-slate-400 text-sm">
-              Risk Score: {progress.riskScore}/100
+              Security Score: {100 - (progress.riskScore ?? 0)}/100
             </div>
           </div>
         )}

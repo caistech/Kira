@@ -224,6 +224,7 @@ function formatForVoice(toolName: string, result: any, userType: UserType): stri
 function formatFullScanForVoice(result: any, userType: UserType, config: typeof USER_TYPE_VOICE_CONFIG.writer): string {
   const trafficLight = result.trafficLight || 'amber';
   const score = result.overallRiskScore || 50;
+  const securityScore = 100 - score;
   const name = result.target?.name || 'this repository';
 
   let response = '';
@@ -231,7 +232,7 @@ function formatFullScanForVoice(result: any, userType: UserType, config: typeof 
   switch (userType) {
     case 'writer':
       if (trafficLight === 'green') {
-        response = `Good news! ${name} gets a green light with a risk score of ${score} out of 100. `;
+        response = `Good news! ${name} gets a green light with a security score of ${securityScore} out of 100. `;
         response += `You can recommend this to your readers, but I'd suggest mentioning `;
         if (result.writerGuidance?.mustDisclose?.length > 0) {
           response += `these points: ${result.writerGuidance.mustDisclose.slice(0, 2).join(', and ')}. `;
@@ -239,14 +240,14 @@ function formatFullScanForVoice(result: any, userType: UserType, config: typeof 
           response += `that users should still download from official sources. `;
         }
       } else if (trafficLight === 'amber') {
-        response = `Caution flag on ${name}. Risk score is ${score} out of 100. `;
+        response = `Caution flag on ${name}. Security score is ${securityScore} out of 100. `;
         response += `You can write about it, but you must disclose the risks to protect yourself and your readers. `;
         if (result.writerGuidance?.mustDisclose?.length > 0) {
           response += `Key disclosures: ${result.writerGuidance.mustDisclose.slice(0, 2).join(', and ')}. `;
         }
         response += `I've prepared a disclaimer you can copy. `;
       } else {
-        response = `Red flag on ${name}. Risk score is ${score} out of 100. `;
+        response = `Red flag on ${name}. Security score is ${securityScore} out of 100. `;
         response += `I'd recommend not featuring this in your publication. The liability risk is too high. `;
         const criticalCount = result.findings?.critical?.length || 0;
         if (criticalCount > 0) {
@@ -256,7 +257,7 @@ function formatFullScanForVoice(result: any, userType: UserType, config: typeof 
       break;
 
     case 'developer':
-      response = `Security audit complete for ${name}. Risk score: ${score} out of 100, rated ${trafficLight}. `;
+      response = `Security audit complete for ${name}. Security score: ${securityScore} out of 100, rated ${trafficLight}. `;
       const criticals = result.findings?.critical?.length || 0;
       const highs = result.findings?.high?.length || 0;
       if (criticals > 0 || highs > 0) {
@@ -274,10 +275,10 @@ function formatFullScanForVoice(result: any, userType: UserType, config: typeof 
 
     case 'user':
       if (trafficLight === 'green') {
-        response = `This software looks safe to install! Risk score is ${score} out of 100. `;
+        response = `This software looks safe to install! Security score is ${securityScore} out of 100. `;
         response += `Just make sure you download it from the official source. `;
       } else if (trafficLight === 'amber') {
-        response = `This software has some risks. Score is ${score} out of 100. `;
+        response = `This software has some risks. Security score is ${securityScore} out of 100. `;
         if (result.github?.permissions?.shellAccess) {
           response += `It can run commands on your computer, so only install if you trust the developer. `;
         }
@@ -286,13 +287,13 @@ function formatFullScanForVoice(result: any, userType: UserType, config: typeof 
         }
         response += `It's probably okay if you're careful, but read the warnings. `;
       } else {
-        response = `I'd be careful with this one. Risk score is ${score} out of 100. `;
+        response = `I'd be careful with this one. Security score is ${securityScore} out of 100. `;
         response += `There are some serious security concerns. Consider finding an alternative. `;
       }
       break;
 
     case 'analyst':
-      response = `Assessment complete for ${name}. Traffic light: ${trafficLight}. Overall risk score: ${score} out of 100. `;
+      response = `Assessment complete for ${name}. Traffic light: ${trafficLight}. Security score: ${securityScore} out of 100. `;
       response += `Breaking down the risk categories: `;
       if (result.riskCategories?.length > 0) {
         const topRisks = result.riskCategories
@@ -449,7 +450,7 @@ function formatReportForVoice(result: any, userType: UserType, config: typeof US
         `You can download it as a PDF for your records.`;
 
     case 'developer':
-      return `Security report generated. Risk score: ${score} out of 100. ` +
+      return `Security report generated. Security score: ${100 - score} out of 100. ` +
         `It includes your action items and security checklist. ` +
         `Share this with your team before release.`;
 
@@ -458,7 +459,7 @@ function formatReportForVoice(result: any, userType: UserType, config: typeof US
         `It explains everything in plain English.`;
 
     case 'analyst':
-      return `Full assessment report generated. Overall risk: ${overallRisk}, score ${score}. ` +
+      return `Full assessment report generated. Overall risk: ${overallRisk}, security score ${100 - score}. ` +
         `Includes IOCs, CVE details, and technical findings. ` +
         `JSON export available for integration.`;
 

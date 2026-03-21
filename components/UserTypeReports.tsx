@@ -44,7 +44,7 @@ export function WriterReport({ report }: { report: PubGuardReport }) {
     const ratingEmoji = rating === 'GREEN' ? '✅' : rating === 'AMBER' ? '⚠️' : '🚨';
 
     let articleText = `## Security Assessment: ${report.targetName}\n\n`;
-    articleText += `**Overall Rating: ${ratingEmoji} ${rating}** (Risk Score: ${report.riskScore}/100)\n\n`;
+    articleText += `**Overall Rating: ${ratingEmoji} ${rating}** (Security Score: ${100 - report.riskScore}/100)\n\n`;
 
     articleText += `### Key Findings\n\n`;
 
@@ -424,8 +424,8 @@ export function AnalystReport({ report }: { report: PubGuardReport }) {
         <h3 className="text-white font-semibold text-lg mb-4">Risk Metrics</h3>
         <div className="grid grid-cols-4 gap-4">
           <div className="text-center">
-            <div className="text-3xl font-bold text-white">{report.riskScore}</div>
-            <div className="text-slate-400 text-sm">Risk Score</div>
+            <div className="text-3xl font-bold text-white">{100 - report.riskScore}</div>
+            <div className="text-slate-400 text-sm">Security Score</div>
           </div>
           <div className="text-center">
             <div className="text-3xl font-bold text-red-400">{report.findings.critical.length}</div>

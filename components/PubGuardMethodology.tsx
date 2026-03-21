@@ -133,14 +133,14 @@ const faqItems = [
   },
   {
     question: 'What does the traffic light rating mean?',
-    answer: 'GREEN (0-39): No significant concerns found. Normal caution advised. AMBER (40-69): Some concerns identified that warrant attention. Review findings before proceeding. RED (70-100): Significant security concerns. Proceed with extreme caution or consider alternatives.'
+    answer: 'GREEN (70-100 security score): No significant concerns found. Normal caution advised. AMBER (35-69 security score): Some concerns identified that warrant attention. Review findings before proceeding. RED (0-34 security score): Significant security concerns. Proceed with extreme caution or consider alternatives.'
   },
   {
-    question: 'How is the risk score calculated?',
-    answer: 'The risk score (0-100) is calculated by weighting findings across all security tests. Critical findings (like known CVEs or credential exposure) have high weight. Medium findings (like missing security policy) have moderate weight. The score also factors in the number and severity of findings, maintainer responsiveness, and community health.'
+    question: 'How is the security score calculated?',
+    answer: 'The security score (0-100) is calculated by weighting findings across all security tests. A higher score means better security. Critical findings (like known CVEs or credential exposure) significantly reduce the score. Medium findings (like missing security policy) have moderate impact. The score also factors in the number and severity of findings, maintainer responsiveness, and community health.'
   },
   {
-    question: 'Why might a popular project get a high risk score?',
+    question: 'Why might a popular project get a low security score?',
     answer: 'Popularity does not equal security. Some of the most popular projects have had serious vulnerabilities (Log4j had billions of downloads). High stars/downloads may actually increase attacker interest. We evaluate security practices, not popularity.'
   },
   {

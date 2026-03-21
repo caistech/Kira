@@ -67,13 +67,14 @@ export default function PubGuardScanPage() {
     const highCount = reportData.findings?.high?.length || 0;
 
     // Base intro varies by traffic light
+    const securityScore = 100 - score;
     let intro = '';
     if (light === 'green') {
-      intro = `Great news! ${name} looks safe. Risk score is ${score} out of 100.`;
+      intro = `Great news! ${name} looks safe. Security score is ${securityScore} out of 100.`;
     } else if (light === 'amber') {
-      intro = `I found some concerns with ${name}. Risk score is ${score} out of 100.`;
+      intro = `I found some concerns with ${name}. Security score is ${securityScore} out of 100.`;
     } else {
-      intro = `Warning! ${name} has significant security issues. Risk score is ${score} out of 100.`;
+      intro = `Warning! ${name} has significant security issues. Security score is ${securityScore} out of 100.`;
     }
 
     // User-type specific advice

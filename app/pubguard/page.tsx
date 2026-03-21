@@ -154,7 +154,7 @@ export default function PubGuardLandingPage() {
               { icon: '🌐', name: 'Internet Exposure Scan' },
               { icon: '👤', name: 'Identity Stability Check' },
               { icon: '🔧', name: 'Maintainer Responsiveness' },
-              { icon: '🔬', name: 'Risk Score Calculation' },
+              { icon: '🔬', name: 'Security Score Calculation' },
               { icon: '📋', name: 'Report Generation' },
             ].map((test) => (
               <div key={test.name} className="flex items-center gap-3 bg-slate-800/30 rounded-lg p-3">

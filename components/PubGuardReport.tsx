@@ -172,7 +172,7 @@ function generatePDF(report: PubGuardReport, userType: UserType): jsPDF {
   setColor(tlColor);
   doc.text(report.trafficLight.toUpperCase(), badgeX + 17.5, 26, { align: 'center' });
   doc.setFontSize(11);
-  doc.text(`${report.overallRiskScore}/100`, badgeX + 17.5, 36, { align: 'center' });
+  doc.text(`${100 - report.overallRiskScore}/100`, badgeX + 17.5, 36, { align: 'center' });
 
   y = 70;
 
@@ -296,7 +296,7 @@ function generatePDF(report: PubGuardReport, userType: UserType): jsPDF {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   setColor(PDF_COLORS.darkGray);
-  doc.text('RISK SCORE BREAKDOWN', margin, y);
+  doc.text('SECURITY SCORE BREAKDOWN', margin, y);
   y += 7;
 
   setFill(PDF_COLORS.darkGray);
@@ -313,16 +313,17 @@ function generatePDF(report: PubGuardReport, userType: UserType): jsPDF {
   doc.setFont('helvetica', 'normal');
   for (const cat of report.riskCategories) {
     checkPage(8);
-    const rowBg = cat.score >= 70 ? { r: 255, g: 235, b: 235 } : cat.score >= 40 ? { r: 255, g: 248, b: 225 } : { r: 235, g: 250, b: 235 };
+    const secScore = 100 - cat.score;
+    const rowBg = secScore <= 30 ? { r: 255, g: 235, b: 235 } : secScore <= 60 ? { r: 255, g: 248, b: 225 } : { r: 235, g: 250, b: 235 };
     setFill(rowBg);
     doc.rect(margin, y, contentWidth, 7, 'F');
     setColor(PDF_COLORS.darkGray);
     doc.setFontSize(7);
     doc.text(cat.name.substring(0, 25), margin + 3, y + 5);
-    const scoreCol = cat.score >= 70 ? PDF_COLORS.critical : cat.score >= 40 ? PDF_COLORS.high : PDF_COLORS.green;
+    const scoreCol = secScore <= 30 ? PDF_COLORS.critical : secScore <= 60 ? PDF_COLORS.high : PDF_COLORS.green;
     setColor(scoreCol);
     doc.setFont('helvetica', 'bold');
-    doc.text(`${cat.score}`, margin + 80, y + 5);
+    doc.text(`${secScore}`, margin + 80, y + 5);
     setColor(PDF_COLORS.lightGray);
     doc.setFont('helvetica', 'normal');
     doc.text(`${Math.round(cat.weight * 100)}%`, margin + 100, y + 5);
@@ -338,8 +339,8 @@ function generatePDF(report: PubGuardReport, userType: UserType): jsPDF {
   doc.rect(margin, y, contentWidth, 7, 'F');
   setColor(PDF_COLORS.white);
   doc.setFont('helvetica', 'bold');
-  doc.text('TOTAL RISK SCORE', margin + 3, y + 5);
-  doc.text(`${report.overallRiskScore}/100`, margin + 122, y + 5);
+  doc.text('TOTAL SECURITY SCORE', margin + 3, y + 5);
+  doc.text(`${100 - report.overallRiskScore}/100`, margin + 122, y + 5);
   y += 12;
 
   // Findings
@@ -495,7 +496,7 @@ export default function PubGuardReport({ report, userType = 'writer', onNewScan 
 
         <div className={`mt-4 p-4 rounded-lg ${styles.bg} border ${styles.border}`}>
           <div className={`text-lg font-semibold ${styles.text}`}>{report.recommendation.replace(/_/g, ' ')}</div>
-          <div className="text-sm text-gray-600">Risk Score: <span className="font-bold">{report.overallRiskScore}/100</span></div>
+          <div className="text-sm text-gray-600">Security Score: <span className="font-bold">{100 - report.overallRiskScore}/100</span></div>
         </div>
 
         <div className="grid grid-cols-5 gap-3 mt-4">
@@ -528,7 +529,7 @@ export default function PubGuardReport({ report, userType = 'writer', onNewScan 
       <div className="bg-white rounded-xl shadow-sm border p-6">
         {tab === 'summary' && (
           <div className="space-y-4">
-            <h2 className="text-xl font-bold">Risk Score Breakdown</h2>
+            <h2 className="text-xl font-bold">Security Score Breakdown</h2>
             {report.riskCategories.map((cat, i) => (
               <div key={i} className="border rounded-lg p-4">
                 <div className="flex justify-between items-center">
@@ -536,12 +537,12 @@ export default function PubGuardReport({ report, userType = 'writer', onNewScan 
                     <h3 className="font-semibold">{cat.name}</h3>
                     <p className="text-sm text-gray-500">{cat.description}</p>
                   </div>
-                  <div className={`text-2xl font-bold ${cat.score >= 70 ? 'text-red-600' : cat.score >= 40 ? 'text-amber-500' : 'text-green-600'}`}>
-                    {cat.score}/100
+                  <div className={`text-2xl font-bold ${(100 - cat.score) <= 30 ? 'text-red-600' : (100 - cat.score) <= 60 ? 'text-amber-500' : 'text-green-600'}`}>
+                    {100 - cat.score}/100
                   </div>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                  <div className={`h-2 rounded-full ${cat.score >= 70 ? 'bg-red-500' : cat.score >= 40 ? 'bg-amber-500' : 'bg-green-500'}`} style={{ width: `${cat.score}%` }} />
+                  <div className={`h-2 rounded-full ${(100 - cat.score) <= 30 ? 'bg-red-500' : (100 - cat.score) <= 60 ? 'bg-amber-500' : 'bg-green-500'}`} style={{ width: `${100 - cat.score}%` }} />
                 </div>
                 {cat.factors?.length > 0 && (
                   <ul className="mt-2 text-sm text-gray-600">
