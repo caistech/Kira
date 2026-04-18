@@ -27,7 +27,7 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app'
 // ElevenLabs Voice & Model Configuration
 const ELEVENLABS_CONFIG = {
   voice_id: 'EXAVITQu4vr4xnSDxMaL',  // Sarah - warm, friendly female voice
-  tts_model: 'eleven_turbo_v2',       // Optimized for real-time conversations
+  tts_model: 'eleven_flash_v2',       // English-only, 75ms latency, purpose-built for conversational AI
   llm: 'gpt-4o-mini',                 // Fast, cost-effective LLM
   temperature: 0.7,                    // Balanced creativity
   max_duration_seconds: 3600,          // 1 hour max conversation
