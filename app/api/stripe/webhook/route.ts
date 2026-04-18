@@ -258,7 +258,7 @@ async function createElevenLabsAgent(params: CreateAgentParams) {
             language: 'en',
           },
           tts: {
-            model_id: 'eleven_turbo_v2_5',
+            model_id: 'eleven_flash_v2',
             voice_id: KIRA_VOICE_ID,
           },
 

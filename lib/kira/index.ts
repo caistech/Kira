@@ -123,7 +123,7 @@ export function createBaseConfig(options: {
     agentName: options.agentName || 'Kira',
     agentId: options.agentId,
     voiceId: options.voiceId,
-    voiceModel: 'eleven_turbo_v2_5',
+    voiceModel: 'eleven_flash_v2',
     llmModel: options.llmModel || 'gpt-4o-mini',
     temperature: options.temperature || 0.7,
     webhookUrl: options.webhookUrl,

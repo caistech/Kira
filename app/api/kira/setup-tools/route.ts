@@ -237,7 +237,7 @@ async function handleCreateOperationalKira(
             },
             tts: {
               voice_id: KIRA_VOICE_ID,
-              model_id: 'eleven_turbo_v2_5',
+              model_id: 'eleven_flash_v2',
             },
           },
           platform_settings: {

@@ -17,7 +17,7 @@ export interface KiraBaseConfig {
 
   // Voice settings
   voiceId: string;             // ElevenLabs voice ID
-  voiceModel?: string;         // Default: 'eleven_turbo_v2_5'
+  voiceModel?: string;         // Default: 'eleven_flash_v2' (English-only; use 'eleven_turbo_v2_5' for multilingual)
 
   // LLM settings
   llmModel?: string;           // Default: 'gpt-4o-mini'

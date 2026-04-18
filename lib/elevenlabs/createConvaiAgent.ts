@@ -35,7 +35,7 @@ export async function createConvaiAgent({
           },
           tts: {
             voice_id: voiceId,
-            model_id: 'eleven_turbo_v2_5',
+            model_id: 'eleven_flash_v2',
           },
         },
         platform_settings: {

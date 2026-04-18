@@ -73,7 +73,7 @@ export async function createElevenLabsAgent(
       },
       tts: {
         voice_id: baseConfig.voiceId,
-        model_id: baseConfig.voiceModel || 'eleven_turbo_v2_5',
+        model_id: baseConfig.voiceModel || 'eleven_flash_v2',
       },
     },
     platform_settings: {
