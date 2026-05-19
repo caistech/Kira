@@ -1,0 +1,16 @@
+{
+  "$schema": "https://raw.githubusercontent.com/caistech/cais-shared-services/main/packages/portfolio-gate/schemas/vendor-leak.config.schema.json",
+  "_comment": [
+    "Kira's about page + branding components intentionally credit the founder",
+    "(Dennis) by name — founder identity is part of the product's brand for",
+    "this category. READMEFIXES is internal dev notes. Intent to keep.",
+    "If Kira moves to white-label distribution, revisit and route through",
+    "NEXT_PUBLIC_VENDOR_* env vars instead."
+  ],
+  "allowlist": [
+    "READMEFIXES.md",
+    "app/about/",
+    "components/KiraBranding.tsx",
+    "components/PubGuardReport.tsx"
+  ]
+}
