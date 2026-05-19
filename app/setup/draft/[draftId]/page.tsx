@@ -1,3 +1,4 @@
+// @explanatory-header-exempt — nested workflow page; entry-point header lives on the parent surface
 // app/setup/draft/[draftId]/page.tsx
 // Draft Review Page - User reviews framework before creating Operational Kira
 //

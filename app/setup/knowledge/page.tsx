@@ -1,3 +1,4 @@
+// @explanatory-header-exempt — nested workflow page; entry-point header lives on the parent surface
 // app/setup/knowledge/page.tsx
 // Knowledge Upload Page - Upload files and URLs to Kira's knowledge base
 // Files go to ElevenLabs knowledge base and are attached to the agent

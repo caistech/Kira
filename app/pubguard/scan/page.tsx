@@ -1,3 +1,4 @@
+// @explanatory-header-exempt — nested workflow page; entry-point header lives on the parent surface
 // app/pubguard/scan/page.tsx
 // PubGuard v2 Scan Page with User-Type-Aware Experience
 // Integrates: Scan API, Report Component, Kira Voice Agent, Visual Progress UI

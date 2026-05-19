@@ -1,3 +1,4 @@
+// @explanatory-header-exempt — nested workflow page; entry-point header lives on the parent surface
 // app/chat/[agentId]/page.tsx
 // Chat page with ElevenLabs voice widget
 // Includes: persistent bottom control bar, refer a friend, knowledge base upload
