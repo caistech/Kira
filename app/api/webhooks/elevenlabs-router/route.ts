@@ -3,33 +3,26 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
-import crypto from 'crypto';
+import { verifyWebhookSignature } from '@caistech/elevenlabs-convai';
 
-const WEBHOOK_SECRET = process.env.ELEVENLABS_WEBHOOK_SECRET || 'kira-webhook-secret';
-
-// Verify HMAC signature from ElevenLabs
-function verifySignature(payload: string, signature: string | null): boolean {
-  if (!signature) return false;
-
-  const hmac = crypto.createHmac('sha256', WEBHOOK_SECRET);
-  hmac.update(payload);
-  const expectedSignature = hmac.digest('hex');
-
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expectedSignature)
-  );
-}
+// No hardcoded fallback for the webhook secret (Kira CLAUDE.md security rule:
+// "Never use || 'fallback-string' for secrets"). Empty string makes the hub
+// verifier fail closed rather than validating against a guessable literal.
+const WEBHOOK_SECRET = process.env.ELEVENLABS_WEBHOOK_SECRET || '';
 
 export async function POST(request: NextRequest) {
   try {
     const rawBody = await request.text();
-    const signature = request.headers.get('x-elevenlabs-signature');
-
-    // Verify signature in production
-    if (process.env.NODE_ENV === 'production' && !verifySignature(rawBody, signature)) {
-      console.warn('[elevenlabs-router] Invalid signature');
-      // Continue anyway for now - can make strict later
+    // ElevenLabs signs webhooks with the `elevenlabs-signature` header (t=,v0= HMAC);
+    // the previous `x-elevenlabs-signature` name never matched, which is why
+    // verification was left disabled. Verify via the hub helper (rule 19), but keep the
+    // warn-but-continue posture for now: tool-call webhooks may use a different auth
+    // scheme than post-call webhooks, so flipping to strict-reject needs that confirmed
+    // first to avoid 401ing live memory/tool calls.
+    // TODO(strict): once the tool-webhook signing scheme is confirmed, return 401 here.
+    const signature = request.headers.get('elevenlabs-signature');
+    if (process.env.NODE_ENV === 'production' && !verifyWebhookSignature(rawBody, signature, WEBHOOK_SECRET)) {
+      console.warn('[elevenlabs-router] Signature not verified (enforcement deferred — see TODO(strict))');
     }
 
     const body = JSON.parse(rawBody);
