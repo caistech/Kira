@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@caistech/elevenlabs-convai": "^0.4.0",
     "@caistech/corporate-components": "^0.3.0",
     "@caistech/platform-trust-middleware": "^0.4.0",
     "@elevenlabs/client": "^0.13.0",

@@ -20,6 +20,7 @@ import {
   KiraFramework,
   JourneyType,
 } from '@/lib/kira/prompts';
+import { bindWorkspaceWebhook } from '@caistech/elevenlabs-convai';
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app';
@@ -217,12 +218,9 @@ export async function POST(req: NextRequest) {
               max_duration_seconds: ELEVENLABS_CONFIG.max_duration_seconds,
             },
           },
-          platform_settings: {
-            webhook: {
-              url: `${APP_URL}/api/kira/webhook`,
-              events: ['conversation.transcript', 'conversation.ended'],
-            },
-          },
+          // NOTE: the per-agent platform_settings.webhook is deprecated + silently
+          // ignored by ElevenLabs — the workspace-scoped post-call webhook is bound
+          // after creation via bindWorkspaceWebhook() below.
         }),
       }
     );
@@ -246,6 +244,35 @@ export async function POST(req: NextRequest) {
     await log(supabase, requestId, 'elevenlabs_create', 'success', undefined, {
       agentId,
     });
+
+    /* ---------------- Bind workspace-scoped post-call webhook ---------------- */
+    // The per-agent platform_settings.webhook shape is deprecated + silently ignored,
+    // so post-call webhooks never fired. Bind the workspace-scoped webhook instead (one
+    // webhook reused across all Kira agents on the /api/kira/webhook URL). The signing
+    // secret is returned only on first creation — capture it into ELEVENLABS_WEBHOOK_SECRET.
+    try {
+      const { webhookSecret } = await bindWorkspaceWebhook(ELEVENLABS_API_KEY, agentId, {
+        name: 'Kira post-call',
+        url: `${APP_URL}/api/kira/webhook`,
+      });
+      await log(
+        supabase,
+        requestId,
+        'webhook_bind',
+        'success',
+        webhookSecret
+          ? 'workspace webhook created — set ELEVENLABS_WEBHOOK_SECRET to the returned secret (shown once)'
+          : 'reused existing workspace webhook',
+        { secretReturned: Boolean(webhookSecret) }   // never log the secret value
+      );
+      if (webhookSecret) {
+        console.warn('[kira/create] Workspace post-call webhook CREATED — set ELEVENLABS_WEBHOOK_SECRET env to the returned secret (ElevenLabs shows it once).');
+      }
+    } catch (e: any) {
+      await log(supabase, requestId, 'webhook_bind', 'error', e?.message ?? 'webhook bind failed');
+      console.error('[kira/create] webhook bind failed:', e);
+      // Non-fatal: the agent exists; the webhook can be re-bound on a later run.
+    }
 
     /* ---------------- Save Agent to Database ---------------- */
     await log(supabase, requestId, 'agent_save', 'start');
