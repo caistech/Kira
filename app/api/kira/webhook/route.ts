@@ -3,7 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
-import crypto from 'crypto';
+import { verifyWebhookSignature } from '@caistech/elevenlabs-convai';
 
 const WEBHOOK_SECRET = process.env.ELEVENLABS_WEBHOOK_SECRET!;
 
@@ -41,45 +41,15 @@ interface ElevenLabsWebhookPayload {
   };
 }
 
-function verifySignature(payload: string, signature: string | null): boolean {
-  if (!signature || !WEBHOOK_SECRET) {
-    console.warn('[kira/webhook] Missing signature or secret');
-    return false;
-  }
-
-  const parts = signature.split(',');
-  const timestamp = parts.find(p => p.startsWith('t='))?.slice(2);
-  const hash = parts.find(p => p.startsWith('v0='))?.slice(3);
-
-  if (!timestamp || !hash) {
-    console.warn('[kira/webhook] Invalid signature format');
-    return false;
-  }
-
-  const timestampAge = Math.abs(Date.now() / 1000 - parseInt(timestamp));
-  if (timestampAge > 300) {
-    console.warn('[kira/webhook] Signature timestamp too old');
-    return false;
-  }
-
-  const expectedHash = crypto
-    .createHmac('sha256', WEBHOOK_SECRET)
-    .update(`${timestamp}.${payload}`)
-    .digest('hex');
-
-  try {
-    return crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(expectedHash));
-  } catch {
-    return false;
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
     const rawBody = await request.text();
     const signature = request.headers.get('elevenlabs-signature');
 
-    if (!verifySignature(rawBody, signature)) {
+    // Generic HMAC verification consumed from the hub (rule 19) — includes the
+    // .trim() fix so a secret/header carrying a trailing newline (e.g. from
+    // `echo secret | vercel env add`) no longer 401s a valid request.
+    if (!verifyWebhookSignature(rawBody, signature, WEBHOOK_SECRET)) {
       console.warn('[kira/webhook] Invalid webhook signature');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

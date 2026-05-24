@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { getKiraPrompt, generateAgentName } from '@/lib/kira/prompts';
+import { bindWorkspaceWebhook } from '@caistech/elevenlabs-convai';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
@@ -240,12 +241,10 @@ async function handleCreateOperationalKira(
               model_id: 'eleven_flash_v2',
             },
           },
-          platform_settings: {
-            webhook: {
-              url: `${APP_URL}/api/webhooks/elevenlabs-router`,
-              events: ['conversation.transcript', 'conversation.ended'],
-            },
-          },
+          // NOTE: per-agent platform_settings.webhook is deprecated + silently
+          // ignored by ElevenLabs — the workspace-scoped post-call webhook is bound
+          // after creation via bindWorkspaceWebhook() below (target /api/kira/webhook,
+          // the post-call handler — NOT the tool-call router this previously pointed at).
         }),
       }
     );
@@ -266,6 +265,22 @@ async function handleCreateOperationalKira(
     const agentId = elevenData.agent_id;
 
     console.log(`[create_operational_kira] Created agent: ${agentId}`);
+
+    // Bind the workspace-scoped post-call webhook (deprecated per-agent shape was
+    // silently dropped). Targets /api/kira/webhook to match the draft-review create
+    // path — the secret is returned only on first creation (capture into
+    // ELEVENLABS_WEBHOOK_SECRET); never logged as a value.
+    try {
+      const { webhookSecret } = await bindWorkspaceWebhook(ELEVENLABS_API_KEY, agentId, {
+        name: 'Kira post-call',
+        url: `${APP_URL}/api/kira/webhook`,
+      });
+      if (webhookSecret) {
+        console.warn('[create_operational_kira] Workspace post-call webhook CREATED — set ELEVENLABS_WEBHOOK_SECRET env to the returned secret (ElevenLabs shows it once).');
+      }
+    } catch (e: any) {
+      console.error('[create_operational_kira] webhook bind failed (non-fatal):', e?.message ?? e);
+    }
 
     // 4. Save agent to database
     const { data: savedAgent, error: agentError } = await supabase
