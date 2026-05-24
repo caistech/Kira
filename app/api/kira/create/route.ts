@@ -20,7 +20,7 @@ import {
   KiraFramework,
   JourneyType,
 } from '@/lib/kira/prompts';
-import { bindWorkspaceWebhook } from '@caistech/elevenlabs-convai';
+import { bindWorkspaceWebhook, setAllowlist, standardAllowlist } from '@caistech/elevenlabs-convai';
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app';
@@ -272,6 +272,18 @@ export async function POST(req: NextRequest) {
       await log(supabase, requestId, 'webhook_bind', 'error', e?.message ?? 'webhook bind failed');
       console.error('[kira/create] webhook bind failed:', e);
       // Non-fatal: the agent exists; the webhook can be re-bound on a later run.
+    }
+
+    /* ---------------- Lock the agent's origin allowlist ---------------- */
+    // Without an allowlist, anyone who reads the agent ID from the client bundle can run
+    // free voice calls on the workspace's ElevenLabs key (VOICE AI rule). Restrict to the
+    // prod host + *.vercel.app previews + localhost.
+    try {
+      await setAllowlist(ELEVENLABS_API_KEY, agentId, standardAllowlist(new URL(APP_URL).hostname));
+      await log(supabase, requestId, 'allowlist_set', 'success');
+    } catch (e: any) {
+      await log(supabase, requestId, 'allowlist_set', 'error', e?.message ?? 'allowlist set failed');
+      console.error('[kira/create] allowlist set failed (non-fatal):', e);
     }
 
     /* ---------------- Save Agent to Database ---------------- */

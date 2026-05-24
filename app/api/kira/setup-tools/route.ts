@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { getKiraPrompt, generateAgentName } from '@/lib/kira/prompts';
-import { bindWorkspaceWebhook } from '@caistech/elevenlabs-convai';
+import { bindWorkspaceWebhook, setAllowlist, standardAllowlist } from '@caistech/elevenlabs-convai';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
@@ -280,6 +280,14 @@ async function handleCreateOperationalKira(
       }
     } catch (e: any) {
       console.error('[create_operational_kira] webhook bind failed (non-fatal):', e?.message ?? e);
+    }
+
+    // Lock the agent's origin allowlist (VOICE AI rule) — without it, the agent ID in
+    // the client bundle lets anyone run free voice calls on the workspace key.
+    try {
+      await setAllowlist(ELEVENLABS_API_KEY, agentId, standardAllowlist(new URL(APP_URL).hostname));
+    } catch (e: any) {
+      console.error('[create_operational_kira] allowlist set failed (non-fatal):', e?.message ?? e);
     }
 
     // 4. Save agent to database
