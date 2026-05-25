@@ -3,26 +3,33 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
-import { verifyWebhookSignature } from '@caistech/elevenlabs-convai';
+import crypto from 'crypto';
 
-// No hardcoded fallback for the webhook secret (Kira CLAUDE.md security rule:
-// "Never use || 'fallback-string' for secrets"). Empty string makes the hub
-// verifier fail closed rather than validating against a guessable literal.
-const WEBHOOK_SECRET = process.env.ELEVENLABS_WEBHOOK_SECRET || '';
+// Server-tool requests are authenticated by a header SECRET configured on each tool
+// definition — NOT by the post-call HMAC (`elevenlabs-signature`), which ElevenLabs only
+// sends for post-call webhooks. (Confirmed against ElevenLabs docs, 2026-05-25: "Server
+// tools → add a header, type Secret".) So HMAC verification here is the wrong scheme and
+// would 401 every legitimate tool call.
+//
+// Enforcement is a constant-time compare of a shared-secret header, INERT until
+// KIRA_TOOL_SECRET is set — which must happen AFTER the Kira tools are re-provisioned to
+// send `x-kira-tool-secret` (createKiraTools), so existing agents aren't locked out.
+const TOOL_SECRET = process.env.KIRA_TOOL_SECRET || '';
 
 export async function POST(request: NextRequest) {
   try {
     const rawBody = await request.text();
-    // ElevenLabs signs webhooks with the `elevenlabs-signature` header (t=,v0= HMAC);
-    // the previous `x-elevenlabs-signature` name never matched, which is why
-    // verification was left disabled. Verify via the hub helper (rule 19), but keep the
-    // warn-but-continue posture for now: tool-call webhooks may use a different auth
-    // scheme than post-call webhooks, so flipping to strict-reject needs that confirmed
-    // first to avoid 401ing live memory/tool calls.
-    // TODO(strict): once the tool-webhook signing scheme is confirmed, return 401 here.
-    const signature = request.headers.get('elevenlabs-signature');
-    if (process.env.NODE_ENV === 'production' && !verifyWebhookSignature(rawBody, signature, WEBHOOK_SECRET)) {
-      console.warn('[elevenlabs-router] Signature not verified (enforcement deferred — see TODO(strict))');
+    // Verify the configured tool-secret header (see the note on TOOL_SECRET above).
+    // Inert until KIRA_TOOL_SECRET is set; once set, an absent/mismatched header is rejected.
+    if (TOOL_SECRET) {
+      const provided = request.headers.get('x-kira-tool-secret') ?? '';
+      const ok =
+        provided.length === TOOL_SECRET.length &&
+        crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(TOOL_SECRET));
+      if (!ok) {
+        console.warn('[elevenlabs-router] Missing or invalid tool secret');
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
     }
 
     const body = JSON.parse(rawBody);
