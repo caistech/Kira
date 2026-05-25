@@ -148,8 +148,12 @@ export default function KiraLandingPage() {
               <br /><span className="text-3xl lg:text-4xl text-stone-600">Then meet <span className="bg-gradient-to-r from-violet-500 to-pink-500 bg-clip-text text-transparent">YOUR</span> Kira.</span>
             </h1>
 
-            <p className={`font-body text-xl lg:text-2xl text-stone-600 max-w-2xl mx-auto mb-10 leading-relaxed ${isVisible ? 'fade-up fade-up-delay-2' : 'opacity-0'}`}>
+            <p className={`font-body text-xl lg:text-2xl text-stone-600 max-w-2xl mx-auto mb-6 leading-relaxed ${isVisible ? 'fade-up fade-up-delay-2' : 'opacity-0'}`}>
               Not one AI for everyone. A unique thinking partner <span className="font-semibold text-stone-800">built around your specific goal</span> — whether that's figuring out your career, planning a trip, or growing your business.
+            </p>
+
+            <p className={`font-body text-sm text-stone-500 max-w-xl mx-auto mb-10 ${isVisible ? 'fade-up fade-up-delay-2' : 'opacity-0'}`}>
+              For <span className="font-semibold text-violet-600">coaching &amp; wellness platforms</span>: a personal AI guide for your members, under your brand.
             </p>
 
             <div className={`flex flex-col sm:flex-row items-center justify-center gap-4 ${isVisible ? 'fade-up fade-up-delay-3' : 'opacity-0'}`}>
