@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { SayFixWidget } from "@caistech/sayfix-embed";
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { CorporateHeader } from '@/components/corporate/CorporateHeader';
@@ -28,7 +29,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <div className="min-h-screen flex flex-col">
           <CorporateHeader productName="Kira" productAcronym="K" />
-          <main className="flex-1">{children}</main>
+          <main className="flex-1">{children}<SayFixWidget repo="kira" /></main>
           <CorporateFooter productName="Kira" />
         </div>
       </body>

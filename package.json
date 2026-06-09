@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@caistech/sayfix-embed": "^0.4.0",
     "@caistech/elevenlabs-convai": "^0.4.0",
     "@caistech/corporate-components": "^0.3.0",
     "@caistech/platform-trust-middleware": "^0.4.0",
