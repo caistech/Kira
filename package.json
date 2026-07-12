@@ -9,10 +9,11 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@caistech/sayfix-embed": "^0.4.0",
-    "@caistech/elevenlabs-convai": "^0.4.0",
     "@caistech/corporate-components": "^0.3.0",
+    "@caistech/elevenlabs-convai": "^0.4.0",
     "@caistech/platform-trust-middleware": "^0.4.0",
+    "@caistech/sayfix-embed": "^0.4.0",
+    "@caistech/webmcp-kit": "^0.1.0",
     "@elevenlabs/client": "^0.13.0",
     "@elevenlabs/react": "^0.13.1",
     "@supabase/ssr": "^0.1.0",

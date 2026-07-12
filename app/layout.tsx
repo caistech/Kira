@@ -4,6 +4,8 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { CorporateHeader } from '@/components/corporate/CorporateHeader';
 import { CorporateFooter } from '@/components/corporate/CorporateFooter';
+import { AgentJsonLd } from '@caistech/webmcp-kit/react';
+import { agentConfig } from '@/agent-readiness.config';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -27,6 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
+        <AgentJsonLd config={agentConfig} />
         <div className="min-h-screen flex flex-col">
           <CorporateHeader productName="Kira" productAcronym="K" />
           <main className="flex-1">{children}<SayFixWidget repo="kira" /></main>
