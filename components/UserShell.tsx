@@ -8,7 +8,7 @@ import { PortalShell, type NavItem } from '@/components/PortalShell';
 
 const USER_NAV: NavItem[] = [
   { href: '/dashboard', label: 'My Kiras' },
-  { href: '/setup', label: 'New Kira' },
+  { href: '/start', label: 'New Kira' },
 ];
 
 export async function UserShell({ children }: { children: React.ReactNode }) {

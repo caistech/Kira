@@ -47,7 +47,7 @@ export function AuthForm({ mode, redirectTo = '/dashboard', title, subtitle, var
         if (error) throw error;
         window.location.assign(redirectTo);
       } else if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -56,7 +56,13 @@ export function AuthForm({ mode, redirectTo = '/dashboard', title, subtitle, var
           },
         });
         if (error) throw error;
-        setNotice('Check your email to confirm your account, then sign in.');
+        // Auto-confirm returns a session immediately → log them straight in. Only when email
+        // confirmation is required (no session) do we ask them to check their inbox.
+        if (data.session) {
+          window.location.assign(redirectTo);
+        } else {
+          setNotice('Check your email to confirm your account, then sign in.');
+        }
       } else if (mode === 'forgot') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: callbackUrl(variant === 'admin' ? '/admin/password-reset' : '/auth/reset-password'),

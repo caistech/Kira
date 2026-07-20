@@ -79,7 +79,7 @@ export default async function DashboardPage() {
         <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center">
           <p className="text-base text-gray-600">You don&apos;t have a Kira yet.</p>
           <Link
-            href="/setup"
+            href="/start"
             className="mt-4 inline-block rounded-lg bg-teal-600 px-5 py-3 text-base font-semibold text-white hover:bg-teal-700"
           >
             Set up your first Kira
@@ -106,7 +106,7 @@ export default async function DashboardPage() {
             </Link>
           ))}
           <Link
-            href="/setup"
+            href="/start"
             className="flex items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white p-5 text-base font-medium text-teal-700 hover:border-teal-300"
           >
             + New Kira
