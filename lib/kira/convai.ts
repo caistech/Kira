@@ -18,10 +18,12 @@ import {
   createConvaiWebhookRoutes,
   createConversationTools,
   conversationContinuityPrompt as canonicalContinuityPrompt,
+  distillConversationToMemory,
   type ConvaiWebhookRoutes,
   type ConvAITool,
 } from '@caistech/elevenlabs-convai';
 import { createServiceClient } from '@/lib/supabase/server';
+import { createMemoryExtractor } from '@/lib/kira/memory-extract';
 
 // Kira's real tables mapped onto the canonical TableNames contract. The reconcile
 // migration adds the columns the handlers need (agent_id, anon_session_id, processed_at)
@@ -48,12 +50,25 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
   if (cachedRoutes) return cachedRoutes;
 
   const supabase = createServiceClient();
+  const memoryExtractor = createMemoryExtractor(process.env.OPENAI_API_KEY || '');
 
   cachedRoutes = createConvaiWebhookRoutes({
     supabase,
     tableNames: KIRA_CONVAI_TABLES,
     // Post-call payloads must carry a valid HMAC signature (rule 19).
     postCallSecret: process.env.ELEVENLABS_WEBHOOK_SECRET,
+    // After the transcript is persisted, distil it into durable kira_memory so recall_memory has
+    // facts to pull (get_conversation_context already gives conversation continuity; this is the
+    // distilled "important facts" layer). Degrade-don't-fake: a failing distil is logged + skipped,
+    // never thrown out of the post-call path (canonical distillConversationToMemory guarantees this).
+    onConversationComplete: async (conv, sb) => {
+      await distillConversationToMemory(sb, {
+        elevenlabsConversationId: conv.elevenlabsConversationId,
+        conversationId: conv.id,
+        extract: memoryExtractor,
+        tables: KIRA_CONVAI_TABLES,
+      });
+    },
     // Identity is SERVER-DERIVED from the agent binding, never from an agent-supplied
     // user_id. Kira provisions one agent per user, so the agent's owner IS the session
     // user. Only start_conversation calls this; save/recall derive identity from the
