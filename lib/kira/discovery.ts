@@ -27,6 +27,7 @@ import {
   type ClientProfile,
   mergeProfile,
   computeCompleteness,
+  buildProfileBriefing,
   DISCOVERY_COMPLETE_THRESHOLD,
 } from '@/lib/kira/discovery-schema';
 
@@ -126,20 +127,4 @@ export function getDiscovery(): Discovery<ClientProfile> {
   );
 
   return cached;
-}
-
-/** A compact, recall-friendly briefing string the operational agent can pull. */
-export function buildProfileBriefing(p: ClientProfile): string {
-  const parts: string[] = [];
-  if (p.identity?.name) parts.push(`This is ${p.identity.name}.`);
-  if (p.identity?.background_summary) parts.push(p.identity.background_summary);
-  if (p.business?.description || p.business?.type) parts.push(`Business: ${p.business.description || p.business.type}.`);
-  if (p.role) parts.push(`Their role: ${p.role}.`);
-  if (p.working_style) parts.push(`How they work: ${p.working_style}.`);
-  if (p.goals_near_term?.length) parts.push(`Near-term goals: ${p.goals_near_term.join('; ')}.`);
-  if (p.goals_long_term?.length) parts.push(`Long-term goals: ${p.goals_long_term.join('; ')}.`);
-  if (p.key_relationships?.length) parts.push(`Key people: ${p.key_relationships.join('; ')}.`);
-  if (p.constraints?.length) parts.push(`Constraints: ${p.constraints.join('; ')}.`);
-  if (p.current_priorities?.length) parts.push(`Current priorities: ${p.current_priorities.join('; ')}.`);
-  return `CLIENT PROFILE (from discovery). ${parts.join(' ')}`.trim();
 }

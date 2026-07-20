@@ -22,6 +22,7 @@ import {
 } from '@/lib/kira/prompts';
 import { bindWorkspaceWebhook, setAllowlist, standardAllowlist, setAgentTools, setAgentOverrides } from '@caistech/elevenlabs-convai';
 import { kiraMemoryTools, conversationContinuityPrompt } from '@/lib/kira/convai';
+import { buildProfileBriefing } from '@/lib/kira/discovery-schema';
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app';
@@ -306,16 +307,20 @@ export async function POST(req: NextRequest) {
     /* ---------------- Save Agent to Database ---------------- */
     await log(supabase, requestId, 'agent_save', 'start');
 
-    const { error: agentError } = await supabase.from('kira_agents').insert({
-      user_id: user.id,
-      agent_name: agentName,
-      journey_type: draft.journey_type,
-      elevenlabs_agent_id: agentId,
-      framework,
-      draft_id: draftId,
-      status: 'active',
-      voice_id: ELEVENLABS_CONFIG.voice_id,
-    });
+    const { data: savedAgent, error: agentError } = await supabase
+      .from('kira_agents')
+      .insert({
+        user_id: user.id,
+        agent_name: agentName,
+        journey_type: draft.journey_type,
+        elevenlabs_agent_id: agentId,
+        framework,
+        draft_id: draftId,
+        status: 'active',
+        voice_id: ELEVENLABS_CONFIG.voice_id,
+      })
+      .select('id')
+      .single();
 
     if (agentError) {
       await log(supabase, requestId, 'agent_save', 'error', 'Failed to save agent', { error: agentError });
@@ -323,6 +328,33 @@ export async function POST(req: NextRequest) {
       console.error('[kira/create] Failed to save agent to DB:', agentError);
     } else {
       await log(supabase, requestId, 'agent_save', 'success');
+    }
+
+    /* ---------------- Brief the new Kira from the Client Profile (if discovery ran) ---------- */
+    // A Kira created AFTER discovery should walk in already knowing the person. Seed the
+    // operational agent's memory with the profile briefing so its recall surfaces it from the
+    // first conversation. Non-fatal.
+    if (savedAgent?.id) {
+      try {
+        const { data: cp } = await supabase
+          .from('client_profiles')
+          .select('profile')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (cp?.profile) {
+          await supabase.from('kira_memory').insert({
+            user_id: user.id,
+            kira_agent_id: savedAgent.id,
+            memory_type: 'context',
+            content: buildProfileBriefing(cp.profile),
+            importance: 9,
+            tags: ['client_profile', 'discovery'],
+          });
+          await log(supabase, requestId, 'profile_brief', 'success');
+        }
+      } catch (e: any) {
+        console.error('[kira/create] profile briefing seed failed (non-fatal):', e?.message ?? e);
+      }
     }
 
     /* ---------------- Mark Draft as Used ---------------- */
