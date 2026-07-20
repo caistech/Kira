@@ -45,6 +45,15 @@ if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) throw new Error('Su
 
 const supabase = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 const tools = createConversationTools(APP_URL, '/api/kira/webhooks');
+// Interim tool-webhook auth (matches lib/kira/convai.ts toolSecretOk): when KIRA_TOOL_WEBHOOK_SECRET
+// is set, the operational tools carry it as a header so the routes can reject un-provisioned callers.
+if (process.env.KIRA_TOOL_WEBHOOK_SECRET) {
+  for (const t of tools) {
+    if (t.webhook) {
+      t.webhook.headers = { ...(t.webhook.headers ?? {}), 'x-kira-tool-secret': process.env.KIRA_TOOL_WEBHOOK_SECRET };
+    }
+  }
+}
 const hostname = new URL(APP_URL).hostname;
 
 // EXCLUDE the shared discovery agent. It lives in kira_agents too (provision-discovery-agent.mjs

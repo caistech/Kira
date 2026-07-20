@@ -33,7 +33,9 @@ export default function DiscoveryPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-10">
+    // The persistent portal chrome (nav + bg) comes from app/discovery/layout.tsx → UserShell.
+    // overflow-x-hidden guards against the voice panel pushing a few px of sideways scroll on mobile.
+    <div className="overflow-x-hidden">
       <div className="mx-auto max-w-2xl">
         <header className="mb-6">
           <p className="text-sm font-medium text-teal-700">Discovery</p>

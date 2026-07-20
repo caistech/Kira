@@ -74,15 +74,45 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
   return cachedRoutes;
 }
 
+// Interim shared-secret guard for the OPERATIONAL tool webhooks (kira/webhooks/*). Unlike the
+// discovery tools (which resolve identity from a SIGNED session token), these resolve identity from
+// the PUBLIC elevenlabs_agent_id, so an unauthenticated caller could start_conversation as a victim
+// and then recall/poison their memory. The durable fix belongs in @caistech/elevenlabs-convai
+// (see HANDOFF_RESPONSE.md); until it lands we require a secret header the provisioned tools carry.
+export const KIRA_TOOL_SECRET_HEADER = 'x-kira-tool-secret';
+
+/**
+ * Guard for the operational tool routes. INERT when KIRA_TOOL_WEBHOOK_SECRET is unset (so a deploy
+ * of the guard doesn't 401 agents that haven't been re-provisioned with the header yet) — activate
+ * by setting the env AND re-running scripts/reprovision-kira-agents.mjs so agents send the header.
+ */
+export function toolSecretOk(req: Request): boolean {
+  const secret = process.env.KIRA_TOOL_WEBHOOK_SECRET;
+  if (!secret) return true;
+  return req.headers.get(KIRA_TOOL_SECRET_HEADER) === secret;
+}
+
 /**
  * The canonical 5 conversation/memory tools (get_conversation_context, save_message,
  * update_conversation_topic, recall_memory, save_memory), pointed at Kira's own webhook
  * routes. This is the set attached to every operational agent at provision time. Kira's
  * search_web / search_knowledge tools are intentionally NOT included here — their routes
  * do not exist yet, and attaching a routeless tool makes the agent call a 404.
+ *
+ * When KIRA_TOOL_WEBHOOK_SECRET is set, each tool carries it as a request header so the
+ * toolSecretOk() route guard can reject calls that don't originate from our provisioned agents.
  */
 export function kiraMemoryTools(baseUrl: string): ConvAITool[] {
-  return createConversationTools(baseUrl, KIRA_WEBHOOK_BASE_PATH);
+  const tools = createConversationTools(baseUrl, KIRA_WEBHOOK_BASE_PATH);
+  const secret = process.env.KIRA_TOOL_WEBHOOK_SECRET;
+  if (secret) {
+    for (const t of tools) {
+      if (t.webhook) {
+        t.webhook.headers = { ...(t.webhook.headers ?? {}), [KIRA_TOOL_SECRET_HEADER]: secret };
+      }
+    }
+  }
+  return tools;
 }
 
 // Re-export the canonical continuity prompt so provisioning appends the SAME instructions

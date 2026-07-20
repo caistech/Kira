@@ -11,12 +11,6 @@ export default function KiraLandingPage() {
 
   return (
     <div className="min-h-screen bg-amber-50 text-stone-800 font-sans overflow-x-hidden">
-      {/* Auth entry points (PRODUCT_STANDARDS §8.5 — user + admin) */}
-      <div className="fixed top-0 right-0 z-50 flex items-center gap-2 p-3 sm:gap-3 sm:p-4">
-        <a href="/admin/login" className="px-2 py-2 text-xs font-medium text-stone-500 hover:text-stone-700">Admin</a>
-        <a href="/login" className="px-3 py-2 text-sm font-medium text-stone-700 hover:text-stone-900">Sign in</a>
-        <a href="/signup" className="rounded-full bg-stone-900 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-800">Start as User</a>
-      </div>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400;1,9..40,500&family=Outfit:wght@300;400;500;600;700&display=swap');
         
@@ -115,11 +109,13 @@ export default function KiraLandingPage() {
               <span className="font-semibold">Corporate AI Solutions</span>
             </a>
           </div>
-          <div className="flex items-center gap-8">
-            <a href="#how-it-works" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden sm:block">How it works</a>
-            <a href="#pricing" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden sm:block">Pricing</a>
-            <a href="/about" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden sm:block">About</a>
-            <a href="/start" className="font-display gradient-sunny text-stone-800 px-5 py-2.5 rounded-full text-sm font-bold hover-pop shadow-md">Try Kira Free ✨</a>
+          <div className="flex items-center gap-3 sm:gap-6">
+            <a href="#how-it-works" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">How it works</a>
+            <a href="#pricing" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">Pricing</a>
+            <a href="/about" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">About</a>
+            <a href="/admin/login" className="font-body text-stone-400 hover:text-stone-600 text-xs hidden sm:block">Admin</a>
+            <a href="/login" className="font-body flex min-h-[44px] items-center px-2 text-sm font-medium text-stone-700 hover:text-pink-500">Sign in</a>
+            <a href="/start" className="font-display gradient-sunny text-stone-800 px-4 py-2.5 rounded-full text-sm font-bold hover-pop shadow-md flex min-h-[44px] items-center">Try Kira ✨</a>
           </div>
         </div>
       </nav>
@@ -465,7 +461,7 @@ export default function KiraLandingPage() {
           </div>
           <div className="mt-8 pt-8 border-t border-stone-700 text-center">
             <p className="font-body text-stone-500 text-sm">
-              © 2025 Corporate AI Solutions · Created by Dennis McMahin ·
+              © 2026 Corporate AI Solutions · Created by Dennis McMahon ·
               <a href="https://corporate-ai-solutions.vercel.app/studio/thesis" target="_blank" rel="noopener noreferrer" className="text-amber-500 hover:text-amber-400 ml-1">Longtail AI Ventures</a>
             </p>
           </div>
