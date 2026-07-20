@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { createServiceClient } from '@/lib/supabase/server';
+import { getCurrentAppUser } from '@/lib/auth';
 import {
   getKiraPrompt,
   generateAgentName,
@@ -74,15 +75,24 @@ export async function POST(req: NextRequest) {
     await log(supabase, requestId, 'env_check', 'success');
 
     const body = await req.json();
-    const { draftId, email } = body as { draftId: string; email: string };
+    const { draftId } = body as { draftId: string };
 
-    if (!draftId || !email) {
-      throw new Error('draftId or email missing');
+    if (!draftId) {
+      throw new Error('draftId missing');
+    }
+
+    // Identity is SESSION-derived, never a body-supplied email. This route mints a paid ElevenLabs
+    // agent and seeds the user's profile; trusting a caller-supplied email let any caller attribute
+    // an agent to another user (and /api/* is NOT covered by the auth middleware). The /setup/draft
+    // caller is a USER_PROTECTED route, so an authenticated session is present here.
+    const appUser = await getCurrentAppUser();
+    if (!appUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     await log(supabase, requestId, 'request_parsed', 'success', undefined, {
       draftId,
-      email,
+      userId: appUser.id,
     });
 
     /* ---------------- Draft ---------------- */
@@ -127,33 +137,11 @@ export async function POST(req: NextRequest) {
       objective: draft.primary_objective,
     });
 
-    /* ---------------- User ---------------- */
-    await log(supabase, requestId, 'user_lookup', 'start');
-
+    /* ---------------- User (session-derived, not from the request body) ---------------- */
     const firstName = extractFirstName(draft.user_name);
-
-    let { data: user } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email.toLowerCase())
-      .single();
-
-    if (!user) {
-      const { data: newUser, error } = await supabase
-        .from('users')
-        .insert({
-          email: email.toLowerCase(),
-          first_name: firstName,
-        })
-        .select()
-        .single();
-
-      if (error || !newUser) {
-        await log(supabase, requestId, 'user_lookup', 'error', 'User create failed', { error });
-        throw new Error('User create failed');
-      }
-      user = newUser;
-    }
+    // The authenticated app-user row already exists (created by the auth-link trigger at signup),
+    // so there is no lookup-or-create by email anymore — we attribute the agent to the session user.
+    const user = appUser;
 
     await log(supabase, requestId, 'user_lookup', 'success', undefined, {
       userId: user.id,

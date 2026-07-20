@@ -7,8 +7,24 @@
 
 import { z } from 'zod';
 
-const nstr = z.string().trim().min(1).nullable().default(null);
-const nstrArr = z.array(z.string().trim().min(1)).default([]);
+// Nullable scalar. The extraction LLM routinely emits "" (or whitespace) for "unknown" instead of
+// null; a bare .min(1).nullable() throws a ZodError on that ("" is not null, fails min(1)), and
+// because the canonical post-call handler claims processed_at BEFORE distillation runs, a throw
+// here means the whole Client Profile is dropped with no retry. So we degrade-don't-fake: any
+// malformed value for a field collapses to null via .catch(null), never a throw.
+const nstr = z.string().trim().min(1).nullable().default(null).catch(null);
+
+// Nullable string array. Preprocess drops empty/whitespace/non-string elements (so a mixed
+// ["", "real goal"] keeps "real goal" instead of failing on the empty), and .catch([]) is the
+// final net for a wholly wrong shape (e.g. the LLM returning null or a bare string) — again so a
+// single bad field never discards the whole extraction.
+const nstrArr = z
+  .preprocess(
+    (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string' && x.trim() !== '') : v),
+    z.array(z.string().trim().min(1)),
+  )
+  .default([])
+  .catch([]);
 
 export const ClientProfileSchema = z.object({
   identity: z

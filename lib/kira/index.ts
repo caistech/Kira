@@ -37,9 +37,9 @@ export type {
 // =============================================================================
 // COMPONENTS
 // =============================================================================
-
-export { VoiceAgent, VoiceButton } from './VoiceAgent';
-export type { VoiceButtonProps } from './VoiceAgent';
+// The forked voice components (VoiceAgent CDN embed / VoiceButton) were retired in the
+// voice-memory canonical adoption — surfaces consume the hub @caistech/elevenlabs-convai/react
+// VoiceWidget directly (agent ids in voice.config.ts). No component re-exports remain here.
 
 // =============================================================================
 // PHILOSOPHY

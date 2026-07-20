@@ -74,7 +74,109 @@ export default function DiscoveryPage() {
             Done for now →
           </Link>
         </div>
+
+        <PreBriefPanel />
       </div>
+    </div>
+  );
+}
+
+// Optional accelerant: seed the Client Profile from a link (a website/bio) or pasted notes, so Kira
+// walks into the conversation already knowing some of it. Not required — the conversation is still
+// the source — which is why it lives below the call as a "head start", collapsed by default.
+function PreBriefPanel() {
+  const [open, setOpen] = useState(false);
+  const [url, setUrl] = useState('');
+  const [text, setText] = useState('');
+  const [status, setStatus] = useState<'idle' | 'working' | 'done' | 'error'>('idle');
+  const [message, setMessage] = useState('');
+
+  async function submit() {
+    if (!url.trim() && !text.trim()) {
+      setStatus('error');
+      setMessage('Add a link or paste some notes first.');
+      return;
+    }
+    setStatus('working');
+    setMessage('');
+    try {
+      const res = await fetch('/api/kira/discovery/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(url.trim() ? { url: url.trim() } : { text: text.trim() }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || 'Could not use that source');
+      setStatus('done');
+      setMessage(`Got it — Kira now knows a bit more (${Math.round((body.completeness ?? 0) * 100)}% briefed).`);
+      setUrl('');
+      setText('');
+    } catch (e) {
+      setStatus('error');
+      setMessage(e instanceof Error ? e.message : 'Something went wrong');
+    }
+  }
+
+  return (
+    <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-5">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between text-left"
+        aria-expanded={open}
+      >
+        <span>
+          <span className="block text-base font-semibold text-gray-900">Give Kira a head start (optional)</span>
+          <span className="mt-1 block text-sm text-gray-600">
+            Paste a link to your website/bio or some notes, and Kira will read them before you talk.
+          </span>
+        </span>
+        <span className="ml-3 text-gray-400">{open ? '−' : '+'}</span>
+      </button>
+
+      {open && (
+        <div className="mt-4 space-y-3">
+          <div>
+            <label htmlFor="prebrief-url" className="mb-1 block text-sm font-medium text-gray-700">
+              A link (website, LinkedIn/about page, article)
+            </label>
+            <input
+              id="prebrief-url"
+              type="url"
+              inputMode="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://example.com/about"
+              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-base focus:border-teal-500 focus:outline-none"
+            />
+          </div>
+          <div className="text-center text-xs text-gray-400">or</div>
+          <div>
+            <label htmlFor="prebrief-text" className="mb-1 block text-sm font-medium text-gray-700">
+              Paste notes about you or your business
+            </label>
+            <textarea
+              id="prebrief-text"
+              rows={4}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Anything that helps Kira understand you and your work…"
+              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-base focus:border-teal-500 focus:outline-none"
+            />
+          </div>
+          {message && (
+            <p className={`text-sm ${status === 'error' ? 'text-red-600' : 'text-teal-700'}`}>{message}</p>
+          )}
+          <button
+            type="button"
+            onClick={submit}
+            disabled={status === 'working'}
+            className="w-full rounded-xl bg-teal-700 px-4 py-3 text-base font-medium text-white hover:bg-teal-800 disabled:opacity-60"
+          >
+            {status === 'working' ? 'Reading…' : 'Let Kira read this'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

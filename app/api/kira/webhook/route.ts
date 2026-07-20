@@ -14,5 +14,13 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export function POST(req: Request) {
+  // Fail CLOSED: the canonical postCall handler only verifies the HMAC when postCallSecret is
+  // truthy (`if (postCallSecret) {…}`), so an unset ELEVENLABS_WEBHOOK_SECRET would silently
+  // accept forged, unsigned transcripts. Reject before delegating rather than process unverified.
+  if (!process.env.ELEVENLABS_WEBHOOK_SECRET) {
+    return new Response('Post-call webhook not configured (ELEVENLABS_WEBHOOK_SECRET unset)', {
+      status: 503,
+    });
+  }
   return kiraConvaiRoutes().postCall(req);
 }

@@ -32,6 +32,9 @@ export function AuthForm({ mode, redirectTo = '/dashboard', title, subtitle, var
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // When set, render the "confirm your email" panel instead of the form (signup that requires
+  // confirmation, or a login blocked because the email isn't confirmed yet).
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
 
   const callbackUrl = (next: string) =>
     `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
@@ -44,7 +47,14 @@ export function AuthForm({ mode, redirectTo = '/dashboard', title, subtitle, var
     try {
       if (mode === 'login') {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        if (error) {
+          // An unconfirmed email is not a credential failure — route to the confirm panel + resend.
+          if (/not confirmed/i.test(error.message) || (error as { code?: string }).code === 'email_not_confirmed') {
+            setPendingEmail(email);
+            return;
+          }
+          throw error;
+        }
         window.location.assign(redirectTo);
       } else if (mode === 'signup') {
         const { data, error } = await supabase.auth.signUp({
@@ -61,7 +71,8 @@ export function AuthForm({ mode, redirectTo = '/dashboard', title, subtitle, var
         if (data.session) {
           window.location.assign(redirectTo);
         } else {
-          setNotice('Check your email to confirm your account, then sign in.');
+          // No session → email confirmation is required. Show the dedicated confirm panel.
+          setPendingEmail(email);
         }
       } else if (mode === 'forgot') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -102,6 +113,63 @@ export function AuthForm({ mode, redirectTo = '/dashboard', title, subtitle, var
     } finally {
       setBusy(false);
     }
+  }
+
+  async function resend() {
+    const target = pendingEmail || email;
+    if (!target) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: target,
+        options: { emailRedirectTo: callbackUrl(redirectTo) },
+      });
+      if (error) throw error;
+      setNotice('Confirmation email resent — check your inbox.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not resend the email.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Email-confirmation-pending panel — shown after a signup that needs confirmation, or when a
+  // login is blocked by an unconfirmed email. Replaces the form so the next action is obvious.
+  if (pendingEmail) {
+    return (
+      <div className="w-full max-w-md">
+        <h1 className="text-2xl font-bold text-gray-900">Confirm your email</h1>
+        <p className="mt-2 text-base text-gray-600">
+          We&apos;ve sent a confirmation link to <strong>{pendingEmail}</strong>. Click it to activate
+          your account, then come back and sign in.
+        </p>
+        {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+        {notice && <p className="mt-4 text-sm text-teal-700">{notice}</p>}
+        <button
+          type="button"
+          onClick={resend}
+          disabled={busy}
+          className="mt-6 w-full rounded-lg bg-teal-600 px-4 py-3 text-base font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
+        >
+          {busy ? 'Working…' : 'Resend confirmation email'}
+        </button>
+        <div className="mt-4 flex items-center justify-between text-sm">
+          <Link href={variant === 'admin' ? '/admin/login' : '/login'} className="text-teal-700 hover:underline">
+            Back to sign in
+          </Link>
+          <button
+            type="button"
+            onClick={() => { setPendingEmail(null); setError(null); setNotice(null); }}
+            className="text-gray-500 hover:underline"
+          >
+            Use a different email
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const cta =

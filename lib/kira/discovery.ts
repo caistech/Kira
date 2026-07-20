@@ -22,14 +22,8 @@ import {
   DISCOVERY_EXTRACTION_MODEL,
   DISCOVERY_VOICE_ID,
 } from '@/lib/kira/discovery-config';
-import {
-  ClientProfileSchema,
-  type ClientProfile,
-  mergeProfile,
-  computeCompleteness,
-  buildProfileBriefing,
-  DISCOVERY_COMPLETE_THRESHOLD,
-} from '@/lib/kira/discovery-schema';
+import { ClientProfileSchema, type ClientProfile } from '@/lib/kira/discovery-schema';
+import { applyProfileExtraction } from '@/lib/kira/apply-profile';
 
 let cached: Discovery<ClientProfile> | null = null;
 
@@ -65,52 +59,13 @@ export function getDiscovery(): Discovery<ClientProfile> {
         );
       },
       // The sink: deepen the Client Profile, recompute the gate, and brief any operational agent.
+      // A voice discovery call counts as a session (bumpSession) — shared with the ingestion
+      // pre-brief via applyProfileExtraction so the two paths never drift.
       onResult: async (result, meta) => {
-        const subjectId = meta.subjectId;
-        const { data: existing } = await supabase
-          .from('client_profiles')
-          .select('profile, sessions_count')
-          .eq('user_id', subjectId)
-          .maybeSingle();
-
-        const merged = mergeProfile((existing?.profile as Partial<ClientProfile>) ?? {}, result);
-        const completeness = computeCompleteness(merged);
-        const sessionsCount = (existing?.sessions_count ?? 0) + 1;
-
-        await supabase.from('client_profiles').upsert(
-          {
-            user_id: subjectId,
-            profile: merged,
-            completeness,
-            discovery_complete: completeness >= DISCOVERY_COMPLETE_THRESHOLD,
-            sessions_count: sessionsCount,
-            last_discovery_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'user_id' }
-        );
-
-        // Brief the operational Kira(s): seed a consolidated profile memory the operational agent
-        // recalls. If none exists yet, the profile still lives in client_profiles (create-time
-        // seeding picks it up).
-        const { data: agents } = await supabase
-          .from('kira_agents')
-          .select('id')
-          .eq('user_id', subjectId)
-          .eq('status', 'active');
-        if (agents && agents.length > 0) {
-          const briefing = buildProfileBriefing(merged);
-          for (const a of agents) {
-            await supabase.from('kira_memory').insert({
-              user_id: subjectId,
-              kira_agent_id: a.id,
-              memory_type: 'context',
-              content: briefing,
-              importance: 9,
-              tags: ['client_profile', 'discovery'],
-            });
-          }
-        }
+        await applyProfileExtraction(supabase, meta.subjectId, result, {
+          source: 'discovery',
+          bumpSession: true,
+        });
       },
     },
     {

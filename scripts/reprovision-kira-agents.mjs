@@ -34,6 +34,7 @@ const {
   NEXT_PUBLIC_SUPABASE_URL,
   SUPABASE_SERVICE_ROLE_KEY,
   NEXT_PUBLIC_APP_URL,
+  DISCOVERY_AGENT_ID,
 } = process.env;
 
 const APP_URL = (NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app').replace(/\/$/, '');
@@ -46,10 +47,19 @@ const supabase = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KE
 const tools = createConversationTools(APP_URL, '/api/kira/webhooks');
 const hostname = new URL(APP_URL).hostname;
 
-const { data: agents, error } = await supabase
+// EXCLUDE the shared discovery agent. It lives in kira_agents too (provision-discovery-agent.mjs
+// inserts it as agent_name 'Kira Discovery', status 'active'), but it is NOT an operational Kira:
+// re-provisioning it would overwrite its discovery persona with the operational continuity prompt,
+// repoint its tools from /api/convai/webhooks to /api/kira/webhooks, and collapse every user's
+// discovery onto the system owner. Exclude by name (always) and by id (when the env is present).
+let query = supabase
   .from('kira_agents')
   .select('id, elevenlabs_agent_id, agent_name, status')
-  .in('status', ['active', 'paused']);
+  .in('status', ['active', 'paused'])
+  .neq('agent_name', 'Kira Discovery');
+if (DISCOVERY_AGENT_ID) query = query.neq('elevenlabs_agent_id', DISCOVERY_AGENT_ID);
+
+const { data: agents, error } = await query;
 
 if (error) throw error;
 
