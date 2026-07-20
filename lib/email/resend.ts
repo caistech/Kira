@@ -3,7 +3,18 @@
 
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy init: the Resend SDK throws in its constructor when no key is present. Instantiating at
+// module scope made build-time page-data collection (which imports this module without the env)
+// fail. Create the client on first send instead, at request time when RESEND_API_KEY is set.
+let _resend: Resend | null = null;
+function getResend(): Resend {
+  if (!_resend) {
+    const key = process.env.RESEND_API_KEY;
+    if (!key) throw new Error('RESEND_API_KEY is not set');
+    _resend = new Resend(key);
+  }
+  return _resend;
+}
 
 const FROM_EMAIL = process.env.EMAIL_FROM || 'Kira <kira@yourdomain.com>';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://kira.app';
@@ -17,7 +28,7 @@ interface SendEmailParams {
 
 export async function sendEmail({ to, subject, html, text }: SendEmailParams) {
   try {
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await getResend().emails.send({
       from: FROM_EMAIL,
       to,
       subject,

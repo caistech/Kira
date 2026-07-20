@@ -1,182 +1,44 @@
 // lib/kira/tools/conversation-tools.ts
-// Core conversation tools available to all Kira verticals
+// Kira's conversation + memory tools.
+//
+// The 5 continuity/memory tools (get_conversation_context, save_message,
+// update_conversation_topic, recall_memory, save_memory) are now sourced from the CANONICAL
+// @caistech/elevenlabs-convai loop via createConversationTools(), so their body contract
+// matches the canonical webhook handlers Kira mounts at /api/kira/webhooks/* (see
+// lib/kira/convai.ts). This file no longer hand-rolls those tool shapes — the hand-rolled
+// versions (which sent `user_id` and diverged from the handlers) were part of the
+// persistence bug.
+//
+// search_web + search_knowledge remain Kira-specific (not part of the canonical loop).
 
+import { createConversationTools, conversationContinuityPrompt as canonicalContinuityPrompt } from '@caistech/elevenlabs-convai';
 import type { KiraTool } from '../types';
 
 /**
- * Get the base URL for webhooks
+ * Get the base URL for webhooks. NEXT_PUBLIC_APP_URL is set in every deployed env, so the
+ * tool webhook URLs resolve to the production app; localhost only in local dev.
  */
 function getBaseUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 }
 
 // =============================================================================
-// CONVERSATION CONTEXT TOOL
+// CANONICAL CONTINUITY + MEMORY TOOLS (single source: @caistech/elevenlabs-convai)
+// Pointed at Kira's own webhook routes (/api/kira/webhooks/*).
 // =============================================================================
 
-export const getConversationContextTool: KiraTool = {
-  type: 'webhook',
-  name: 'get_conversation_context',
-  description: `Call this tool at the VERY START of every conversation to check if the user has talked to you before. 
-This tells you:
-- Whether they're a returning user
-- What you were last discussing
-- How long since they last chatted
-- Their key memories and preferences
+const canonicalTools = createConversationTools(getBaseUrl(), '/api/kira/webhooks') as KiraTool[];
 
-Use this to greet returning users appropriately and continue where you left off.`,
-  webhook: {
-    url: `${getBaseUrl()}/api/kira/webhooks/start_conversation`,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-  },
-  parameters: {
-    type: 'object',
-    properties: {
-      elevenlabs_conversation_id: {
-        type: 'string',
-        description: 'The current conversation ID from ElevenLabs',
-      },
-      elevenlabs_agent_id: {
-        type: 'string',
-        description: 'Your agent ID',
-      },
-      user_id: {
-        type: 'string',
-        description: 'The user ID',
-      },
-    },
-    required: ['elevenlabs_conversation_id', 'elevenlabs_agent_id', 'user_id'],
-  },
-};
+// Named exports preserved for backward compatibility (re-exported by lib/kira/index.ts).
+// Order matches createConversationTools(): context, save_message, update_topic, recall, save.
+export const getConversationContextTool: KiraTool = canonicalTools[0];
+export const saveMessageTool: KiraTool = canonicalTools[1];
+export const updateTopicTool: KiraTool = canonicalTools[2];
+export const recallMemoryTool: KiraTool = canonicalTools[3];
+export const saveMemoryTool: KiraTool = canonicalTools[4];
 
 // =============================================================================
-// MESSAGE SAVING TOOL
-// =============================================================================
-
-export const saveMessageTool: KiraTool = {
-  type: 'webhook',
-  name: 'save_message',
-  description: `Save a message to the conversation history. Call this after meaningful exchanges to ensure continuity.
-You don't need to call this for every single utterance - focus on substantive messages.`,
-  webhook: {
-    url: `${getBaseUrl()}/api/kira/webhooks/save_message`,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-  },
-  parameters: {
-    type: 'object',
-    properties: {
-      conversation_id: {
-        type: 'string',
-        description: 'The ElevenLabs conversation ID',
-      },
-      role: {
-        type: 'string',
-        enum: ['user', 'assistant'],
-        description: 'Who said this message',
-      },
-      content: {
-        type: 'string',
-        description: 'The message content',
-      },
-    },
-    required: ['conversation_id', 'role', 'content'],
-  },
-};
-
-// =============================================================================
-// TOPIC UPDATE TOOL
-// =============================================================================
-
-export const updateTopicTool: KiraTool = {
-  type: 'webhook',
-  name: 'update_conversation_topic',
-  description: `Update the current conversation topic when it shifts to something new.
-This helps you remember what you were discussing when the user returns.`,
-  webhook: {
-    url: `${getBaseUrl()}/api/kira/webhooks/update_topic`,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-  },
-  parameters: {
-    type: 'object',
-    properties: {
-      conversation_id: {
-        type: 'string',
-        description: 'The ElevenLabs conversation ID',
-      },
-      topic: {
-        type: 'string',
-        description: 'Brief description of the current topic (e.g., "planning Portugal trip", "pricing strategy for consulting")',
-      },
-    },
-    required: ['conversation_id', 'topic'],
-  },
-};
-
-// =============================================================================
-// MEMORY TOOLS
-// =============================================================================
-
-export const recallMemoryTool: KiraTool = {
-  type: 'webhook',
-  name: 'recall_memory',
-  description: `Search your memory for past insights about this user.
-Use this when you need to remember something specific they've told you before.`,
-  webhook: {
-    url: `${getBaseUrl()}/api/kira/webhooks/recall_memory`,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-  },
-  parameters: {
-    type: 'object',
-    properties: {
-      user_id: {
-        type: 'string',
-        description: 'The user ID',
-      },
-      query: {
-        type: 'string',
-        description: 'What you want to remember (e.g., "their budget", "family situation", "business goals")',
-      },
-    },
-    required: ['user_id', 'query'],
-  },
-};
-
-export const saveMemoryTool: KiraTool = {
-  type: 'webhook',
-  name: 'save_memory',
-  description: `Save something important to remember about this user for future conversations.
-Use this for key facts, preferences, decisions, or anything you should remember long-term.`,
-  webhook: {
-    url: `${getBaseUrl()}/api/kira/webhooks/save_memory`,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-  },
-  parameters: {
-    type: 'object',
-    properties: {
-      user_id: {
-        type: 'string',
-        description: 'The user ID',
-      },
-      memory: {
-        type: 'string',
-        description: 'The fact or insight to remember (e.g., "Prefers morning meetings", "Budget is $50k", "Has two kids")',
-      },
-      category: {
-        type: 'string',
-        description: 'Optional category (e.g., "preferences", "facts", "goals", "constraints")',
-      },
-    },
-    required: ['user_id', 'memory'],
-  },
-};
-
-// =============================================================================
-// RESEARCH TOOLS
+// RESEARCH TOOLS (Kira-specific — NOT part of the canonical memory loop)
 // =============================================================================
 
 export const searchWebTool: KiraTool = {
@@ -236,43 +98,13 @@ Use this to find information from documents or URLs they've shared.`,
 // =============================================================================
 
 export const conversationTools: KiraTool[] = [
-  getConversationContextTool,
-  saveMessageTool,
-  updateTopicTool,
-  recallMemoryTool,
-  saveMemoryTool,
+  ...canonicalTools,
   searchWebTool,
   searchKnowledgeTool,
 ];
 
 // =============================================================================
-// CONVERSATION CONTINUITY PROMPT ADDITION
+// CONVERSATION CONTINUITY PROMPT (single source: @caistech/elevenlabs-convai)
 // =============================================================================
 
-export const conversationContinuityPrompt = `
-## CONVERSATION CONTINUITY
-
-At the START of every conversation, call \`get_conversation_context\` to check if this user has talked to you before.
-
-Based on the response:
-
-**If returning user (has_history = true):**
-- Check time_gap_category:
-  - "recent" (< 1 hour): Just continue naturally, no special greeting needed
-  - "today" (1-24 hours): "Hey, you're back! We were talking about [last_topic]..."
-  - "this_week" (1-7 days): "Good to see you again! Last time we were working on [last_topic]..."
-  - "older" (7+ days): "Hey! It's been a bit. We were working on [last_topic] - still relevant?"
-- Reference their memories and context naturally
-- Offer to continue OR pivot if they have something new
-
-**If new user (has_history = false):**
-- Greet them warmly as a first-time user
-- Don't reference any past conversations
-
-**During the conversation:**
-- Call \`save_message\` for substantive exchanges (not every "okay" or "got it")
-- Call \`update_conversation_topic\` when the topic shifts significantly
-- Call \`save_memory\` for important facts you should remember long-term
-
-This ensures users feel like you remember them and can pick up where they left off.
-`;
+export const conversationContinuityPrompt = canonicalContinuityPrompt;

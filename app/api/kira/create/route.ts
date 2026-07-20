@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { createServiceClient } from '@/lib/supabase/server';
+import { getCurrentAppUser } from '@/lib/auth';
 import {
   getKiraPrompt,
   generateAgentName,
@@ -20,7 +21,9 @@ import {
   KiraFramework,
   JourneyType,
 } from '@/lib/kira/prompts';
-import { bindWorkspaceWebhook, setAllowlist, standardAllowlist } from '@caistech/elevenlabs-convai';
+import { bindWorkspaceWebhook, setAllowlist, standardAllowlist, setAgentTools, setAgentOverrides } from '@caistech/elevenlabs-convai';
+import { kiraMemoryTools, conversationContinuityPrompt } from '@/lib/kira/convai';
+import { buildProfileBriefing } from '@/lib/kira/discovery-schema';
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app';
@@ -72,15 +75,24 @@ export async function POST(req: NextRequest) {
     await log(supabase, requestId, 'env_check', 'success');
 
     const body = await req.json();
-    const { draftId, email } = body as { draftId: string; email: string };
+    const { draftId } = body as { draftId: string };
 
-    if (!draftId || !email) {
-      throw new Error('draftId or email missing');
+    if (!draftId) {
+      throw new Error('draftId missing');
+    }
+
+    // Identity is SESSION-derived, never a body-supplied email. This route mints a paid ElevenLabs
+    // agent and seeds the user's profile; trusting a caller-supplied email let any caller attribute
+    // an agent to another user (and /api/* is NOT covered by the auth middleware). The /setup/draft
+    // caller is a USER_PROTECTED route, so an authenticated session is present here.
+    const appUser = await getCurrentAppUser();
+    if (!appUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     await log(supabase, requestId, 'request_parsed', 'success', undefined, {
       draftId,
-      email,
+      userId: appUser.id,
     });
 
     /* ---------------- Draft ---------------- */
@@ -125,33 +137,11 @@ export async function POST(req: NextRequest) {
       objective: draft.primary_objective,
     });
 
-    /* ---------------- User ---------------- */
-    await log(supabase, requestId, 'user_lookup', 'start');
-
+    /* ---------------- User (session-derived, not from the request body) ---------------- */
     const firstName = extractFirstName(draft.user_name);
-
-    let { data: user } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email.toLowerCase())
-      .single();
-
-    if (!user) {
-      const { data: newUser, error } = await supabase
-        .from('users')
-        .insert({
-          email: email.toLowerCase(),
-          first_name: firstName,
-        })
-        .select()
-        .single();
-
-      if (error || !newUser) {
-        await log(supabase, requestId, 'user_lookup', 'error', 'User create failed', { error });
-        throw new Error('User create failed');
-      }
-      user = newUser;
-    }
+    // The authenticated app-user row already exists (created by the auth-link trigger at signup),
+    // so there is no lookup-or-create by email anymore — we attribute the agent to the session user.
+    const user = appUser;
 
     await log(supabase, requestId, 'user_lookup', 'success', undefined, {
       userId: user.id,
@@ -203,7 +193,9 @@ export async function POST(req: NextRequest) {
           conversation_config: {
             agent: {
               prompt: {
-                prompt: systemPrompt,
+                // Append the canonical continuity instructions so the agent actually calls
+                // get_conversation_context / save_memory / recall_memory (attached below).
+                prompt: `${systemPrompt}\n\n${conversationContinuityPrompt}`,
                 llm: ELEVENLABS_CONFIG.llm,
                 temperature: ELEVENLABS_CONFIG.temperature,
               },
@@ -286,19 +278,37 @@ export async function POST(req: NextRequest) {
       console.error('[kira/create] allowlist set failed (non-fatal):', e);
     }
 
+    /* ---------------- Attach the canonical memory/continuity tools ---------------- */
+    // An agent created without tools cannot call get_conversation_context / save_memory /
+    // recall_memory — which is exactly why memory never persisted. Attach the canonical
+    // loop's 5 tools as WORKSPACE entities on prompt.tool_ids (inline tools are silently
+    // stripped by ElevenLabs) and enable per-session overrides. Non-fatal.
+    try {
+      await setAgentTools(ELEVENLABS_API_KEY, agentId, kiraMemoryTools(APP_URL));
+      await setAgentOverrides(ELEVENLABS_API_KEY, agentId);
+      await log(supabase, requestId, 'tools_attach', 'success');
+    } catch (e: any) {
+      await log(supabase, requestId, 'tools_attach', 'error', e?.message ?? 'tool attach failed');
+      console.error('[kira/create] tool attach failed (non-fatal):', e);
+    }
+
     /* ---------------- Save Agent to Database ---------------- */
     await log(supabase, requestId, 'agent_save', 'start');
 
-    const { error: agentError } = await supabase.from('kira_agents').insert({
-      user_id: user.id,
-      agent_name: agentName,
-      journey_type: draft.journey_type,
-      elevenlabs_agent_id: agentId,
-      framework,
-      draft_id: draftId,
-      status: 'active',
-      voice_id: ELEVENLABS_CONFIG.voice_id,
-    });
+    const { data: savedAgent, error: agentError } = await supabase
+      .from('kira_agents')
+      .insert({
+        user_id: user.id,
+        agent_name: agentName,
+        journey_type: draft.journey_type,
+        elevenlabs_agent_id: agentId,
+        framework,
+        draft_id: draftId,
+        status: 'active',
+        voice_id: ELEVENLABS_CONFIG.voice_id,
+      })
+      .select('id')
+      .single();
 
     if (agentError) {
       await log(supabase, requestId, 'agent_save', 'error', 'Failed to save agent', { error: agentError });
@@ -306,6 +316,33 @@ export async function POST(req: NextRequest) {
       console.error('[kira/create] Failed to save agent to DB:', agentError);
     } else {
       await log(supabase, requestId, 'agent_save', 'success');
+    }
+
+    /* ---------------- Brief the new Kira from the Client Profile (if discovery ran) ---------- */
+    // A Kira created AFTER discovery should walk in already knowing the person. Seed the
+    // operational agent's memory with the profile briefing so its recall surfaces it from the
+    // first conversation. Non-fatal.
+    if (savedAgent?.id) {
+      try {
+        const { data: cp } = await supabase
+          .from('client_profiles')
+          .select('profile')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (cp?.profile) {
+          await supabase.from('kira_memory').insert({
+            user_id: user.id,
+            kira_agent_id: savedAgent.id,
+            memory_type: 'context',
+            content: buildProfileBriefing(cp.profile),
+            importance: 9,
+            tags: ['client_profile', 'discovery'],
+          });
+          await log(supabase, requestId, 'profile_brief', 'success');
+        }
+      } catch (e: any) {
+        console.error('[kira/create] profile briefing seed failed (non-fatal):', e?.message ?? e);
+      }
     }
 
     /* ---------------- Mark Draft as Used ---------------- */

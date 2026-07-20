@@ -1,17 +1,16 @@
 // app/api/kira/setup-tools/route.ts
-// Handles Kira Setup agent's tool calls (set_journey_type, save_user_context, create_operational_kira)
+// Handles the Setup Kira agent's session-state tool calls: set_journey_type + save_user_context.
+//
+// DEPRECATED: create_operational_kira (immediate agent creation under a temp-email user) has been
+// removed. Onboarding now runs through the AUTHENTICATED draft flow — the setup agent calls
+// save_framework_draft (→ kira_drafts), the signed-in user reviews at /setup/draft/[draftId], and
+// /api/kira/create attributes the agent to their account (see the draft page + auth-link trigger).
+// The case is kept only to return a clear deprecation response if a stale agent config still
+// invokes it, rather than silently minting an orphaned temp-user agent.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
-import { getKiraPrompt, generateAgentName } from '@/lib/kira/prompts';
-import { bindWorkspaceWebhook, setAllowlist, standardAllowlist } from '@caistech/elevenlabs-convai';
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
-const KIRA_VOICE_ID = process.env.KIRA_VOICE_ID || 'EXAVITQu4vr4xnSDxMaL';
-
-// In-memory session storage (in production, use Redis or database)
-// Key: conversation_id, Value: session data
+// In-memory session storage keyed by conversation_id (documented as temporary; see project CLAUDE.md).
 const setupSessions: Map<string, SetupSession> = new Map();
 
 interface SetupSession {
@@ -43,9 +42,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { tool_name } = body;
 
-    // Get conversation ID from header (ElevenLabs sends this)
     const conversationId = request.headers.get('x-conversation-id') || 'unknown';
-
     console.log(`[setup-tools] Tool: ${tool_name}, Conversation: ${conversationId}`);
 
     switch (tool_name) {
@@ -54,11 +51,20 @@ export async function POST(request: NextRequest) {
       case 'save_user_context':
         return handleSaveUserContext(conversationId, body);
       case 'create_operational_kira':
-        return handleCreateOperationalKira(conversationId, body);
+        // DEPRECATED — see file header. Do NOT create an agent here; direct the setup agent to
+        // save a draft so the signed-in user creates their Kira from their own account.
+        console.warn('[setup-tools] create_operational_kira is deprecated; use save_framework_draft + the authenticated draft flow.');
+        return NextResponse.json({
+          result: {
+            success: false,
+            deprecated: true,
+            message:
+              "Save the framework as a draft (save_framework_draft) so the user can review it and create their Kira from their account.",
+          },
+        });
       default:
         return NextResponse.json({ error: `Unknown tool: ${tool_name}` }, { status: 400 });
     }
-
   } catch (error) {
     console.error('[setup-tools] Error:', error);
     return NextResponse.json(
@@ -128,233 +134,4 @@ function handleSaveUserContext(
       message: "Got it, I'll remember that.",
     }
   });
-}
-
-// =============================================================================
-// CREATE OPERATIONAL KIRA
-// =============================================================================
-
-async function handleCreateOperationalKira(
-  conversationId: string,
-  body: {
-    user_name?: string;
-    journey_type: 'personal' | 'business';
-    primary_goal: string;
-    key_context: string[];
-    conversation_summary?: string;
-  }
-) {
-  const session = getOrCreateSession(conversationId);
-  const supabase = createServiceClient();
-
-  // Use provided data or fall back to session data
-  const userName = body.user_name || session.userName || 'Friend';
-  const journeyType = body.journey_type || session.journeyType || 'personal';
-
-  console.log(`[create_operational_kira] Creating for ${userName}, journey: ${journeyType}`);
-  console.log(`[create_operational_kira] Goal: ${body.primary_goal}`);
-  console.log(`[create_operational_kira] Context points: ${body.key_context.length}`);
-
-  try {
-    // 1. Create or get user (we may not have email yet - use a placeholder)
-    // In a real flow, you'd collect email during setup or after
-    const tempEmail = `setup_${conversationId}@temp.kira.ai`;
-
-    let { data: existingUser } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', tempEmail)
-      .single();
-
-    let userId: string;
-
-    if (existingUser) {
-      userId = existingUser.id;
-    } else {
-      const { data: newUser, error: userError } = await supabase
-        .from('users')
-        .insert({
-          email: tempEmail,
-          first_name: userName,
-        })
-        .select()
-        .single();
-
-      if (userError || !newUser) {
-        console.error('[create_operational_kira] Failed to create user:', userError);
-        return NextResponse.json({
-          result: {
-            success: false,
-            message: "I had trouble setting up your account. Let's try again.",
-          }
-        });
-      }
-      userId = newUser.id;
-    }
-
-    // 2. Generate personalized prompt with gathered context
-    const existingMemory = [
-      `Primary goal: ${body.primary_goal}`,
-      ...body.key_context,
-      ...(body.conversation_summary ? [`Setup conversation: ${body.conversation_summary}`] : []),
-    ];
-
-    const { systemPrompt, firstMessage } = getKiraPrompt({
-      framework: {
-        userName: userName,
-        firstName: userName,
-        location: 'Unknown',
-        journeyType: journeyType,
-        primaryObjective: body.primary_goal,
-        keyContext: body.key_context,
-      },
-      existingMemory,
-    });
-
-    // 3. Create the ElevenLabs agent with CORRECT API structure
-    const agentName = generateAgentName(journeyType, userName, body.primary_goal || 'General', userId);
-
-    const customFirstMessage = `Hey ${userName}! I've got the context from our setup chat. ${body.primary_goal ? `So we're working on: ${body.primary_goal}. ` : ''}Let's dive in — what's on your mind?`;
-
-    const elevenRes = await fetch(
-      'https://api.elevenlabs.io/v1/convai/agents/create',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'xi-api-key': ELEVENLABS_API_KEY,
-        },
-        body: JSON.stringify({
-          name: agentName,
-          conversation_config: {
-            agent: {
-              prompt: {
-                prompt: systemPrompt,
-                llm: 'gpt-4o-mini',
-                temperature: 0.7,
-              },
-              first_message: customFirstMessage,
-              language: 'en',
-            },
-            tts: {
-              voice_id: KIRA_VOICE_ID,
-              model_id: 'eleven_flash_v2',
-            },
-          },
-          // NOTE: per-agent platform_settings.webhook is deprecated + silently
-          // ignored by ElevenLabs — the workspace-scoped post-call webhook is bound
-          // after creation via bindWorkspaceWebhook() below (target /api/kira/webhook,
-          // the post-call handler — NOT the tool-call router this previously pointed at).
-        }),
-      }
-    );
-
-    if (!elevenRes.ok) {
-      const errText = await elevenRes.text();
-      console.error('[create_operational_kira] ElevenLabs error:', errText);
-      return NextResponse.json({
-        result: {
-          success: false,
-          message: "Something went wrong creating your Kira. Let's try again.",
-          error: errText,
-        }
-      });
-    }
-
-    const elevenData = await elevenRes.json();
-    const agentId = elevenData.agent_id;
-
-    console.log(`[create_operational_kira] Created agent: ${agentId}`);
-
-    // Bind the workspace-scoped post-call webhook (deprecated per-agent shape was
-    // silently dropped). Targets /api/kira/webhook to match the draft-review create
-    // path — the secret is returned only on first creation (capture into
-    // ELEVENLABS_WEBHOOK_SECRET); never logged as a value.
-    try {
-      const { webhookSecret } = await bindWorkspaceWebhook(ELEVENLABS_API_KEY, agentId, {
-        name: 'Kira post-call',
-        url: `${APP_URL}/api/kira/webhook`,
-      });
-      if (webhookSecret) {
-        console.warn('[create_operational_kira] Workspace post-call webhook CREATED — set ELEVENLABS_WEBHOOK_SECRET env to the returned secret (ElevenLabs shows it once).');
-      }
-    } catch (e: any) {
-      console.error('[create_operational_kira] webhook bind failed (non-fatal):', e?.message ?? e);
-    }
-
-    // Lock the agent's origin allowlist (VOICE AI rule) — without it, the agent ID in
-    // the client bundle lets anyone run free voice calls on the workspace key.
-    try {
-      await setAllowlist(ELEVENLABS_API_KEY, agentId, standardAllowlist(new URL(APP_URL).hostname));
-    } catch (e: any) {
-      console.error('[create_operational_kira] allowlist set failed (non-fatal):', e?.message ?? e);
-    }
-
-    // 4. Save agent to database
-    const { data: savedAgent, error: agentError } = await supabase
-      .from('kira_agents')
-      .insert({
-        user_id: userId,
-        agent_name: agentName,
-        journey_type: journeyType,
-        elevenlabs_agent_id: agentId,
-      })
-      .select()
-      .single();
-
-    if (agentError) {
-      console.error('[create_operational_kira] Failed to save agent:', agentError);
-    }
-
-    // 5. Save gathered context as initial memories
-    for (const ctx of session.contexts) {
-      await supabase.from('kira_memory').insert({
-        user_id: userId,
-        kira_agent_id: savedAgent?.id,
-        memory_type: mapContextTypeToMemoryType(ctx.type),
-        content: ctx.content,
-        importance: ctx.importance,
-      });
-    }
-
-    // 6. Clean up session
-    setupSessions.delete(conversationId);
-
-    console.log(`[create_operational_kira] Success! Agent ID: ${agentId}`);
-
-    return NextResponse.json({
-      result: {
-        success: true,
-        agent_id: agentId,
-        redirect_url: `/chat/${agentId}`,
-        message: "Perfect! Your Kira is ready. Redirecting you now...",
-      }
-    });
-
-  } catch (error) {
-    console.error('[create_operational_kira] Error:', error);
-    return NextResponse.json({
-      result: {
-        success: false,
-        message: "Something went wrong setting up your Kira. Let's try again.",
-        error: error instanceof Error ? error.message : 'Unknown error',
-      }
-    });
-  }
-}
-
-// Helper to map context types to memory types
-function mapContextTypeToMemoryType(contextType: string): string {
-  const mapping: Record<string, string> = {
-    'name': 'context',
-    'goal': 'goal',
-    'challenge': 'context',
-    'constraint': 'context',
-    'background': 'context',
-    'preference': 'preference',
-    'tried_before': 'context',
-    'success_looks_like': 'goal',
-    'other': 'context',
-  };
-  return mapping[contextType] || 'context';
 }
