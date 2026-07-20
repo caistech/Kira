@@ -16,7 +16,7 @@
     "@caistech/sayfix-embed": "^0.4.0",
     "@caistech/webmcp-kit": "^0.1.0",
     "@elevenlabs/client": "^0.13.0",
-    "@elevenlabs/react": "^0.13.1",
+    "@elevenlabs/react": "^1.10.1",
     "@supabase/ssr": "^0.1.0",
     "@supabase/supabase-js": "^2.39.0",
     "dotenv": "^17.2.3",
