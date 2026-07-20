@@ -16,6 +16,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
+import { createClient as createSessionBrowserClient } from '@/lib/supabase/browser';
 import { Loader2, Sparkles, MapPin, Target, CheckCircle, AlertCircle, Mail, Plus, X } from 'lucide-react';
 
 const supabase = createClient(
@@ -48,8 +49,9 @@ export default function DraftReviewPage() {
 
   // Editable fields
   const [userName, setUserName] = useState('');
-  const [email, setEmail] = useState(''); // NEW: Email field (required)
-  const [emailError, setEmailError] = useState<string | null>(null); // NEW: Email validation error
+  const [email, setEmail] = useState(''); // Email the new Kira is attributed to
+  const [authEmail, setAuthEmail] = useState<string | null>(null); // signed-in account (locks the field)
+  const [emailError, setEmailError] = useState<string | null>(null); // Email validation error
   const [location, setLocation] = useState('');
   const [journeyType, setJourneyType] = useState<'personal' | 'business'>('personal');
   const [primaryObjective, setPrimaryObjective] = useState('');
@@ -92,6 +94,20 @@ export default function DraftReviewPage() {
       fetchDraft();
     }
   }, [draftId]);
+
+  // Bind the new Kira to the signed-in account: pre-fill + lock the email to the authenticated
+  // user (read from the SSR cookie session, NOT the localStorage client above). /api/kira/create
+  // looks the user up by email, and the auth trigger already linked the users row by email — so
+  // the created agent is attributed to this user and appears on their dashboard.
+  useEffect(() => {
+    const authClient = createSessionBrowserClient();
+    authClient.auth.getUser().then(({ data }) => {
+      if (data.user?.email) {
+        setEmail(data.user.email);
+        setAuthEmail(data.user.email);
+      }
+    });
+  }, []);
 
   // Email validation
   const validateEmail = (emailValue: string): boolean => {
@@ -288,9 +304,12 @@ export default function DraftReviewPage() {
               value={email}
               onChange={handleEmailChange}
               onBlur={handleEmailBlur}
+              readOnly={!!authEmail}
               className={`w-full px-4 py-3 rounded-xl bg-stone-800/50 border text-stone-100 placeholder-stone-500 focus:outline-none transition-colors ${
-                emailError 
-                  ? 'border-red-500/50 focus:border-red-500' 
+                authEmail ? 'opacity-70 cursor-not-allowed' : ''
+              } ${
+                emailError
+                  ? 'border-red-500/50 focus:border-red-500'
                   : 'border-stone-600/30 focus:border-amber-400/50'
               }`}
               placeholder="you@example.com"
@@ -303,7 +322,9 @@ export default function DraftReviewPage() {
               </p>
             ) : (
               <p className="text-stone-500 text-sm mt-2">
-                We'll send you a link to access your Kira anytime
+                {authEmail
+                  ? 'This Kira will be saved to your account and appear on your dashboard.'
+                  : "We'll send you a link to access your Kira anytime"}
               </p>
             )}
           </div>
