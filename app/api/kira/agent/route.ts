@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { getCurrentAppUser, isCurrentUserAdmin } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
@@ -31,6 +32,13 @@ export async function GET(request: NextRequest) {
         { error: 'Agent not found' },
         { status: 404 }
       );
+    }
+
+    // Ownership: the signed-in user must own this agent. We moved to the auth path, so
+    // agent access by URL alone is deprecated — only the owner (or an admin) may load it.
+    const [appUser, admin] = await Promise.all([getCurrentAppUser(), isCurrentUserAdmin()]);
+    if (!admin && (!appUser || appUser.id !== agent.user_id)) {
+      return NextResponse.json({ error: 'Not authorized for this agent' }, { status: 403 });
     }
 
     return NextResponse.json({

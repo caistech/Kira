@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { getCurrentAppUser, isCurrentUserAdmin } from '@/lib/auth';
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     const { data: kiraAgent, error } = await supabase
       .from('kira_agents')
-      .select('elevenlabs_agent_id, status')
+      .select('elevenlabs_agent_id, status, user_id')
       .eq('elevenlabs_agent_id', agentId)
       .single();
 
@@ -41,6 +42,13 @@ export async function POST(req: NextRequest) {
         { error: 'Kira agent not found' },
         { status: 404 }
       );
+    }
+
+    // Ownership: only the owner (or an admin) may open a voice session on this agent.
+    // Access by URL alone is deprecated now that Kira is behind the auth path.
+    const [appUser, admin] = await Promise.all([getCurrentAppUser(), isCurrentUserAdmin()]);
+    if (!admin && (!appUser || appUser.id !== kiraAgent.user_id)) {
+      return NextResponse.json({ error: 'Not authorized for this agent' }, { status: 403 });
     }
 
     if (kiraAgent.status !== 'active') {
