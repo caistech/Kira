@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "@caistech/corporate-components": "^0.3.0",
-    "@caistech/elevenlabs-convai": "^0.4.0",
+    "@caistech/discovery-agent": "^0.1.0",
+    "@caistech/elevenlabs-convai": "^0.4.9",
     "@caistech/platform-trust-middleware": "^0.4.0",
     "@caistech/sayfix-embed": "^0.4.0",
     "@caistech/webmcp-kit": "^0.1.0",
@@ -25,7 +26,8 @@
     "react": "^18",
     "react-dom": "^18",
     "resend": "^6.8.0",
-    "stripe": "^20.2.0"
+    "stripe": "^20.2.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@caistech/portfolio-gate": "^0.3.0",

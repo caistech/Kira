@@ -20,6 +20,16 @@ export default async function DashboardPage() {
 
   const list = agents ?? [];
 
+  const { data: profile } = user
+    ? await svc
+        .from('client_profiles')
+        .select('completeness, discovery_complete, sessions_count')
+        .eq('user_id', user.id)
+        .maybeSingle()
+    : { data: null as { completeness: number; discovery_complete: boolean; sessions_count: number } | null };
+
+  const pct = Math.round((profile?.completeness ?? 0) * 100);
+
   return (
     <div>
       <header className="mb-6">
@@ -29,6 +39,41 @@ export default async function DashboardPage() {
           Open one to talk, or start a new Kira for a different goal.
         </p>
       </header>
+
+      {/* Discovery gate — Kira learns you before she can be an effective assistant. */}
+      <div
+        className={`mb-6 rounded-2xl border p-5 ${
+          profile?.discovery_complete ? 'border-teal-200 bg-teal-50' : 'border-amber-200 bg-amber-50'
+        }`}
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">
+              {profile?.discovery_complete
+                ? 'Discovery complete — Kira knows you'
+                : 'Discovery: help Kira understand you'}
+            </h2>
+            <p className="mt-1 text-sm text-gray-600">
+              {profile?.discovery_complete
+                ? `${pct}% briefed across ${profile?.sessions_count ?? 0} session${(profile?.sessions_count ?? 0) === 1 ? '' : 's'}. You can always go deeper.`
+                : 'A short coaching conversation so Kira learns your business, goals, people and how you work. Deepens each session.'}
+            </p>
+            {!profile?.discovery_complete && (
+              <div className="mt-3 h-2 w-full max-w-xs overflow-hidden rounded-full bg-white">
+                <div className="h-full rounded-full bg-amber-500" style={{ width: `${pct}%` }} />
+              </div>
+            )}
+          </div>
+          <Link
+            href="/discovery"
+            className={`inline-block whitespace-nowrap rounded-lg px-5 py-3 text-base font-semibold text-white ${
+              profile?.discovery_complete ? 'bg-teal-600 hover:bg-teal-700' : 'bg-amber-600 hover:bg-amber-700'
+            }`}
+          >
+            {profile?.discovery_complete ? 'Continue discovery' : profile?.sessions_count ? 'Continue discovery' : 'Start discovery'}
+          </Link>
+        </div>
+      </div>
 
       {list.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center">
