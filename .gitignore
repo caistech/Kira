@@ -39,3 +39,7 @@ next-env.d.ts
 .env.local.copy
 tool.json
 tool2.json
+.env*
+
+# Supabase CLI local state (contains pooler/connection info)
+supabase/.temp/

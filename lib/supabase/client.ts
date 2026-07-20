@@ -24,11 +24,6 @@ interface ConversationAgent {
   name: string;
 }
 
-interface Tool {
-  id: string;
-  name: string;
-}
-
 // =============================================================================
 // API HELPERS
 // =============================================================================
@@ -53,122 +48,6 @@ async function apiRequest<T>(
 
   return res.json();
 }
-
-// =============================================================================
-// TOOL CREATION
-// =============================================================================
-
-function buildToolConfig(
-  name: string,
-  description: string,
-  webhookUrl: string,
-  properties: Record<string, unknown>
-) {
-  return {
-    type: 'webhook',
-    name,
-    description,
-    params: {
-      method: 'POST',
-      url: webhookUrl,
-      request_body_schema: {
-        type: 'object',
-        description: `Parameters for ${name}`,
-        properties: {
-          tool_name: {
-            type: 'string',
-            description: 'Tool identifier',
-            value_type: 'constant',
-            constant: name,
-            required: true,
-          },
-          ...properties,
-        },
-        required: ['tool_name', ...Object.keys(properties).filter(k => (properties[k] as Record<string, unknown>).required)],
-      },
-    },
-  };
-}
-
-export async function createKiraTools(webhookUrl: string): Promise<string[]> {
-  const toolsUrl = `${webhookUrl}/api/kira/tools`;
-  
-  const toolConfigs = [
-    buildToolConfig(
-      'recall_memory',
-      "Search Kira's memory for past context about this user - preferences, goals, decisions, and things they've shared",
-      toolsUrl,
-      {
-        query: {
-          type: 'string',
-          description: 'What to search for in memory',
-          value_type: 'llm_prompt',
-          required: true,
-        },
-        memory_type: {
-          type: 'string',
-          description: 'Type: preference, context, goal, decision, followup, or all',
-          value_type: 'llm_prompt',
-          required: false,
-        },
-      }
-    ),
-    buildToolConfig(
-      'save_memory',
-      'Save something important about this user to remember for future conversations',
-      toolsUrl,
-      {
-        content: {
-          type: 'string',
-          description: 'The information to remember',
-          value_type: 'llm_prompt',
-          required: true,
-        },
-        memory_type: {
-          type: 'string',
-          description: 'Type: preference, context, goal, decision, followup, correction, or insight',
-          value_type: 'llm_prompt',
-          required: true,
-        },
-        importance: {
-          type: 'number',
-          description: 'Importance 1-10, higher = more important',
-          value_type: 'llm_prompt',
-          required: false,
-        },
-      }
-    ),
-  ];
-
-  const toolIds: string[] = [];
-
-  for (const toolConfig of toolConfigs) {
-    try {
-      const res = await fetch(`${BASE_URL}/convai/tools`, {
-        method: 'POST',
-        headers: {
-          'xi-api-key': ELEVENLABS_API_KEY,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ tool_config: toolConfig }),
-      });
-
-      if (res.ok) {
-        const tool: Tool = await res.json();
-        toolIds.push(tool.id);
-        console.log(`[elevenlabs] Created tool: ${toolConfig.name} -> ${tool.id}`);
-      } else {
-        const errText = await res.text();
-        console.warn(`[elevenlabs] Failed to create tool ${toolConfig.name}: ${errText}`);
-      }
-    } catch (err) {
-      console.warn(`[elevenlabs] Error creating tool ${toolConfig.name}:`, err);
-    }
-  }
-
-  return toolIds;
-}
-
 
 // =============================================================================
 // AGENT MANAGEMENT

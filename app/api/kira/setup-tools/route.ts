@@ -4,7 +4,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { getKiraPrompt, generateAgentName } from '@/lib/kira/prompts';
-import { bindWorkspaceWebhook, setAllowlist, standardAllowlist } from '@caistech/elevenlabs-convai';
+import { bindWorkspaceWebhook, setAllowlist, standardAllowlist, setAgentTools, setAgentOverrides } from '@caistech/elevenlabs-convai';
+import { kiraMemoryTools, conversationContinuityPrompt } from '@/lib/kira/convai';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
@@ -229,7 +230,9 @@ async function handleCreateOperationalKira(
           conversation_config: {
             agent: {
               prompt: {
-                prompt: systemPrompt,
+                // Append the canonical continuity instructions so the agent calls the
+                // memory/continuity tools attached below.
+                prompt: `${systemPrompt}\n\n${conversationContinuityPrompt}`,
                 llm: 'gpt-4o-mini',
                 temperature: 0.7,
               },
@@ -288,6 +291,16 @@ async function handleCreateOperationalKira(
       await setAllowlist(ELEVENLABS_API_KEY, agentId, standardAllowlist(new URL(APP_URL).hostname));
     } catch (e: any) {
       console.error('[create_operational_kira] allowlist set failed (non-fatal):', e?.message ?? e);
+    }
+
+    // Attach the canonical memory/continuity tools as workspace entities on prompt.tool_ids
+    // (inline tools are silently stripped). Without them the agent can't call save_memory /
+    // recall_memory / get_conversation_context — the persistence bug. Non-fatal.
+    try {
+      await setAgentTools(ELEVENLABS_API_KEY, agentId, kiraMemoryTools(APP_URL));
+      await setAgentOverrides(ELEVENLABS_API_KEY, agentId);
+    } catch (e: any) {
+      console.error('[create_operational_kira] tool attach failed (non-fatal):', e?.message ?? e);
     }
 
     // 4. Save agent to database

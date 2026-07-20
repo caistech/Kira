@@ -20,7 +20,8 @@ import {
   KiraFramework,
   JourneyType,
 } from '@/lib/kira/prompts';
-import { bindWorkspaceWebhook, setAllowlist, standardAllowlist } from '@caistech/elevenlabs-convai';
+import { bindWorkspaceWebhook, setAllowlist, standardAllowlist, setAgentTools, setAgentOverrides } from '@caistech/elevenlabs-convai';
+import { kiraMemoryTools, conversationContinuityPrompt } from '@/lib/kira/convai';
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app';
@@ -203,7 +204,9 @@ export async function POST(req: NextRequest) {
           conversation_config: {
             agent: {
               prompt: {
-                prompt: systemPrompt,
+                // Append the canonical continuity instructions so the agent actually calls
+                // get_conversation_context / save_memory / recall_memory (attached below).
+                prompt: `${systemPrompt}\n\n${conversationContinuityPrompt}`,
                 llm: ELEVENLABS_CONFIG.llm,
                 temperature: ELEVENLABS_CONFIG.temperature,
               },
@@ -284,6 +287,20 @@ export async function POST(req: NextRequest) {
     } catch (e: any) {
       await log(supabase, requestId, 'allowlist_set', 'error', e?.message ?? 'allowlist set failed');
       console.error('[kira/create] allowlist set failed (non-fatal):', e);
+    }
+
+    /* ---------------- Attach the canonical memory/continuity tools ---------------- */
+    // An agent created without tools cannot call get_conversation_context / save_memory /
+    // recall_memory — which is exactly why memory never persisted. Attach the canonical
+    // loop's 5 tools as WORKSPACE entities on prompt.tool_ids (inline tools are silently
+    // stripped by ElevenLabs) and enable per-session overrides. Non-fatal.
+    try {
+      await setAgentTools(ELEVENLABS_API_KEY, agentId, kiraMemoryTools(APP_URL));
+      await setAgentOverrides(ELEVENLABS_API_KEY, agentId);
+      await log(supabase, requestId, 'tools_attach', 'success');
+    } catch (e: any) {
+      await log(supabase, requestId, 'tools_attach', 'error', e?.message ?? 'tool attach failed');
+      console.error('[kira/create] tool attach failed (non-fatal):', e);
     }
 
     /* ---------------- Save Agent to Database ---------------- */
