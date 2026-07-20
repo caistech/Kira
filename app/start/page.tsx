@@ -38,6 +38,10 @@ export default function StartPage() {
   const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
   const [draftReady, setDraftReady] = useState(false);
   const [currentDraft, setCurrentDraft] = useState<Draft | null>(null);
+  // This session's ElevenLabs conversation id (from the widget's conversation-started event). When
+  // known, the draft poll is scoped to THIS conversation so it can't surface another concurrent
+  // user's draft. Falls back to the time-window poll until it's available (no onboarding regression).
+  const [convId, setConvId] = useState<string | null>(null);
 
   // Refs for cleanup
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -79,13 +83,15 @@ export default function StartPage() {
     if (!sessionStartTime || draftReady) return;
 
     try {
-      const { data: drafts, error } = await supabase
+      let query = supabase
         .from('kira_drafts')
         .select('id, user_name, primary_objective, created_at')
-        .eq('status', 'draft')
-        .gte('created_at', sessionStartTime.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1);
+        .eq('status', 'draft');
+      // Scoped to this conversation when we have its id (secure); otherwise the time window.
+      query = convId
+        ? query.eq('elevenlabs_conversation_id', convId)
+        : query.gte('created_at', sessionStartTime.toISOString());
+      const { data: drafts, error } = await query.order('created_at', { ascending: false }).limit(1);
 
       if (error) {
         console.error('[StartPage] Poll error:', error);
@@ -106,7 +112,7 @@ export default function StartPage() {
     } catch (err) {
       console.error('[StartPage] Poll exception:', err);
     }
-  }, [sessionStartTime, draftReady]);
+  }, [sessionStartTime, draftReady, convId]);
 
   // DUAL DETECTION: Real-time subscription + Polling fallback
   useEffect(() => {
@@ -126,10 +132,14 @@ export default function StartPage() {
         (payload) => {
           console.log('[StartPage] Real-time: New draft detected!', payload);
 
-          const newDraft = payload.new as Draft;
+          const newDraft = payload.new as Draft & { elevenlabs_conversation_id?: string };
           const draftCreatedAt = new Date(newDraft.created_at);
+          // Scope to this conversation when known; otherwise the time window.
+          const belongsToThisSession = convId
+            ? newDraft.elevenlabs_conversation_id === convId
+            : draftCreatedAt >= sessionStartTime;
 
-          if (draftCreatedAt >= sessionStartTime) {
+          if (belongsToThisSession) {
             console.log('[StartPage] Draft verified:', newDraft.user_name);
             setCurrentDraft(newDraft);
             setDraftReady(true);
@@ -161,7 +171,7 @@ export default function StartPage() {
         clearInterval(pollIntervalRef.current);
       }
     };
-  }, [widgetLoaded, sessionStartTime, checkForDraft]);
+  }, [widgetLoaded, sessionStartTime, checkForDraft, convId]);
 
   const goToReviewDraft = () => {
     if (currentDraft) {
@@ -321,6 +331,16 @@ export default function StartPage() {
             <div className="flex justify-center mb-8">
               {widgetLoaded && SETUP_KIRA_AGENT_ID ? (
                 <elevenlabs-convai
+                  ref={(el: HTMLElement | null) => {
+                    // Capture this session's conversation id so the draft poll can scope to it.
+                    if (el && !el.dataset.kiraConvListener) {
+                      el.dataset.kiraConvListener = '1';
+                      el.addEventListener('conversation-started', (e) => {
+                        const id = (e as CustomEvent).detail?.conversationId;
+                        if (id) setConvId(String(id));
+                      });
+                    }
+                  }}
                   agent-id={SETUP_KIRA_AGENT_ID}
                   dynamic-variables={JSON.stringify({ journey_type: selectedJourney })}
                   auto-connect="true"

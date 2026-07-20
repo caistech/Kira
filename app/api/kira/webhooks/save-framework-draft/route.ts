@@ -22,6 +22,12 @@ export async function POST(request: NextRequest) {
   try {
     const payload: SaveFrameworkDraftPayload = await request.json();
 
+    // The ElevenLabs conversation id lets /start scope its draft poll to THIS user's own
+    // conversation (instead of "any recent draft", which could briefly surface another concurrent
+    // user's draft). Prefer the x-conversation-id header (how ElevenLabs tags tool calls), fall
+    // back to the body field.
+    const conversationId = request.headers.get('x-conversation-id') || payload.conversation_id || null;
+
     console.log('[save-framework-draft] Received:', {
       user_name: payload.user_name,
       journey_type: payload.journey_type,
@@ -52,7 +58,7 @@ export async function POST(request: NextRequest) {
         success_definition: payload.success_definition,
         constraints: payload.constraints || [],
         status: 'draft',
-        elevenlabs_conversation_id: payload.conversation_id,
+        elevenlabs_conversation_id: conversationId,
       })
       .select()
       .single();
