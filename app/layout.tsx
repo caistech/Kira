@@ -32,7 +32,9 @@ export default function RootLayout({
         <AgentJsonLd config={agentConfig} />
         <div className="min-h-screen flex flex-col">
           <CorporateHeader productName="Kira" productAcronym="K" />
-          <main className="flex-1">{children}<SayFixWidget repo="kira" /></main>
+          {/* bottom-left: keeps the report pill clear of the bottom-right/center primary CTAs +
+              voice controls it was dogpiling (naive-tester 2026-07-20). */}
+          <main className="flex-1">{children}<SayFixWidget repo="kira" position="bottom-left" /></main>
           <CorporateFooter productName="Kira" />
         </div>
       </body>

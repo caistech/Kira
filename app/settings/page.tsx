@@ -1,5 +1,6 @@
 import { getAuthUser, getCurrentAppUser } from '@/lib/auth';
 import { PasswordChange } from '@/components/PasswordChange';
+import { DeleteAccount } from '@/components/DeleteAccount';
 import { updateProfile } from './actions';
 
 export const metadata = { title: 'Settings · Kira' };
@@ -52,11 +53,21 @@ export default async function SettingsPage() {
         </form>
       </section>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-6">
+      <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-6">
         <h2 className="text-lg font-semibold text-gray-900">Password</h2>
         <p className="mt-1 text-sm text-gray-500">Set a new password for signing in.</p>
         <div className="mt-4">
           <PasswordChange />
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-red-200 bg-white p-6">
+        <h2 className="text-lg font-semibold text-gray-900">Account</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Permanently delete your account and everything in it. This cannot be undone.
+        </p>
+        <div className="mt-4">
+          <DeleteAccount email={authUser?.email ?? ''} />
         </div>
       </section>
     </div>
