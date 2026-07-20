@@ -15,7 +15,9 @@ export const DISCOVERY_PURPOSE =
 
 export const DISCOVERY_VOICE_ID = process.env.NEXT_PUBLIC_KIRA_VOICE_ID || 'EXAVITQu4vr4xnSDxMaL';
 
-export const DISCOVERY_EXTRACTION_MODEL: ModelRef = { provider: 'anthropic', model: 'claude-sonnet-5' };
+// OpenAI id (routed via the OpenAI runner). gpt-4.1-mini validated for the profile extraction;
+// bump to a larger model here if richer judgment is wanted.
+export const DISCOVERY_EXTRACTION_MODEL: ModelRef = { provider: 'openrouter', model: 'gpt-4.1-mini' };
 
 export const DISCOVERY_EXTRACTION_SYSTEM = `
 You are extracting a structured Client Profile from a discovery conversation between Kira (a coach)

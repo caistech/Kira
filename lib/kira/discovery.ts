@@ -11,7 +11,7 @@
 
 import { defineDiscovery, type Discovery } from '@caistech/discovery-agent';
 import { createServiceClient } from '@/lib/supabase/server';
-import { createAnthropicRunner } from '@/lib/kira/structured-runner';
+import { createOpenAIRunner } from '@/lib/kira/structured-runner';
 import { KIRA_CONVAI_TABLES } from '@/lib/kira/convai';
 import {
   DISCOVERY_SLUG,
@@ -113,7 +113,7 @@ export function getDiscovery(): Discovery<ClientProfile> {
       },
     },
     {
-      runner: createAnthropicRunner(process.env.ANTHROPIC_API_KEY || ''),
+      runner: createOpenAIRunner(process.env.OPENAI_API_KEY || ''),
       elevenLabsApiKey: process.env.ELEVENLABS_API_KEY || '',
       sessionSecret: process.env.DISCOVERY_SESSION_SECRET || '',
       supabase,
