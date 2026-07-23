@@ -66,6 +66,13 @@ export function AuthForm({ mode, redirectTo = '/dashboard', title, subtitle, var
           },
         });
         if (error) throw error;
+        // Supabase anti-enumeration: signing up an ALREADY-REGISTERED email returns a user with an
+        // empty identities array, no session, and no error — and sends no email. Don't dead-end on a
+        // confirm panel that will never receive one; tell them the account exists and to sign in.
+        if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+          setError('An account with this email already exists — please sign in instead (use “Forgot password?” if you need to reset it).');
+          return;
+        }
         // Auto-confirm returns a session immediately → log them straight in. Only when email
         // confirmation is required (no session) do we ask them to check their inbox.
         if (data.session) {

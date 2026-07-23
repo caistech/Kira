@@ -54,11 +54,19 @@ const STEPS: Step[] = [
     help: 'Start typing and pick the closest match. This sets the multiple your sector can command when a business runs like a well-oiled machine.',
   },
   {
+    id: 'turnover',
+    kind: 'money',
+    icon: <TrendingUp className="h-6 w-6" />,
+    title: "Roughly what's your annual turnover?",
+    help: 'Total sales - everything the business invoices or takes in over a year, before any costs come out. We ask about profit on the next screen.',
+    placeholder: 'e.g. 2000000 (total sales)',
+  },
+  {
     id: 'annualProfit',
     kind: 'money',
     icon: <TrendingUp className="h-6 w-6" />,
-    title: "Roughly what's your annual PROFIT?",
-    help: "Profit - what's left after all your costs, plus the salary and perks you pay yourself (often called SDE). This is NOT your revenue or turnover. A rough figure is fine.",
+    title: "And what's your annual PROFIT?",
+    help: "What's left after all costs, plus the salary and perks you pay yourself (often called SDE). Not turnover - the smaller number you actually keep. This is what the valuation runs on.",
     placeholder: 'e.g. 200000 (profit, not sales)',
   },
   {
@@ -318,11 +326,29 @@ export default function BusinessValuationPage() {
                   className="w-full text-lg rounded-2xl border-2 border-amber-200 focus:border-pink-400 focus:outline-none pl-9 pr-4 py-4 min-h-[52px] bg-amber-50/40"
                   autoFocus
                 />
-                {step.id === 'annualProfit' && (
-                  <p className="text-xs text-stone-500 mt-2 leading-relaxed">
-                    <strong>Profit, not sales.</strong> If the business turned over $2M but you kept $200k after costs and your own pay, enter <strong>$200,000</strong>.
-                  </p>
-                )}
+                {step.id === 'annualProfit' && (() => {
+                  const turnover = typeof answers.turnover === 'number' ? answers.turnover : null;
+                  const profit = typeof answers.annualProfit === 'number' ? answers.annualProfit : null;
+                  if (turnover && profit && profit > turnover) {
+                    return (
+                      <p className="text-xs text-rose-600 mt-2 leading-relaxed">
+                        That&apos;s higher than the turnover you entered ({formatMoney(turnover)}). Profit is what you keep <em>after</em> costs, so it should be lower than turnover — did you mean to enter sales here?
+                      </p>
+                    );
+                  }
+                  if (turnover && profit && profit > 0) {
+                    return (
+                      <p className="text-xs text-stone-500 mt-2 leading-relaxed">
+                        That&apos;s a <strong>{Math.round((profit / turnover) * 100)}% margin</strong> on the {formatMoney(turnover)} turnover you entered. Looks right? Profit is the smaller number you keep after all costs and your own pay.
+                      </p>
+                    );
+                  }
+                  return (
+                    <p className="text-xs text-stone-500 mt-2 leading-relaxed">
+                      <strong>Profit, not sales.</strong> If the business turned over {turnover ? formatMoney(turnover) : '$2M'} but you kept $200k after costs and your own pay, enter <strong>$200,000</strong>.
+                    </p>
+                  );
+                })()}
               </div>
             )}
 

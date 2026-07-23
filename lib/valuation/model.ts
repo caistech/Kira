@@ -33,6 +33,12 @@ export type RecurringRevenue = 'strong' | 'some' | 'none';
 export interface ValuationInputs {
   /** Industry name (matched against the multiples table; unknown -> median, honestly flagged). */
   industry: string;
+  /**
+   * Annual turnover / total sales, in dollars. Collected to make the profit question unambiguous
+   * and to cross-check (implied margin). NOT used in the valuation math - the multiple runs on
+   * profit - so it is optional to the model.
+   */
+  turnover?: number;
   /** Adjusted annual profit / owner earnings (SDE-style), in dollars. */
   annualProfit: number;
   /** Rough value of tangible assets (equipment, vehicles, stock) - feeds the walk-away floor. */
