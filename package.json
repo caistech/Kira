@@ -6,14 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "vitest run"
   },
   "dependencies": {
     "@caistech/corporate-components": "^0.3.0",
     "@caistech/discovery-agent": "^0.1.0",
     "@caistech/elevenlabs-convai": "^0.4.9",
     "@caistech/platform-trust-middleware": "^0.4.0",
-    "@caistech/sayfix-embed": "^0.4.0",
+    "@caistech/sayfix-embed": "^0.6.0",
     "@caistech/webmcp-kit": "^0.1.0",
     "@elevenlabs/client": "^0.13.0",
     "@elevenlabs/react": "^1.10.1",
@@ -37,6 +38,7 @@
     "autoprefixer": "^10.0.1",
     "postcss": "^8",
     "tailwindcss": "^3.3.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^2.1.9"
   }
 }
