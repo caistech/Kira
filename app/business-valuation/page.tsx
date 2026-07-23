@@ -57,9 +57,9 @@ const STEPS: Step[] = [
     id: 'annualProfit',
     kind: 'money',
     icon: <TrendingUp className="h-6 w-6" />,
-    title: 'Roughly what does the business earn you a year?',
-    help: 'Your adjusted annual profit - net profit plus the wage and perks you take out. A rough figure is fine.',
-    placeholder: 'e.g. 200000',
+    title: "Roughly what's your annual PROFIT?",
+    help: "Profit - what's left after all your costs, plus the salary and perks you pay yourself (often called SDE). This is NOT your revenue or turnover. A rough figure is fine.",
+    placeholder: 'e.g. 200000 (profit, not sales)',
   },
   {
     id: 'profitTrend',
@@ -318,6 +318,11 @@ export default function BusinessValuationPage() {
                   className="w-full text-lg rounded-2xl border-2 border-amber-200 focus:border-pink-400 focus:outline-none pl-9 pr-4 py-4 min-h-[52px] bg-amber-50/40"
                   autoFocus
                 />
+                {step.id === 'annualProfit' && (
+                  <p className="text-xs text-stone-500 mt-2 leading-relaxed">
+                    <strong>Profit, not sales.</strong> If the business turned over $2M but you kept $200k after costs and your own pay, enter <strong>$200,000</strong>.
+                  </p>
+                )}
               </div>
             )}
 
