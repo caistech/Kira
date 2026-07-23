@@ -115,7 +115,7 @@ export default function KiraLandingPage() {
             <a href="/about" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">About</a>
             <a href="/admin/login" className="font-body text-stone-400 hover:text-stone-600 text-xs hidden sm:block">Admin</a>
             <a href="/login" className="font-body flex min-h-[44px] items-center px-2 text-sm font-medium text-stone-700 hover:text-pink-500">Sign in</a>
-            <a href="/start" className="font-display gradient-sunny text-stone-800 px-4 py-2.5 rounded-full text-sm font-bold hover-pop shadow-md flex min-h-[44px] items-center">Try Kira ✨</a>
+            <a href="/business-valuation" className="font-display gradient-sunny text-stone-800 px-4 py-2.5 rounded-full text-sm font-bold hover-pop shadow-md flex min-h-[44px] items-center">Value my business →</a>
           </div>
         </div>
       </nav>
@@ -145,44 +145,45 @@ export default function KiraLandingPage() {
               </div>
             </div>
 
-            <h1 className={`font-display text-5xl lg:text-7xl font-bold text-stone-800 mb-6 leading-tight ${isVisible ? 'fade-up fade-up-delay-1' : 'opacity-0'}`}>
-              Meet <span className="bg-gradient-to-r from-amber-500 via-pink-500 to-violet-500 bg-clip-text text-transparent">Kira</span>
-              <br /><span className="text-3xl lg:text-4xl text-stone-600">Then meet <span className="bg-gradient-to-r from-violet-500 to-pink-500 bg-clip-text text-transparent">YOUR</span> Kira.</span>
+            <h1 className={`font-display text-4xl lg:text-6xl font-bold text-stone-800 mb-6 leading-tight ${isVisible ? 'fade-up fade-up-delay-1' : 'opacity-0'}`}>
+              Your business is your <span className="bg-gradient-to-r from-amber-500 to-pink-500 bg-clip-text text-transparent">biggest asset.</span>
+              <br /><span className="text-2xl lg:text-4xl text-stone-600">Do you actually know what it's <span className="bg-gradient-to-r from-violet-500 to-pink-500 bg-clip-text text-transparent">worth?</span></span>
             </h1>
 
-            <p className={`font-body text-xl lg:text-2xl text-stone-600 max-w-2xl mx-auto mb-6 leading-relaxed ${isVisible ? 'fade-up fade-up-delay-2' : 'opacity-0'}`}>
-              Not one AI for everyone. A unique thinking partner <span className="font-semibold text-stone-800">built around your specific goal</span> — whether that's figuring out your career, planning a trip, or growing your business.
-            </p>
-
-            <p className={`font-body text-sm text-stone-500 max-w-xl mx-auto mb-10 ${isVisible ? 'fade-up fade-up-delay-2' : 'opacity-0'}`}>
-              For <span className="font-semibold text-violet-600">coaching &amp; wellness platforms</span>: a personal AI guide for your members, under your brand.
+            <p className={`font-body text-lg lg:text-xl text-stone-600 max-w-2xl mx-auto mb-6 leading-relaxed ${isVisible ? 'fade-up fade-up-delay-2' : 'opacity-0'}`}>
+              Most owners find out the hard way that a business runs on knowledge that lives only in their head — so a buyer pays for a <span className="font-semibold text-stone-800">job, not an asset.</span> Kira captures that knowledge into a <span className="font-semibold text-violet-600">Business Genome</span>, so your business becomes transferable — and worth far more.
             </p>
 
             <div className={`flex flex-col sm:flex-row items-center justify-center gap-4 ${isVisible ? 'fade-up fade-up-delay-3' : 'opacity-0'}`}>
-              <a href="/start" className="font-display gradient-coral text-white px-8 py-4 rounded-full text-lg font-bold hover-pop shadow-xl shadow-pink-200 inline-block">Create Your Kira →</a>
-              <span className="font-body text-stone-500">Free for 30 days. Takes 2 minutes.</span>
+              <a href="/business-valuation" className="font-display gradient-coral text-white px-8 py-4 rounded-full text-lg font-bold hover-pop shadow-xl shadow-pink-200 inline-block">Find out in 3 minutes →</a>
+              <a href="#personal" className="font-body text-stone-500 hover:text-violet-600 min-h-[44px] flex items-center">Just want a personal guide?</a>
             </div>
+            <p className={`font-body text-sm text-stone-400 mt-4 ${isVisible ? 'fade-up fade-up-delay-3' : 'opacity-0'}`}>Free · no sign-up · an indicative valuation on the spot.</p>
           </div>
 
-          {/* Updated chat preview showing the journey */}
+          {/* Valuation teaser preview */}
           <div className={`mt-16 max-w-lg mx-auto ${isVisible ? 'fade-up fade-up-delay-3' : 'opacity-0'}`}>
             <div className="bg-white/80 backdrop-blur rounded-3xl p-6 shadow-2xl border border-amber-100">
               <div className="text-center mb-4">
-                <span className="text-xs font-body text-stone-400 bg-stone-100 px-3 py-1 rounded-full">Setup Kira learning about you...</span>
+                <span className="text-xs font-body text-stone-400 bg-stone-100 px-3 py-1 rounded-full">A 3-minute valuation, made real</span>
               </div>
-              <div className="space-y-4">
-                <div className="flex gap-3">
-                  <div className="avatar-ring flex-shrink-0"><div className="w-8 h-8 rounded-full overflow-hidden bg-white"><img src="/kira-avatar.jpg" alt="Kira" className="w-full h-full object-cover" /></div></div>
-                  <div className="chat-bubble-kira rounded-2xl rounded-tl-sm px-4 py-3 max-w-xs"><p className="font-body text-stone-700 text-sm">Hey! I'm Kira. What's the one thing you're trying to figure out right now? 🎯</p></div>
+              <div className="grid grid-cols-3 gap-3 text-center mb-4">
+                <div className="rounded-2xl bg-stone-50 border border-stone-200 p-3">
+                  <p className="text-[10px] uppercase tracking-wide text-stone-400 font-semibold">Walk away</p>
+                  <p className="font-display font-bold text-stone-700 text-sm mt-1">$150k</p>
                 </div>
-                <div className="flex gap-3 justify-end">
-                  <div className="chat-bubble-user rounded-2xl rounded-tr-sm px-4 py-3 max-w-xs"><p className="font-body text-white text-sm">I want to finally get my finances sorted out...</p></div>
+                <div className="rounded-2xl bg-amber-50 border border-amber-200 p-3">
+                  <p className="text-[10px] uppercase tracking-wide text-stone-400 font-semibold">Today</p>
+                  <p className="font-display font-bold text-stone-800 text-sm mt-1">$600k</p>
                 </div>
-                <div className="flex gap-3">
-                  <div className="avatar-ring flex-shrink-0"><div className="w-8 h-8 rounded-full overflow-hidden bg-white"><img src="/kira-avatar.jpg" alt="Kira" className="w-full h-full object-cover" /></div></div>
-                  <div className="chat-bubble-kira rounded-2xl rounded-tl-sm px-4 py-3 max-w-xs"><p className="font-body text-stone-700 text-sm">Got it. I'm creating a Kira just for this — she'll know your context and be ready to dig in with you. ✨</p></div>
+                <div className="rounded-2xl bg-gradient-to-br from-violet-50 to-pink-50 border border-violet-300 p-3">
+                  <p className="text-[10px] uppercase tracking-wide text-stone-400 font-semibold">Captured</p>
+                  <p className="font-display font-bold text-violet-700 text-sm mt-1">$2.5M</p>
                 </div>
               </div>
+              <p className="font-body text-center text-sm text-stone-600">
+                The <span className="font-semibold text-violet-600">$1.9M gap</span> is the knowledge in your head. Kira helps you capture it.
+              </p>
             </div>
           </div>
         </div>
@@ -226,38 +227,53 @@ export default function KiraLandingPage() {
         </div>
       </section>
 
-      {/* Choose Your Journey */}
-      <section className="bg-gradient-to-br from-violet-100 via-pink-50 to-amber-50 py-24">
+      {/* Business exit — the primary journey */}
+      <section className="bg-gradient-to-br from-amber-100 via-pink-50 to-violet-50 py-24">
         <div className="max-w-5xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <span className="text-5xl mb-4 block">🛤️</span>
-            <h2 className="font-display text-4xl lg:text-5xl font-bold text-stone-800 mb-6">Two journeys. <span className="bg-gradient-to-r from-violet-500 to-pink-500 bg-clip-text text-transparent">One guide.</span></h2>
-            <p className="font-body text-xl text-stone-600 max-w-2xl mx-auto leading-relaxed">Whether it's personal growth or business strategy, Kira adapts to what you need.</p>
+          <div className="text-center mb-14">
+            <span className="text-5xl mb-4 block">🏦</span>
+            <h2 className="font-display text-4xl lg:text-5xl font-bold text-stone-800 mb-6">Built to sell — <span className="bg-gradient-to-r from-amber-500 to-pink-500 bg-clip-text text-transparent">for what it's really worth.</span></h2>
+            <p className="font-body text-xl text-stone-600 max-w-2xl mx-auto leading-relaxed">After decades building it, most owners discover their business is worth a fraction of what they hoped — because it can't run without them. Kira changes that.</p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="journey-card bg-white rounded-3xl p-8 shadow-xl border-2 border-violet-200 hover:border-violet-400">
-              <div className="w-16 h-16 gradient-lavender rounded-2xl flex items-center justify-center mb-6 text-3xl">🧘</div>
-              <h3 className="font-display text-2xl font-bold text-stone-800 mb-3">Personal Journey</h3>
-              <p className="font-body text-stone-600 mb-6">Life decisions, career moves, habits, relationships, travel planning, learning new skills — the stuff that matters to YOU.</p>
-              <div className="space-y-2">
-                {["Career pivots & job decisions", "Financial planning", "Learning & skill building", "Travel & life experiences", "Personal projects"].map((item, i) => (
-                  <div key={i} className="flex items-center gap-2 text-sm font-body text-stone-600">
-                    <span className="text-violet-500">✓</span> {item}
-                  </div>
-                ))}
+          {/* Three-step exit arc */}
+          <div className="grid md:grid-cols-3 gap-6 mb-12">
+            {[
+              { n: "1", grad: "gradient-sunny", title: "See the number", body: "A 3-minute valuation shows what your business is worth today — and the gap you're leaving on the table." },
+              { n: "2", grad: "gradient-lavender", title: "Capture your knowledge", body: "Kira interviews you like a smart buyer would, turning the systems and relationships in your head into a living Business Genome." },
+              { n: "3", grad: "gradient-coral", title: "Sell an asset, not a job", body: "A documented, transferable business commands a real multiple — and hands over cleanly to a buyer or successor." },
+            ].map((s) => (
+              <div key={s.n} className="journey-card bg-white rounded-3xl p-7 shadow-xl border-2 border-amber-200">
+                <div className={`${s.grad} w-12 h-12 rounded-2xl flex items-center justify-center mb-5 text-white font-display font-bold text-xl`}>{s.n}</div>
+                <h3 className="font-display text-xl font-bold text-stone-800 mb-2">{s.title}</h3>
+                <p className="font-body text-stone-600 text-sm leading-relaxed">{s.body}</p>
               </div>
-            </div>
-            <div className="journey-card bg-white rounded-3xl p-8 shadow-xl border-2 border-amber-200 hover:border-amber-400">
-              <div className="w-16 h-16 gradient-sunny rounded-2xl flex items-center justify-center mb-6 text-3xl">💼</div>
-              <h3 className="font-display text-2xl font-bold text-stone-800 mb-3">Business Journey</h3>
-              <p className="font-body text-stone-600 mb-6">Strategy, operations, growth challenges, team decisions — a thinking partner for the hard stuff.</p>
-              <div className="space-y-2">
-                {["Business strategy & planning", "Market positioning", "Operational challenges", "Growth & scaling decisions", "Team & leadership"].map((item, i) => (
-                  <div key={i} className="flex items-center gap-2 text-sm font-body text-stone-600">
-                    <span className="text-amber-500">✓</span> {item}
-                  </div>
-                ))}
+            ))}
+          </div>
+
+          <div className="text-center">
+            <a href="/business-valuation" className="font-display gradient-coral text-white px-8 py-4 rounded-full text-lg font-bold hover-pop shadow-xl shadow-pink-200 inline-block">What's my business worth? →</a>
+            <p className="font-body text-stone-500 text-sm mt-3">Retiring, selling, or planning succession — start here.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Personal Kira — the secondary journey */}
+      <section id="personal" className="bg-white py-20">
+        <div className="max-w-4xl mx-auto px-6">
+          <div className="journey-card bg-gradient-to-br from-violet-50 to-pink-50 rounded-3xl p-8 lg:p-10 border-2 border-violet-200">
+            <div className="flex flex-col md:flex-row items-start gap-8">
+              <div className="w-16 h-16 gradient-lavender rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">🧘</div>
+              <div>
+                <span className="text-xs font-body uppercase tracking-wider text-violet-500 font-semibold">Or, for life's other big decisions</span>
+                <h3 className="font-display text-2xl lg:text-3xl font-bold text-stone-800 mt-2 mb-3">Create a personal Kira</h3>
+                <p className="font-body text-stone-600 mb-6 leading-relaxed">A thinking partner built around one goal that matters to you — a career pivot, getting your finances sorted, a big life decision. She learns your context and thinks it through with you.</p>
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {["Career decisions", "Financial planning", "Learning goals", "Life transitions"].map((item, i) => (
+                    <span key={i} className="text-sm font-body text-violet-700 bg-white/70 border border-violet-200 rounded-full px-3 py-1">{item}</span>
+                  ))}
+                </div>
+                <a href="/start?journey=personal" className="font-display text-violet-600 hover:text-violet-800 font-bold inline-flex items-center gap-1 min-h-[44px]">Create a personal Kira →</a>
               </div>
             </div>
           </div>

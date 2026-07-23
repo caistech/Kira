@@ -183,6 +183,15 @@ export default function StartPage() {
     setSelectedJourney(journey);
   };
 
+  // Honor a ?journey= param (e.g. from the valuation test's "start building your Business Genome"
+  // CTA -> /start?journey=business). Read from location directly to avoid a Suspense boundary.
+  useEffect(() => {
+    const param = new URLSearchParams(window.location.search).get('journey');
+    if (param === 'business' || param === 'personal') {
+      setSelectedJourney(param);
+    }
+  }, []);
+
   const goBack = () => {
     setSelectedJourney(null);
     setWidgetLoaded(false);
