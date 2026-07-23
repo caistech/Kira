@@ -1,26 +1,32 @@
 // lib/valuation/model.ts
 //
-// The Kira business valuation model.
+// The Kira business valuation model (SDE basis).
 //
-// A privately owned business is worth ~1x its profit when the operating system lives in the
-// founder's head, and up to its full industry multiple when that knowledge is captured, documented
-// and transferable. This model turns an owner's answers into three honest numbers:
+// Small, privately-owned businesses change hands on a multiple of SDE (Seller's Discretionary
+// Earnings = net profit + the owner's salary and perks), NOT on public-company EBITDA comps. Real
+// BizBuySell 2025 data (9,500+ closed deals): the market average is ~2.5x SDE, and sectors range
+// ~1.5x-6.6x (see sde-multiples.ts). A given sale lands above or below its sector average based on
+// size and quality. This model reproduces that:
 //
-//   1. walkAway   - sell the gear and close the doors (the floor).
-//   2. today      - what it's realistically worth NOW, given how transferable it currently is.
-//   3. potential  - what it's worth once the capturable operating knowledge is captured into a
-//                   Business Genome (the transferable-asset number).
+//   - floor      = a weak, fully owner-dependent business (~half the sector average, min 1x).
+//   - sector base= the median SDE multiple the sector actually trades at (a typical business).
+//   - ceiling    = a fully systemised, transferable business of that size (sector base x a quality
+//                  premium, plus a size premium for larger businesses; capped at 8x SDE, above
+//                  which you are in EBITDA / lower-mid-market territory that main-street SDE
+//                  multiples don't reach).
+//   - applied    = floor + readiness x (ceiling - floor).
 //
-// The gap between (2) and (3) is the headline: the dollar value of the knowledge that today only
-// exists in the owner's head. Each capturable factor that scores below its ceiling becomes a named,
-// costed reason for that gap.
+// Three numbers come out: walk-away (assets), worth-today (applied at current readiness), and
+// worth-once-captured (applied with the capturable factors maxed). The gap between the last two is
+// the value of the operating knowledge that today lives only in the owner's head, and each
+// capturable factor's uplift is costed and sums to that gap.
 //
-// The multiple lever is drawn directly from the Empire Worksheet's owner-involvement factors
-// (hands-on 0.3 -> involved 0.5 -> fully-under-management 1.0): owner dependence is the heaviest
-// weight in the readiness score. Everything here is a pure function of the inputs - no I/O, no
-// side effects - so it is unit-testable and deterministic.
+// The readiness drivers (owner-dependence heaviest, then systems, recurring revenue, client
+// concentration, growth) match the value drivers brokers actually price on - the research behind
+// this: owner-dependence alone is a 1-2x discount; recurring revenue and low client concentration
+// lift the multiple.
 
-import { lookupMultiple } from './industry-multiples';
+import { lookupSdeMultiple } from './sde-multiples';
 
 export type ProfitTrend = 'growing_strongly' | 'growing' | 'flat' | 'declining';
 export type MarginTrend = 'improving' | 'stable' | 'shrinking';
@@ -31,15 +37,14 @@ export type Systems = 'documented_team' | 'some' | 'in_my_head';
 export type RecurringRevenue = 'strong' | 'some' | 'none';
 
 export interface ValuationInputs {
-  /** Industry name (matched against the multiples table; unknown -> median, honestly flagged). */
+  /** Industry name (matched against the SDE-multiple table; unknown -> market average, flagged). */
   industry: string;
   /**
-   * Annual turnover / total sales, in dollars. Collected to make the profit question unambiguous
-   * and to cross-check (implied margin). NOT used in the valuation math - the multiple runs on
-   * profit - so it is optional to the model.
+   * Annual turnover / total sales. Collected to make the profit question unambiguous and to
+   * cross-check (implied margin). NOT used in the valuation math - it runs on profit/SDE.
    */
   turnover?: number;
-  /** Adjusted annual profit / owner earnings (SDE-style), in dollars. */
+  /** Adjusted annual profit / owner earnings (SDE = net profit + owner salary & perks), in dollars. */
   annualProfit: number;
   /** Rough value of tangible assets (equipment, vehicles, stock) - feeds the walk-away floor. */
   tangibleAssets: number;
@@ -56,38 +61,29 @@ export interface ValuationInputs {
 export interface ReadinessFactor {
   key: string;
   label: string;
-  /** Current normalised sub-score, 0..1. */
   score: number;
-  /** Weight in the readiness composite. */
   weight: number;
-  /**
-   * Whether capturing operating knowledge can lift this factor (owner-dependence, systems,
-   * recurring revenue, client concentration) - as opposed to market trend, which it cannot.
-   */
   capturable: boolean;
-  /** Dollar uplift from lifting this factor to its ceiling (only meaningful when capturable). */
   uplift: number;
-  /** Plain-English reason shown to the owner when this factor drags the valuation down. */
   reason: string;
 }
 
 export interface ValuationResult {
-  industryMultiple: number;
-  industryMatched: boolean;
-  /** Readiness today, 0..1. */
+  /** Sector-median SDE multiple (a typical business in the sector). */
+  sdeMultiple: number;
+  sectorMatched: boolean;
+  /** SDE multiple applied to a weak/owner-dependent business (readiness 0). */
+  floorMultiple: number;
+  /** SDE multiple applied to a fully systemised business of this size (readiness 1). */
+  ceilingMultiple: number;
   readiness: number;
-  /** Readiness once all capturable factors are maxed, 0..1. */
   readinessPotential: number;
-  /** Effective multiple applied to profit today. */
   appliedMultipleToday: number;
-  /** Effective multiple once capturable knowledge is captured. */
   appliedMultiplePotential: number;
   walkAway: number;
   today: number;
   potential: number;
-  /** potential - today: the value of the knowledge currently locked in the owner's head. */
   gap: number;
-  /** Capturable factors dragging value down, richest uplift first. */
   factors: ReadinessFactor[];
 }
 
@@ -99,94 +95,65 @@ const OWNER_DEPENDENCE_SCORE: Record<OwnerDependence, number> = {
   mostly_runs: 0.7,
   fully_managed: 1,
 };
-
-const SYSTEMS_SCORE: Record<Systems, number> = {
-  in_my_head: 0,
-  some: 0.5,
-  documented_team: 1,
-};
-
-const RECURRING_SCORE: Record<RecurringRevenue, number> = {
-  none: 0,
-  some: 0.5,
-  strong: 1,
-};
-
-const CONCENTRATION_SCORE: Record<ClientConcentration, number> = {
-  concentrated: 0,
-  moderate: 0.5,
-  diversified: 1,
-};
-
-const PROFIT_TREND_SCORE: Record<ProfitTrend, number> = {
-  declining: 0,
-  flat: 0.4,
-  growing: 0.75,
-  growing_strongly: 1,
-};
-
-const MARGIN_TREND_SCORE: Record<MarginTrend, number> = {
-  shrinking: 0,
-  stable: 0.5,
-  improving: 1,
-};
-
-const CLIENT_TREND_SCORE: Record<ClientTrend, number> = {
-  shrinking: 0,
-  stable: 0.5,
-  expanding: 1,
-};
+const SYSTEMS_SCORE: Record<Systems, number> = { in_my_head: 0, some: 0.5, documented_team: 1 };
+const RECURRING_SCORE: Record<RecurringRevenue, number> = { none: 0, some: 0.5, strong: 1 };
+const CONCENTRATION_SCORE: Record<ClientConcentration, number> = { concentrated: 0, moderate: 0.5, diversified: 1 };
+const PROFIT_TREND_SCORE: Record<ProfitTrend, number> = { declining: 0, flat: 0.4, growing: 0.75, growing_strongly: 1 };
+const MARGIN_TREND_SCORE: Record<MarginTrend, number> = { shrinking: 0, stable: 0.5, improving: 1 };
+const CLIENT_TREND_SCORE: Record<ClientTrend, number> = { shrinking: 0, stable: 0.5, expanding: 1 };
 
 // --- Factor weights (sum = 10, so readiness = weighted sum / 10) ------------------------------
 
-const WEIGHTS = {
-  ownerDependence: 3,
-  systems: 2,
-  recurringRevenue: 2,
-  clientConcentration: 1.5,
-  growth: 1.5,
-} as const;
-
+const WEIGHTS = { ownerDependence: 3, systems: 2, recurringRevenue: 2, clientConcentration: 1.5, growth: 1.5 } as const;
 const TOTAL_WEIGHT =
-  WEIGHTS.ownerDependence +
-  WEIGHTS.systems +
-  WEIGHTS.recurringRevenue +
-  WEIGHTS.clientConcentration +
-  WEIGHTS.growth;
+  WEIGHTS.ownerDependence + WEIGHTS.systems + WEIGHTS.recurringRevenue + WEIGHTS.clientConcentration + WEIGHTS.growth;
 
-/**
- * The "systemised potential" never claims perfection on market factors it can't control. Capturing
- * knowledge maxes the capturable factors; growth stays at the owner's actual answer.
- */
+// --- Multiple-band constants (calibrated to BizBuySell 2025 SDE data) -------------------------
+
+/** A fully owner-dependent business trades at roughly half its sector's average (min 1x SDE). */
+const FLOOR_FACTOR = 0.5;
+const FLOOR_MIN = 1.0;
+/** A top-quality, fully systemised business commands a premium above the sector average. */
+const QUALITY_PREMIUM = 1.6;
+/** Main-street SDE multiples top out here; above this is EBITDA / lower-mid-market territory. */
+const SDE_CAP = 8;
+/** Below this SDE, no size premium; it scales in above it. */
+const SIZE_PREMIUM_ANCHOR = 250_000;
+const SIZE_PREMIUM_MAX = 3;
+
+function clamp(n: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, n));
+}
 function round(n: number): number {
   return Math.round(n);
 }
 
-function clamp01(n: number): number {
-  return Math.max(0, Math.min(1, n));
+/**
+ * Larger businesses earn a size premium (more buyers, less key-person risk, management depth).
+ * Scales logarithmically with profit above the anchor, capped.
+ */
+function sizePremium(annualProfit: number): number {
+  if (annualProfit <= SIZE_PREMIUM_ANCHOR) return 0;
+  return clamp(Math.log10(annualProfit / SIZE_PREMIUM_ANCHOR) * 2, 0, SIZE_PREMIUM_MAX);
 }
 
-/**
- * Map profit x multiple, guarding against negative/zero profit (a business losing money has no
- * earnings multiple - it's worth its assets, not a multiple of losses).
- */
 function earningsValue(annualProfit: number, multiple: number): number {
   if (annualProfit <= 0) return 0;
   return annualProfit * multiple;
 }
 
 export function computeValuation(inputs: ValuationInputs): ValuationResult {
-  const { multiple: industryMultiple, matched: industryMatched } = lookupMultiple(inputs.industry);
+  const { sde: sdeMultiple, matched: sectorMatched } = lookupSdeMultiple(inputs.industry);
 
-  const growthScore = clamp01(
+  const growthScore = clamp(
     (PROFIT_TREND_SCORE[inputs.profitTrend] +
       MARGIN_TREND_SCORE[inputs.marginTrend] +
       CLIENT_TREND_SCORE[inputs.clientTrend]) /
       3,
+    0,
+    1,
   );
 
-  // Build the factor list. capturable factors can be lifted by capturing operating knowledge;
-  // growth reflects the market and cannot.
   const rawFactors: Array<Omit<ReadinessFactor, 'uplift'>> = [
     {
       key: 'ownerDependence',
@@ -235,40 +202,41 @@ export function computeValuation(inputs: ValuationInputs): ValuationResult {
     },
   ];
 
-  const readiness = clamp01(
-    rawFactors.reduce((sum, f) => sum + f.score * f.weight, 0) / TOTAL_WEIGHT,
+  const readiness = clamp(rawFactors.reduce((s, f) => s + f.score * f.weight, 0) / TOTAL_WEIGHT, 0, 1);
+  const readinessPotential = clamp(
+    rawFactors.reduce((s, f) => s + (f.capturable ? 1 : f.score) * f.weight, 0) / TOTAL_WEIGHT,
+    0,
+    1,
   );
 
-  // Potential readiness: capturable factors -> 1, market factor stays as answered.
-  const readinessPotential = clamp01(
-    rawFactors.reduce((sum, f) => sum + (f.capturable ? 1 : f.score) * f.weight, 0) / TOTAL_WEIGHT,
-  );
+  // Build the realistic SDE multiple band from the sector median, size and quality.
+  const floorMultiple = Math.max(FLOOR_MIN, sdeMultiple * FLOOR_FACTOR);
+  const ceilingMultiple = Math.min(SDE_CAP, Math.max(floorMultiple + 0.5, sdeMultiple * QUALITY_PREMIUM + sizePremium(inputs.annualProfit)));
+  const spread = ceilingMultiple - floorMultiple;
 
-  // Applied multiple ranges from 1x (readiness 0) to the full industry multiple (readiness 1).
-  const spread = Math.max(0, industryMultiple - 1);
-  const appliedMultipleToday = 1 + readiness * spread;
-  const appliedMultiplePotential = 1 + readinessPotential * spread;
+  const appliedMultipleToday = floorMultiple + readiness * spread;
+  const appliedMultiplePotential = floorMultiple + readinessPotential * spread;
 
   const walkAway = round(Math.max(0, inputs.tangibleAssets || 0));
   const today = round(earningsValue(inputs.annualProfit, appliedMultipleToday));
   const potential = round(earningsValue(inputs.annualProfit, appliedMultiplePotential));
   const gap = Math.max(0, potential - today);
 
-  // Per-factor uplift: value unlocked by lifting each capturable factor to its ceiling. Sum of
-  // capturable uplifts equals the gap (same spread, same profit), so the reasons "add up".
   const factors: ReadinessFactor[] = rawFactors
     .map((f) => {
       const uplift =
         f.capturable && inputs.annualProfit > 0
-          ? round(inputs.annualProfit * ((1 - f.score) * f.weight) / TOTAL_WEIGHT * spread)
+          ? round((inputs.annualProfit * ((1 - f.score) * f.weight)) / TOTAL_WEIGHT * spread)
           : 0;
       return { ...f, uplift };
     })
     .sort((a, b) => b.uplift - a.uplift);
 
   return {
-    industryMultiple,
-    industryMatched,
+    sdeMultiple,
+    sectorMatched,
+    floorMultiple,
+    ceilingMultiple,
     readiness,
     readinessPotential,
     appliedMultipleToday,

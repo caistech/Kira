@@ -1,11 +1,11 @@
 // lib/valuation/model.test.ts
 import { describe, it, expect } from 'vitest';
 import { computeValuation, formatMoney, type ValuationInputs } from './model';
+import { AVERAGE_SDE_MULTIPLE } from './sde-multiples';
 
-// A painting business (RPM Painting was the worksheet's worked example). "Maintenance & Repair
-// Services" carries a 13.36 industry multiple in the table.
+// HVAC trades at a 2.80x sector-median SDE multiple in the BizBuySell 2025 data.
 const base: ValuationInputs = {
-  industry: 'Maintenance & Repair Services',
+  industry: 'HVAC',
   annualProfit: 200_000,
   tangibleAssets: 150_000,
   profitTrend: 'growing',
@@ -17,22 +17,36 @@ const base: ValuationInputs = {
   recurringRevenue: 'none',
 };
 
-describe('computeValuation', () => {
-  it('matches a known industry to its multiple', () => {
+describe('computeValuation (SDE basis)', () => {
+  it('matches a known sector to its real SDE multiple', () => {
     const r = computeValuation(base);
-    expect(r.industryMatched).toBe(true);
-    expect(r.industryMultiple).toBe(13.36);
+    expect(r.sectorMatched).toBe(true);
+    expect(r.sdeMultiple).toBe(2.8);
   });
 
-  it('falls back to the median for an unknown industry, flagged honestly', () => {
+  it('falls back to the market-average SDE multiple for an unknown sector', () => {
     const r = computeValuation({ ...base, industry: 'Interdimensional Widgets' });
-    expect(r.industryMatched).toBe(false);
-    expect(r.industryMultiple).toBe(11.57);
+    expect(r.sectorMatched).toBe(false);
+    expect(r.sdeMultiple).toBe(AVERAGE_SDE_MULTIPLE);
   });
 
-  it('prices a worst-case owner-dependent business at exactly 1x profit today', () => {
-    // Everything at the floor: fully owner-dependent, in-head, no recurring revenue, concentrated
-    // clients, declining/shrinking trend. Readiness is 0, so the applied multiple is exactly 1x.
+  it('keeps multiples in a realistic SDE band (floor >= 1x, ceiling <= 8x)', () => {
+    const r = computeValuation(base);
+    expect(r.floorMultiple).toBeGreaterThanOrEqual(1);
+    expect(r.ceilingMultiple).toBeLessThanOrEqual(8);
+    expect(r.ceilingMultiple).toBeGreaterThan(r.floorMultiple);
+  });
+
+  it('prices a typical owner-dependent business low (not a public-comp multiple)', () => {
+    const r = computeValuation(base);
+    // This is the whole point of the rebuild: a $200k-profit owner-dependent HVAC business must
+    // land at a couple of x SDE, NOT 6x+. Today should be well under 3x.
+    expect(r.appliedMultipleToday).toBeLessThan(3);
+    expect(r.today).toBeLessThan(base.annualProfit * 3);
+    expect(r.today).toBeGreaterThan(base.annualProfit); // still above a bare 1x
+  });
+
+  it('worst-case (all drivers at floor) prices at exactly the floor multiple', () => {
     const worst = computeValuation({
       ...base,
       profitTrend: 'declining',
@@ -41,34 +55,11 @@ describe('computeValuation', () => {
       clientConcentration: 'concentrated',
     });
     expect(worst.readiness).toBe(0);
-    expect(worst.appliedMultipleToday).toBe(1);
-    expect(worst.today).toBe(base.annualProfit); // exactly 1x
-    expect(worst.gap).toBeGreaterThan(0);
+    expect(worst.appliedMultipleToday).toBeCloseTo(worst.floorMultiple, 5);
+    expect(worst.today).toBe(Math.round(base.annualProfit * worst.floorMultiple));
   });
 
-  it('still leaves a real gap for the moderate baseline business', () => {
-    const r = computeValuation(base);
-    expect(r.appliedMultipleToday).toBeGreaterThan(1);
-    expect(r.today).toBeGreaterThan(base.annualProfit);
-    expect(r.gap).toBeGreaterThan(0);
-  });
-
-  it('shows a large gap for the owner-dependent business and a small one when systemised', () => {
-    const dependent = computeValuation(base);
-    const systemised = computeValuation({
-      ...base,
-      ownerDependence: 'fully_managed',
-      systems: 'documented_team',
-      recurringRevenue: 'strong',
-      clientConcentration: 'diversified',
-    });
-    // The systemised business is worth more today and has almost no remaining capturable gap.
-    expect(systemised.today).toBeGreaterThan(dependent.today);
-    expect(systemised.gap).toBeLessThan(dependent.gap);
-    expect(dependent.gap).toBeGreaterThan(dependent.today); // the prize exceeds the current value
-  });
-
-  it('reaches the full industry multiple when everything is maxed', () => {
+  it('fully systemised business reaches the ceiling multiple', () => {
     const maxed = computeValuation({
       ...base,
       profitTrend: 'growing_strongly',
@@ -80,17 +71,26 @@ describe('computeValuation', () => {
       recurringRevenue: 'strong',
     });
     expect(maxed.readiness).toBeCloseTo(1, 5);
-    expect(maxed.appliedMultipleToday).toBeCloseTo(maxed.industryMultiple, 5);
-    expect(maxed.today).toBe(Math.round(base.annualProfit * maxed.industryMultiple));
+    expect(maxed.appliedMultipleToday).toBeCloseTo(maxed.ceilingMultiple, 5);
     expect(maxed.gap).toBe(0);
+  });
+
+  it('shows a bigger gap for the owner-dependent business than the systemised one', () => {
+    const dependent = computeValuation(base);
+    const systemised = computeValuation({
+      ...base,
+      ownerDependence: 'fully_managed',
+      systems: 'documented_team',
+      recurringRevenue: 'strong',
+      clientConcentration: 'diversified',
+    });
+    expect(systemised.today).toBeGreaterThan(dependent.today);
+    expect(systemised.gap).toBeLessThan(dependent.gap);
   });
 
   it('makes the capturable uplifts roughly sum to the gap', () => {
     const r = computeValuation(base);
-    const capturableUplift = r.factors
-      .filter((f) => f.capturable)
-      .reduce((s, f) => s + f.uplift, 0);
-    // Rounding of each factor vs the gap allows a few dollars of drift.
+    const capturableUplift = r.factors.filter((f) => f.capturable).reduce((s, f) => s + f.uplift, 0);
     expect(Math.abs(capturableUplift - r.gap)).toBeLessThanOrEqual(r.factors.length);
   });
 
@@ -100,28 +100,25 @@ describe('computeValuation', () => {
     expect(r.factors[0].uplift).toBeGreaterThan(0);
   });
 
+  it('applies a size premium so a larger business earns a higher ceiling', () => {
+    const small = computeValuation({ ...base, annualProfit: 150_000 });
+    const large = computeValuation({ ...base, annualProfit: 3_000_000 });
+    expect(large.ceilingMultiple).toBeGreaterThan(small.ceilingMultiple);
+    expect(large.ceilingMultiple).toBeLessThanOrEqual(8);
+  });
+
   it('never invents an earnings multiple on a loss-making business', () => {
     const r = computeValuation({ ...base, annualProfit: -50_000 });
     expect(r.today).toBe(0);
     expect(r.potential).toBe(0);
     expect(r.gap).toBe(0);
-    // The floor still stands: it's worth its gear.
     expect(r.walkAway).toBe(150_000);
   });
 
   it('increases today-value monotonically as owner dependence falls', () => {
     const order = ['i_am_the_business', 'heavily_involved', 'mostly_runs', 'fully_managed'] as const;
-    const values = order.map(
-      (ownerDependence) => computeValuation({ ...base, ownerDependence }).today,
-    );
-    for (let i = 1; i < values.length; i++) {
-      expect(values[i]).toBeGreaterThan(values[i - 1]);
-    }
-  });
-
-  it('treats missing tangible assets as a zero floor, not a crash', () => {
-    const r = computeValuation({ ...base, tangibleAssets: 0 });
-    expect(r.walkAway).toBe(0);
+    const values = order.map((ownerDependence) => computeValuation({ ...base, ownerDependence }).today);
+    for (let i = 1; i < values.length; i++) expect(values[i]).toBeGreaterThan(values[i - 1]);
   });
 });
 

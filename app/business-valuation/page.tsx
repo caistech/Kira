@@ -30,7 +30,7 @@ import {
   formatMoney,
   type ValuationInputs,
 } from '@/lib/valuation/model';
-import { INDUSTRY_MULTIPLES } from '@/lib/valuation/industry-multiples';
+import { SECTOR_MULTIPLES } from '@/lib/valuation/sde-multiples';
 
 type Answers = Partial<ValuationInputs>;
 
@@ -304,7 +304,7 @@ export default function BusinessValuationPage() {
                   autoFocus
                 />
                 <datalist id="kira-industries">
-                  {INDUSTRY_MULTIPLES.map((i) => (
+                  {SECTOR_MULTIPLES.map((i) => (
                     <option key={i.name} value={i.name} />
                   ))}
                 </datalist>
@@ -441,9 +441,9 @@ function ResultView({ result, answers }: { result: ReturnType<typeof computeValu
         <h1 className="font-display text-2xl sm:text-3xl font-bold text-stone-800">
           {noEarnings ? "Here's where your business stands" : "This is what your business could be worth"}
         </h1>
-        {!result.industryMatched && (
+        {!result.sectorMatched && (
           <p className="text-xs text-stone-500 mt-2">
-            We couldn't match your industry exactly, so we've used a sector-average multiple of {result.industryMultiple}×.
+            We couldn't match your industry to a sector benchmark, so we've used the overall market-average multiple (~{result.sdeMultiple}× SDE).
           </p>
         )}
       </div>
@@ -470,13 +470,13 @@ function ResultView({ result, answers }: { result: ReturnType<typeof computeValu
             <NumberCard
               label="Worth today"
               value={formatMoney(result.today)}
-              sub={`A buyer buying a job · ~${result.appliedMultipleToday.toFixed(1)}× profit`}
+              sub={`A buyer buying a job · ~${result.appliedMultipleToday.toFixed(1)}× SDE`}
               tone="today"
             />
             <NumberCard
               label="With your knowledge captured"
               value={formatMoney(result.potential)}
-              sub={`Runs & sells without you · ~${result.appliedMultiplePotential.toFixed(1)}× profit`}
+              sub={`Runs & sells without you · ~${result.appliedMultiplePotential.toFixed(1)}× SDE`}
               tone="genome"
             />
           </div>
@@ -544,9 +544,11 @@ function ResultView({ result, answers }: { result: ReturnType<typeof computeValu
       </div>
 
       <p className="text-xs text-stone-400 leading-relaxed">
-        This is an indicative estimate for guidance only, based on the figures you provided and sector-average
-        multiples — it is not a formal business valuation or financial advice. Real sale prices depend on many
-        factors specific to your business and buyer.
+        This is an indicative estimate for guidance only. It applies a multiple of your SDE (profit plus your own
+        pay), using real sector-median multiples from BizBuySell&apos;s 2025 small-business sale data (~9,500 closed
+        deals, market average ~2.5× SDE), adjusted for size, owner-dependence, recurring revenue, client
+        concentration and growth. It is not a formal business valuation or financial advice — real sale prices
+        depend on many factors specific to your business and buyer.
       </p>
     </div>
   );
