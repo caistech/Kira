@@ -397,19 +397,19 @@ export default function KiraLandingPage() {
         </div>
       </section>
 
-      {/* The Offer */}
+      {/* The Offer — see the number first, then a plan priced to it */}
       <section id="pricing" className="bg-white py-24">
         <div className="max-w-3xl mx-auto px-6 text-center">
           <div className="fun-border rounded-3xl p-10 lg:p-14 bg-gradient-to-br from-amber-50 to-pink-50">
-            <span className="text-6xl mb-6 block">🎉</span>
-            <h2 className="font-display text-4xl lg:text-5xl font-bold text-stone-800 mb-6">Create your Kira. <span className="bg-gradient-to-r from-amber-500 to-pink-500 bg-clip-text text-transparent">Free.</span></h2>
+            <span className="text-6xl mb-6 block">💷</span>
+            <h2 className="font-display text-4xl lg:text-5xl font-bold text-stone-800 mb-6">See the number. <span className="bg-gradient-to-r from-amber-500 to-pink-500 bg-clip-text text-transparent">Then decide.</span></h2>
             <div className="font-body text-xl text-stone-600 leading-relaxed space-y-4 mb-10">
-              <p>30 days free. No credit card. Just start talking and see if it clicks.</p>
-              <p>If it works, keep going for <span className="font-bold text-stone-800 text-2xl">$12/month</span>.</p>
-              <p>If it doesn't, Kira will want to know why. Honestly.</p>
+              <p>The valuation is free — no sign-up, no card. It shows you the gap in about 3 minutes.</p>
+              <p>If you want Kira to close it, the plan is priced to <span className="font-semibold text-stone-800">a fraction of what you stand to unlock</span> — and starts with <span className="font-bold text-stone-800">7 days free</span>.</p>
+              <p>No gap, no pressure. The number is yours to keep either way.</p>
             </div>
-            <a href="/start" className="font-display gradient-coral text-white px-10 py-5 rounded-full text-xl font-bold hover-pop shadow-xl shadow-pink-200 inline-block">Create Your Kira — Free ✨</a>
-            <p className="font-body text-stone-400 text-sm mt-4">Your personalized Kira in under 5 minutes ⚡</p>
+            <a href="/business-valuation" className="font-display gradient-coral text-white px-10 py-5 rounded-full text-xl font-bold hover-pop shadow-xl shadow-pink-200 inline-block">What&apos;s my business worth? →</a>
+            <p className="font-body text-stone-400 text-sm mt-4">Free · no sign-up · your indicative valuation in 3 minutes ⚡</p>
           </div>
         </div>
       </section>
@@ -422,7 +422,7 @@ export default function KiraLandingPage() {
             {[
               { q: "What do you mean 'my own Kira'?", a: "When you start, you'll have a quick conversation with Setup Kira. She learns what you're working on, your context, and what success looks like. Then we create a unique Kira agent just for you — one that knows your situation from day one." },
               { q: "What can Kira actually help with?", a: "Anything you'd work through with a smart, thoughtful friend. Career decisions, business strategy, trip planning, learning goals, hard conversations — she's a generalist who asks good questions and thinks with you." },
-              { q: "Is she really free?", a: "For 30 days, yes. No credit card, no catch. After that it's $12/month if you want to keep going." },
+              { q: "What does it cost?", a: "The valuation is completely free — no sign-up, no card. If you want Kira to help close the gap, the business plan starts with a 7-day free trial, then a monthly price set to a small fraction of the value you saw. You'll see the exact figure before you enter any card details, and you can cancel anytime." },
               { q: "What if she gets something wrong?", a: "She will sometimes. When that happens, tell her. She'll adjust and do better. That's how this partnership works." },
               { q: "Is this like ChatGPT?", a: "Kira uses AI, but she's built to be YOUR guide, not a generic answer machine. She knows your specific context, asks questions before jumping to answers, and is designed for ongoing thinking partnerships — not one-off queries." },
               { q: "What happens to my conversations?", a: "They stay private. Kira learns from your conversations to help you better, but your data isn't shared or sold. Ever." },

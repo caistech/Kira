@@ -78,6 +78,8 @@ export async function POST(request: NextRequest) {
         quoted_monthly: String(quote.monthly),
       },
       subscription_data: {
+        // A real free trial so the "start free" promise is honest - no charge today.
+        trial_period_days: 7,
         metadata: { kira_journey: 'business' },
       },
       success_url: `${base}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
