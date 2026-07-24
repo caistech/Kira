@@ -77,6 +77,21 @@ jobs:
 
       - name: Build
         run: npm run build --if-present
+        # Placeholder build-time env so `next build` can CONSTRUCT clients during prerender / page-data
+        # collection without real secrets (CI has none). Values are dummy — the build only constructs
+        # clients, it never calls them; runtime uses the real Vercel env. This CI build is a compile
+        # check only and is never deployed. Add a key here if a future module-load construction breaks
+        # the build. (Longer term, prefer lazy client init over module-load construction — see the
+        # Stripe getStripe() pattern.)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
+          NEXT_PUBLIC_APP_URL: https://kira.vercel.app
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_placeholder
+          STRIPE_SECRET_KEY: sk_test_placeholder
+          STRIPE_WEBHOOK_SECRET: whsec_placeholder
+          ELEVENLABS_API_KEY: placeholder-elevenlabs-key
 
       - name: Verify preview URL is set
         run: |
