@@ -5,6 +5,7 @@
 import { redirect } from 'next/navigation';
 import { getAuthUser, getCurrentAppUser } from '@/lib/auth';
 import { PortalShell, type NavItem } from '@/components/PortalShell';
+import { TalkFab } from '@/components/TalkFab';
 
 const USER_NAV: NavItem[] = [
   { href: '/dashboard', label: 'My Kiras' },
@@ -19,6 +20,8 @@ export async function UserShell({ children }: { children: React.ReactNode }) {
   return (
     <PortalShell title="Kira" homeHref="/dashboard" items={USER_NAV} userEmail={authUser.email ?? ''}>
       {children}
+      {/* Always-there one-tap mic — Siri-simple access from anywhere in the portal. */}
+      <TalkFab />
     </PortalShell>
   );
 }
