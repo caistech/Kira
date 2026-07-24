@@ -159,20 +159,21 @@ export default function PlanPage() {
               <p className="text-white/80 font-medium">You could unlock</p>
               <p className="font-display text-4xl sm:text-5xl font-bold mt-1">{money(model.result.gap)}</p>
               <p className="text-white/90 max-w-lg mx-auto mt-4 leading-relaxed">
-                Kira is <span className="font-bold">{money(model.quote.monthly)}/month</span> — about <span className="font-bold">{model.quote.fractionOfGapPct}</span> a year of what you stand to unlock. Plus the time, the calm and the handover you can&apos;t put a number on.
+                Kira is <span className="font-bold">{money(model.quote.monthly)}/month</span> (free for the first 7 days) — about <span className="font-bold">{model.quote.fractionOfGapPct}</span> a year of what you stand to unlock. Plus the time, the calm and the handover you can&apos;t put a number on.
               </p>
             </div>
 
             <div className="mt-8 bg-white rounded-3xl p-8 border-2 border-violet-200 shadow-sm max-w-lg mx-auto text-center">
               <span className="text-xs font-body uppercase tracking-wider text-violet-500 font-semibold">{model.quote.label} plan</span>
               <p className="font-display text-4xl font-bold text-stone-800 mt-2">{money(model.quote.monthly)}<span className="text-lg text-stone-400 font-body">/month</span></p>
+              <p className="text-sm text-stone-500 mt-1">Free for 7 days. Then {money(model.quote.monthly)}/month — cancel anytime.</p>
               <ul className="text-left space-y-2.5 my-6 text-stone-700">
                 {[
+                  '7 days free — no charge today',
                   'Always-on Kira — talk anytime, she remembers everything',
-                  'The orchestrator + agent swarm doing the real work',
-                  'Your Business Genome, captured and yours to keep',
-                  'Mnemo fast recall + Memory Governance data protection',
-                  'Cancel anytime',
+                  'Kira quietly captures your know-how into a Business Genome',
+                  'Your knowledge stays private and yours to keep',
+                  'Cancel anytime before day 7 and pay nothing',
                 ].map((f, i) => (
                   <li key={i} className="flex items-start gap-2.5 text-sm"><Check className="h-4 w-4 text-violet-500 mt-0.5 flex-shrink-0" /> {f}</li>
                 ))}
@@ -182,10 +183,12 @@ export default function PlanPage() {
                 disabled={loading}
                 className="grad-coral text-white font-display font-bold px-8 py-4 rounded-full text-lg inline-flex items-center gap-2 min-h-[52px] shadow-lg shadow-pink-200 w-full justify-center disabled:opacity-60"
               >
-                {loading ? <><Loader2 className="h-5 w-5 animate-spin" /> Starting…</> : <>Start my 4-week plan <ArrowRight className="h-5 w-5" /></>}
+                {loading ? <><Loader2 className="h-5 w-5 animate-spin" /> Starting…</> : <>Start free — 7 days <ArrowRight className="h-5 w-5" /></>}
               </button>
               {error && <p className="text-rose-600 text-sm mt-3">{error}</p>}
-              <p className="text-xs text-stone-400 mt-3">Secure checkout by Stripe. You set your password and meet Kira right after.</p>
+              <p className="text-xs text-stone-400 mt-3">
+                Secure checkout by Stripe · billed by Corporate AI Solutions. Free for 7 days, then {money(model.quote.monthly)}/month — cancel anytime. You set your password and meet Kira right after.
+              </p>
             </div>
           </section>
 

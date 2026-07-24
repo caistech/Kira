@@ -61,7 +61,7 @@ const STEPS: Step[] = [
     icon: <TrendingUp className="h-6 w-6" />,
     title: "Roughly what's your annual turnover?",
     help: 'Total sales - everything the business invoices or takes in over a year, before any costs come out. We ask about profit on the next screen.',
-    placeholder: 'e.g. 2000000 (total sales)',
+    placeholder: 'e.g. 2,000,000',
   },
   {
     id: 'annualProfit',
@@ -69,7 +69,7 @@ const STEPS: Step[] = [
     icon: <TrendingUp className="h-6 w-6" />,
     title: "And what's your annual PROFIT?",
     help: "What's left after all costs, plus the salary and perks you pay yourself (often called SDE). Not turnover - the smaller number you actually keep. This is what the valuation runs on.",
-    placeholder: 'e.g. 200000 (profit, not sales)',
+    placeholder: 'e.g. 200,000',
   },
   {
     id: 'profitTrend',
@@ -175,11 +175,22 @@ export default function BusinessValuationPage() {
   const [industryQuery, setIndustryQuery] = useState('');
   const [voiceOpen, setVoiceOpen] = useState(false);
   // Currency is display-only (the valuation math is a multiple of profit). Start on the SSR-safe
-  // default, then detect from the browser locale on mount; the owner can override.
+  // default, then use the owner's saved choice or the detected locale on mount. Persist any override
+  // so it doesn't reset between questions.
   const [currency, setCurrency] = useState('USD');
   useEffect(() => {
-    setCurrency(detectCurrency());
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem('kira_currency');
+    } catch {}
+    setCurrency(saved || detectCurrency());
   }, []);
+  const changeCurrency = (c: string) => {
+    setCurrency(c);
+    try {
+      localStorage.setItem('kira_currency', c);
+    } catch {}
+  };
   const currencySymbol = getCurrency(currency).symbol;
 
   const total = STEPS.length;
@@ -253,7 +264,7 @@ export default function BusinessValuationPage() {
             <span className="hidden sm:inline">Currency</span>
             <select
               value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
+              onChange={(e) => changeCurrency(e.target.value)}
               aria-label="Display currency"
               className="rounded-lg border border-amber-200 bg-white px-2 py-1.5 text-stone-700 min-h-[36px] focus:border-pink-400 focus:outline-none"
             >
@@ -271,7 +282,7 @@ export default function BusinessValuationPage() {
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-5 py-8 sm:py-12">
+      <main className="max-w-3xl mx-auto px-5 py-8 sm:py-12 pb-32">
         {/* Explanatory header (persists across steps) */}
         {!isResult && (
           <div className="mb-8">
@@ -318,28 +329,49 @@ export default function BusinessValuationPage() {
             <h2 className="font-display text-xl sm:text-2xl font-bold text-stone-800 mt-4 mb-2">{step.title}</h2>
             <p className="text-stone-500 text-sm sm:text-base mb-7 leading-relaxed">{step.help}</p>
 
-            {/* Industry */}
-            {step.kind === 'industry' && (
-              <div>
-                <input
-                  list="kira-industries"
-                  value={industryQuery}
-                  onChange={(e) => {
-                    setIndustryQuery(e.target.value);
-                    setAnswer('industry', e.target.value);
-                  }}
-                  placeholder="Start typing your industry…"
-                  className="w-full text-base rounded-2xl border-2 border-amber-200 focus:border-pink-400 focus:outline-none px-4 py-4 min-h-[52px] bg-amber-50/40"
-                  autoFocus
-                />
-                <datalist id="kira-industries">
-                  {SECTOR_MULTIPLES.map((i) => (
-                    <option key={i.name} value={i.name} />
-                  ))}
-                </datalist>
-                <p className="text-xs text-stone-400 mt-2">Can't find an exact match? Pick the closest — we'll use a sensible sector average.</p>
-              </div>
-            )}
+            {/* Industry — filtered dropdown (a real picker, not a fickle datalist) */}
+            {step.kind === 'industry' && (() => {
+              const q = industryQuery.trim().toLowerCase();
+              const matches = (q
+                ? SECTOR_MULTIPLES.filter((s) => s.name.toLowerCase().includes(q) || s.group.toLowerCase().includes(q))
+                : SECTOR_MULTIPLES
+              ).slice(0, 8);
+              const exact = SECTOR_MULTIPLES.some((s) => s.name.toLowerCase() === q);
+              return (
+                <div>
+                  <input
+                    value={industryQuery}
+                    onChange={(e) => {
+                      setIndustryQuery(e.target.value);
+                      setAnswer('industry', e.target.value);
+                    }}
+                    placeholder="Start typing your industry…"
+                    className="w-full text-base rounded-2xl border-2 border-amber-200 focus:border-pink-400 focus:outline-none px-4 py-4 min-h-[52px] bg-amber-50/40"
+                    autoFocus
+                    autoComplete="off"
+                  />
+                  {industryQuery && !exact && matches.length > 0 && (
+                    <div className="mt-2 rounded-2xl border border-amber-200 bg-white overflow-hidden max-h-64 overflow-y-auto shadow-sm">
+                      {matches.map((s) => (
+                        <button
+                          key={s.name}
+                          type="button"
+                          onClick={() => {
+                            setIndustryQuery(s.name);
+                            setAnswer('industry', s.name);
+                          }}
+                          className="w-full text-left px-4 py-3 min-h-[44px] hover:bg-amber-50 flex items-center justify-between gap-3 border-b border-amber-50 last:border-0"
+                        >
+                          <span className="text-stone-800">{s.name}</span>
+                          <span className="text-xs text-stone-400 flex-shrink-0">{s.group}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-xs text-stone-400 mt-2">Pick the closest match from the list — we&apos;ll use its sector-average multiple.</p>
+                </div>
+              );
+            })()}
 
             {/* Money */}
             {step.kind === 'money' && (
