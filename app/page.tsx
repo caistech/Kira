@@ -151,7 +151,7 @@ export default function KiraLandingPage() {
             </h1>
 
             <p className={`font-body text-lg lg:text-xl text-stone-600 max-w-2xl mx-auto mb-6 leading-relaxed ${isVisible ? 'fade-up fade-up-delay-2' : 'opacity-0'}`}>
-              Most owners find out the hard way that a business runs on knowledge that lives only in their head — so a buyer pays for a <span className="font-semibold text-stone-800">job, not an asset.</span> Kira captures that knowledge into a <span className="font-semibold text-violet-600">Business Genome</span>, so your business becomes transferable — and worth far more.
+              Most owners find out the hard way that a business runs on knowledge that lives only in their head — so a buyer pays for a <span className="font-semibold text-stone-800">job, not an asset.</span> Kira — <span className="font-semibold text-stone-800">your fractional exec</span> — captures that knowledge into a <span className="font-semibold text-violet-600">Business Genome</span>, so your business becomes transferable — and worth far more.
             </p>
 
             <div className={`flex flex-col sm:flex-row items-center justify-center gap-4 ${isVisible ? 'fade-up fade-up-delay-3' : 'opacity-0'}`}>
