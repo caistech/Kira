@@ -1,7 +1,8 @@
 // lib/valuation/model.test.ts
 import { describe, it, expect } from 'vitest';
-import { computeValuation, formatMoney, type ValuationInputs } from './model';
+import { computeValuation, buildBuyerRationale, type ValuationInputs } from './model';
 import { AVERAGE_SDE_MULTIPLE } from './sde-multiples';
+import { formatMoney } from './currency';
 
 // HVAC trades at a 2.80x sector-median SDE multiple in the BizBuySell 2025 data.
 const base: ValuationInputs = {
@@ -122,9 +123,43 @@ describe('computeValuation (SDE basis)', () => {
   });
 });
 
+describe('buildBuyerRationale', () => {
+  it('gives the full risk narrative (car analogy) for a low-readiness business', () => {
+    const r = buildBuyerRationale(computeValuation(base));
+    const text = r.paragraphs.join(' ').toLowerCase();
+    expect(text).toContain('car'); // the sight-unseen analogy lands at low readiness
+    expect(text).toContain('risk');
+  });
+
+  it('gives a de-risked narrative for a fully systemised business', () => {
+    const systemised = computeValuation({
+      ...base,
+      profitTrend: 'growing_strongly',
+      marginTrend: 'improving',
+      clientTrend: 'expanding',
+      clientConcentration: 'diversified',
+      ownerDependence: 'fully_managed',
+      systems: 'documented_team',
+      recurringRevenue: 'strong',
+    });
+    const text = buildBuyerRationale(systemised).paragraphs.join(' ').toLowerCase();
+    expect(text).toContain('hard part');
+  });
+
+  it('handles a loss-making business without inventing a multiple story', () => {
+    const r = buildBuyerRationale(computeValuation({ ...base, annualProfit: -50_000 }));
+    expect(r.title).toBe('How a buyer sees it');
+    expect(r.paragraphs.join(' ')).toContain('assets');
+  });
+});
+
 describe('formatMoney', () => {
-  it('formats AUD with no cents', () => {
+  it('defaults to USD with no cents', () => {
     expect(formatMoney(1900000)).toBe('$1,900,000');
     expect(formatMoney(0)).toBe('$0');
+  });
+  it('formats other currencies', () => {
+    expect(formatMoney(1900000, 'GBP')).toBe('£1,900,000');
+    expect(formatMoney(1900000, 'EUR')).toContain('1,900,000');
   });
 });

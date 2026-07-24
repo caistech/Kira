@@ -27,10 +27,11 @@ import {
 } from 'lucide-react';
 import {
   computeValuation,
-  formatMoney,
+  buildBuyerRationale,
   type ValuationInputs,
 } from '@/lib/valuation/model';
 import { SECTOR_MULTIPLES } from '@/lib/valuation/sde-multiples';
+import { formatMoney, detectCurrency, getCurrency, CURRENCIES } from '@/lib/valuation/currency';
 
 type Answers = Partial<ValuationInputs>;
 
@@ -172,6 +173,13 @@ export default function BusinessValuationPage() {
   const [answers, setAnswers] = useState<Answers>({});
   const [industryQuery, setIndustryQuery] = useState('');
   const [voiceOpen, setVoiceOpen] = useState(false);
+  // Currency is display-only (the valuation math is a multiple of profit). Start on the SSR-safe
+  // default, then detect from the browser locale on mount; the owner can override.
+  const [currency, setCurrency] = useState('USD');
+  useEffect(() => {
+    setCurrency(detectCurrency());
+  }, []);
+  const currencySymbol = getCurrency(currency).symbol;
 
   const total = STEPS.length;
   const isIntro = stepIndex === -1;
@@ -234,7 +242,21 @@ export default function BusinessValuationPage() {
           <a href="/" className="font-display font-bold text-xl bg-gradient-to-r from-amber-500 via-pink-500 to-violet-500 bg-clip-text text-transparent">
             Kira
           </a>
-          <span className="text-xs text-stone-500 font-body hidden sm:block">Business valuation · indicative</span>
+          <label className="flex items-center gap-1.5 text-xs text-stone-500 font-body">
+            <span className="hidden sm:inline">Currency</span>
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              aria-label="Display currency"
+              className="rounded-lg border border-amber-200 bg-white px-2 py-1.5 text-stone-700 min-h-[36px] focus:border-pink-400 focus:outline-none"
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.code}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
         {/* Progress */}
         <div className="h-1.5 w-full bg-amber-100">
@@ -315,7 +337,7 @@ export default function BusinessValuationPage() {
             {/* Money */}
             {step.kind === 'money' && (
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 text-lg">$</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 text-lg">{currencySymbol}</span>
                 <input
                   type="number"
                   inputMode="numeric"
@@ -332,20 +354,20 @@ export default function BusinessValuationPage() {
                   if (turnover && profit && profit > turnover) {
                     return (
                       <p className="text-xs text-rose-600 mt-2 leading-relaxed">
-                        That&apos;s higher than the turnover you entered ({formatMoney(turnover)}). Profit is what you keep <em>after</em> costs, so it should be lower than turnover — did you mean to enter sales here?
+                        That&apos;s higher than the turnover you entered ({formatMoney(turnover, currency)}). Profit is what you keep <em>after</em> costs, so it should be lower than turnover — did you mean to enter sales here?
                       </p>
                     );
                   }
                   if (turnover && profit && profit > 0) {
                     return (
                       <p className="text-xs text-stone-500 mt-2 leading-relaxed">
-                        That&apos;s a <strong>{Math.round((profit / turnover) * 100)}% margin</strong> on the {formatMoney(turnover)} turnover you entered. Looks right? Profit is the smaller number you keep after all costs and your own pay.
+                        That&apos;s a <strong>{Math.round((profit / turnover) * 100)}% margin</strong> on the {formatMoney(turnover, currency)} turnover you entered. Looks right? Profit is the smaller number you keep after all costs and your own pay.
                       </p>
                     );
                   }
                   return (
                     <p className="text-xs text-stone-500 mt-2 leading-relaxed">
-                      <strong>Profit, not sales.</strong> If the business turned over {turnover ? formatMoney(turnover) : '$2M'} but you kept $200k after costs and your own pay, enter <strong>$200,000</strong>.
+                      <strong>Profit, not sales.</strong> If the business turned over {turnover ? formatMoney(turnover, currency) : `${currencySymbol}2M`} but you kept {currencySymbol}200k after costs and your own pay, enter <strong>{currencySymbol}200,000</strong>.
                     </p>
                   );
                 })()}
@@ -401,7 +423,7 @@ export default function BusinessValuationPage() {
         )}
 
         {/* RESULT */}
-        {isResult && result && <ResultView result={result} answers={answers as ValuationInputs} />}
+        {isResult && result && <ResultView result={result} currency={currency} />}
       </main>
 
       {/* Voice clarifier (reachable, degrades cleanly when unconfigured) */}
@@ -427,10 +449,12 @@ export default function BusinessValuationPage() {
   );
 }
 
-function ResultView({ result, answers }: { result: ReturnType<typeof computeValuation>; answers: ValuationInputs }) {
+function ResultView({ result, currency }: { result: ReturnType<typeof computeValuation>; currency: string }) {
+  const money = (n: number) => formatMoney(n, currency);
   const noEarnings = result.today === 0 && result.potential === 0;
   const capturable = result.factors.filter((f) => f.capturable && f.uplift > 0);
   const readinessPct = Math.round(result.readiness * 100);
+  const rationale = buildBuyerRationale(result);
 
   return (
     <div className="space-y-8">
@@ -452,7 +476,7 @@ function ResultView({ result, answers }: { result: ReturnType<typeof computeValu
         <div className="bg-white rounded-3xl p-7 border border-amber-100 shadow-sm">
           <p className="text-stone-700 leading-relaxed">
             On the figures you entered, the business isn't currently throwing off a profit a buyer can bank —
-            so today it's valued mainly on its assets: <strong>{formatMoney(result.walkAway)}</strong>. The
+            so today it's valued mainly on its assets: <strong>{money(result.walkAway)}</strong>. The
             opportunity is to build transferable, documented earnings that a buyer will pay a multiple for.
             That's exactly what capturing your operating knowledge into a Business Genome sets up.
           </p>
@@ -463,19 +487,19 @@ function ResultView({ result, answers }: { result: ReturnType<typeof computeValu
           <div className="grid gap-4 sm:grid-cols-3">
             <NumberCard
               label="Walk away"
-              value={formatMoney(result.walkAway)}
+              value={money(result.walkAway)}
               sub="Sell the gear, close the doors"
               tone="floor"
             />
             <NumberCard
               label="Worth today"
-              value={formatMoney(result.today)}
+              value={money(result.today)}
               sub={`A buyer buying a job · ~${result.appliedMultipleToday.toFixed(1)}× SDE`}
               tone="today"
             />
             <NumberCard
               label="With your knowledge captured"
-              value={formatMoney(result.potential)}
+              value={money(result.potential)}
               sub={`Runs & sells without you · ~${result.appliedMultiplePotential.toFixed(1)}× SDE`}
               tone="genome"
             />
@@ -484,7 +508,7 @@ function ResultView({ result, answers }: { result: ReturnType<typeof computeValu
           {/* The gap headline */}
           <div className="grad-genome rounded-3xl p-7 sm:p-9 text-white shadow-lg">
             <p className="text-white/80 font-medium mb-1">The value locked inside your head right now</p>
-            <p className="font-display text-4xl sm:text-5xl font-bold mb-3">{formatMoney(result.gap)}</p>
+            <p className="font-display text-4xl sm:text-5xl font-bold mb-3">{money(result.gap)}</p>
             <p className="text-white/90 leading-relaxed max-w-xl">
               That's the difference between selling a job and selling an asset. It isn't extra hustle — it's the
               systems, relationships and know-how that today live only in your memory. Capture them into a
@@ -493,6 +517,16 @@ function ResultView({ result, answers }: { result: ReturnType<typeof computeValu
             </p>
             <div className="mt-4 inline-flex items-center gap-2 text-sm bg-white/15 rounded-full px-4 py-1.5">
               <Brain className="h-4 w-4" /> Transferability score: {readinessPct}/100
+            </div>
+          </div>
+
+          {/* Buyer-risk rationale - why the multiple is what it is, adapted to the outcome */}
+          <div className="bg-white rounded-3xl p-7 sm:p-8 border border-amber-100 shadow-sm">
+            <h2 className="font-display text-xl font-bold text-stone-800 mb-4">{rationale.title}</h2>
+            <div className="space-y-3">
+              {rationale.paragraphs.map((p, i) => (
+                <p key={i} className="text-stone-600 leading-relaxed">{p}</p>
+              ))}
             </div>
           </div>
 
@@ -508,7 +542,7 @@ function ResultView({ result, answers }: { result: ReturnType<typeof computeValu
                       <p className="text-sm text-stone-600 mt-1 leading-relaxed">{f.reason}</p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className="font-display font-bold text-lg text-pink-600">+{formatMoney(f.uplift)}</p>
+                      <p className="font-display font-bold text-lg text-pink-600">+{money(f.uplift)}</p>
                       <p className="text-xs text-stone-400">once captured</p>
                     </div>
                   </div>

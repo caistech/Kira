@@ -249,11 +249,87 @@ export function computeValuation(inputs: ValuationInputs): ValuationResult {
   };
 }
 
-/** Format a dollar figure the way it appears on the result screen (AUD, no cents). */
-export function formatMoney(n: number): string {
-  return new Intl.NumberFormat('en-AU', {
-    style: 'currency',
-    currency: 'AUD',
-    maximumFractionDigits: 0,
-  }).format(Math.round(n));
+// --- Buyer-risk narrative ---------------------------------------------------------------------
+//
+// The gap isn't "you're being short-changed" - it's that a buyer prices RISK. The less of the
+// business they can see (systems in your head, revenue that depends on you), the more they discount
+// for the unknowns, exactly like buying a car sight-unseen on the seller's word. This narrative
+// makes that concrete and adapts to the owner's result: a weak, owner-dependent business gets the
+// full risk story; a systemised one gets "you've made it visible, so there's little left to discount."
+
+export interface BuyerRationale {
+  title: string;
+  paragraphs: string[];
+}
+
+const WEAKNESS_PHRASE: Record<string, string> = {
+  ownerDependence: 'the business runs on you',
+  systems: 'the know-how lives in your head, not on paper',
+  recurringRevenue: "there's little locked-in revenue to count on",
+  clientConcentration: 'revenue leans on a few relationships you personally hold',
+};
+
+function joinPhrases(items: string[]): string {
+  if (items.length === 0) return '';
+  if (items.length === 1) return items[0];
+  return items.slice(0, -1).join(', ') + ' and ' + items[items.length - 1];
+}
+
+export function buildBuyerRationale(result: ValuationResult): BuyerRationale {
+  if (result.today === 0) {
+    return {
+      title: 'How a buyer sees it',
+      paragraphs: [
+        "A buyer pays for profit they can count on continuing after you leave. On the figures you entered there isn't a profit for them to bank yet, so the business is valued on what its assets would fetch.",
+        'The opportunity is to build documented, transferable earnings - that is what turns it from an asset sale into a business a buyer will pay a multiple for.',
+      ],
+    };
+  }
+
+  const weak = joinPhrases(
+    result.factors
+      .filter((f) => f.capturable && f.score < 1)
+      .slice(0, 2)
+      .map((f) => WEAKNESS_PHRASE[f.key])
+      .filter(Boolean),
+  );
+
+  const opener =
+    "A buyer isn't really paying for last year's profit - they're paying for how confident they can be it keeps coming in once you're gone. So what they actually price is risk.";
+
+  const band = result.readiness < 0.34 ? 'low' : result.readiness < 0.67 ? 'mid' : 'high';
+
+  if (band === 'low') {
+    return {
+      title: 'Why the number is what it is',
+      paragraphs: [
+        opener,
+        `Right now they would look at your business and see that ${weak}. From the outside most of that is invisible - they are taking your word for how it all holds together.`,
+        "It is the same as buying a car sight unseen on the seller's promises: you would knock the price down to cover the unknown unknowns, because you are the one who wears it if things turn out worse than described. A buyer does exactly that here - which is why the multiple sits below your sector's average, not at it.",
+        "The more of that you make visible and transferable - documented, systemised, running without you - the less there is to discount for. The gap above isn't extra profit; it's risk you have taken off the buyer's table.",
+      ],
+    };
+  }
+
+  if (band === 'mid') {
+    return {
+      title: 'Why the number is what it is',
+      paragraphs: [
+        opener,
+        `You have made part of the business visible, but ${weak || 'some of how it runs'} is still largely in your head. A buyer can't verify what they can't see, so they hold back part of the multiple as contingency for it.`,
+        "Think of buying a car: the more service history and inspection you can show, the closer to full price it goes; the parts you can't prove, the buyer discounts for. Close those remaining gaps and the contingency shrinks - that is the difference between today's number and the captured one.",
+      ],
+    };
+  }
+
+  return {
+    title: 'Why the number is what it is',
+    paragraphs: [
+      opener,
+      'You have done the hard part. A buyer can largely see how this business runs without you, so there is little left for them to discount for the unknown - which is why you are near the top of what your sector commands.',
+      weak
+        ? `The small remaining gap is ${weak}. Tidy that and there is almost nothing left for a buyer to hold back.`
+        : 'There is almost nothing left for a buyer to hold back - this reads as an asset, not a job.',
+    ],
+  };
 }
