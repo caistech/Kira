@@ -1,7 +1,7 @@
 import { getAuthUser, getCurrentAppUser } from '@/lib/auth';
 import { PasswordChange } from '@/components/PasswordChange';
 import { DeleteAccount } from '@/components/DeleteAccount';
-import { updateProfile } from './actions';
+import { updateProfile, updateNotifications } from './actions';
 
 export const metadata = { title: 'Settings · Kira' };
 export const dynamic = 'force-dynamic';
@@ -59,6 +59,35 @@ export default async function SettingsPage() {
         <div className="mt-4">
           <PasswordChange />
         </div>
+      </section>
+
+      <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-6">
+        <h2 className="text-lg font-semibold text-gray-900">Notifications</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Choose what Kira emails you. You can change this any time.
+        </p>
+        <form action={updateNotifications} className="mt-4 space-y-4">
+          <label className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              name="email_notifications_opt_in"
+              defaultChecked={appUser?.email_notifications_opt_in ?? true}
+              className="mt-1 h-5 w-5 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+            />
+            <span>
+              <span className="block text-sm font-medium text-gray-900">Email updates</span>
+              <span className="block text-sm text-gray-500">
+                Product updates, tips, and occasional check-ins about your Kira.
+              </span>
+            </span>
+          </label>
+          <button
+            type="submit"
+            className="rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-700"
+          >
+            Save notifications
+          </button>
+        </form>
       </section>
 
       <section className="rounded-2xl border border-red-200 bg-white p-6">

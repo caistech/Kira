@@ -1,36 +1,14 @@
 {
-  "baseUrl": "https://kira.vercel.app",
+  "baseUrl": "https://kira-rho.vercel.app",
   "routes": [
-    {
-      "path": "/"
-    },
-    {
-      "path": "/pricing"
-    },
-    {
-      "path": "/about"
-    },
-    {
-      "path": "/contact"
-    },
-    {
-      "path": "/login"
-    },
-    {
-      "path": "/signup"
-    },
-    {
-      "path": "/forgot-password"
-    },
-    {
-      "path": "/privacy"
-    },
-    {
-      "path": "/terms"
-    },
-    {
-      "path": "/api/health",
-      "expectedStatus": 200
-    }
+    { "path": "/" },
+    { "path": "/about" },
+    { "path": "/business-valuation" },
+    { "path": "/pricing" },
+    { "path": "/pubguard" },
+    { "path": "/login" },
+    { "path": "/signup" },
+    { "path": "/admin/login" },
+    { "path": "/api/health", "expectedStatus": 200 }
   ]
 }

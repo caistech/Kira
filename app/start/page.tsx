@@ -43,6 +43,15 @@ export default function StartPage() {
   // user's draft. Falls back to the time-window poll until it's available (no onboarding regression).
   const [convId, setConvId] = useState<string | null>(null);
 
+  // Text fallback state (for users with no mic / who'd rather type) — PRODUCT_STANDARDS "degrade,
+  // don't fake". Produces the same kira_drafts row the voice path does, then goes to the review page.
+  const [showTextForm, setShowTextForm] = useState(false);
+  const [textName, setTextName] = useState('');
+  const [textLocation, setTextLocation] = useState('');
+  const [textObjective, setTextObjective] = useState('');
+  const [textSubmitting, setTextSubmitting] = useState(false);
+  const [textError, setTextError] = useState<string | null>(null);
+
   // Refs for cleanup
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -176,6 +185,35 @@ export default function StartPage() {
   const goToReviewDraft = () => {
     if (currentDraft) {
       router.push(`/setup/draft/${currentDraft.id}`);
+    }
+  };
+
+  // Text fallback: create the same draft the voice agent would, then go straight to the review page.
+  const submitTextBrief = async () => {
+    if (!selectedJourney) return;
+    setTextError(null);
+    if (!textName.trim() || !textLocation.trim() || !textObjective.trim()) {
+      setTextError('Please add your name, your location, and what you want to work on.');
+      return;
+    }
+    setTextSubmitting(true);
+    try {
+      const res = await fetch('/api/kira/draft/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_name: textName.trim(),
+          location: textLocation.trim(),
+          journey_type: selectedJourney,
+          primary_objective: textObjective.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not save your brief.');
+      router.push(`/setup/draft/${data.draftId}`);
+    } catch (err) {
+      setTextError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      setTextSubmitting(false);
     }
   };
 
@@ -389,6 +427,88 @@ export default function StartPage() {
                   </>
                 )}
               </button>
+            </div>
+
+            {/* Text fallback — no mic, noisy room, or just prefer to type */}
+            <div className="mt-6 border-t border-stone-800 pt-6">
+              {!showTextForm ? (
+                <div className="text-center">
+                  <button
+                    onClick={() => {
+                      setShowTextForm(true);
+                      setTextError(null);
+                    }}
+                    className="text-stone-400 hover:text-amber-300 text-sm underline underline-offset-4 transition-colors"
+                  >
+                    No microphone, or prefer to type? Write your brief instead
+                  </button>
+                </div>
+              ) : (
+                <div className="max-w-xl mx-auto space-y-4">
+                  <div>
+                    <h3 className="text-white font-semibold">Type your brief</h3>
+                    <p className="text-stone-400 text-sm">
+                      A few lines is enough — you can refine everything on the next screen before creating your Kira.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-stone-300 text-sm mb-1">Your name</label>
+                    <input
+                      type="text"
+                      value={textName}
+                      onChange={(e) => setTextName(e.target.value)}
+                      placeholder="Your name"
+                      className="w-full px-4 py-3 rounded-xl bg-stone-800/60 border border-stone-600/40 text-stone-100 placeholder-stone-500 focus:border-amber-400/50 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-stone-300 text-sm mb-1">Location</label>
+                    <input
+                      type="text"
+                      value={textLocation}
+                      onChange={(e) => setTextLocation(e.target.value)}
+                      placeholder="City, Country"
+                      className="w-full px-4 py-3 rounded-xl bg-stone-800/60 border border-stone-600/40 text-stone-100 placeholder-stone-500 focus:border-amber-400/50 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-stone-300 text-sm mb-1">What do you want to work on?</label>
+                    <textarea
+                      value={textObjective}
+                      onChange={(e) => setTextObjective(e.target.value)}
+                      rows={3}
+                      placeholder="What are you trying to figure out or achieve?"
+                      className="w-full px-4 py-3 rounded-xl bg-stone-800/60 border border-stone-600/40 text-stone-100 placeholder-stone-500 focus:border-amber-400/50 focus:outline-none resize-none"
+                    />
+                  </div>
+                  {textError && <p className="text-red-400 text-sm">{textError}</p>}
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={submitTextBrief}
+                      disabled={textSubmitting}
+                      className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold bg-gradient-to-r from-amber-400 to-orange-500 text-stone-900 hover:scale-[1.02] transition-transform disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {textSubmitting ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          Creating your brief...
+                        </>
+                      ) : (
+                        <>
+                          <FileEdit className="w-5 h-5" />
+                          Continue to review
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setShowTextForm(false)}
+                      className="text-stone-500 hover:text-stone-300 text-sm transition-colors"
+                    >
+                      Back to talking
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Status indicator */}

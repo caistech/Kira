@@ -20,6 +20,22 @@ export async function updateProfile(formData: FormData) {
 }
 
 /**
+ * Update notification preferences. An unchecked HTML checkbox submits no value, so absence = false.
+ * Persists to users.email_notifications_opt_in (migration 20260724130000_users_notifications_optin).
+ */
+export async function updateNotifications(formData: FormData) {
+  const authUser = await getAuthUser();
+  if (!authUser) return;
+  const emailOptIn = formData.get('email_notifications_opt_in') === 'on';
+  const svc = createServiceClient();
+  await svc
+    .from('users')
+    .update({ email_notifications_opt_in: emailOptIn, updated_at: new Date().toISOString() })
+    .eq('auth_user_id', authUser.id);
+  revalidatePath('/settings');
+}
+
+/**
  * Hard-delete the current account. Confirmed by typing the account email. Deleting the auth.users
  * row fires the on_auth_user_deleted trigger (20260720300000_auth_delete_cascade.sql), which deletes
  * the public.users row → the ON DELETE CASCADE FKs purge conversations / messages / kira_memory /
