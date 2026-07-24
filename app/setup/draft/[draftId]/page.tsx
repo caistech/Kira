@@ -272,7 +272,7 @@ export default function DraftReviewPage() {
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-3 mb-4">
             <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-amber-400/50">
-              <img src="/kira-avatar.jpg" alt="Kira" className="w-full h-full object-cover" />
+              <img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" />
             </div>
             <div className="text-left">
               <h1 className="text-2xl font-bold text-stone-100">Review Your Framework</h1>

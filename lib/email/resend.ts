@@ -98,7 +98,7 @@ export async function sendKiraReadyEmail({
           <!-- Header -->
           <tr>
             <td style="background: linear-gradient(135deg, #E8998D 0%, #D4847C 100%); padding: 40px; text-align: center;">
-              <img src="${APP_URL}/kira-avatar.jpg" alt="Kira" style="width: 80px; height: 80px; border-radius: 50%; border: 4px solid white; margin-bottom: 16px;">
+              <img src="${APP_URL}/female_avatar.jpeg" alt="Kira" style="width: 80px; height: 80px; border-radius: 50%; border: 4px solid white; margin-bottom: 16px;">
               <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 600;">Your Kira is Ready!</h1>
             </td>
           </tr>
@@ -218,7 +218,7 @@ export async function sendWelcomeBackEmail({
           <!-- Content -->
           <tr>
             <td style="padding: 40px;">
-              <img src="${APP_URL}/kira-avatar.jpg" alt="Kira" style="width: 60px; height: 60px; border-radius: 50%; margin-bottom: 24px;">
+              <img src="${APP_URL}/female_avatar.jpeg" alt="Kira" style="width: 60px; height: 60px; border-radius: 50%; margin-bottom: 24px;">
               
               <p style="font-size: 18px; color: #333; margin: 0 0 24px 0;">
                 Hey ${firstName}!
@@ -299,7 +299,7 @@ export async function sendMagicLinkEmail({
           
           <tr>
             <td style="padding: 40px; text-align: center;">
-              <img src="${APP_URL}/kira-avatar.jpg" alt="Kira" style="width: 60px; height: 60px; border-radius: 50%; margin-bottom: 24px;">
+              <img src="${APP_URL}/female_avatar.jpeg" alt="Kira" style="width: 60px; height: 60px; border-radius: 50%; margin-bottom: 24px;">
               
               <h1 style="color: #333; font-size: 24px; margin: 0 0 16px 0;">Sign in to Kira</h1>
               

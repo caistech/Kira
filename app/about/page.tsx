@@ -21,7 +21,7 @@ export default function AboutPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-stone-50/80 backdrop-blur-lg border-b border-stone-200/50">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <a href="/" className="flex items-center gap-3">
-            <div className="avatar-ring"><div className="w-10 h-10 rounded-full overflow-hidden bg-white"><img src="/kira-avatar.jpg" alt="Kira" className="w-full h-full object-cover" /></div></div>
+            <div className="avatar-ring"><div className="w-10 h-10 rounded-full overflow-hidden bg-white"><img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" /></div></div>
             <span className="font-display font-bold text-2xl bg-gradient-to-r from-amber-500 via-pink-500 to-violet-500 bg-clip-text text-transparent">Kira</span>
           </a>
           <div className="flex items-center gap-6">
@@ -136,7 +136,7 @@ export default function AboutPage() {
 
       <section className="py-20 bg-gradient-to-br from-amber-50 to-pink-50">
         <div className="max-w-4xl mx-auto px-6 text-center">
-          <div className="avatar-ring inline-block mb-6"><div className="w-24 h-24 rounded-full overflow-hidden bg-white"><img src="/kira-avatar.jpg" alt="Kira" className="w-full h-full object-cover" /></div></div>
+          <div className="avatar-ring inline-block mb-6"><div className="w-24 h-24 rounded-full overflow-hidden bg-white"><img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" /></div></div>
           <h2 className="font-display text-3xl lg:text-4xl font-bold text-stone-800 mb-4">Where Kira Fits</h2>
           <p className="font-body text-xl text-stone-600 max-w-2xl mx-auto leading-relaxed mb-8">Kira is the personal guide in the Corporate AI Solutions family. She's not trying to be everything — she's trying to be the best thinking partner you've ever had.</p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -150,7 +150,7 @@ export default function AboutPage() {
         <div className="max-w-6xl mx-auto px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
-              <div className="avatar-ring"><div className="w-8 h-8 rounded-full overflow-hidden bg-white"><img src="/kira-avatar.jpg" alt="Kira" className="w-full h-full object-cover" /></div></div>
+              <div className="avatar-ring"><div className="w-8 h-8 rounded-full overflow-hidden bg-white"><img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" /></div></div>
               <span className="font-display font-bold text-white">Kira</span>
               <span className="text-stone-500">|</span>
               <a href="https://corporate-ai-solutions.vercel.app/marketplace" target="_blank" rel="noopener noreferrer" className="font-body text-sm text-stone-400 hover:text-amber-400 transition-colors">A Corporate AI Solutions Product</a>

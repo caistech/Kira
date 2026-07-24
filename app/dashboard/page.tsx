@@ -192,7 +192,7 @@ function GapDashboard({
         <div className="flex-shrink-0">
           <div className="rounded-full bg-gradient-to-br from-amber-300 via-pink-400 to-violet-500 p-1">
             <div className="w-16 h-16 rounded-full overflow-hidden bg-white">
-              <img src="/kira-avatar.jpg" alt="Kira" className="w-full h-full object-cover" />
+              <img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" />
             </div>
           </div>
         </div>
