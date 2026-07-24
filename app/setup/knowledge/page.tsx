@@ -283,7 +283,7 @@ function KnowledgeUploadContent() {
         {/* Header */}
         <div className="text-center mb-10">
           <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-amber-400/50 mx-auto mb-4">
-            <img src="/kira-avatar.jpg" alt="Kira" className="w-full h-full object-cover" />
+            <img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" />
           </div>
           <h1 className="font-display text-3xl font-bold text-white mb-2">
             Add Knowledge
@@ -572,7 +572,7 @@ function KnowledgeUploadLoading() {
     <div className="min-h-screen bg-stone-950 flex items-center justify-center">
       <div className="text-center">
         <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-amber-400/50 mx-auto mb-4">
-          <img src="/kira-avatar.jpg" alt="Kira" className="w-full h-full object-cover" />
+          <img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" />
         </div>
         <div className="animate-pulse text-stone-400">Loading...</div>
       </div>

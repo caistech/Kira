@@ -7,35 +7,10 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { useConversation } from '@elevenlabs/react';
+import { VoiceWidget } from '@caistech/elevenlabs-convai/react';
 
-// Icons as inline SVGs to avoid lucide-react dependency issues
-const MicIcon = () => (
-  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-  </svg>
-);
-
-const PauseIcon = () => (
-  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-);
-
-const PlayIcon = () => (
-  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-);
-
-const StopIcon = () => (
-  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
-  </svg>
-);
-
+// Icons as inline SVGs to avoid lucide-react dependency issues.
+// (The voice controls — mic/pause/play/stop — now live inside the canonical VoiceWidget.)
 const UploadIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -119,43 +94,12 @@ export default function ChatPage() {
   const [context, setContext] = useState<ConversationContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isCallActive, setIsCallActive] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-
-  const [transcript, setTranscript] = useState<
-    Array<{ role: 'user' | 'assistant'; text: string }>
-  >([]);
+  const [isConnected, setIsConnected] = useState(false);
 
   // Modal states
   const [showReferModal, setShowReferModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
-
-  /* ---------------- ElevenLabs ---------------- */
-
-  const conversation = useConversation({
-    onConnect: () => {
-      setIsCallActive(true);
-      setIsPaused(false);
-    },
-    onDisconnect: () => {
-      setIsCallActive(false);
-    },
-    onMessage: (message) => {
-      if (message?.message) {
-        setTranscript((prev) => [
-          ...prev,
-          {
-            role: message.source === 'user' ? 'user' : 'assistant',
-            text: message.message,
-          },
-        ]);
-      }
-    },
-    onError: () => {
-      setError('Voice connection failed. Please try again.');
-    },
-  });
 
   /* ---------------- Load agent + context ---------------- */
 
@@ -186,75 +130,25 @@ export default function ChatPage() {
     if (agentId) loadData();
   }, [agentId]);
 
-  /* ---------------- START CONVERSATION ---------------- */
-
-  const startConversation = useCallback(async () => {
-    if (!agentInfo || isCallActive) return;
-
-    try {
-      setError(null);
-      setIsPaused(false);
-
-      // Request mic permission
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-
-      // Get signed URL from backend
-      const res = await fetch('/api/kira/chat/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          agentId: agentInfo.elevenlabs_agent_id,
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error('Failed to start voice session');
-      }
-
-      const { signedUrl } = await res.json();
-
-      await conversation.startSession({ signedUrl });
-    } catch {
-      setError(
-        'Unable to start voice session. Please check microphone permissions and try again.'
-      );
+  /* ---------------- Owner-gated voice via the canonical Morgan VoiceWidget ---------------- */
+  // These are PER-USER PRIVATE coach agents. /api/kira/chat/start verifies the caller owns this
+  // agent, then returns a signed ElevenLabs URL. The canonical VoiceWidget
+  // (@caistech/elevenlabs-convai >=0.5.0) resolves it fresh at connect time (WebSocket), so the
+  // ownership boundary is preserved while the coach runs on the shared portfolio voice surface —
+  // no bespoke useConversation fork (which is what broke under @elevenlabs/react 1.10).
+  const getSignedUrl = useCallback(async (): Promise<string> => {
+    const res = await fetch('/api/kira/chat/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentId: agentInfo?.elevenlabs_agent_id }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || 'Failed to start voice session');
     }
-  }, [agentInfo, conversation, isCallActive]);
-
-  /* ---------------- PAUSE CONVERSATION ---------------- */
-
-  const pauseConversation = async () => {
-    try {
-      await conversation.endSession();
-      setIsCallActive(false);
-      setIsPaused(true);
-    } catch (err) {
-      console.error('Error pausing conversation:', err);
-      setIsCallActive(false);
-      setIsPaused(true);
-    }
-  };
-
-  /* ---------------- END CONVERSATION ---------------- */
-
-  const endConversation = async () => {
-    try {
-      await conversation.endSession();
-      setIsCallActive(false);
-      setIsPaused(false);
-      // Optionally redirect or reset
-    } catch (err) {
-      console.error('Error ending conversation:', err);
-      setIsCallActive(false);
-      setIsPaused(false);
-    }
-  };
-
-  /* ---------------- RESUME CONVERSATION ---------------- */
-
-  const resumeConversation = async () => {
-    await startConversation();
-  };
+    const { signedUrl } = await res.json();
+    return signedUrl as string;
+  }, [agentInfo]);
 
   /* ---------------- UI ---------------- */
 
@@ -266,7 +160,7 @@ export default function ChatPage() {
             <div className="absolute inset-0 rounded-full bg-gradient-to-r from-rose-400 to-orange-400 animate-ping opacity-20"></div>
             <div className="absolute inset-2 rounded-full bg-gradient-to-r from-rose-400 to-orange-400 animate-pulse"></div>
             <img
-              src="/kira-avatar.jpg"
+              src="/female_avatar.jpeg"
               alt="Kira"
               className="absolute inset-3 w-14 h-14 rounded-full object-cover"
             />
@@ -277,7 +171,7 @@ export default function ChatPage() {
     );
   }
 
-  if (error && !isCallActive && !isPaused) {
+  if (error && !agentInfo) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-orange-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl shadow-xl p-8 max-w-md text-center">
@@ -299,148 +193,69 @@ export default function ChatPage() {
       {/* ============ CORPORATE AI SOLUTIONS TOP BANNER ============ */}
       <CorporateAIBanner />
 
-      <div className="relative flex flex-col h-[calc(100vh-52px)] max-w-2xl mx-auto">
+      <div className="relative flex flex-col min-h-[calc(100vh-52px)] max-w-2xl mx-auto">
         {/* Header */}
         <header className="flex items-center gap-4 p-4 pt-6">
           <div className="relative">
             <img
-              src="/kira-avatar.jpg"
+              src="/female_avatar.jpeg"
               alt="Kira"
               className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-lg"
             />
-            {isCallActive && (
+            {isConnected && (
               <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
-            )}
-            {isPaused && !isCallActive && (
-              <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-amber-500 rounded-full border-2 border-white"></span>
             )}
           </div>
           <div className="flex-1">
             <h1 className="text-xl font-bold bg-gradient-to-r from-rose-600 to-orange-600 bg-clip-text text-transparent">
-              {agentInfo?.agent_name || 'Kira'}
+              Kira
             </h1>
             <p className="text-sm text-gray-500">
-              {isCallActive ? '🟢 Live conversation' : isPaused ? '⏸️ Paused' : 'Your AI companion'}
+              {isConnected ? '🟢 Live conversation' : 'Your AI companion'}
             </p>
           </div>
         </header>
 
-        {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto px-4 pb-4">
-          {/* Welcome message when not started */}
-          {!isCallActive && !isPaused && transcript.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full text-center px-4">
-              <img
-                src="/kira-avatar.jpg"
-                alt="Kira"
-                className="w-24 h-24 rounded-full object-cover shadow-xl mb-6"
-              />
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">Hey there! 👋</h2>
-              <p className="text-gray-500 mb-2">I'm Kira, your AI companion.</p>
-              <p className="text-gray-400 text-sm">Press <strong>Start Talking</strong> below to begin our conversation.</p>
-            </div>
+        {/* Voice coach — the canonical portfolio VoiceWidget, owner-gated via signed URL. It renders
+            its own avatar, transcript, and mic/mute/end controls (no bespoke voice UI). */}
+        <main className="flex-1 px-4 pb-6">
+          <div className="text-center pt-2 pb-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-1">Hey there! 👋</h2>
+            <p className="text-gray-500 text-sm">
+              Tap the mic below to talk with Kira — she picks up where you left off.
+            </p>
+          </div>
+
+          {agentInfo && (
+            <VoiceWidget
+              placement="inline"
+              mode="greeting"
+              avatarUrl="/female_avatar.jpeg"
+              coachName="Kira"
+              transcript
+              title={
+                context?.has_history
+                  ? 'Welcome back — Kira remembers where you left off. Tap the mic to continue.'
+                  : undefined
+              }
+              getSignedUrl={getSignedUrl}
+              onConnect={() => {
+                setIsConnected(true);
+                setError(null);
+              }}
+              onDisconnect={() => setIsConnected(false)}
+              onError={(e) => setError(e)}
+            />
           )}
 
-          {/* Transcript */}
-          {transcript.length > 0 && (
-            <div className="space-y-4 py-4">
-              {transcript.map((msg, i) => (
-                <div
-                  key={i}
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-3 shadow-sm ${
-                      msg.role === 'user'
-                        ? 'bg-gradient-to-r from-rose-500 to-orange-500 text-white'
-                        : 'bg-white text-gray-800'
-                    }`}
-                  >
-                    {msg.text}
-                  </div>
-                </div>
-              ))}
-
-              {/* Listening indicator */}
-              {isCallActive && (
-                <div className="flex justify-start">
-                  <div className="bg-white rounded-2xl px-4 py-3 shadow-sm flex items-center gap-2">
-                    <div className="flex gap-1">
-                      <span className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                      <span className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                      <span className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
-                    </div>
-                    <span className="text-sm text-gray-500">Listening...</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Paused message */}
-          {isPaused && !isCallActive && (
-            <div className="flex justify-center my-4">
-              <div className="bg-amber-50 rounded-xl px-4 py-2 text-amber-700 text-sm">
-                Conversation paused — press Resume to continue
-              </div>
-            </div>
+          {error && agentInfo && (
+            <p className="text-center text-red-500 text-sm mt-4">{error}</p>
           )}
         </main>
 
-        {/* ============================================
-            BOTTOM CONTROL BAR - Always Visible
-            ============================================ */}
+        {/* Secondary actions — knowledge / share / complete stay on the page around the coach. */}
         <footer className="border-t border-gray-200 bg-white p-4 safe-area-pb">
-          {/* Main Control Buttons Row */}
-          <div className="flex items-center justify-center gap-3 mb-4">
-            {/* START Button - shown when not active and not paused */}
-            {!isCallActive && !isPaused && (
-              <button
-                onClick={startConversation}
-                className="flex-1 max-w-xs py-4 px-6 bg-gradient-to-r from-rose-500 to-orange-500 text-white rounded-2xl font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-3"
-              >
-                <MicIcon />
-                <span>Start Talking</span>
-              </button>
-            )}
-
-            {/* PAUSE and END buttons - shown when call is active */}
-            {isCallActive && (
-              <>
-                <button
-                  onClick={pauseConversation}
-                  className="flex-1 max-w-[150px] py-4 px-4 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-2xl font-semibold transition-all flex items-center justify-center gap-2"
-                >
-                  <PauseIcon />
-                  <span>Pause</span>
-                </button>
-
-                <button
-                  onClick={endConversation}
-                  className="flex-1 max-w-[150px] py-4 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl font-semibold transition-all flex items-center justify-center gap-2"
-                >
-                  <StopIcon />
-                  <span>End Session</span>
-                </button>
-              </>
-            )}
-
-            {/* RESUME Button - shown when paused */}
-            {!isCallActive && isPaused && (
-              <>
-                <button
-                  onClick={resumeConversation}
-                  className="flex-1 max-w-xs py-4 px-6 bg-gradient-to-r from-rose-500 to-orange-500 text-white rounded-2xl font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-3"
-                >
-                  <PlayIcon />
-                  <span>Resume Chat</span>
-                </button>
-              </>
-            )}
-          </div>
-
-          {/* Secondary Actions Row */}
-          <div className="flex items-center justify-center gap-2 pt-2 border-t border-gray-100">
+          <div className="flex items-center justify-center gap-2">
             {/* Upload Knowledge */}
             <button
               onClick={() => setShowUploadModal(true)}

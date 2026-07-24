@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
   </head>
   <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
     <div style="text-align: center; margin-bottom: 30px;">
-      <img src="${siteUrl}/kira-avatar.jpg" alt="Kira" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover;">
+      <img src="${siteUrl}/female_avatar.jpeg" alt="Kira" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover;">
     </div>
     
     <h1 style="font-size: 24px; font-weight: 600; margin-bottom: 20px; text-align: center;">

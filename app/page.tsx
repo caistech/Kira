@@ -98,7 +98,7 @@ export default function KiraLandingPage() {
             <a href="/" className="flex items-center gap-3 wiggle cursor-pointer">
               <div className="avatar-ring">
                 <div className="w-10 h-10 rounded-full overflow-hidden bg-white">
-                  <img src="/kira-avatar.jpg" alt="Kira" className="w-full h-full object-cover" />
+                  <img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" />
                 </div>
               </div>
               <span className="font-display font-bold text-2xl bg-gradient-to-r from-amber-500 via-pink-500 to-violet-500 bg-clip-text text-transparent">Kira</span>
@@ -140,7 +140,7 @@ export default function KiraLandingPage() {
             <div className={`mb-8 ${isVisible ? 'fade-up' : 'opacity-0'}`}>
               <div className="avatar-ring inline-block">
                 <div className="w-28 h-28 rounded-full overflow-hidden bg-white">
-                  <img src="/kira-avatar.jpg" alt="Kira" className="w-full h-full object-cover" />
+                  <img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" />
                 </div>
               </div>
             </div>
@@ -315,12 +315,12 @@ export default function KiraLandingPage() {
               </div>
               <span className="text-pink-400 text-2xl">→</span>
               <div className="flex items-center gap-3 bg-white rounded-full px-5 py-3 shadow-sm">
-                <div className="avatar-ring"><div className="w-8 h-8 rounded-full overflow-hidden bg-white"><img src="/kira-avatar.jpg" alt="Kira" className="w-full h-full object-cover" /></div></div>
+                <div className="avatar-ring"><div className="w-8 h-8 rounded-full overflow-hidden bg-white"><img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" /></div></div>
                 <span className="font-body font-medium text-stone-700">Setup Kira</span>
               </div>
               <span className="text-pink-400 text-2xl">→</span>
               <div className="flex items-center gap-3 bg-gradient-to-r from-amber-100 to-pink-100 rounded-full px-5 py-3 shadow-sm border-2 border-amber-300">
-                <div className="avatar-ring"><div className="w-8 h-8 rounded-full overflow-hidden bg-white"><img src="/kira-avatar.jpg" alt="Kira" className="w-full h-full object-cover" /></div></div>
+                <div className="avatar-ring"><div className="w-8 h-8 rounded-full overflow-hidden bg-white"><img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" /></div></div>
                 <span className="font-display font-bold text-stone-800">YOUR Kira</span>
                 <span className="text-xs bg-amber-400 text-stone-800 px-2 py-0.5 rounded-full font-bold">Personalized</span>
               </div>
@@ -463,7 +463,7 @@ export default function KiraLandingPage() {
         <div className="max-w-6xl mx-auto px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
-              <div className="avatar-ring"><div className="w-8 h-8 rounded-full overflow-hidden bg-white"><img src="/kira-avatar.jpg" alt="Kira" className="w-full h-full object-cover" /></div></div>
+              <div className="avatar-ring"><div className="w-8 h-8 rounded-full overflow-hidden bg-white"><img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" /></div></div>
               <span className="font-display font-bold text-white">Kira</span>
               <span className="text-stone-500">|</span>
               <a href="https://corporate-ai-solutions.vercel.app/marketplace" target="_blank" rel="noopener noreferrer" className="font-body text-sm text-stone-400 hover:text-amber-400 transition-colors">A Corporate AI Solutions Product</a>

@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Kira — Your Friendly Guide Through Anything',
     description: 'A patient, knowledgeable AI companion who guides you through learning new skills, planning projects, or mastering anything.',
-    images: ['/kira-avatar.jpg'],
+    images: ['/female_avatar.jpeg'],
   },
 };
 
