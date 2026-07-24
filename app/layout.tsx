@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { SayFixWidget } from "@caistech/sayfix-embed";
 import { Inter } from 'next/font/google';
 import './globals.css';
@@ -6,6 +6,7 @@ import { CorporateHeader } from '@/components/corporate/CorporateHeader';
 import { CorporateFooter } from '@/components/corporate/CorporateFooter';
 import { AgentJsonLd } from '@caistech/webmcp-kit/react';
 import { agentConfig } from '@/agent-readiness.config';
+import { RegisterSW } from '@/components/RegisterSW';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -19,6 +20,14 @@ export const metadata: Metadata = {
     description: 'Talk to Kira a few minutes at a time; she captures what\'s in your head, remembers everything, and builds the systems that make your business worth more.',
     images: ['/female_avatar.jpeg'],
   },
+  // PWA / installable app
+  applicationName: 'Kira',
+  appleWebApp: { capable: true, title: 'Kira', statusBarStyle: 'default' },
+  icons: { icon: '/favicon.ico', apple: '/icons/apple-touch-icon.png' },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#fb7185',
 };
 
 export default function RootLayout({
@@ -29,6 +38,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
+        <RegisterSW />
         <AgentJsonLd config={agentConfig} />
         <div className="min-h-screen flex flex-col">
           <CorporateHeader productName="Kira" productAcronym="K" />
