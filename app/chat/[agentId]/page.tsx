@@ -17,6 +17,14 @@ const UploadIcon = () => (
   </svg>
 );
 
+const MoreIcon = () => (
+  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+    <circle cx="5" cy="12" r="2" />
+    <circle cx="12" cy="12" r="2" />
+    <circle cx="19" cy="12" r="2" />
+  </svg>
+);
+
 const GiftIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
@@ -100,6 +108,8 @@ export default function ChatPage() {
   const [showReferModal, setShowReferModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
+  // Overflow menu — the daily surface is the mic; the extras tuck behind "More".
+  const [showMenu, setShowMenu] = useState(false);
 
   /* ---------------- Load agent + context ---------------- */
 
@@ -194,30 +204,15 @@ export default function ChatPage() {
       <CorporateAIBanner />
 
       <div className="relative flex flex-col min-h-[calc(100vh-52px)] max-w-2xl mx-auto">
-        {/* Header */}
-        <header className="flex items-center gap-4 p-4 pt-6">
-          <div className="relative">
-            <img
-              src="/female_avatar.jpeg"
-              alt="Kira"
-              className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-lg"
-            />
-            {isConnected && (
-              <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
-            )}
-          </div>
-          <div className="flex-1">
-            <h1 className="text-xl font-bold bg-gradient-to-r from-rose-600 to-orange-600 bg-clip-text text-transparent">
-              Kira
-            </h1>
-            <p className="text-sm text-gray-500">
-              {isConnected
-                ? '🟢 Live conversation'
-                : agentInfo?.journey_type === 'business'
-                  ? 'Your fractional exec'
-                  : 'Your thinking partner'}
-            </p>
-          </div>
+        {/* Slim header — the widget below is the focus (it shows the avatar + mic). */}
+        <header className="px-4 pt-5 pb-1 text-center">
+          <p className="text-sm font-medium text-gray-500">
+            {isConnected
+              ? '🟢 Live conversation'
+              : agentInfo?.journey_type === 'business'
+                ? 'Kira · your fractional exec'
+                : 'Kira · your thinking partner'}
+          </p>
         </header>
 
         {/* Voice coach — the canonical portfolio VoiceWidget, owner-gated via signed URL. It renders
@@ -257,38 +252,47 @@ export default function ChatPage() {
           )}
         </main>
 
-        {/* Secondary actions — knowledge / share / complete stay on the page around the coach. */}
-        <footer className="border-t border-gray-200 bg-white p-4 safe-area-pb">
-          <div className="flex items-center justify-center gap-2">
-            {/* Upload Knowledge */}
+        {/* Minimal footer — the mic dominates; the extras live behind "More". */}
+        <footer className="relative border-t border-gray-100 bg-white p-3 safe-area-pb">
+          {showMenu && (
+            <>
+              {/* click-away backdrop */}
+              <button
+                aria-label="Close menu"
+                onClick={() => setShowMenu(false)}
+                className="fixed inset-0 z-10 cursor-default"
+              />
+              <div className="absolute bottom-full left-1/2 z-20 mb-2 w-56 -translate-x-1/2 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
+                <button
+                  onClick={() => { setShowMenu(false); setShowUploadModal(true); }}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  <UploadIcon /> <span className="font-medium">Add knowledge</span>
+                </button>
+                <button
+                  onClick={() => { setShowMenu(false); setShowReferModal(true); }}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-rose-50"
+                >
+                  <GiftIcon /> <span className="font-medium">Share Kira</span>
+                </button>
+                <button
+                  onClick={() => { setShowMenu(false); setShowCompleteModal(true); }}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-green-50"
+                >
+                  <CheckCircleIcon /> <span className="font-medium">Complete project</span>
+                </button>
+              </div>
+            </>
+          )}
+          <div className="flex justify-center">
             <button
-              onClick={() => setShowUploadModal(true)}
-              className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors text-sm"
+              onClick={() => setShowMenu((v) => !v)}
+              aria-label="More options"
+              aria-expanded={showMenu}
+              className="inline-flex min-h-[44px] items-center gap-2 px-4 text-sm text-gray-400 hover:text-gray-700"
             >
-              <UploadIcon />
-              <span className="hidden sm:inline font-medium">Add Knowledge</span>
-            </button>
-
-            <div className="w-px h-5 bg-gray-200"></div>
-
-            {/* Refer a Friend */}
-            <button
-              onClick={() => setShowReferModal(true)}
-              className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-colors text-sm"
-            >
-              <GiftIcon />
-              <span className="hidden sm:inline font-medium">Share Kira</span>
-            </button>
-
-            <div className="w-px h-5 bg-gray-200"></div>
-
-            {/* Complete Project */}
-            <button
-              onClick={() => setShowCompleteModal(true)}
-              className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-xl transition-colors text-sm"
-            >
-              <CheckCircleIcon />
-              <span className="hidden sm:inline font-medium">Complete Project</span>
+              <MoreIcon />
+              <span className="font-medium">More</span>
             </button>
           </div>
         </footer>
