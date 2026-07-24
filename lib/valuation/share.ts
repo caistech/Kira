@@ -11,11 +11,11 @@ export interface ValuationPayload {
 
 export function encodeValuationParam(payload: ValuationPayload): string {
   try {
-    // base64url so it's safe in a URL query (no +, /, = to be mangled by URLSearchParams).
-    return btoa(encodeURIComponent(JSON.stringify(payload)))
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '');
+    // Compact base64url of the raw UTF-8 JSON (no double-encoding), URL-safe.
+    const bytes = new TextEncoder().encode(JSON.stringify(payload));
+    let bin = '';
+    for (const b of bytes) bin += String.fromCharCode(b);
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   } catch {
     return '';
   }
@@ -26,7 +26,10 @@ export function decodeValuationParam(s: string | null | undefined): ValuationPay
   try {
     let b64 = s.replace(/-/g, '+').replace(/_/g, '/');
     while (b64.length % 4) b64 += '=';
-    const parsed = JSON.parse(decodeURIComponent(atob(b64)));
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const parsed = JSON.parse(new TextDecoder().decode(bytes));
     if (parsed && parsed.inputs && typeof parsed.inputs.annualProfit === 'number') return parsed;
     return null;
   } catch {
