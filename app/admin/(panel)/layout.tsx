@@ -6,7 +6,10 @@ import { PortalShell, type NavItem } from '@/components/PortalShell';
 // admin reset pages — so the login entry stays public while the panel is guarded. Middleware
 // already enforces the ADMIN_EMAILS allowlist; this is defense-in-depth + the chrome.
 
-const ADMIN_NAV: NavItem[] = [{ href: '/admin', label: 'Overview' }];
+const ADMIN_NAV: NavItem[] = [
+  { href: '/admin', label: 'Overview' },
+  { href: '/admin/loi', label: 'LOIs' },
+];
 
 export default async function AdminPanelLayout({ children }: { children: React.ReactNode }) {
   const authUser = await getAuthUser();
