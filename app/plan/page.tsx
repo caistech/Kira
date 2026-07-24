@@ -103,7 +103,7 @@ export default function PlanPage() {
               <br className="hidden sm:block" /> Kira helps you set it free.
             </h1>
             <p className="font-body text-lg text-stone-600 max-w-2xl mx-auto mt-5 leading-relaxed">
-              You don&apos;t do it with spreadsheets and consultants. You do it by <span className="font-semibold text-stone-800">talking to Kira</span> — a few minutes at a time, over the next 4 weeks and beyond. She listens, works out what you need, and quietly builds the systems that make your business worth more.
+              You don&apos;t do it with spreadsheets and consultants. You do it by <span className="font-semibold text-stone-800">talking to Kira</span> — a few minutes at a time, over the next 4 weeks and beyond. She listens, works out what you need, and quietly builds the systems that make your business worth more. She&apos;s the fractional exec — the chief of staff — you could never justify hiring, on call whenever you talk.
             </p>
           </section>
 
@@ -159,7 +159,7 @@ export default function PlanPage() {
               <p className="text-white/80 font-medium">You could unlock</p>
               <p className="font-display text-4xl sm:text-5xl font-bold mt-1">{money(model.result.gap)}</p>
               <p className="text-white/90 max-w-lg mx-auto mt-4 leading-relaxed">
-                Kira is <span className="font-bold">{money(model.quote.monthly)}/month</span> (free for the first 7 days) — about <span className="font-bold">{model.quote.fractionOfGapPct}</span> a year of what you stand to unlock. Plus the time, the calm and the handover you can&apos;t put a number on.
+                Kira is <span className="font-bold">{money(model.quote.monthly)}/month</span> (free for the first 7 days) — about <span className="font-bold">{model.quote.fractionOfGapPct}</span> a year of what you stand to unlock. It&apos;s the fractional exec you could never justify hiring, at a fraction of the cost — plus the time, the calm and the handover you can&apos;t put a number on.
               </p>
             </div>
 

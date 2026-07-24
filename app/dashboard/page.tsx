@@ -62,7 +62,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">My Kiras</h1>
         <p className="mt-1 text-base text-gray-600">
-          Your personal AI assistants. Each one remembers your context and continues where you left off.
+          Your Kiras. Each one remembers your context and picks up where you left off.
           Open one to talk, or start a new Kira for a different goal.
         </p>
       </header>

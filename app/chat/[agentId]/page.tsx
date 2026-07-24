@@ -211,7 +211,11 @@ export default function ChatPage() {
               Kira
             </h1>
             <p className="text-sm text-gray-500">
-              {isConnected ? '🟢 Live conversation' : 'Your AI companion'}
+              {isConnected
+                ? '🟢 Live conversation'
+                : agentInfo?.journey_type === 'business'
+                  ? 'Your fractional exec'
+                  : 'Your thinking partner'}
             </p>
           </div>
         </header>

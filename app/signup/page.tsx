@@ -11,7 +11,7 @@ export default function SignupPage() {
         variant="user"
         redirectTo="/dashboard"
         title="Create your Kira"
-        subtitle="Your AI executive assistant that remembers you."
+        subtitle="Your fractional exec — she remembers everything."
       />
     </AuthShell>
   );
