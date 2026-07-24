@@ -25,6 +25,12 @@ const MoreIcon = () => (
   </svg>
 );
 
+const PenIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+  </svg>
+);
+
 const GiftIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
@@ -280,6 +286,12 @@ export default function ChatPage() {
                   className="flex w-full items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-green-50"
                 >
                   <CheckCircleIcon /> <span className="font-medium">Complete project</span>
+                </button>
+                <button
+                  onClick={() => { setShowMenu(false); window.location.href = `/commit?source=chat&agent=${agentId}`; }}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-pink-50"
+                >
+                  <PenIcon /> <span className="font-medium">Put it in writing</span>
                 </button>
               </div>
             </>
