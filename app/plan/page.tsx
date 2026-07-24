@@ -1,0 +1,199 @@
+'use client';
+
+// app/plan/page.tsx
+//
+// The sales / explainer page. The owner has seen their gap; this page reframes it as the value Kira
+// unlocks, explains how the machine works in plain language (Kira listens -> orchestrator -> agent
+// swarm does & logs the work -> Mnemo recalls instantly -> Memory Governance keeps it protected),
+// shows the dynamic price (a small fraction of their gap), and takes them to Stripe checkout.
+
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  ArrowRight,
+  Mic,
+  Network,
+  Users,
+  Brain,
+  ShieldCheck,
+  Clock,
+  HeartHandshake,
+  Sparkles,
+  Check,
+  Loader2,
+} from 'lucide-react';
+import { computeValuation } from '@/lib/valuation/model';
+import { formatMoney } from '@/lib/valuation/currency';
+import { priceForGap } from '@/lib/valuation/pricing';
+import { decodeValuationParam, type ValuationPayload } from '@/lib/valuation/share';
+
+export default function PlanPage() {
+  const [payload, setPayload] = useState<ValuationPayload | null>(null);
+  const [ready, setReady] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const v = new URLSearchParams(window.location.search).get('v');
+    setPayload(decodeValuationParam(v));
+    setReady(true);
+  }, []);
+
+  const model = useMemo(() => {
+    if (!payload) return null;
+    const result = computeValuation(payload.inputs);
+    const quote = priceForGap(result.gap);
+    return { result, quote };
+  }, [payload]);
+
+  const money = (n: number) => formatMoney(n, payload?.currency || 'USD');
+
+  async function startCheckout() {
+    if (!payload || !model) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inputs: payload.inputs, currency: payload.currency }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || 'Checkout failed');
+      window.location.assign(data.url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not start checkout');
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-amber-50 text-stone-800 font-body">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Outfit:wght@400;500;600;700&display=swap');
+        .font-display { font-family: 'Outfit', sans-serif; }
+        .font-body { font-family: 'DM Sans', sans-serif; }
+        .grad-hero { background: radial-gradient(ellipse at 25% 15%, rgba(251,191,36,.25), transparent 55%), radial-gradient(ellipse at 80% 60%, rgba(167,139,250,.22), transparent 55%), linear-gradient(135deg,#fffbeb,#fef3c7 55%,#fce7f3); }
+        .grad-coral { background: linear-gradient(135deg,#fb7185,#f472b6); }
+        .grad-genome { background: linear-gradient(135deg,#a78bfa,#8b5cf6 60%,#f472b6); }
+      `}</style>
+
+      <header className="sticky top-0 z-40 bg-amber-50/85 backdrop-blur border-b border-amber-200/60">
+        <div className="max-w-4xl mx-auto px-5 py-3 flex items-center justify-between">
+          <a href="/" className="font-display font-bold text-xl bg-gradient-to-r from-amber-500 via-pink-500 to-violet-500 bg-clip-text text-transparent">Kira</a>
+          <a href="/business-valuation" className="text-sm text-stone-500 hover:text-pink-500 min-h-[44px] flex items-center">Redo my valuation</a>
+        </div>
+      </header>
+
+      {ready && !model && (
+        <main className="max-w-2xl mx-auto px-5 py-24 text-center">
+          <div className="grad-genome w-14 h-14 rounded-2xl flex items-center justify-center text-white mx-auto mb-6"><Brain className="h-7 w-7" /></div>
+          <h1 className="font-display text-2xl font-bold mb-3">Let&apos;s find your number first</h1>
+          <p className="text-stone-600 mb-8">This page is built around the value gap in your business. Take the 3-minute valuation and it&apos;ll bring you right back here.</p>
+          <a href="/business-valuation" className="grad-coral text-white font-display font-bold px-8 py-4 rounded-full inline-flex items-center gap-2 min-h-[52px]">Find my gap <ArrowRight className="h-5 w-5" /></a>
+        </main>
+      )}
+
+      {model && (
+        <main className="max-w-4xl mx-auto px-5">
+          {/* Hero */}
+          <section className="grad-hero -mx-5 px-5 py-16 sm:py-20 text-center">
+            <div className="inline-flex items-center gap-2 text-pink-600 text-sm font-semibold mb-4"><Sparkles className="h-4 w-4" /> You&apos;ve seen the gap</div>
+            <h1 className="font-display text-3xl sm:text-5xl font-bold text-stone-800 leading-tight max-w-2xl mx-auto">
+              There&apos;s <span className="bg-gradient-to-r from-violet-500 to-pink-500 bg-clip-text text-transparent">{money(model.result.gap)}</span> locked in your head.
+              <br className="hidden sm:block" /> Kira helps you set it free.
+            </h1>
+            <p className="font-body text-lg text-stone-600 max-w-2xl mx-auto mt-5 leading-relaxed">
+              You don&apos;t do it with spreadsheets and consultants. You do it by <span className="font-semibold text-stone-800">talking to Kira</span> — a few minutes at a time, over the next 4 weeks and beyond. She listens, works out what you need, and quietly builds the systems that make your business worth more.
+            </p>
+          </section>
+
+          {/* The promise / first gains */}
+          <section className="py-16">
+            <h2 className="font-display text-2xl sm:text-3xl font-bold text-center mb-3">Just talk. Kira does the building.</h2>
+            <p className="text-center text-stone-600 max-w-2xl mx-auto mb-12">The knowledge that makes your business run is already in your head. Kira&apos;s job is to get it out — into documented, transferable systems — without you stopping to write any of it down.</p>
+            <div className="grid sm:grid-cols-2 gap-5">
+              {[
+                { icon: <Clock className="h-6 w-6" />, t: 'Time back, from week one', b: 'The jobs that only you can do start becoming jobs your systems can do. You get hours back before the month is out.' },
+                { icon: <HeartHandshake className="h-6 w-6" />, t: 'Less carried in your head', b: 'The mental load of being the only one who knows how it all works starts to lift. Less stress, fewer 2am worries.' },
+                { icon: <Users className="h-6 w-6" />, t: 'A business, not a job', b: 'As the systems build, the business leans on you less — better handovers, a calmer team, and a real asset forming.' },
+                { icon: <Brain className="h-6 w-6" />, t: 'A living Business Genome', b: 'Everything Kira captures becomes your Business Genome: the operating brain of the company, yours to keep and hand over.' },
+              ].map((c, i) => (
+                <div key={i} className="bg-white rounded-3xl p-6 border border-amber-100 shadow-sm">
+                  <div className="grad-genome w-11 h-11 rounded-xl flex items-center justify-center text-white mb-4">{c.icon}</div>
+                  <h3 className="font-display font-bold text-lg mb-1.5">{c.t}</h3>
+                  <p className="text-stone-600 text-sm leading-relaxed">{c.b}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* How the machine works */}
+          <section className="py-16">
+            <h2 className="font-display text-2xl sm:text-3xl font-bold text-center mb-3">What happens when you talk to Kira</h2>
+            <p className="text-center text-stone-600 max-w-2xl mx-auto mb-12">You only ever talk to Kira. Behind her is a quiet team that does the actual work and remembers everything — so you never have to.</p>
+            <div className="space-y-4">
+              {[
+                { icon: <Mic className="h-5 w-5" />, t: 'Kira listens & clarifies', b: 'You talk about a job, a headache, a process. Kira asks the questions a good operator would until she knows exactly what you need.' },
+                { icon: <Network className="h-5 w-5" />, t: 'She hands it to the orchestrator', b: 'Kira passes the cleaned-up task to the orchestration layer, which breaks it into the pieces of work that actually need doing.' },
+                { icon: <Users className="h-5 w-5" />, t: 'A swarm of agents does the work — and logs it', b: 'Specialised agents complete the subtasks, write things down, and log what they did, so nothing lives only in your memory anymore.' },
+                { icon: <Brain className="h-5 w-5" />, t: 'Mnemo remembers it instantly', b: 'Everything captured goes into Mnemo, the fast-recall memory — so next time Kira already knows, and picks up where you left off.' },
+                { icon: <ShieldCheck className="h-5 w-5" />, t: 'The Memory Governance Layer keeps it yours', b: 'Your business knowledge is protected, permissioned and private — governed so only you (and who you allow) can ever reach it.' },
+              ].map((s, i, arr) => (
+                <div key={i} className="flex gap-4 items-start bg-white rounded-2xl p-5 border border-amber-100">
+                  <div className="grad-coral text-white w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0">{s.icon}</div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-stone-400">STEP {i + 1}</span>
+                    </div>
+                    <h3 className="font-display font-bold text-lg">{s.t}</h3>
+                    <p className="text-stone-600 text-sm leading-relaxed mt-1">{s.b}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* The value framing + price */}
+          <section className="py-16">
+            <div className="grad-genome rounded-3xl p-8 sm:p-10 text-white text-center shadow-lg">
+              <p className="text-white/80 font-medium">You could unlock</p>
+              <p className="font-display text-4xl sm:text-5xl font-bold mt-1">{money(model.result.gap)}</p>
+              <p className="text-white/90 max-w-lg mx-auto mt-4 leading-relaxed">
+                Kira is <span className="font-bold">{money(model.quote.monthly)}/month</span> — about <span className="font-bold">{model.quote.fractionOfGapPct}</span> a year of what you stand to unlock. Plus the time, the calm and the handover you can&apos;t put a number on.
+              </p>
+            </div>
+
+            <div className="mt-8 bg-white rounded-3xl p-8 border-2 border-violet-200 shadow-sm max-w-lg mx-auto text-center">
+              <span className="text-xs font-body uppercase tracking-wider text-violet-500 font-semibold">{model.quote.label} plan</span>
+              <p className="font-display text-4xl font-bold text-stone-800 mt-2">{money(model.quote.monthly)}<span className="text-lg text-stone-400 font-body">/month</span></p>
+              <ul className="text-left space-y-2.5 my-6 text-stone-700">
+                {[
+                  'Always-on Kira — talk anytime, she remembers everything',
+                  'The orchestrator + agent swarm doing the real work',
+                  'Your Business Genome, captured and yours to keep',
+                  'Mnemo fast recall + Memory Governance data protection',
+                  'Cancel anytime',
+                ].map((f, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-sm"><Check className="h-4 w-4 text-violet-500 mt-0.5 flex-shrink-0" /> {f}</li>
+                ))}
+              </ul>
+              <button
+                onClick={startCheckout}
+                disabled={loading}
+                className="grad-coral text-white font-display font-bold px-8 py-4 rounded-full text-lg inline-flex items-center gap-2 min-h-[52px] shadow-lg shadow-pink-200 w-full justify-center disabled:opacity-60"
+              >
+                {loading ? <><Loader2 className="h-5 w-5 animate-spin" /> Starting…</> : <>Start my 4-week plan <ArrowRight className="h-5 w-5" /></>}
+              </button>
+              {error && <p className="text-rose-600 text-sm mt-3">{error}</p>}
+              <p className="text-xs text-stone-400 mt-3">Secure checkout by Stripe. You set your password and meet Kira right after.</p>
+            </div>
+          </section>
+
+          <footer className="py-10 text-center text-sm text-stone-400 border-t border-amber-100">
+            Kira — Built by Corporate AI Solutions · <a href="/business-valuation" className="hover:text-pink-500">Redo my valuation</a>
+          </footer>
+        </main>
+      )}
+    </div>
+  );
+}

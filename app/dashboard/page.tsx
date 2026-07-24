@@ -1,11 +1,23 @@
 import Link from 'next/link';
 import { getCurrentAppUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
+import { formatMoney } from '@/lib/valuation/currency';
 
 export const metadata = { title: 'My Kiras · Kira' };
 export const dynamic = 'force-dynamic';
 
-export default async function DashboardPage() {
+interface Valuation {
+  gap: number;
+  worth_today: number;
+  worth_potential: number;
+  readiness: number | null;
+  currency: string;
+  industry: string | null;
+}
+
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ welcome?: string }> }) {
+  const sp = await searchParams;
+  const isWelcome = sp?.welcome === '1';
   const user = await getCurrentAppUser();
   const svc = createServiceClient();
 
@@ -20,6 +32,10 @@ export default async function DashboardPage() {
 
   const list = agents ?? [];
 
+  const { data: valuation } = user
+    ? await svc.from('business_valuations').select('gap, worth_today, worth_potential, readiness, currency, industry').eq('user_id', user.id).maybeSingle()
+    : { data: null as Valuation | null };
+
   const { data: profile } = user
     ? await svc
         .from('client_profiles')
@@ -30,8 +46,19 @@ export default async function DashboardPage() {
 
   const pct = Math.round((profile?.completeness ?? 0) * 100);
 
+  // The always-on entry point: their first active business Kira, else the create flow.
+  const businessAgent = list.find((a) => a.journey_type === 'business' && a.status === 'active') ?? list[0];
+  const talkHref = businessAgent ? `/chat/${businessAgent.elevenlabs_agent_id}` : '/start?journey=business';
+
+  const val = valuation as Valuation | null;
+  const money = (n: number) => formatMoney(n, val?.currency || 'USD');
+
   return (
     <div>
+      {val && val.gap > 0 && (
+        <GapDashboard valuation={val} money={money} talkHref={talkHref} isWelcome={isWelcome} firstName={user?.first_name as string | undefined} />
+      )}
+
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">My Kiras</h1>
         <p className="mt-1 text-base text-gray-600">
@@ -40,7 +67,6 @@ export default async function DashboardPage() {
         </p>
       </header>
 
-      {/* Primary path: your Kiras. Creating one (/start) is the SINGLE onboarding front door. */}
       {list.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center">
           <p className="text-base text-gray-600">You don&apos;t have a Kira yet.</p>
@@ -81,8 +107,6 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* Secondary: deep discovery — OPTIONAL "go deeper" so Kira knows you better. Demoted below
-          the primary create path so onboarding has one front door (/start). */}
       <div className="mt-8 rounded-2xl border border-gray-200 bg-gray-50 p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -109,5 +133,83 @@ export default async function DashboardPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// The Business Value Gap Dashboard: the gap, how the 4-week process works, and the always-on entry.
+function GapDashboard({
+  valuation,
+  money,
+  talkHref,
+  isWelcome,
+  firstName,
+}: {
+  valuation: Valuation;
+  money: (n: number) => string;
+  talkHref: string;
+  isWelcome: boolean;
+  firstName?: string;
+}) {
+  const readinessPct = Math.round((valuation.readiness ?? 0) * 100);
+  const weeks = [
+    { w: 'Week 1', t: 'Capture the essentials', b: "Kira learns how the business really runs — the things only you know — just by talking." },
+    { w: 'Week 2', t: 'Document the core systems', b: 'Your pricing, processes and playbook get written down and made repeatable, without you writing a word.' },
+    { w: 'Week 3', t: 'Reduce what only you can do', b: 'The jobs that depend on you start becoming jobs the systems handle. You feel the time come back.' },
+    { w: 'Week 4', t: 'Handovers & recurring value', b: 'First clean handovers, steadier revenue, and a business that can run — and sell — without you.' },
+  ];
+
+  return (
+    <section className="mb-10">
+      <div className="rounded-3xl bg-gradient-to-br from-violet-600 via-fuchsia-600 to-pink-500 p-7 sm:p-9 text-white shadow-lg">
+        <p className="text-white/80 font-medium">
+          {isWelcome ? `Welcome${firstName ? `, ${firstName}` : ''} — I'm Kira. This is your` : 'Your'} Business Value Gap
+        </p>
+        <p className="text-4xl sm:text-5xl font-bold mt-1">{money(valuation.gap)}</p>
+        <p className="text-white/90 max-w-2xl mt-3 leading-relaxed">
+          That&apos;s the value locked in your head today — the difference between {money(valuation.worth_today)} (a business that needs you)
+          and {money(valuation.worth_potential)} (one that runs without you). We close it together, a conversation at a time.
+        </p>
+        <div className="mt-4 inline-flex items-center gap-2 text-sm bg-white/15 rounded-full px-4 py-1.5">
+          Transferability today: {readinessPct}/100 — we grow this every week
+        </div>
+      </div>
+
+      {/* How the process works */}
+      <h2 className="mt-8 mb-3 text-lg font-bold text-gray-900">How we close it — your first 4 weeks</h2>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {weeks.map((wk) => (
+          <div key={wk.w} className="rounded-2xl border border-gray-200 bg-white p-5">
+            <span className="text-xs font-bold text-violet-500">{wk.w}</span>
+            <h3 className="font-semibold text-gray-900 mt-1">{wk.t}</h3>
+            <p className="text-sm text-gray-600 mt-1.5 leading-relaxed">{wk.b}</p>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-sm text-gray-500">…and beyond: Kira keeps building your Business Genome for as long as you keep talking to her.</p>
+
+      {/* Meet Kira + always-on entry */}
+      <div className="mt-8 rounded-3xl border-2 border-violet-200 bg-violet-50 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-6">
+        <div className="flex-shrink-0">
+          <div className="rounded-full bg-gradient-to-br from-amber-300 via-pink-400 to-violet-500 p-1">
+            <div className="w-16 h-16 rounded-full overflow-hidden bg-white">
+              <img src="/kira-avatar.jpg" alt="Kira" className="w-full h-full object-cover" />
+            </div>
+          </div>
+        </div>
+        <div className="flex-1">
+          <h2 className="text-xl font-bold text-gray-900">Meet Kira — she&apos;s ready when you are</h2>
+          <p className="mt-1.5 text-gray-600 leading-relaxed">
+            No forms, no setup. Just start talking — about a job, a headache, or how something works. Kira listens,
+            works out what&apos;s needed, and quietly gets it built and remembered. Come back anytime; she picks up where you left off.
+          </p>
+          <Link
+            href={talkHref}
+            className="mt-4 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-fuchsia-600 to-pink-500 px-7 py-3.5 text-base font-bold text-white shadow-md hover:opacity-95 min-h-[52px]"
+          >
+            Start talking to Kira →
+          </Link>
+        </div>
+      </div>
+    </section>
   );
 }

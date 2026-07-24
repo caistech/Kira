@@ -32,6 +32,7 @@ import {
 } from '@/lib/valuation/model';
 import { SECTOR_MULTIPLES } from '@/lib/valuation/sde-multiples';
 import { formatMoney, detectCurrency, getCurrency, CURRENCIES } from '@/lib/valuation/currency';
+import { encodeValuationParam } from '@/lib/valuation/share';
 
 type Answers = Partial<ValuationInputs>;
 
@@ -220,6 +221,12 @@ export default function BusinessValuationPage() {
     // Every field is required to reach the result, so the cast is safe.
     return computeValuation(answers as ValuationInputs);
   }, [isResult, answers]);
+
+  // Carry the valuation into the sales page (and on to checkout) so the price + dashboard use it.
+  const planHref = useMemo(
+    () => (isResult ? `/plan?v=${encodeValuationParam({ inputs: answers as ValuationInputs, currency })}` : '/plan'),
+    [isResult, answers, currency],
+  );
 
   const progress = isResult ? 100 : Math.round(((stepIndex + 1) / (total + 1)) * 100);
 
@@ -423,7 +430,7 @@ export default function BusinessValuationPage() {
         )}
 
         {/* RESULT */}
-        {isResult && result && <ResultView result={result} currency={currency} />}
+        {isResult && result && <ResultView result={result} currency={currency} planHref={planHref} />}
       </main>
 
       {/* Voice clarifier (reachable, degrades cleanly when unconfigured) */}
@@ -449,7 +456,7 @@ export default function BusinessValuationPage() {
   );
 }
 
-function ResultView({ result, currency }: { result: ReturnType<typeof computeValuation>; currency: string }) {
+function ResultView({ result, currency, planHref }: { result: ReturnType<typeof computeValuation>; currency: string; planHref: string }) {
   const money = (n: number) => formatMoney(n, currency);
   const noEarnings = result.today === 0 && result.potential === 0;
   const capturable = result.factors.filter((f) => f.capturable && f.uplift > 0);
@@ -564,7 +571,7 @@ function ResultView({ result, currency }: { result: ReturnType<typeof computeVal
           living Business Genome. It's how you close the gap: a business worth more, and one you can actually hand over.
         </p>
         <a
-          href="/start?journey=business"
+          href={planHref}
           className="grad-coral text-white font-display font-bold px-8 py-4 rounded-full text-lg inline-flex items-center gap-2 min-h-[52px] shadow-lg shadow-pink-200 hover:opacity-95"
         >
           Start building your Business Genome <ArrowRight className="h-5 w-5" />
