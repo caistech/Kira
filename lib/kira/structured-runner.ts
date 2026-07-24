@@ -34,7 +34,11 @@ export function createOpenAIRunner(apiKey: string) {
       const sys =
         `${system}\n\nReturn ONLY a single JSON object. Use null for anything the transcript does ` +
         `not establish; never invent.${schemaHint(schema as ZodType)}`;
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      // Base URL is env-configurable so the LLM layer can point at any OpenAI-compatible endpoint
+      // (open-weight servers — vLLM / TGI / Ollama / openrouter — all speak this shape). Defaults to
+      // OpenAI, so today's behaviour is unchanged; an acquirer swaps the model runtime via one env var.
+      const baseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
+      const res = await fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({

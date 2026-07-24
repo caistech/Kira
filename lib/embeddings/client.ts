@@ -13,7 +13,11 @@ export interface EmbeddingOptions {
  */
 export class OpenAIEmbeddings {
   private apiKey: string;
-  private baseUrl = 'https://api.openai.com/v1/embeddings';
+  // Env-configurable base URL so embeddings can run on any OpenAI-compatible endpoint (open-weight
+  // servers speak this shape). Defaults to OpenAI — behaviour unchanged today; an acquirer repoints
+  // the runtime via OPENAI_BASE_URL with no code change.
+  private baseUrl =
+    (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '') + '/embeddings';
   private defaultModel = 'text-embedding-3-small';
   private defaultDimensions = 1536;
 
