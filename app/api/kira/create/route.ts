@@ -137,6 +137,47 @@ export async function POST(req: NextRequest) {
       objective: draft.primary_objective,
     });
 
+    /* ---------------- Atomically claim the draft (idempotency) ---------------- */
+    // Minting an agent is a ~10s multi-call flow, so a slow client can time out and RETRY (or two
+    // tabs submit) — and without a guard each attempt would create a SEPARATE paid ElevenLabs agent.
+    // Compare-and-set the draft to 'used' on the exact status we just read: exactly one caller wins.
+    // Losers wait briefly for the winner's agent row and return it (idempotent). This replaces the
+    // old mark-used-at-the-end step. If agent creation then fails, the ElevenLabs error path releases
+    // the claim so the user can retry.
+    const { data: claimedDraft } = await supabase
+      .from('kira_drafts')
+      .update({ status: 'used', used_at: new Date().toISOString() })
+      .eq('id', draftId)
+      .eq('status', draft.status)
+      .select('id')
+      .maybeSingle();
+
+    if (!claimedDraft) {
+      await log(supabase, requestId, 'draft_claim', 'error', 'Draft already claimed by a concurrent request');
+      for (let attempt = 0; attempt < 12; attempt++) {
+        const { data: existingAgent } = await supabase
+          .from('kira_agents')
+          .select('elevenlabs_agent_id, agent_name')
+          .eq('draft_id', draftId)
+          .maybeSingle();
+        if (existingAgent) {
+          return NextResponse.json({
+            success: true,
+            agentId: existingAgent.elevenlabs_agent_id,
+            agentName: existingAgent.agent_name,
+            isExisting: true,
+            message: 'This draft is already being turned into a Kira.',
+          });
+        }
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+      return NextResponse.json(
+        { error: 'Your Kira is still being created. Please wait a moment and try again.', requestId },
+        { status: 409 },
+      );
+    }
+    await log(supabase, requestId, 'draft_claim', 'success');
+
     /* ---------------- User (session-derived, not from the request body) ---------------- */
     const firstName = extractFirstName(draft.user_name);
     // The authenticated app-user row already exists (created by the auth-link trigger at signup),
@@ -227,6 +268,12 @@ export async function POST(req: NextRequest) {
         'ElevenLabs HTTP error',
         { status: elevenRes.status, response: text }
       );
+      // No agent was created — release the claim so the user (or a retry) can create it again,
+      // instead of the draft being stranded 'used' with no agent behind it.
+      await supabase
+        .from('kira_drafts')
+        .update({ status: draft.status, used_at: null })
+        .eq('id', draftId);
       throw new Error(`ElevenLabs create failed: ${elevenRes.status}`);
     }
 
@@ -237,60 +284,64 @@ export async function POST(req: NextRequest) {
       agentId,
     });
 
-    /* ---------------- Bind workspace-scoped post-call webhook ---------------- */
-    // The per-agent platform_settings.webhook shape is deprecated + silently ignored,
-    // so post-call webhooks never fired. Bind the workspace-scoped webhook instead (one
-    // webhook reused across all Kira agents on the /api/kira/webhook URL). The signing
-    // secret is returned only on first creation — capture it into ELEVENLABS_WEBHOOK_SECRET.
-    try {
-      const { webhookSecret } = await bindWorkspaceWebhook(ELEVENLABS_API_KEY, agentId, {
-        name: 'Kira post-call',
-        url: `${APP_URL}/api/kira/webhook`,
-      });
-      await log(
-        supabase,
-        requestId,
-        'webhook_bind',
-        'success',
-        webhookSecret
-          ? 'workspace webhook created — set ELEVENLABS_WEBHOOK_SECRET to the returned secret (shown once)'
-          : 'reused existing workspace webhook',
-        { secretReturned: Boolean(webhookSecret) }   // never log the secret value
-      );
-      if (webhookSecret) {
-        console.warn('[kira/create] Workspace post-call webhook CREATED — set ELEVENLABS_WEBHOOK_SECRET env to the returned secret (ElevenLabs shows it once).');
-      }
-    } catch (e: any) {
-      await log(supabase, requestId, 'webhook_bind', 'error', e?.message ?? 'webhook bind failed');
-      console.error('[kira/create] webhook bind failed:', e);
-      // Non-fatal: the agent exists; the webhook can be re-bound on a later run.
-    }
-
-    /* ---------------- Lock the agent's origin allowlist ---------------- */
-    // Without an allowlist, anyone who reads the agent ID from the client bundle can run
-    // free voice calls on the workspace's ElevenLabs key (VOICE AI rule). Restrict to the
-    // prod host + *.vercel.app previews + localhost.
-    try {
-      await setAllowlist(ELEVENLABS_API_KEY, agentId, standardAllowlist(new URL(APP_URL).hostname));
-      await log(supabase, requestId, 'allowlist_set', 'success');
-    } catch (e: any) {
-      await log(supabase, requestId, 'allowlist_set', 'error', e?.message ?? 'allowlist set failed');
-      console.error('[kira/create] allowlist set failed (non-fatal):', e);
-    }
-
-    /* ---------------- Attach the canonical memory/continuity tools ---------------- */
-    // An agent created without tools cannot call get_conversation_context / save_memory /
-    // recall_memory — which is exactly why memory never persisted. Attach the canonical
-    // loop's 5 tools as WORKSPACE entities on prompt.tool_ids (inline tools are silently
-    // stripped by ElevenLabs) and enable per-session overrides. Non-fatal.
-    try {
-      await setAgentTools(ELEVENLABS_API_KEY, agentId, kiraMemoryTools(APP_URL));
-      await setAgentOverrides(ELEVENLABS_API_KEY, agentId);
-      await log(supabase, requestId, 'tools_attach', 'success');
-    } catch (e: any) {
-      await log(supabase, requestId, 'tools_attach', 'error', e?.message ?? 'tool attach failed');
-      console.error('[kira/create] tool attach failed (non-fatal):', e);
-    }
+    /* ---------------- Post-create ElevenLabs binding (parallel, all non-fatal) ---------------- */
+    // webhook bind + origin allowlist + tool attach are independent ElevenLabs round-trips. Running
+    // them sequentially added ~15s to the request (allowlist ~7s, tools ~5s) — enough for a slow
+    // client to time out and retry. They're all non-fatal, so run them concurrently; a failure in one
+    // never blocks the others or the response.
+    await Promise.allSettled([
+      // Bind the workspace-scoped post-call webhook (the per-agent platform_settings.webhook shape is
+      // deprecated + silently ignored). The signing secret is returned only on first creation —
+      // capture it into ELEVENLABS_WEBHOOK_SECRET.
+      (async () => {
+        try {
+          const { webhookSecret } = await bindWorkspaceWebhook(ELEVENLABS_API_KEY, agentId, {
+            name: 'Kira post-call',
+            url: `${APP_URL}/api/kira/webhook`,
+          });
+          await log(
+            supabase,
+            requestId,
+            'webhook_bind',
+            'success',
+            webhookSecret
+              ? 'workspace webhook created — set ELEVENLABS_WEBHOOK_SECRET to the returned secret (shown once)'
+              : 'reused existing workspace webhook',
+            { secretReturned: Boolean(webhookSecret) }   // never log the secret value
+          );
+          if (webhookSecret) {
+            console.warn('[kira/create] Workspace post-call webhook CREATED — set ELEVENLABS_WEBHOOK_SECRET env to the returned secret (ElevenLabs shows it once).');
+          }
+        } catch (e: any) {
+          await log(supabase, requestId, 'webhook_bind', 'error', e?.message ?? 'webhook bind failed');
+          console.error('[kira/create] webhook bind failed:', e);
+        }
+      })(),
+      // Lock the agent's origin allowlist — without it, anyone who reads the agent ID from the client
+      // bundle can run free voice calls on the workspace key (VOICE AI rule).
+      (async () => {
+        try {
+          await setAllowlist(ELEVENLABS_API_KEY, agentId, standardAllowlist(new URL(APP_URL).hostname));
+          await log(supabase, requestId, 'allowlist_set', 'success');
+        } catch (e: any) {
+          await log(supabase, requestId, 'allowlist_set', 'error', e?.message ?? 'allowlist set failed');
+          console.error('[kira/create] allowlist set failed (non-fatal):', e);
+        }
+      })(),
+      // Attach the canonical memory/continuity tools (an agent created without tools can't call
+      // get_conversation_context / save_memory / recall_memory) as workspace entities on
+      // prompt.tool_ids + enable per-session overrides.
+      (async () => {
+        try {
+          await setAgentTools(ELEVENLABS_API_KEY, agentId, kiraMemoryTools(APP_URL));
+          await setAgentOverrides(ELEVENLABS_API_KEY, agentId);
+          await log(supabase, requestId, 'tools_attach', 'success');
+        } catch (e: any) {
+          await log(supabase, requestId, 'tools_attach', 'error', e?.message ?? 'tool attach failed');
+          console.error('[kira/create] tool attach failed (non-fatal):', e);
+        }
+      })(),
+    ]);
 
     /* ---------------- Save Agent to Database ---------------- */
     await log(supabase, requestId, 'agent_save', 'start');
@@ -345,18 +396,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    /* ---------------- Mark Draft as Used ---------------- */
-    const { error: draftUpdateError } = await supabase
-      .from('kira_drafts')
-      .update({
-        status: 'used',
-        used_at: new Date().toISOString(),
-      })
-      .eq('id', draftId);
-
-    if (draftUpdateError) {
-      console.error('[kira/create] Failed to mark draft as used:', draftUpdateError);
-    }
+    // (The draft was already claimed as 'used' up front — no separate mark-used step needed.)
 
     await log(supabase, requestId, 'complete', 'success', undefined, {
       agentId,
