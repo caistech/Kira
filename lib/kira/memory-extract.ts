@@ -30,11 +30,15 @@ export function createMemoryExtractor(apiKey: string): MemoryExtractor {
 
     let data: unknown;
     try {
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      // Env-configurable base URL + model so the memory-governance LLM can run on any
+      // OpenAI-compatible endpoint (open-weight servers speak this shape). Defaults to OpenAI —
+      // unchanged today; an acquirer repoints the runtime via env with no code change.
+      const baseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
+      const res = await fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'gpt-4.1-mini',
+          model: process.env.KIRA_EXTRACTION_MODEL || 'gpt-4.1-mini',
           messages: [
             { role: 'system', content: SYSTEM },
             { role: 'user', content: transcript },
