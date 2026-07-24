@@ -11,12 +11,12 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
-  title: 'Kira — Your Friendly Guide Through Anything',
-  description: 'A patient, knowledgeable AI companion who guides you through learning new skills, planning projects, or mastering anything. Like having a brilliant friend available 24/7.',
-  keywords: ['AI assistant', 'learning companion', 'personal guide', 'AI tutor', 'voice AI'],
+  title: 'Kira — your fractional exec',
+  description: 'Kira is your fractional exec: talk to her a few minutes at a time and she captures what\'s in your head, remembers everything, and quietly builds the systems that make your business worth more.',
+  keywords: ['fractional executive', 'AI chief of staff', 'business valuation', 'voice AI', 'business genome'],
   openGraph: {
-    title: 'Kira — Your Friendly Guide Through Anything',
-    description: 'A patient, knowledgeable AI companion who guides you through learning new skills, planning projects, or mastering anything.',
+    title: 'Kira — your fractional exec',
+    description: 'Talk to Kira a few minutes at a time; she captures what\'s in your head, remembers everything, and builds the systems that make your business worth more.',
     images: ['/female_avatar.jpeg'],
   },
 };
