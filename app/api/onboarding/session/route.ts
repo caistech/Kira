@@ -5,14 +5,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {});
+// Lazily construct Stripe at request time (module-load construction throws during `next build`
+// when STRIPE_SECRET_KEY isn't in the build env, e.g. CI).
+let _stripe: Stripe | null = null;
+function getStripe(): Stripe {
+  if (!_stripe) _stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {});
+  return _stripe;
+}
 
 export async function GET(request: NextRequest) {
   const sessionId = request.nextUrl.searchParams.get('session_id');
   if (!sessionId) return NextResponse.json({ error: 'Missing session_id' }, { status: 400 });
 
   try {
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    const session = await getStripe().checkout.sessions.retrieve(sessionId);
     const paid = session.payment_status === 'paid' || session.status === 'complete';
     return NextResponse.json({
       paid,

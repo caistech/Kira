@@ -11,8 +11,20 @@ import { computeValuation, type ValuationInputs } from '@/lib/valuation/model';
 import { priceForGap } from '@/lib/valuation/pricing';
 import { getCurrency } from '@/lib/valuation/currency';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {});
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+// Lazily construct Stripe at request time. Constructing at module load throws
+// ("Neither apiKey nor config.authenticator provided") during `next build` page-data
+// collection when STRIPE_SECRET_KEY isn't present in the build env (e.g. CI).
+let _stripe: Stripe | null = null;
+function getStripe(): Stripe {
+  if (!_stripe) _stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {});
+  return _stripe;
+}
+
+// Derive the redirect base from the REQUEST origin so a checkout started on localhost returns to
+// localhost (test) and one from prod returns to prod (live) - never a cross-environment bounce.
+function baseUrl(request: NextRequest): string {
+  return request.headers.get('origin') || request.nextUrl.origin || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,13 +40,14 @@ export async function POST(request: NextRequest) {
     const result = computeValuation(inputs);
     const quote = priceForGap(result.gap);
     const currency = getCurrency(currencyCode);
+    const base = baseUrl(request);
 
     // A gap of zero (or loss-making) has no captured value to price against - send them back.
     if (result.gap <= 0) {
       return NextResponse.json({ error: 'No value gap to price' }, { status: 400 });
     }
 
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       mode: 'subscription',
       line_items: [
         {
@@ -67,8 +80,8 @@ export async function POST(request: NextRequest) {
       subscription_data: {
         metadata: { kira_journey: 'business' },
       },
-      success_url: `${APP_URL}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${APP_URL}/plan`,
+      success_url: `${base}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${base}/plan`,
       allow_promotion_codes: true,
       billing_address_collection: 'auto',
     });

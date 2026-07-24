@@ -9,7 +9,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createServiceClient } from '@/lib/supabase/server';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {});
+// Lazily construct Stripe at request time (module-load construction throws during `next build`
+// when STRIPE_SECRET_KEY isn't in the build env, e.g. CI).
+let _stripe: Stripe | null = null;
+function getStripe(): Stripe {
+  if (!_stripe) _stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {});
+  return _stripe;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,7 +27,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
     }
 
-    const session = await stripe.checkout.sessions.retrieve(session_id);
+    const session = await getStripe().checkout.sessions.retrieve(session_id);
     if (session.payment_status !== 'paid' && session.status !== 'complete') {
       return NextResponse.json({ error: 'Payment not complete' }, { status: 402 });
     }
