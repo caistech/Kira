@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
+import { rejectUnauthorisedCron } from '@/lib/cron-auth';
 import { sendTrialEndingEmail } from '@/lib/email/trial-ending';
 import { createServiceClient } from '@/lib/supabase/server';
 import { DEFAULT_CURRENCY } from '@/lib/valuation/currency';
@@ -17,16 +18,14 @@ import { DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const CRON_SECRET = process.env.CRON_SECRET;
-
 /** How many days before the charge the reminder goes out. */
 const REMINDER_LEAD_DAYS = 3;
 
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  // Fail closed. This endpoint emails real customers about a real charge — an unauthenticated
+  // caller must never be able to trigger a run.
+  const unauthorised = rejectUnauthorisedCron(request);
+  if (unauthorised) return unauthorised;
 
   const supabase = createServiceClient();
 

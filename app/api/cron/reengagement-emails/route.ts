@@ -3,19 +3,15 @@
 // Schedule: Daily at 10am (configure in vercel.json)
 
 import { NextRequest, NextResponse } from 'next/server';
+import { rejectUnauthorisedCron } from '@/lib/cron-auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { sendWelcomeBackEmail } from '@/lib/email/resend';
 
-// Verify cron secret to prevent unauthorized calls
-const CRON_SECRET = process.env.CRON_SECRET;
-
 export async function GET(request: NextRequest) {
   try {
-    // Verify authorization
-    const authHeader = request.headers.get('authorization');
-    if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // Fail closed: an unset CRON_SECRET refuses the request rather than waving it through.
+    const unauthorised = rejectUnauthorisedCron(request);
+    if (unauthorised) return unauthorised;
 
     const supabase = createServiceClient();
 
