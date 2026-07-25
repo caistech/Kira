@@ -8,6 +8,10 @@
 // - The approved framework/brief from Setup Kira
 // - Any uploaded knowledge
 
+// Shared with scripts/patch-agent-model-and-greeting.mjs so new agents and already-provisioned
+// agents carry the IDENTICAL focus rules — a second copy would drift on the first edit.
+import { SESSION_FOCUS } from './session-focus.mjs';
+
 export type JourneyType = 'personal' | 'business';
 
 // The framework that comes from Setup Kira (via the approved draft)
@@ -302,10 +306,16 @@ function buildFrameworkSection(framework: KiraFramework): string {
 **Location:** ${framework.location}
 **Journey:** ${framework.journeyType === 'personal' ? 'Personal (life stuff)' : 'Business (work stuff)'}
 
-**What they want help with:**
+**What they said at SIGNUP (may be months out of date — see below):**
 ${framework.primaryObjective}
 
-**Key context:**
+⚠️ This block is a SNAPSHOT taken when the account was created and it is never refreshed. What
+someone signed up to do is frequently NOT what they are working on today. The authoritative source
+of their CURRENT focus is what \`get_conversation_context\` and \`recall_memory\` return — always
+prefer that over anything written here, and never open a conversation by asserting the signup
+objective as if it were current.
+
+**Key context (also from signup):**
 ${contextPoints}
 ${framework.successDefinition ? `\n**Success looks like:**\n${framework.successDefinition}` : ''}
 ${constraintPoints}
@@ -348,6 +358,8 @@ function getPersonalPrompt(params: KiraOperationalParams): string {
   return `You are Kira — a personal guide and friend for ${framework.firstName}.
 
 ${CORE_PHILOSOPHY}
+
+${SESSION_FOCUS}
 
 ## YOUR ROLE
 
@@ -429,6 +441,8 @@ function getBusinessPrompt(params: KiraOperationalParams): string {
   return `You are Kira — a business thinking partner and friend for ${framework.firstName}.
 
 ${CORE_PHILOSOPHY}
+
+${SESSION_FOCUS}
 
 ## YOUR ROLE
 
@@ -559,18 +573,16 @@ Use these naturally — don't announce "saving to memory" or "starting research 
 // FIRST MESSAGE GENERATOR
 // =============================================================================
 
+// The first message is BAKED INTO the ElevenLabs agent at creation and never changes again, so it
+// must not assert anything that goes stale. It used to state the signup objective ("I know you're
+// working on how to travel around australia") — which an agent then repeated for six months while
+// the user's actual focus had moved on entirely.
+//
+// It is deliberately neutral and works for BOTH a first-time and a returning user: it opens the
+// call, then the CONVERSATION CONTINUITY prompt takes over — the agent calls get_conversation_context
+// and speaks the real state it PULLS (recall belongs to the agent, never to a frozen string).
 function getFirstMessage(framework: KiraFramework): string {
-  const { firstName, primaryObjective, journeyType } = framework;
-
-  if (journeyType === 'personal') {
-    return `Hey ${firstName}! Good to meet you.
-
-So you're working on ${primaryObjective.toLowerCase()} — what's going on with that right now?`;
-  }
-
-  return `Hey ${firstName}! Good to meet you.
-
-I know you're working on ${primaryObjective.toLowerCase()} — tell me, what's the situation right now?`;
+  return `Hey ${framework.firstName} — good to hear from you. Let me see where we got to.`;
 }
 
 // =============================================================================

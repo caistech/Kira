@@ -8,6 +8,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { VoiceWidget } from '@caistech/elevenlabs-convai/react';
+import { buildWelcomeBackFirstMessage } from '@/lib/kira/welcome-back';
 
 // Icons as inline SVGs to avoid lucide-react dependency issues.
 // (The voice controls — mic/pause/play/stop — now live inside the canonical VoiceWidget.)
@@ -89,6 +90,8 @@ interface ConversationContext {
   has_history: boolean;
   last_topic?: string;
   suggested_greeting?: string;
+  time_gap_category?: string;
+  message_count?: number;
 }
 
 interface AgentInfo {
@@ -98,6 +101,7 @@ interface AgentInfo {
   journey_type: string;
   status: string;
   elevenlabs_agent_id: string;
+  first_name?: string | null;
 }
 
 export default function ChatPage() {
@@ -165,6 +169,13 @@ export default function ChatPage() {
     const { signedUrl } = await res.json();
     return signedUrl as string;
   }, [agentInfo]);
+
+  // The spoken opener, rendered from the context we already loaded. null → no history yet, so the
+  // agent's own first-time greeting stands.
+  const welcomeBack = buildWelcomeBackFirstMessage(
+    agentInfo?.first_name || agentInfo?.agent_name?.split('_')[1] || '',
+    context,
+  );
 
   /* ---------------- UI ---------------- */
 
@@ -241,6 +252,18 @@ export default function ChatPage() {
               title={
                 context?.has_history
                   ? 'Welcome back — Kira remembers where you left off. Tap the mic to continue.'
+                  : undefined
+              }
+              // Speak the recall instead of hoping the agent fetches it. This page already holds the
+              // context (loaded above from the same RPC the agent's get_conversation_context tool
+              // reads), and previously spent it on the banner alone — while the agent, which does not
+              // reliably call that tool at turn zero, opened from its stale signup snapshot and then
+              // WAITED to be asked. Rendering the opener here makes the first sentence deterministic.
+              // Returns null when there is no history, so a genuine first-timer keeps the agent's own
+              // new-user greeting (never a faked "welcome back").
+              overrides={
+                welcomeBack
+                  ? { agent: { firstMessage: welcomeBack } }
                   : undefined
               }
               getSignedUrl={getSignedUrl}

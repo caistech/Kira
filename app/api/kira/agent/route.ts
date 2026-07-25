@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     // Look up agent by ElevenLabs agent ID
     const { data: agent, error } = await supabase
       .from('kira_agents')
-      .select('id, user_id, agent_name, journey_type, status, elevenlabs_agent_id')
+      .select('id, user_id, agent_name, journey_type, status, elevenlabs_agent_id, framework')
       .eq('elevenlabs_agent_id', agentId)
       .single();
 
@@ -48,6 +48,10 @@ export async function GET(request: NextRequest) {
       journey_type: agent.journey_type,
       status: agent.status,
       elevenlabs_agent_id: agent.elevenlabs_agent_id,
+      // The chat page renders the spoken welcome-back opener from context and needs the owner's
+      // first name for it. Only the name is exposed — the rest of the framework is the (often
+      // months-stale) signup snapshot and must not reach the client as if it were current state.
+      first_name: agent.framework?.firstName ?? null,
     });
 
   } catch (error) {
