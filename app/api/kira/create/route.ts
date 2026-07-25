@@ -21,8 +21,8 @@ import {
   KiraFramework,
   JourneyType,
 } from '@/lib/kira/prompts';
-import { bindWorkspaceWebhook, setAllowlist, standardAllowlist, setAgentTools, setAgentOverrides } from '@caistech/elevenlabs-convai';
-import { kiraMemoryTools, conversationContinuityPrompt } from '@/lib/kira/convai';
+import { bindWorkspaceWebhook, setAllowlist, standardAllowlist, setAgentTools, setAgentOverrides, DEFAULT_AGENT_LLM } from '@caistech/elevenlabs-convai';
+import { kiraAllTools, conversationContinuityPrompt } from '@/lib/kira/convai';
 import { buildProfileBriefing } from '@/lib/kira/discovery-schema';
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
@@ -32,7 +32,12 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app'
 const ELEVENLABS_CONFIG = {
   voice_id: 'EXAVITQu4vr4xnSDxMaL',  // Sarah - warm, friendly female voice
   tts_model: 'eleven_flash_v2',       // English-only, 75ms latency, purpose-built for conversational AI
-  llm: 'gpt-4o-mini',                 // Fast, cost-effective LLM
+  // Take the hub default (gpt-4.1-mini) — NEVER hardcode a model here. The hub pins this
+  // specifically because gpt-4o-mini DROPS TOOL CALLS as a conversation runs long, which silently
+  // disables the whole memory loop: the agent simply stops calling get_conversation_context /
+  // recall_memory / save_memory and there is no error anywhere to see. Overriding this is how a
+  // correctly-wired loop still ends up with an agent that "doesn't remember".
+  llm: DEFAULT_AGENT_LLM,
   temperature: 0.7,                    // Balanced creativity
   max_duration_seconds: 3600,          // 1 hour max conversation
 };
@@ -333,7 +338,7 @@ export async function POST(req: NextRequest) {
       // prompt.tool_ids + enable per-session overrides.
       (async () => {
         try {
-          await setAgentTools(ELEVENLABS_API_KEY, agentId, kiraMemoryTools(APP_URL));
+          await setAgentTools(ELEVENLABS_API_KEY, agentId, kiraAllTools(APP_URL, user.id));
           await setAgentOverrides(ELEVENLABS_API_KEY, agentId);
           await log(supabase, requestId, 'tools_attach', 'success');
         } catch (e: any) {

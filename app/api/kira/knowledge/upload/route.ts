@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { ingestKnowledgeDocument, supersedeOlderVersions } from '@/lib/kira/knowledge-ingest';
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
 
@@ -87,6 +88,25 @@ export async function POST(req: NextRequest) {
     if (dbError) {
       console.error('[knowledge/upload] DB error:', dbError);
       // Don't fail - the document was uploaded to ElevenLabs
+    }
+
+    // Ingest into the OWNED RAG store (extract → chunk → embed → kira_knowledge_chunks) so the agent
+    // can actually retrieve it via search_knowledge. This is the moat; the ElevenLabs upload above is
+    // now just a commodity text-extraction step. Best-effort: a failure here doesn't fail the upload
+    // (a backfill can re-ingest), but it's the point of the upload so we log loudly.
+    if (knowledgeRecord?.id) {
+      try {
+        const result = await ingestKnowledgeDocument(knowledgeRecord.id);
+        console.log(`[knowledge/upload] ingested ${result.chunks} chunk(s) from ${result.chars} chars${result.skipped ? ` (skipped: ${result.skipped})` : ''}`);
+        // Latest upload of the same file wins — remove older versions so a re-upload (draft → final)
+        // doesn't leave both in the store.
+        if (userId) {
+          const superseded = await supersedeOlderVersions(knowledgeRecord.id, userId, { fileName: file.name });
+          if (superseded) console.log(`[knowledge/upload] superseded ${superseded} older version(s) of ${file.name}`);
+        }
+      } catch (e) {
+        console.error('[knowledge/upload] owned-RAG ingest failed:', e);
+      }
     }
 
     // If agentId provided, attach document to agent

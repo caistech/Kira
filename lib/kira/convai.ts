@@ -24,6 +24,10 @@ import {
 } from '@caistech/elevenlabs-convai';
 import { createServiceClient } from '@/lib/supabase/server';
 import { createMemoryExtractor } from '@/lib/kira/memory-extract';
+import { kiraKnowledgeToolDef } from '@/lib/kira/knowledge-tool-def.mjs';
+import { kiraDispatchToolDef, kiraApproveToolDef } from '@/lib/kira/swarm/doing-tools-def.mjs';
+import { mnemoAdd } from '@/lib/kira/mnemo';
+import { dedupeUserMemory, activeMemoryKeys, normalizeMemory } from '@/lib/kira/memory-dedup';
 
 // Kira's real tables mapped onto the canonical TableNames contract. The reconcile
 // migration adds the columns the handlers need (agent_id, anon_session_id, processed_at)
@@ -62,12 +66,48 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
     // distilled "important facts" layer). Degrade-don't-fake: a failing distil is logged + skipped,
     // never thrown out of the post-call path (canonical distillConversationToMemory guarantees this).
     onConversationComplete: async (conv, sb) => {
+      // Resolve the owner + snapshot their existing memory BEFORE distil, so we can tell which of
+      // this conversation's facts are genuinely NEW (worth adding to Mnemo) vs repeats.
+      let userId: string | undefined;
+      let priorKeys = new Set<string>();
+      try {
+        const { data: crow } = await sb
+          .from(KIRA_CONVAI_TABLES.conversations)
+          .select('user_id')
+          .eq('id', conv.id)
+          .single();
+        userId = crow?.user_id as string | undefined;
+        if (userId) priorKeys = await activeMemoryKeys(userId);
+      } catch { /* non-fatal */ }
+
       await distillConversationToMemory(sb, {
         elevenlabsConversationId: conv.elevenlabsConversationId,
         conversationId: conv.id,
         extract: memoryExtractor,
         tables: KIRA_CONVAI_TABLES,
       });
+
+      // Collapse literal duplicate facts in kira_memory (#2 — recall stays clean over time), then
+      // dual-write ONLY the net-new facts to Mnemo (the experiential/semantic lane, #7), so Mnemo
+      // doesn't accumulate the same fact every session. kira_memory stays the source of truth;
+      // Mnemo is the semantic index that makes cross-session, differently-worded recall work.
+      // Fail-soft + non-fatal throughout: a Mnemo outage never affects the post-call path.
+      try {
+        if (userId) {
+          await dedupeUserMemory(userId);
+          const { data: fresh } = await sb
+            .from(KIRA_CONVAI_TABLES.memory)
+            .select('content')
+            .eq('source_conversation_id', conv.id)
+            .eq('active', true);
+          const netNew = (fresh ?? [])
+            .map((r: any) => r.content)
+            .filter((c: string) => c && !priorKeys.has(normalizeMemory(c)));
+          if (netNew.length) await mnemoAdd(userId, netNew);
+        }
+      } catch (e) {
+        console.error('[kira/convai] memory dedup / Mnemo write skipped:', e);
+      }
     },
     // Identity is SERVER-DERIVED from the agent binding, never from an agent-supplied
     // user_id. Kira provisions one agent per user, so the agent's owner IS the session
@@ -124,6 +164,68 @@ export function kiraMemoryTools(baseUrl: string): ConvAITool[] {
     for (const t of tools) {
       if (t.webhook) {
         t.webhook.headers = { ...(t.webhook.headers ?? {}), [KIRA_TOOL_SECRET_HEADER]: secret };
+      }
+    }
+  }
+  return tools;
+}
+
+/**
+ * The owned-RAG retrieval tool (#11) — search over the documents/links the user has shared, from
+ * OUR store (kira_knowledge_chunks), cited. Not part of the canonical conversation-tools set (that's
+ * memory); this is Kira-specific. Carries the same tool-secret header as the memory tools so the
+ * route guard accepts it. It replaces the old, never-built search_knowledge/search_web CLAIMS the
+ * prompt used to make — this one is real and attached.
+ */
+export function kiraKnowledgeTool(baseUrl: string): ConvAITool {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const secret = process.env.KIRA_TOOL_WEBHOOK_SECRET;
+  if (secret) headers[KIRA_TOOL_SECRET_HEADER] = secret;
+  // Single-sourced from knowledge-tool-def.mjs so the new-agent + re-provision definitions can't drift.
+  return kiraKnowledgeToolDef(baseUrl, headers) as ConvAITool;
+}
+
+/**
+ * The doing-slice tools (#12): dispatch_task (draft an owned task) + approve_task (execute on the
+ * owner's yes). Single-sourced from swarm/doing-tools-def.mjs. Same tool-secret header as the memory
+ * tools; identity is server-baked as ?uid by kiraAllTools (dispatch/approve resolve the owner from it).
+ */
+export function kiraDoingTools(baseUrl: string): ConvAITool[] {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const secret = process.env.KIRA_TOOL_WEBHOOK_SECRET;
+  if (secret) headers[KIRA_TOOL_SECRET_HEADER] = secret;
+  return [
+    kiraDispatchToolDef(baseUrl, headers) as ConvAITool,
+    kiraApproveToolDef(baseUrl, headers) as ConvAITool,
+  ];
+}
+
+/**
+ * The full tool set attached to an operational agent: the 5 canonical memory tools + the owned-RAG
+ * search_knowledge tool.
+ *
+ * IDENTITY: pass the agent owner's `userId` and it is baked into the recall_memory + search_knowledge
+ * webhook URLs as `?uid=<userId>`. This is how those tools know whose memory/documents to read —
+ * ElevenLabs does NOT pass the conversation id to server-tool webhooks (proven from the live
+ * conversation record: the agent sends only the LLM-filled params). Kira provisions one agent per
+ * user, so the owner is known at provision and baked in; the agent never has to identify anyone, and
+ * the handlers resolve the user from `?uid` (falling back to the conversation binding for legacy).
+ * The `x-kira-tool-secret` header still gates the routes, so a baked uid is not a bare-param hole.
+ */
+export function kiraAllTools(baseUrl: string, userId?: string): ConvAITool[] {
+  const tools = [...kiraMemoryTools(baseUrl), kiraKnowledgeTool(baseUrl), ...kiraDoingTools(baseUrl)];
+  for (const t of tools) {
+    if (!t.webhook) continue;
+    const isUidTool = /\/(recall_memory|search_knowledge|save_memory|start_conversation|dispatch_task|approve_task)$/.test(t.webhook.url);
+    if (userId && isUidTool) {
+      t.webhook.url = `${t.webhook.url}?uid=${encodeURIComponent(userId)}`;
+    }
+    // recall_memory + search_knowledge identify the user from ?uid, so their conversation_id param
+    // is dead weight the LLM fills with junk — strip it. (The other memory tools still use it.)
+    if (isUidTool && t.parameters?.properties && 'conversation_id' in t.parameters.properties) {
+      delete (t.parameters.properties as Record<string, unknown>).conversation_id;
+      if (Array.isArray(t.parameters.required)) {
+        t.parameters.required = t.parameters.required.filter((r: string) => r !== 'conversation_id');
       }
     }
   }

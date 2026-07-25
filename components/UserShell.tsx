@@ -9,6 +9,7 @@ import { TalkFab } from '@/components/TalkFab';
 
 const USER_NAV: NavItem[] = [
   { href: '/dashboard', label: 'My Kiras' },
+  { href: '/knowledge', label: 'Knowledge' },
   { href: '/start', label: 'New Kira' },
 ];
 

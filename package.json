@@ -10,9 +10,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@caistech/corporate-components": "^0.3.0",
+    "@caistech/corporate-components": "^0.5.2",
     "@caistech/discovery-agent": "^0.1.0",
-    "@caistech/elevenlabs-convai": "^0.5.0",
+    "@caistech/elevenlabs-convai": "^0.7.0",
     "@caistech/platform-trust-middleware": "^0.4.0",
     "@caistech/sayfix-embed": "^0.6.0",
     "@caistech/webmcp-kit": "^0.1.0",

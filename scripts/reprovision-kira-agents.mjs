@@ -28,6 +28,7 @@ import {
   getAgent,
   updateAgent,
 } from '@caistech/elevenlabs-convai';
+import { kiraKnowledgeToolDef } from '../lib/kira/knowledge-tool-def.mjs';
 
 const {
   ELEVENLABS_API_KEY,
@@ -44,15 +45,23 @@ if (!ELEVENLABS_API_KEY) throw new Error('ELEVENLABS_API_KEY missing (run: verce
 if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) throw new Error('Supabase env missing');
 
 const supabase = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-const tools = createConversationTools(APP_URL, '/api/kira/webhooks');
-// Interim tool-webhook auth (matches lib/kira/convai.ts toolSecretOk): when KIRA_TOOL_WEBHOOK_SECRET
-// is set, the operational tools carry it as a header so the routes can reject un-provisioned callers.
-if (process.env.KIRA_TOOL_WEBHOOK_SECRET) {
+
+// Build the tool set for a SPECIFIC agent owner. recall_memory + search_knowledge get the owner's
+// user id baked into the URL (?uid=<userId>), because ElevenLabs does not pass the conversation id
+// to server-tool webhooks — identity is server-known (one agent per user) and baked in at provision.
+// The x-kira-tool-secret header gates every tool route.
+function buildToolsForUser(userId) {
+  const tools = [...createConversationTools(APP_URL, '/api/kira/webhooks'), kiraKnowledgeToolDef(APP_URL)];
   for (const t of tools) {
-    if (t.webhook) {
+    if (!t.webhook) continue;
+    if (userId && /\/(recall_memory|search_knowledge|save_memory|start_conversation)$/.test(t.webhook.url)) {
+      t.webhook.url = `${t.webhook.url}?uid=${encodeURIComponent(userId)}`;
+    }
+    if (process.env.KIRA_TOOL_WEBHOOK_SECRET) {
       t.webhook.headers = { ...(t.webhook.headers ?? {}), 'x-kira-tool-secret': process.env.KIRA_TOOL_WEBHOOK_SECRET };
     }
   }
+  return tools;
 }
 const hostname = new URL(APP_URL).hostname;
 
@@ -63,7 +72,7 @@ const hostname = new URL(APP_URL).hostname;
 // discovery onto the system owner. Exclude by name (always) and by id (when the env is present).
 let query = supabase
   .from('kira_agents')
-  .select('id, elevenlabs_agent_id, agent_name, status')
+  .select('id, elevenlabs_agent_id, agent_name, status, user_id')
   .in('status', ['active', 'paused'])
   .neq('agent_name', 'Kira Discovery');
 if (DISCOVERY_AGENT_ID) query = query.neq('elevenlabs_agent_id', DISCOVERY_AGENT_ID);
@@ -95,8 +104,8 @@ for (const a of agents) {
       });
     }
 
-    // 2. Attach the canonical tools + enable overrides.
-    await setAgentTools(ELEVENLABS_API_KEY, id, tools);
+    // 2. Attach the tools (with THIS owner's uid baked into recall/search URLs) + enable overrides.
+    await setAgentTools(ELEVENLABS_API_KEY, id, buildToolsForUser(a.user_id));
     await setAgentOverrides(ELEVENLABS_API_KEY, id);
 
     // 3. Ensure the post-call webhook + allowlist.

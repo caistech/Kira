@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { ingestKnowledgeDocument, supersedeOlderVersions } from '@/lib/kira/knowledge-ingest';
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
 
@@ -91,6 +92,20 @@ export async function POST(req: NextRequest) {
 
     if (dbError) {
       console.error('[knowledge/url] DB error:', dbError);
+    }
+
+    // Ingest into the OWNED RAG store so the agent can retrieve it via search_knowledge (the moat).
+    if (knowledgeRecord?.id) {
+      try {
+        const result = await ingestKnowledgeDocument(knowledgeRecord.id);
+        console.log(`[knowledge/url] ingested ${result.chunks} chunk(s) from ${result.chars} chars${result.skipped ? ` (skipped: ${result.skipped})` : ''}`);
+        if (userId) {
+          const superseded = await supersedeOlderVersions(knowledgeRecord.id, userId, { url });
+          if (superseded) console.log(`[knowledge/url] superseded ${superseded} older version(s) of ${url}`);
+        }
+      } catch (e) {
+        console.error('[knowledge/url] owned-RAG ingest failed:', e);
+      }
     }
 
     // If agentId provided, attach document to agent

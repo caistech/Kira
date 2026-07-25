@@ -16,7 +16,11 @@ function getResend(): Resend {
   return _resend;
 }
 
-const FROM_EMAIL = process.env.EMAIL_FROM || 'Kira <kira@yourdomain.com>';
+// updates.corporateaisolutions.com is the ONLY Resend-verified sending subdomain in the portfolio
+// (the bare apex is NOT verified) — so it is the default, not a placeholder. The previous fallback
+// was a literal 'kira@yourdomain.com', and since EMAIL_FROM is set in no environment, every
+// transactional email Kira has ever sent was addressed from an unverified domain and rejected.
+const FROM_EMAIL = process.env.EMAIL_FROM || 'Kira <noreply@updates.corporateaisolutions.com>';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://kira.app';
 
 interface SendEmailParams {

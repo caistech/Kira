@@ -3,12 +3,16 @@
 // the bound conversation row, never from a tool/agent parameter (closes the cross-tenant
 // memory-read hole). See lib/kira/convai.ts.
 
-import { kiraConvaiRoutes, toolSecretOk } from '@/lib/kira/convai';
+// recall_memory now runs Kira's merged handler: Mnemo semantic (deep/cross-session) + kira_memory
+// (near-term, fail-soft floor). Identity is still derived from the conversation binding. See
+// lib/kira/recall.ts. The canonical substring-only recall was missing differently-worded queries.
+import { toolSecretOk } from '@/lib/kira/convai';
+import { handleKiraRecall } from '@/lib/kira/recall';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export function POST(req: Request) {
   if (!toolSecretOk(req)) return new Response('Unauthorized', { status: 401 });
-  return kiraConvaiRoutes().recallMemory(req);
+  return handleKiraRecall(req);
 }
