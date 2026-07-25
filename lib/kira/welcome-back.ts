@@ -29,7 +29,14 @@ export interface ConversationContextShape {
   message_count?: number | null;
 }
 
-/** Trim a stored last_topic (an LLM summary, often cut mid-sentence) to a speakable clause. */
+/**
+ * Turn a stored last_topic into something speakable.
+ *
+ * Stored topics are LLM summaries written in the THIRD PERSON about the conversation ("The user
+ * clarified their current focus is…"). They must be converted to second person, not merely
+ * prefix-stripped — stripping "The user " leaves a dangling verb that produces sentences like
+ * "Last time we were on clarified their current focus…".
+ */
 function toSpokenTopic(rawTopic: string): string {
   let topic = rawTopic.trim().replace(/\s+/g, ' ');
 
@@ -40,12 +47,24 @@ function toSpokenTopic(rawTopic: string): string {
 
   topic = topic.replace(/[\s,;:.]+$/, '');
 
-  // Summaries are written ABOUT the conversation ("The conversation began with the agent…"). Strip
-  // that framing so the opener sounds like a person remembering, not a transcript being read out.
+  // Drop transcript framing that describes the CALL rather than the subject.
+  topic = topic.replace(
+    /^the conversation (began|started|opened) with (the agent|kira)[^.]*?[,.]\s*/i,
+    '',
+  );
+
+  // Third person -> second person, so she speaks TO them rather than about them.
   topic = topic
-    .replace(/^the conversation (began|started|opened) with (the agent|kira)\s*/i, '')
-    .replace(/^the (user|agent|conversation)\s+/i, '')
-    .replace(/^(discussed|covered|focused on)\s+/i, '');
+    .replace(/\bthe user's\b/gi, 'your')
+    .replace(/\bthe user\b/gi, 'you')
+    .replace(/\btheir\b/gi, 'your')
+    .replace(/\bthem\b/gi, 'you')
+    .replace(/\bthey were\b/gi, 'you were')
+    .replace(/\bthey are\b/gi, "you're")
+    .replace(/\bthey\b/gi, 'you');
+
+  // Lowercase a leading "You" so it reads as a clause inside the opener sentence.
+  topic = topic.replace(/^You\b/, 'you');
 
   return topic;
 }
@@ -79,7 +98,9 @@ export function buildWelcomeBackFirstMessage(
           ? `Hey ${name}, good to see you again.`
           : `Hey ${name} — it's been a little while.`;
 
+  // "Here's where we got to:" carries a full clause cleanly, where "Last time we were on X" only
+  // works for a noun phrase — and these summaries are sentences, not noun phrases.
   // The close is a fork, not an open question: the standing requirement is that she states what we
   // were doing and offers to continue OR pivot, without waiting to be asked.
-  return `${lead} Last time we were on ${topic}. Do you want to carry on with that, or is there something new?`;
+  return `${lead} Here's where we got to: ${topic}. Do you want to carry on with that, or is there something new?`;
 }
