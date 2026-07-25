@@ -67,6 +67,16 @@ export interface SwarmCoordinator {
   dispatchIntent(intent: DispatchedIntent): Promise<DispatchResult>;
   /** Poll a task group's state (the return leg is also pushed via webhook where available). */
   getTaskState(taskGroupId: string, tenantId: TenantId): Promise<TaskStatus>;
-  /** The owner's decision on a drafted task. approve=false discards it. On approve, it executes + notifies. */
-  resolveApproval(taskGroupId: string, tenantId: TenantId, approve: boolean): Promise<DispatchResult>;
+  /**
+   * The owner's decision on a drafted task. approve=false discards it. On approve, it executes +
+   * notifies. `patch` supplies anything the owner gave at approval time that the draft was missing —
+   * most importantly a recipient email for a send (the classifier can't invent one), so the send can
+   * complete instead of dead-ending. Merged into the task's artifact before execution.
+   */
+  resolveApproval(
+    taskGroupId: string,
+    tenantId: TenantId,
+    approve: boolean,
+    patch?: { recipientEmail?: string },
+  ): Promise<DispatchResult>;
 }

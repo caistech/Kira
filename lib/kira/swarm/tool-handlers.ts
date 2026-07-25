@@ -42,6 +42,11 @@ export async function handleDispatchTask(req: Request): Promise<Response> {
       intentId,
       utterance,
     });
+    // A send needs a recipient email the classifier can't invent. Tell the agent when it's missing so
+    // it asks the owner ("what's Dave's email?") before approving, instead of dead-ending on send.
+    const art = (result.draft?.artifact ?? {}) as Record<string, unknown>;
+    const isSend = result.draft?.kind === 'email' || result.draft?.kind === 'quote';
+    const needsRecipientEmail = isSend && !art.recipient_email;
     return json(200, {
       success: true,
       task_id: result.taskGroupId,
@@ -51,6 +56,8 @@ export async function handleDispatchTask(req: Request): Promise<Response> {
       preview: result.draft?.preview ?? '',
       message: result.message ?? '',
       needs_approval: result.status === 'awaiting_approval',
+      needs_recipient_email: needsRecipientEmail,
+      recipient_name: (art.recipient_name as string) ?? null,
     });
   } catch (e) {
     console.error('[swarm] dispatch_task failed:', e);
@@ -74,9 +81,11 @@ export async function handleApproveTask(req: Request): Promise<Response> {
   if (!taskId) return json(400, { success: false, error: 'Missing task_id' });
   // Default to NOT sending: approval must be explicit. Only an explicit truthy approve executes.
   const approve = body.approve === true || body.approve === 'true' || body.approve === 'yes';
+  // Recipient email the owner gave at approval (the classifier can't invent one) — lets a send finish.
+  const recipientEmail = typeof body.recipient_email === 'string' ? body.recipient_email : undefined;
 
   try {
-    const result = await getSwarmCoordinator().resolveApproval(taskId, userId, approve);
+    const result = await getSwarmCoordinator().resolveApproval(taskId, userId, approve, { recipientEmail });
     return json(200, {
       success: true,
       task_id: result.taskGroupId,
