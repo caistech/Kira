@@ -5,6 +5,9 @@ const config: Config = {
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     './app/**/*.{js,ts,jsx,tsx,mdx}',
+    // Scan the canonical auth surface so its Tailwind classes are generated (otherwise the
+    // @caistech/corporate-components AuthForm renders unstyled). Tailwind v3 content-scan (no @source).
+    './node_modules/@caistech/corporate-components/dist/**/*.{js,mjs}',
   ],
   theme: {
     extend: {
