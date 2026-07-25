@@ -1,0 +1,51 @@
+# Memory-loop behavioural test — the anti-recurrence gate.
+#
+# Kira's voice-memory loop was "fixed" four times from code inspection and stayed broken each time,
+# because nobody ran the whole chain: talk -> disconnect -> reconnect -> assert recall. This runs
+# exactly that, against the DEPLOYED prod webhook loop, so a regression in tool-auth (link 4) or
+# cross-conversation recall (link 7) fails CI instead of shipping silently.
+#
+# Secrets required (synced from cais-shared-services QA secrets):
+#   NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, KIRA_TOOL_WEBHOOK_SECRET
+#   (optional) QA_TEST_USER_EMAIL — defaults to dennis@factory2key.com.au
+#   (optional var) MEMORY_LOOP_APP_URL — defaults to https://kira-rho.vercel.app
+
+name: memory-loop
+
+on:
+  schedule:
+    - cron: '0 7 * * *' # daily, after health-full
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/kira/convai.ts'
+      - 'app/api/kira/webhooks/**'
+      - 'app/api/kira/create/route.ts'
+      - 'scripts/test-memory-loop.mjs'
+
+jobs:
+  memory-loop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      KIRA_TOOL_WEBHOOK_SECRET: ${{ secrets.KIRA_TOOL_WEBHOOK_SECRET }}
+      QA_TEST_USER_EMAIL: ${{ secrets.QA_TEST_USER_EMAIL }}
+      NEXT_PUBLIC_APP_URL: ${{ vars.MEMORY_LOOP_APP_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install @supabase/supabase-js
+        run: npm i --no-save @supabase/supabase-js
+      - name: Guard — required secrets present
+        run: |
+          if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] || [ -z "$KIRA_TOOL_WEBHOOK_SECRET" ]; then
+            echo "::error::Missing SUPABASE_SERVICE_ROLE_KEY or KIRA_TOOL_WEBHOOK_SECRET — sync QA secrets from cais-shared-services."
+            exit 1
+          fi
+      - name: Run memory-loop E2E
+        run: node scripts/test-memory-loop.mjs
