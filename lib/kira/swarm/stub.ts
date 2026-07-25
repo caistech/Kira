@@ -148,7 +148,12 @@ export class LocalSwarmStub implements SwarmCoordinator {
     return { taskGroupId, status: r.status, draft: r.draft, message: r.message };
   }
 
-  async resolveApproval(taskGroupId: string, tenantId: TenantId, approve: boolean): Promise<DispatchResult> {
+  async resolveApproval(
+    taskGroupId: string,
+    tenantId: TenantId,
+    approve: boolean,
+    patch?: { recipientEmail?: string },
+  ): Promise<DispatchResult> {
     const { data: row } = await this.supabase
       .from('kira_tasks')
       .select('*')
@@ -161,6 +166,15 @@ export class LocalSwarmStub implements SwarmCoordinator {
     if (!approve) {
       const updated = await this.setStatus(taskGroupId, 'failed', { discarded: true }, 'Discarded — nothing sent.');
       return this.toResult(updated);
+    }
+
+    // Merge anything the owner supplied at approval time (e.g. the recipient email the classifier
+    // couldn't invent) into the task's artifact before executing, so a real send can complete.
+    const email = patch?.recipientEmail?.trim();
+    if (email) {
+      const artifact = { ...((row.artifact || {}) as Record<string, unknown>), recipient_email: email };
+      await this.supabase.from('kira_tasks').update({ artifact }).eq('id', taskGroupId);
+      (row as KiraTaskRow).artifact = artifact;
     }
 
     // Execute the owned task. Only email is wired to real delivery today (Resend is in-stack);
