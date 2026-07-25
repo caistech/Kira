@@ -134,10 +134,10 @@ export default function PlanPage() {
             <div className="space-y-4">
               {[
                 { icon: <Mic className="h-5 w-5" />, t: 'Kira listens & clarifies', b: 'You talk about a job, a headache, a process. Kira asks the questions a good operator would until she knows exactly what you need.' },
-                { icon: <Network className="h-5 w-5" />, t: 'She hands it to the orchestrator', b: 'Kira passes the cleaned-up task to the orchestration layer, which breaks it into the pieces of work that actually need doing.' },
-                { icon: <Users className="h-5 w-5" />, t: 'A swarm of agents does the work — and logs it', b: 'Specialised agents complete the subtasks, write things down, and log what they did, so nothing lives only in your memory anymore.' },
-                { icon: <Brain className="h-5 w-5" />, t: 'Mnemo remembers it instantly', b: 'Everything captured goes into Mnemo, the fast-recall memory — so next time Kira already knows, and picks up where you left off.' },
-                { icon: <ShieldCheck className="h-5 w-5" />, t: 'The Memory Governance Layer keeps it yours', b: 'Your business knowledge is protected, permissioned and private — governed so only you (and who you allow) can ever reach it.' },
+                { icon: <Network className="h-5 w-5" />, t: 'She lines up the work', b: 'Kira turns what you said into a clear set of tasks — exactly the pieces of work that actually need doing.' },
+                { icon: <Users className="h-5 w-5" />, t: 'The work gets done — and written down', b: 'The tasks get completed and recorded, so what you know about your business stops living only in your head.' },
+                { icon: <Brain className="h-5 w-5" />, t: 'Kira remembers it — instantly', b: 'Everything you tell Kira is remembered, so next time she already knows and picks up right where you left off.' },
+                { icon: <ShieldCheck className="h-5 w-5" />, t: 'Your knowledge stays yours', b: 'Everything Kira captures is private and protected — only you, and anyone you choose, can ever see it.' },
               ].map((s, i, arr) => (
                 <div key={i} className="flex gap-4 items-start bg-white rounded-2xl p-5 border border-amber-100">
                   <div className="grad-coral text-white w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0">{s.icon}</div>
