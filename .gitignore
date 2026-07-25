@@ -43,3 +43,12 @@ tool2.json
 
 # Supabase CLI local state (contains pooler/connection info)
 supabase/.temp/
+
+# gstack browser daemon state (contains session tokens)
+.gstack/
+
+# Naive-tester screenshots — the written reports are committed, the images are not
+# (20MB+ per sweep; regenerate by re-running /naive-tester)
+naive-tester-reports/**/*.png
+naive-tester-reports/**/*.jpg
+naive-tester-reports/**/screenshots/
