@@ -1,6 +1,9 @@
 import { getAuthUser, getCurrentAppUser } from '@/lib/auth';
+import { getBetaGate, VOICE_ACTION, VOICE_COST_CAP_USD } from '@/lib/billing';
 import { PasswordChange } from '@/components/PasswordChange';
 import { DeleteAccount } from '@/components/DeleteAccount';
+import { ManageBillingButton } from '@/components/ManageBillingButton';
+import { UsageMeter } from '@/components/UsageMeter';
 import { updateProfile, updateNotifications } from './actions';
 
 export const metadata = { title: 'Settings · Kira' };
@@ -9,6 +12,17 @@ export const dynamic = 'force-dynamic';
 export default async function SettingsPage() {
   const authUser = await getAuthUser();
   const appUser = await getCurrentAppUser();
+
+  // Read the free-month meter server-side. Degrade, don't fake: if the gate can't be read we omit
+  // the meter rather than render a reassuring but fictional 0%.
+  let usage: Awaited<ReturnType<ReturnType<typeof getBetaGate>['check']>> | null = null;
+  if (appUser?.id) {
+    try {
+      usage = await getBetaGate().check(appUser.id, VOICE_ACTION);
+    } catch (error) {
+      console.error('[settings] usage meter unavailable:', error);
+    }
+  }
 
   return (
     <div className="max-w-2xl">
@@ -51,6 +65,40 @@ export default async function SettingsPage() {
             Save profile
           </button>
         </form>
+      </section>
+
+      <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-6">
+        <h2 className="text-lg font-semibold text-gray-900">Plan &amp; usage</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Your first month is free. Your card is on file and the first payment comes out at the end
+          of it — we&apos;ll email you three days before, and you can cancel any time before then.
+        </p>
+
+        {usage ? (
+          <div className="mt-4">
+            <UsageMeter
+              daysLeft={usage.daysLeft}
+              capUsd={VOICE_COST_CAP_USD}
+              usedUsd={Math.round(usage.usedCost * 100) / 100}
+              pctUsed={usage.pctUsed}
+              warn={usage.warn}
+              allowed={usage.allowed}
+            />
+          </div>
+        ) : (
+          <p className="mt-4 text-sm text-gray-500">
+            Usage isn&apos;t available right now. Nothing has changed on your account.
+          </p>
+        )}
+
+        <div className="mt-5">
+          <ManageBillingButton disabled={!appUser?.stripe_customer_id} />
+          {!appUser?.stripe_customer_id && (
+            <p className="mt-2 text-sm text-gray-500">
+              You don&apos;t have a subscription yet, so there&apos;s nothing to manage.
+            </p>
+          )}
+        </div>
       </section>
 
       <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-6">

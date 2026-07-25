@@ -22,6 +22,7 @@ import {
   type ConvaiWebhookRoutes,
   type ConvAITool,
 } from '@caistech/elevenlabs-convai';
+import { accrueVoiceCost } from '@/lib/billing';
 import { createServiceClient } from '@/lib/supabase/server';
 import { createMemoryExtractor } from '@/lib/kira/memory-extract';
 import { kiraKnowledgeToolDef } from '@/lib/kira/knowledge-tool-def.mjs';
@@ -70,15 +71,22 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
       // this conversation's facts are genuinely NEW (worth adding to Mnemo) vs repeats.
       let userId: string | undefined;
       let priorKeys = new Set<string>();
+      let durationSeconds = 0;
       try {
         const { data: crow } = await sb
           .from(KIRA_CONVAI_TABLES.conversations)
-          .select('user_id')
+          .select('user_id, duration_seconds')
           .eq('id', conv.id)
           .single();
         userId = crow?.user_id as string | undefined;
+        durationSeconds = Number(crow?.duration_seconds ?? 0);
         if (userId) priorKeys = await activeMemoryKeys(userId);
       } catch { /* non-fatal */ }
+
+      // Accrue this call's estimated cost against the free month's fair-use budget. Records only —
+      // the call already happened, so it can never cut anyone off mid-sentence (Workstream B:
+      // warn, don't hard-cut). Fail-soft inside accrueVoiceCost.
+      if (userId) await accrueVoiceCost(userId, durationSeconds);
 
       await distillConversationToMemory(sb, {
         elevenlabsConversationId: conv.elevenlabsConversationId,

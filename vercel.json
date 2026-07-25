@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/reengagement-emails",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/trial-ending",
+      "schedule": "0 9 * * *"
     }
   ]
 }
