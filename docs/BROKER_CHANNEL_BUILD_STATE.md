@@ -56,14 +56,24 @@
 4. Recalibrate `VOICE_COST_PER_MINUTE_USD` after real ElevenLabs invoices.
 
 ### Workstream C — introducer portal v1 (compose-and-hand-off)
-1. **Extend `@caistech/coordination-sdk`** (reuse, per audit rows 1+2+3): add `introducer`/`broker` to
-   `ParticipantRole` + `ROLE_ACTIONS` (`allowed_actions: ['view_status']`); reuse its hardened magic-link
-   engine for the introducer→owner invite. Kira adds a 3rd route-prefix branch (`/introducer`) in
-   `middleware.ts` + a check in `lib/auth.ts` (do NOT extend `ADMIN_EMAILS`).
-2. **Extract F2K-Projects first-touch attribution → `@caistech/attribution`** (NEW shared package). Per audit
-   row 8: lift `F2K-Projects/src/lib/attribution/first-touch.ts` + the immutability trigger from
-   `supabase/migrations/0063_roi_portal_attribution.sql`. Matches §C.4 (first-touch, 90-day, immutable, +
-   a "who told you about Kira?" fallback field at signup).
+
+**C1 + C2 (the shared pieces) — DONE 2026-07-26.**
+- ✅ **`@caistech/coordination-sdk@0.4.0` published** — `introducer`/`broker` roles added, the only
+  roles with `['view_status']` **without `view`**. Exports `ROLE_ACTIONS` / `allowedActionsFor` /
+  **`canViewContent(role)`** — call that at every content-serving boundary in Kira. Referring parties
+  also get an empty `ROLE_PROMPTS` entry so the AI-email pipeline can't write them from contents.
+- ✅ **`@caistech/attribution@0.1.0` published** — F2K's first-touch extracted and generalised
+  (HMAC-signed HttpOnly cookie, 90-day window, first-touch-wins, + `migration.sql`'s immutability
+  trigger with audited override). Wire format pinned compatible with F2K's live cookies.
+- **Still to wire in Kira:** the `/introducer` route-prefix branch in `middleware.ts` + a check in
+  `lib/auth.ts` (do NOT extend `ADMIN_EMAILS`); the `/r/[token]` resolver + signup capture using
+  `@caistech/attribution`; a "who told you about Kira?" fallback field at signup; and the
+  `magic_links` / `participants` tables (coordination-sdk ships no migration — the consumer owns them).
+
+**C3 — OPEN DECISION before building the dashboard:** the audit left the substrate open — either
+extend coordination-sdk's issue-shaped tables, or lift the F2K-Projects pipeline pattern into the
+Kira repo product-local. Decide this first; it sets the shape of everything below.
+
 3. **Introducer dashboard** — owner list with **status + valuation movement over time** (the retention hook).
    Hard boundary: introducers see status/scores, **never** content/transcripts/memory (enforce server-side,
    the status-projection overlay from #23). Content-wall precedent: `universal-interviews` "public
