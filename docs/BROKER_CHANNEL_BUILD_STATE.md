@@ -29,7 +29,7 @@
      still use the local `lib/email/resend.ts` — migrate them when next touched.
   ✅ **Verified 2026-07-26** against real Stripe test mode + real Supabase (6 tests). `VOICE_COST_PER_MINUTE_USD`
   is still an estimate ($0.10) — recalibrate after a month of real ElevenLabs invoices.
-- **Workstream C — C1/C2/C3 BUILT** (see below): shared role model + attribution published, and the
+- **Workstream C — C1/C2/C3 BUILT + gaps closed** (see below): shared role model + attribution published, and the
   Kira-side introducer board, referral resolver and attribution capture shipped. The INVITE flow is
   the gap — nothing creates an introducer yet.
 
@@ -101,10 +101,30 @@ first-touch immutability trigger. All RLS-on. Shipped: `/r/[token]` resolver, `/
 attribution capture in `/api/onboarding/complete`. **Immutability verified against the live DB:**
 NULL→value allowed, reassignment blocked (23514), override audited.
 
-**Still to do in C:** the introducer INVITE flow (nothing creates an `introducers` row or emails a
-magic link yet — `issueMagicLink()` exists but has no caller/UI); an admin surface to add
-introducers; the "who told you about Kira?" field on the signup form (column exists, no UI); and
-C4/C5 below.
+**C gaps CLOSED 2026-07-26** — the channel is now usable end to end:
+- ✅ **Invite flow** — adding an introducer emails BOTH links (their referral link + a 7-day
+  sign-in link) in one step, through `@caistech/email-send`. An introducer row with no invite sent
+  is a broker who thinks they're set up and isn't. Referral tokens use an alphabet without 0/O/1/l
+  (brokers read them aloud).
+- ✅ **Admin surface `/admin/introducers`** — list with per-introducer introduction + paying counts
+  (from `introductions`, so "sent" means someone genuinely opened the link), add form, re-send,
+  suspend/restore. Suspend revokes live sign-in links IMMEDIATELY but deliberately does NOT touch
+  attribution — access and commission are separate questions. Every server action re-checks
+  `isCurrentUserAdmin()` itself: a server action is a callable endpoint, not just a page.
+- ✅ **"How did you hear about Kira?"** on signup via the canonical AuthForm's `extraFields`, shown
+  ONLY when there is no signed attribution cookie (a typed answer contradicting a signed one is a
+  dispute waiting to happen). Migration `20260726120000` carries it through
+  `link_or_create_app_user` to `referral_source_text` — never `referrer_id` (a hint, not a
+  commission). The old 3-arg signature is DROPPED so nothing can silently keep using it and lose
+  the answer.
+- 5 committed integration tests cover the invite mechanics against the live DB (link resolves +
+  activates, tokens hashed at rest, revoked refused, suspended refused, unknown refused).
+
+⚠️ **Needs `@caistech/coordination-sdk@0.4.1`** — 0.4.0 was `"type": "module"` with extensionless
+relative imports, so it could not be imported outside a bundler (Next built fine; vitest/node
+failed). Fixed + published; pre-existing since 0.3.1.
+
+**Remaining in C:** C4 (co-branded report) + C5 (compose-and-hand-off introducer email) below.
 
 3. ~~Introducer dashboard~~ **DONE** (status + valuation movement, content wall enforced server-side).
 4. **Co-branded report** — extend `@caistech/report-generator` `ReportBrand` with a `coBrand`/secondary-logo
