@@ -28,6 +28,18 @@ interface AuthFormProps {
   title?: string; // accepted for compat; canonical renders its own header
   subtitle?: string;
   variant?: 'user' | 'admin';
+  /**
+   * Ask "How did you hear about Kira?" on signup.
+   *
+   * Only pass this when we DON'T already know — someone who arrived through an introducer's link
+   * has a signed attribution cookie, and asking them anyway is noise that invites a contradictory
+   * answer. The signup page decides (it can read the HttpOnly cookie; this component can't).
+   *
+   * The answer lands in user_metadata.referral_source and the auth trigger copies it to
+   * users.referral_source_text. It is a HINT for a human to follow up, never an attribution —
+   * commission is decided by the signed cookie alone.
+   */
+  askReferralSource?: boolean;
 }
 
 const KIRA_ACCENT = '#fb7185'; // rose-400 — Kira's brand accent
@@ -40,7 +52,12 @@ const MODE_MAP: Record<LocalMode, AuthMode> = {
   'magic-link': 'magic-link',
 };
 
-export function AuthForm({ mode, redirectTo, variant = 'user' }: AuthFormProps) {
+export function AuthForm({
+  mode,
+  redirectTo,
+  variant = 'user',
+  askReferralSource = false,
+}: AuthFormProps) {
   // SSR-safe: build the browser client once on the client. The canonical accepts a possibly-null
   // client and handles it internally.
   const supabaseClient = useMemo(() => (typeof window === 'undefined' ? null : createClient()), []);
@@ -61,6 +78,19 @@ export function AuthForm({ mode, redirectTo, variant = 'user' }: AuthFormProps) 
       resetPasswordPath={admin ? '/admin/password-reset' : '/auth/reset-password'}
       callbackPath="/auth/callback"
       hideSignupLink={admin}
+      extraFields={
+        askReferralSource && mode === 'signup'
+          ? [
+              {
+                name: 'referral_source',
+                label: 'How did you hear about Kira? (optional)',
+                type: 'text',
+                placeholder: 'A broker, an accountant, a friend…',
+                autoComplete: 'off',
+              },
+            ]
+          : undefined
+      }
     />
   );
 }
