@@ -10,10 +10,11 @@ cited throughout so this doc can be verified against the code, not taken on trus
 **Companion:** `docs/OWNER_OPERATOR_AI_EA_MODEL.md` (the product thesis this implements)
 
 > **Purpose.** Lay out Kira Exec's architecture in enough detail that you both know our shape, then
-> pin down the handful of **contracts** to plug into. We build a *stub* on our side now; each of you
-> swaps in a real adapter when ready, with (in most cases) no change to Kira. On completion the
-> voice+memory core becomes a **canonical in `cais-shared-services`** — so you're integrating with a
-> reusable substrate, not a one-off app.
+> pin down the handful of **contracts** to plug into. We define a *stub* on our side (interfaces
+> first, then a working stub); each of you swaps in a real adapter when ready, with (in most cases)
+> no change to Kira. The voice+memory core is **already a shipped canonical** —
+> `@caistech/elevenlabs-convai@0.7.0` in `cais-shared-services` — so you're integrating with a
+> reusable, versioned package, not a one-off app.
 
 ---
 
@@ -97,16 +98,19 @@ The boundaries between these are Seams 2 and 3.
 E2E test in CI; recall is deterministic; session-focus rules are live; identity is server-derived;
 the Stripe agent-minting landmine is removed and the email sender corrected.
 
-**When the current build finishes:** owned-RAG docs reachable + cited (§3); **Mnemo deep recall**
-wired (the experiential lane, §4); **discovery-gated agent creation** (no agent without a defined
-purpose — converges with your agent builder, Seam 4); and the **fractional-exec persona + valuation-
-channel tiering** (Kira Exec reads as an executive who gets the job done, not a slow chat).
+**Built + deployed (2026-07-25):** the memory + knowledge + identity loop works in a real voice call
+(root cause: ElevenLabs never passes the conversation id to server-tool webhooks — identity is now
+**server-baked per user**); **owned-RAG** docs reachable + cited (§3); **Mnemo deep recall** wired
+(the experiential lane, §4); the deterministic welcome-back opener + session-focus persona rules.
+**In build:** the fractional-exec persona + the thin owned doing-slice (see Seam 1), discovery-gated
+agent creation (converges with your agent builder, Seam 4).
 
-**On completion → canonical.** The voice+memory core (tool-auth, deterministic recall, the post-call
-distil loop, the E2E harness, the guards) is promoted into **`@caistech/elevenlabs-convai` in
-`cais-shared-services`** as the reference implementation every product consumes. **So you are plugging
-into a canonical substrate, not the Kira app** — the seams below are intended to live at the package
-boundary, which is why we're defining them as interfaces now.
+**The canonical is DONE, not pending.** The voice+memory core — server-baked identity,
+tool-webhook auth, deterministic recall, the post-call distil loop, plus a reusable CI guard
+(`probeMemoryLoop`) — is **published as `@caistech/elevenlabs-convai@0.7.0`** in
+`cais-shared-services`, the reference implementation every product consumes. **So you are plugging
+into a shipped canonical package, not the Kira app** — the seams below live at that package boundary,
+which is why they're defined as interfaces.
 
 ---
 
@@ -114,6 +118,15 @@ boundary, which is why we're defining them as interfaces now.
 
 Kira extracts an intent from a ~20-second exchange and hands it to the coordinator, which decomposes
 it into dispatched back-office tasks.
+
+**Important reframe (from our product definition, 2026-07-25): your swarm is the EXPANSION of doing,
+not the gate for it.** The first "it got done" moment — draft→approve→send a quote, a follow-up
+email, a reminder that fires — is a thin, single-step, human-approved action Kira does **herself,
+now**, with no swarm. So Kira dispatches EVERY doable intent through the `SwarmCoordinator` interface
+below; our stub handles those ~3 owned tasks locally today, and **your adapter expands `dispatchIntent`
+from ~3 tasks to the whole back-office (CRM, scheduling, dispatch, quoting, invoicing, compliance)
+behind the exact same contract** — no change on our side. This means neither of us is blocked on the
+other: Kira ships the wedge on the owned tasks; your swarm turns it into a business that runs itself.
 
 **Strawman to react to:**
 ```ts
@@ -183,7 +196,8 @@ builder consumes** — two halves of one mechanism.
 
 ## What CAS ships regardless (nobody is blocked)
 
-Our side as **TypeScript interfaces + a working stub** — `SwarmCoordinator`, `MemoryGovernance`,
+Our side as **TypeScript interfaces + a working stub** (interfaces first, stub in progress) —
+`SwarmCoordinator` (whose stub already runs the ~3 owned doing-tasks — see Seam 1), `MemoryGovernance`,
 `SystemOfRecord`, `AgentBuilder` — the stub accepts a dispatched intent, returns a fake `taskGroupId`
 + `queued`, and exposes a task-state read. Kira builds against the **interface** now; each of you later
 ships an adapter implementing the same interface and we swap the stub out. These interfaces are
