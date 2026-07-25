@@ -6,17 +6,10 @@
 // The client then signs in with the password they just set.
 
 import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
 import { ATTRIBUTION_COOKIE, attachFirstTouch, attribution } from '@/lib/introducer';
+import { getStripe } from '@/lib/billing';
 import { createServiceClient } from '@/lib/supabase/server';
 
-// Lazily construct Stripe at request time (module-load construction throws during `next build`
-// when STRIPE_SECRET_KEY isn't in the build env, e.g. CI).
-let _stripe: Stripe | null = null;
-function getStripe(): Stripe {
-  if (!_stripe) _stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {});
-  return _stripe;
-}
 
 export async function POST(request: NextRequest) {
   try {

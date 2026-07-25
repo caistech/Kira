@@ -1,3 +1,4 @@
+import { isLiveMode } from '@/lib/billing';
 import { createServiceClient } from '@/lib/supabase/server';
 
 export const metadata = { title: 'Admin · Kira' };
@@ -29,6 +30,8 @@ export default async function AdminOverviewPage() {
     .order('created_at', { ascending: false })
     .limit(10);
 
+  const liveBilling = isLiveMode();
+
   const stats = [
     { label: 'Users', value: users },
     { label: 'Kira agents', value: agents },
@@ -43,6 +46,28 @@ export default async function AdminOverviewPage() {
           Operator view of Kira. Accounts, agents, and conversation volume across the platform.
         </p>
       </header>
+
+      {/* Which Stripe mode is in force. Stated plainly and always, because "were we live at the
+          time?" is the first question asked when anything about billing looks wrong — and it
+          should never be answered by inspecting environment variables. */}
+      <div
+        className={`mb-8 flex flex-wrap items-center gap-3 rounded-2xl border p-5 ${
+          liveBilling ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'
+        }`}
+      >
+        <span
+          className={`inline-flex rounded-full px-3 py-1 text-sm font-semibold ${
+            liveBilling ? 'bg-amber-500 text-white' : 'bg-gray-200 text-gray-700'
+          }`}
+        >
+          {liveBilling ? 'LIVE billing' : 'TEST billing'}
+        </span>
+        <p className="text-sm text-gray-700">
+          {liveBilling
+            ? 'Real cards are being charged. Stripe is running on the live key.'
+            : 'No real money moves. Stripe is on test keys — flip STRIPE_LIVE_MODE to true and redeploy to go live.'}
+        </p>
+      </div>
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {stats.map((s) => (

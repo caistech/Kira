@@ -15,7 +15,6 @@ import {
   createSupabaseSubscriptionAdapter,
   type SubscriptionAdapter,
 } from '@caistech/subscription-billing';
-import Stripe from 'stripe';
 
 import { createServiceClient } from '@/lib/supabase/server';
 
@@ -49,14 +48,10 @@ export const VOICE_ACTION = 'voice';
  */
 export const VOICE_COST_PER_MINUTE_USD = Number(process.env.VOICE_COST_PER_MINUTE_USD ?? 0.1);
 
-// Lazily construct Stripe at request time. Constructing at module load throws ("Neither apiKey nor
-// config.authenticator provided") during `next build` page-data collection, when STRIPE_SECRET_KEY
-// isn't in the build env (CI).
-let _stripe: Stripe | null = null;
-export function getStripe(): Stripe {
-  if (!_stripe) _stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {});
-  return _stripe;
-}
+// The Stripe client, the mode switch and the key guards live in ./stripe-mode — re-exported here
+// so every existing `import { getStripe } from '@/lib/billing'` keeps working and automatically
+// becomes mode-aware. There is exactly one place that decides which keys are in play.
+export { getStripe, isLiveMode, stripeMode, stripeWebhookSecret } from './stripe-mode';
 
 /**
  * The trial clock + fair-use cap.
