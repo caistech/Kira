@@ -3,15 +3,9 @@
 // show the owner their email + plan before they set a password. No secrets returned.
 
 import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
 
-// Lazily construct Stripe at request time (module-load construction throws during `next build`
-// when STRIPE_SECRET_KEY isn't in the build env, e.g. CI).
-let _stripe: Stripe | null = null;
-function getStripe(): Stripe {
-  if (!_stripe) _stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {});
-  return _stripe;
-}
+import { getStripe } from '@/lib/billing';
+
 
 export async function GET(request: NextRequest) {
   const sessionId = request.nextUrl.searchParams.get('session_id');

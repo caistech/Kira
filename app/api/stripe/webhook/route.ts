@@ -18,7 +18,12 @@
 import { handleSubscriptionWebhook } from '@caistech/subscription-billing';
 import { NextRequest, NextResponse } from 'next/server';
 
-import { getIdempotencyStore, getStripe, getSubscriptionAdapter } from '@/lib/billing';
+import {
+  getIdempotencyStore,
+  getStripe,
+  getSubscriptionAdapter,
+  stripeWebhookSecret,
+} from '@/lib/billing';
 
 export async function POST(request: NextRequest) {
   // Must be the RAW body — parsing and re-stringifying fails signature verification.
@@ -27,7 +32,7 @@ export async function POST(request: NextRequest) {
   const result = await handleSubscriptionWebhook(
     {
       stripe: getStripe(),
-      webhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
+      webhookSecret: stripeWebhookSecret(),
       adapter: getSubscriptionAdapter(),
       idempotency: getIdempotencyStore(),
       log: (message, meta) => console.log(`[stripe/webhook] ${message}`, meta ?? {}),
