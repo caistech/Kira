@@ -10,11 +10,16 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@caistech/attribution": "^0.1.0",
+    "@caistech/beta-gate": "^0.2.0",
+    "@caistech/coordination-sdk": "^0.4.1",
     "@caistech/corporate-components": "^0.5.2",
     "@caistech/discovery-agent": "^0.1.0",
     "@caistech/elevenlabs-convai": "^0.7.0",
+    "@caistech/email-send": "^0.1.0",
     "@caistech/platform-trust-middleware": "^0.4.0",
     "@caistech/sayfix-embed": "^0.6.0",
+    "@caistech/subscription-billing": "^0.1.0",
     "@caistech/webmcp-kit": "^0.1.0",
     "@elevenlabs/client": "^0.13.0",
     "@elevenlabs/react": "^1.10.1",

@@ -1,0 +1,54 @@
+// app/api/billing/usage/route.ts
+//
+// The in-app usage meter's data source: where the signed-in owner stands in their free month.
+//
+// "Surface usage, don't hard-cut without warning" only works if the usage is actually visible —
+// a cap the owner can't see is indistinguishable from the product breaking. This is the read side
+// of that promise.
+
+import { NextResponse } from 'next/server';
+
+import {
+  getBetaGate,
+  TRIAL_DAYS,
+  USAGE_WARN_AT,
+  VOICE_ACTION,
+  VOICE_COST_CAP_USD,
+} from '@/lib/billing';
+import { getCurrentAppUser } from '@/lib/auth';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+export async function GET() {
+  const user = await getCurrentAppUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
+
+  try {
+    // check(), not gate(): reading the meter must never record a use.
+    const usage = await getBetaGate().check(user.id, VOICE_ACTION);
+
+    return NextResponse.json({
+      // Trial clock
+      trialDays: TRIAL_DAYS,
+      daysLeft: usage.daysLeft,
+      // Fair-use budget
+      capUsd: VOICE_COST_CAP_USD,
+      usedUsd: Math.round(usage.usedCost * 100) / 100,
+      pctUsed: usage.pctUsed,
+      warn: usage.warn,
+      warnAt: USAGE_WARN_AT,
+      // Why they'd be blocked, if they are. `cost_cap` means the fair-use ceiling is reached;
+      // `trial_expired` means the month is over and billing has taken over.
+      allowed: usage.allowed,
+      reason: usage.reason ?? null,
+      subscriptionStatus: user.subscription_status ?? null,
+    });
+  } catch (error) {
+    // Degrade, don't fake: a meter that can't be read says so rather than reporting a cheerful 0%.
+    console.error('[api/billing/usage] Failed to read usage:', error);
+    return NextResponse.json({ error: 'Could not read usage' }, { status: 503 });
+  }
+}

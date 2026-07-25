@@ -1,7 +1,12 @@
 // middleware.ts
-// Session refresh + route segregation for Kira's dual-auth portals (PRODUCT_STANDARDS §8.5).
+// Session refresh + route segregation for Kira's portals (PRODUCT_STANDARDS §8.5).
 //   - USER-protected routes  → require any authenticated session.
 //   - /admin/*               → require an authenticated session whose email is in ADMIN_EMAILS.
+//   - /introducer/*          → require an INTRODUCER session cookie. Deliberately NOT ADMIN_EMAILS
+//                              and not a Supabase auth session: an introducer is an outside party
+//                              with a status-only view, not a Kira user and certainly not an
+//                              operator. Adding them to the admin allowlist would have handed a
+//                              commercial third party the operator console.
 // API routes are NOT gated here (ElevenLabs/Stripe webhooks verify their own signatures);
 // the landing page, marketing pages, agent-readiness files, and the auth pages stay public.
 
@@ -12,6 +17,13 @@ const USER_PROTECTED = ['/setup', '/create-kira', '/chat', '/personal-journey', 
 const ADMIN_PREFIX = '/admin';
 // Public entries inside /admin (the login + its own password-reset flow).
 const ADMIN_PUBLIC = ['/admin/login', '/admin/password-reset'];
+const INTRODUCER_PREFIX = '/introducer';
+// The magic-link entry point mints the session, and the expired page explains its absence — both
+// must stay reachable without one.
+const INTRODUCER_PUBLIC = ['/introducer/enter', '/introducer/expired'];
+// Presence-only check here (Edge middleware can't reach the database). The page itself resolves the
+// token against introducer_magic_links and redirects if it's stale — this only stops the obvious.
+const INTRODUCER_SESSION_COOKIE = 'kira_introducer';
 
 function adminEmails(): string[] {
   return (process.env.ADMIN_EMAILS || '')
@@ -60,6 +72,17 @@ export async function middleware(request: NextRequest) {
     if (!adminEmails().includes((user.email || '').toLowerCase())) {
       return NextResponse.redirect(new URL('/admin/login?error=not_admin', request.url));
     }
+  }
+
+  // Introducer routes: their own session cookie, entirely separate from Supabase auth.
+  if (path.startsWith(INTRODUCER_PREFIX)) {
+    const isIntroducerPublic = INTRODUCER_PUBLIC.some((p) => path === p || path.startsWith(p + '/'));
+    if (!isIntroducerPublic && !request.cookies.get(INTRODUCER_SESSION_COOKIE)) {
+      return NextResponse.redirect(new URL('/introducer/expired', request.url));
+    }
+    // Return early: an introducer must never be evaluated against the user or admin rules, and a
+    // signed-in operator visiting /introducer gets the introducer view, not a merged one.
+    return response;
   }
 
   // User-protected routes: require any authenticated session.
