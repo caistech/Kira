@@ -1,6 +1,6 @@
 # Kira Exec broker channel — build state & next-session positioning
 
-**As of:** 2026-07-25 (end of session). **Read with:** `KIRA_EXEC_BROKER_CHANNEL_BRIEF.md` (the plan)
+**As of:** 2026-07-26 (Workstream B built). **Read with:** `KIRA_EXEC_BROKER_CHANNEL_BRIEF.md` (the plan)
 + `REUSE_AUDIT.md` (signed-off reuse verdicts) + `GARETH_SHAH_INTEGRATION_SEAMS.md` (#23 tenancy resolved).
 
 ---
@@ -15,8 +15,21 @@
 - **Workstream A (landing rebuild) — DEFERRED** by operator choice (channel-first). Design skills installed
   for when it resumes: `frontend-ui-engineering`, `frontend-design-principles`, `frontend-design` (in
   `~/.claude/skills/`). NOT installed: `nextlevelbuilder/ui-ux-pro-max` (code-execution surface — audit before use).
-- **Workstream B — STARTED.** `@caistech/beta-gate@0.2.0` **published** (added `$`-denominated `costCap` +
-  soft-warn band `pctUsed`/`warn`). Kira is **not yet wired** to it.
+- **Workstream B — BUILT (PR #22, awaiting live Stripe test).** All three steps done:
+  1. **`@caistech/subscription-billing@0.1.0` published** — checkout builder (fixed price OR dynamic
+     `price_data`, trial, card-on-file) + an idempotent, out-of-order-safe webhook reducer over a
+     caller-supplied table adapter. Converges Kira (`users`) + LaunchReady (`profiles`); **neither
+     fork was idempotent or ordering-safe.** 28 tests.
+  2. **Kira wired** — trial 7→30 days, card at signup, beta-gate `costCap: 20` + warn band, cost
+     accrued from the post-call duration (records, never gates), `Settings → Plan & usage` meter,
+     `/api/billing/portal` (Kira had no cancel path at all), and a daily cron mailing owners 3 days
+     before the first charge. Migration `20260725180000` **applied to prod** + recorded.
+  3. **`@caistech/email-send@0.1.0` published** — Resend transport fulfilling `nudge-core`'s
+     `EmailTransport` + composing `email-compliance`'s footer. 11 tests. Kira's other templates
+     still use the local `lib/email/resend.ts` — migrate them when next touched.
+  **Not yet done:** a real Stripe test-mode checkout → webhook run. Do that before this touches a
+  live card. `VOICE_COST_PER_MINUTE_USD` is an estimate ($0.10) — recalibrate after a month of
+  real ElevenLabs invoices.
 
 ## Decisions locked (2026-07-25) — do not re-litigate
 - **Commission: 10%** of the subscription, **paid monthly on collected funds only**, **term =
@@ -32,23 +45,15 @@
 
 ## Next session — pick up here, in this order
 
-### Workstream B — billing (finish it)
-1. **Build `@caistech/subscription-billing`** (NEW shared package). Per `REUSE_AUDIT.md` row 4:
-   - checkout-session builder + an **idempotent webhook reducer** over a **caller-supplied table adapter**
-     (mirror `@caistech/api-key-auth`'s `event.id` idempotency + out-of-order `last_stripe_event_at`, but
-     write *subscription* state, not API keys).
-   - Kira keeps its **valuation-derived price** local (dynamic `price_data`); the package handles the
-     session + webhook lifecycle only. Converges Kira (`users`) + LaunchReady (`profiles`) shapes.
-2. **Wire Kira to B:**
-   - Stripe checkout: **`trial_period_days: 30`** + **card captured at signup** (already card-on-file shape;
-     change trial 7→30). First charge day 30.
-   - `beta-gate@0.2.0`: `createBetaGate({ config: { trialDays: 30, warnAt: 0.8, caps: { voice: { costCap: 20 } } } })`;
-     apply its `migration.sql` (adds `beta_usage.cost_usd`); accrue voice cost via `gate(uid,'voice',{costUsd})`.
-   - **In-app usage meter** from `check().pctUsed` ("$14 of $20").
-   - **Reminder email 3 days before first charge** — via `@caistech/nudge-core` cron + the shared sender (below).
-3. **Build `@caistech/email-send`** (NEW shared package). Per audit row 6: a Resend-backed `EmailTransport`
-   that fulfils `nudge-core`'s interface + composes `email-compliance`'s footer. Kira's + raiseready's forked
-   senders converge onto it; product templates stay local.
+### Workstream B — close it out (small)
+1. **Live Stripe test-mode run:** checkout → `checkout.session.completed` → confirm `users` shows
+   `trialing` + `last_stripe_event_at`, then replay the event and confirm the reducer answers
+   `duplicate`. This is the one thing PR #22 could not verify.
+2. **Merge PR #22** once that passes.
+3. Migrate Kira's remaining templates in `lib/email/resend.ts` onto `@caistech/email-send` (the
+   trial reminder already uses it), and set `EMAIL_SENDER_*` in Vercel so the identification footer
+   is actually attached — it degrades to no-footer without them.
+4. Recalibrate `VOICE_COST_PER_MINUTE_USD` after real ElevenLabs invoices.
 
 ### Workstream C — introducer portal v1 (compose-and-hand-off)
 1. **Extend `@caistech/coordination-sdk`** (reuse, per audit rows 1+2+3): add `introducer`/`broker` to
