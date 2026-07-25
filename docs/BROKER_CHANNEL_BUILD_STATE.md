@@ -52,25 +52,39 @@
    `lib/billing/billing.integration.test.ts` against a real test-mode subscription + real Supabase:
    trialing recorded at checkout, redelivery deduped, out-of-order ignored, bad signature rejected,
    cancellation clears the id. Refuses to run against a live key; self-cleaning.
-2. **Merge PR #22** (now carries B **and** C; CI green).
+2. ✅ **PR #22 MERGED 2026-07-26** (carried B + C + the C-gap items; deployed to production).
 3. Migrate Kira's remaining templates in `lib/email/resend.ts` onto `@caistech/email-send` (the
    trial reminder already uses it), and set `EMAIL_SENDER_*` in Vercel so the identification footer
    is actually attached — it degrades to no-footer without them.
 4. Recalibrate `VOICE_COST_PER_MINUTE_USD` after real ElevenLabs invoices.
 
-### ⚠️ Production config gaps found 2026-07-26 (checked via the Vercel + Stripe APIs)
-- ✅ **FIXED:** no Stripe webhook endpoint existed and `STRIPE_WEBHOOK_SECRET` was set in NO
-  environment — **Kira's Stripe webhook had never run in production** (pre-existing; the old handler
-  read the same unset var). Registered a **test-mode** endpoint at
-  `https://kira-rho.vercel.app/api/stripe/webhook` (6 events) and set the secret in Vercel as
-  `sensitive`, production+preview. **Takes effect on the next deploy.** A LIVE-mode endpoint still
-  needs doing when a live key goes in.
-- ❌ **`CRON_SECRET` is unset** → both cron endpoints are publicly callable. Vercel supplies the
-  bearer automatically once the var exists, so setting it is safe.
-- ❌ **`RESEND_API_KEY` exists only in `development`** → production cannot send ANY email, including
-  the new trial reminder. Needs the key adding to production+preview as `sensitive`.
-- ℹ️ Production's `STRIPE_SECRET_KEY` is a **TEST** key (prod checkout sessions land in test mode),
-  so no real money is being taken today.
+### ✅ Production config — CLOSED 2026-07-26
+
+All three gaps found by checking the Vercel + Stripe APIs are now fixed, and the fixes are proven
+against production rather than assumed:
+
+- **Stripe webhook — WORKS FOR THE FIRST TIME.** No endpoint had ever been registered and
+  `STRIPE_WEBHOOK_SECRET` was set in NO environment, so Kira's webhook had never run (pre-existing:
+  the old handler read the same unset variable). Test-mode endpoint registered (6 events) + secret
+  set `sensitive` on production+preview. **Verified live:** creating a real test-mode subscription
+  produced `customer.subscription.created` and `customer.subscription.deleted` rows in
+  `stripe_webhook_events` on prod — signature verified, event claimed, idempotency working.
+  Verification rows cleaned up. *A LIVE-mode endpoint is still owed when a live key goes in.*
+- **`CRON_SECRET` set** (`sensitive`, production+preview) — and the guard now **fails closed**:
+  `rejectUnauthorisedCron()` returns 503 when the secret is missing instead of silently skipping
+  the check, which is what made both endpoints publicly callable. **Verified live:** both cron
+  routes now return 401 in production without the correct bearer.
+- **`RESEND_API_KEY` moved to production+preview** (`sensitive`) — production can send email at
+  last, including the trial reminder and the introducer invites.
+- **`ATTRIBUTION_SECRET` set** — without it `@caistech/attribution` falls back to signing
+  first-touch cookies with the Supabase service-role key, so rotating that key would silently
+  invalidate every attribution. Set before any real cookies existed.
+- ℹ️ Production's `STRIPE_SECRET_KEY` is still a **TEST** key (prod checkouts land in Stripe test
+  mode), so no real money moves yet.
+
+**Still owed on email:** `EMAIL_SENDER_NAME` / `EMAIL_SENDER_EMAIL` / `EMAIL_SENDER_ABN` are unset,
+so outgoing mail currently ships **without the Spam Act identification footer** (the code degrades
+rather than failing the send, and logs a warning). Set them before any volume.
 
 ### Workstream C — introducer portal v1 (compose-and-hand-off)
 
