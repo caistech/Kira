@@ -1,6 +1,6 @@
 # Kira Exec broker channel — build state & next-session positioning
 
-**As of:** 2026-07-26 (Workstream B built). **Read with:** `KIRA_EXEC_BROKER_CHANNEL_BRIEF.md` (the plan)
+**As of:** 2026-07-26 (B built + verified; C1-C3 built). **Read with:** `KIRA_EXEC_BROKER_CHANNEL_BRIEF.md` (the plan)
 + `REUSE_AUDIT.md` (signed-off reuse verdicts) + `GARETH_SHAH_INTEGRATION_SEAMS.md` (#23 tenancy resolved).
 
 ---
@@ -15,7 +15,7 @@
 - **Workstream A (landing rebuild) — DEFERRED** by operator choice (channel-first). Design skills installed
   for when it resumes: `frontend-ui-engineering`, `frontend-design-principles`, `frontend-design` (in
   `~/.claude/skills/`). NOT installed: `nextlevelbuilder/ui-ux-pro-max` (code-execution surface — audit before use).
-- **Workstream B — BUILT (PR #22, awaiting live Stripe test).** All three steps done:
+- **Workstream B — BUILT + LIVE-VERIFIED (PR #22, CI green, unmerged).** All three steps done:
   1. **`@caistech/subscription-billing@0.1.0` published** — checkout builder (fixed price OR dynamic
      `price_data`, trial, card-on-file) + an idempotent, out-of-order-safe webhook reducer over a
      caller-supplied table adapter. Converges Kira (`users`) + LaunchReady (`profiles`); **neither
@@ -27,9 +27,11 @@
   3. **`@caistech/email-send@0.1.0` published** — Resend transport fulfilling `nudge-core`'s
      `EmailTransport` + composing `email-compliance`'s footer. 11 tests. Kira's other templates
      still use the local `lib/email/resend.ts` — migrate them when next touched.
-  **Not yet done:** a real Stripe test-mode checkout → webhook run. Do that before this touches a
-  live card. `VOICE_COST_PER_MINUTE_USD` is an estimate ($0.10) — recalibrate after a month of
-  real ElevenLabs invoices.
+  ✅ **Verified 2026-07-26** against real Stripe test mode + real Supabase (6 tests). `VOICE_COST_PER_MINUTE_USD`
+  is still an estimate ($0.10) — recalibrate after a month of real ElevenLabs invoices.
+- **Workstream C — C1/C2/C3 BUILT** (see below): shared role model + attribution published, and the
+  Kira-side introducer board, referral resolver and attribution capture shipped. The INVITE flow is
+  the gap — nothing creates an introducer yet.
 
 ## Decisions locked (2026-07-25) — do not re-litigate
 - **Commission: 10%** of the subscription, **paid monthly on collected funds only**, **term =
@@ -46,14 +48,29 @@
 ## Next session — pick up here, in this order
 
 ### Workstream B — close it out (small)
-1. **Live Stripe test-mode run:** checkout → `checkout.session.completed` → confirm `users` shows
-   `trialing` + `last_stripe_event_at`, then replay the event and confirm the reducer answers
-   `duplicate`. This is the one thing PR #22 could not verify.
-2. **Merge PR #22** once that passes.
+1. ✅ **Live Stripe test-mode run — DONE 2026-07-26.** 6 integration tests in
+   `lib/billing/billing.integration.test.ts` against a real test-mode subscription + real Supabase:
+   trialing recorded at checkout, redelivery deduped, out-of-order ignored, bad signature rejected,
+   cancellation clears the id. Refuses to run against a live key; self-cleaning.
+2. **Merge PR #22** (now carries B **and** C; CI green).
 3. Migrate Kira's remaining templates in `lib/email/resend.ts` onto `@caistech/email-send` (the
    trial reminder already uses it), and set `EMAIL_SENDER_*` in Vercel so the identification footer
    is actually attached — it degrades to no-footer without them.
 4. Recalibrate `VOICE_COST_PER_MINUTE_USD` after real ElevenLabs invoices.
+
+### ⚠️ Production config gaps found 2026-07-26 (checked via the Vercel + Stripe APIs)
+- ✅ **FIXED:** no Stripe webhook endpoint existed and `STRIPE_WEBHOOK_SECRET` was set in NO
+  environment — **Kira's Stripe webhook had never run in production** (pre-existing; the old handler
+  read the same unset var). Registered a **test-mode** endpoint at
+  `https://kira-rho.vercel.app/api/stripe/webhook` (6 events) and set the secret in Vercel as
+  `sensitive`, production+preview. **Takes effect on the next deploy.** A LIVE-mode endpoint still
+  needs doing when a live key goes in.
+- ❌ **`CRON_SECRET` is unset** → both cron endpoints are publicly callable. Vercel supplies the
+  bearer automatically once the var exists, so setting it is safe.
+- ❌ **`RESEND_API_KEY` exists only in `development`** → production cannot send ANY email, including
+  the new trial reminder. Needs the key adding to production+preview as `sensitive`.
+- ℹ️ Production's `STRIPE_SECRET_KEY` is a **TEST** key (prod checkout sessions land in test mode),
+  so no real money is being taken today.
 
 ### Workstream C — introducer portal v1 (compose-and-hand-off)
 
@@ -70,14 +87,26 @@
   `@caistech/attribution`; a "who told you about Kira?" fallback field at signup; and the
   `magic_links` / `participants` tables (coordination-sdk ships no migration — the consumer owns them).
 
-**C3 — OPEN DECISION before building the dashboard:** the audit left the substrate open — either
-extend coordination-sdk's issue-shaped tables, or lift the F2K-Projects pipeline pattern into the
-Kira repo product-local. Decide this first; it sets the shape of everything below.
+**C3 substrate — DECIDED 2026-07-26: PRODUCT-LOCAL in Kira**, built to the F2K-Projects pipeline
+shape so a later `@caistech` extraction is a lift, not a rewrite. (coordination-sdk's tables are
+issue-shaped and live in the coordination project's own Supabase — wrong home for Kira's
+introducers. Its ROLE MODEL is still consumed.)
 
-3. **Introducer dashboard** — owner list with **status + valuation movement over time** (the retention hook).
-   Hard boundary: introducers see status/scores, **never** content/transcripts/memory (enforce server-side,
-   the status-projection overlay from #23). Content-wall precedent: `universal-interviews` "public
-   presentation fields only" route + deny-by-default RLS.
+**C3 — BUILT 2026-07-26.** Migration `20260726000000` applied to prod + recorded: `introducers`,
+`introducer_magic_links` (SHA-256-hashed tokens), `introductions`, `attribution_overrides`,
+`users.referrer_id`/`first_touch_at`/`referral_source_text`, `introducer_owner_projection()`, and the
+first-touch immutability trigger. All RLS-on. Shipped: `/r/[token]` resolver, `/introducer/enter/
+[token]` magic-link sign-in, the `/introducer` board (status + valuation movement, responsive),
+`/introducer/expired`, a middleware branch on its own session cookie (NOT `ADMIN_EMAILS`), and
+attribution capture in `/api/onboarding/complete`. **Immutability verified against the live DB:**
+NULL→value allowed, reassignment blocked (23514), override audited.
+
+**Still to do in C:** the introducer INVITE flow (nothing creates an `introducers` row or emails a
+magic link yet — `issueMagicLink()` exists but has no caller/UI); an admin surface to add
+introducers; the "who told you about Kira?" field on the signup form (column exists, no UI); and
+C4/C5 below.
+
+3. ~~Introducer dashboard~~ **DONE** (status + valuation movement, content wall enforced server-side).
 4. **Co-branded report** — extend `@caistech/report-generator` `ReportBrand` with a `coBrand`/secondary-logo
    field (audit row 7); closing line *"This is indicative. [Name] at [Brokerage] can give you the real number."*
 5. **Introducer email v1** = compose-and-hand-off (portal drafts, one click opens prefilled in THEIR mail
