@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { ATTRIBUTION_COOKIE, attachFirstTouch, attribution } from '@/lib/introducer';
 import { createServiceClient } from '@/lib/supabase/server';
 
 // Lazily construct Stripe at request time (module-load construction throws during `next build`
@@ -101,6 +102,27 @@ export async function POST(request: NextRequest) {
         updated_at: new Date().toISOString(),
       })
       .eq('id', appUser.id);
+
+    // Attribution: if this owner arrived through an introducer's link, the signed first-touch
+    // cookie is still on the request. This is the moment it becomes permanent — the database makes
+    // referrer_id immutable from here, so it is written once and never reassigned.
+    //
+    // Deliberately AFTER the account is fully set up and never allowed to fail the request: a paid
+    // signup must not be lost because attribution had a bad day. A missing commission is recoverable
+    // from the cookie and the introductions row; a lost paying customer is not.
+    try {
+      const touch = attribution.parse(request.cookies.get(ATTRIBUTION_COOKIE)?.value);
+      if (touch) {
+        await attachFirstTouch({
+          userId: appUser.id,
+          userEmail: email,
+          introducerId: touch.referrerId,
+          firstTouchAt: touch.firstTouchAt,
+        });
+      }
+    } catch (attributionError) {
+      console.error('[api/onboarding/complete] attribution not recorded:', attributionError);
+    }
 
     return NextResponse.json({ ok: true, email });
   } catch (error) {
