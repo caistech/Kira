@@ -377,10 +377,10 @@ export default function KiraLandingPage() {
           </div>
           <div className="grid md:grid-cols-2 gap-6">
             {[
-              { quote: "My Kira knows I hate cooking but need to eat healthier. She doesn't suggest elaborate recipes — she works with who I actually am.", emoji: "🍳", type: "Personal" },
-              { quote: "I was stuck on a pricing decision for my SaaS. My Kira asked what my actual goal was — turns out I was solving the wrong problem.", emoji: "💰", type: "Business" },
-              { quote: "Planning a career change at 45. My Kira didn't just list options — she helped me figure out what I was really scared of.", emoji: "🎯", type: "Personal" },
-              { quote: "Needed to have a hard conversation with my co-founder. My Kira helped me figure out what I was actually trying to say first.", emoji: "💼", type: "Business" }
+              { quote: "My whole business was in my head. Kira got it out — the pricing, the process, who does what. First time I could picture actually selling it.", emoji: "🧰", type: "Business" },
+              { quote: "I was stuck on a pricing decision. Kira asked what my actual goal was — turns out I was solving the wrong problem.", emoji: "💰", type: "Business" },
+              { quote: "She drafted the follow-up to a client while I was still on site, ready for me to check. That was the moment I got it.", emoji: "✅", type: "Business" },
+              { quote: "The BAS used to eat my Sunday. Kira flagged a cleaner way to keep it ready — one less thing I dread.", emoji: "📋", type: "Business" }
             ].map((item, index) => (
               <div key={index} className="bg-white rounded-2xl p-6 hover-pop shadow-sm border border-amber-100">
                 <div className="flex items-center justify-between mb-4">
@@ -391,7 +391,7 @@ export default function KiraLandingPage() {
               </div>
             ))}
           </div>
-          <p className="text-center font-body text-stone-500 mt-8 text-lg">Every one of these came from a Kira built specifically for that person's goal. 💬</p>
+          <p className="text-center font-body text-stone-500 mt-8 text-lg">Every one of these came from a Kira built around that owner's business. 💬</p>
         </div>
       </section>
 
@@ -419,12 +419,12 @@ export default function KiraLandingPage() {
           <div className="space-y-4">
             {[
               { q: "What do you mean 'my own Kira'?", a: "When you start, you'll have a quick conversation with Setup Kira. She learns what you're working on, your context, and what success looks like. Then we create a unique Kira agent just for you — one that knows your situation from day one." },
-              { q: "What can Kira actually help with?", a: "Anything you'd work through with a smart, thoughtful friend. Career decisions, business strategy, trip planning, learning goals, hard conversations — she's a generalist who asks good questions and thinks with you." },
+              { q: "What can Kira actually help with?", a: "Running your business and making it worth more. Capturing how it works, getting the small things done (a quote, a follow-up, a reminder — for your approval), sorting the recurring headaches like the BAS, and turning the knowledge in your head into a transferable, sellable asset." },
               { q: "What does it cost?", a: "The valuation is completely free — no sign-up, no card. If you want Kira to help close the gap, the business plan starts with a 7-day free trial, then a monthly price set to a small fraction of the value you saw. You'll see the exact figure before you enter any card details, and you can cancel anytime." },
               { q: "What if she gets something wrong?", a: "She will sometimes. When that happens, tell her. She'll adjust and do better. That's how this partnership works." },
               { q: "Is this like ChatGPT?", a: "Kira uses AI, but she's built to be YOUR guide, not a generic answer machine. She knows your specific context, asks questions before jumping to answers, and is designed for ongoing thinking partnerships — not one-off queries." },
               { q: "What happens to my conversations?", a: "They stay private. Kira learns from your conversations to help you better, but your data isn't shared or sold. Ever." },
-              { q: "Can I have multiple Kiras for different goals?", a: "Coming soon! For now, each Kira is focused on one primary goal. If you finish that journey and want to start a new one, you can create a new Kira." }
+              { q: "Can I have more than one Kira?", a: "For now, each Kira is focused on one business. If you run more than one, you can create a separate Kira for each." }
             ].map((faq, index) => (
               <details key={index} className="bg-white rounded-2xl border border-amber-100 group">
                 <summary className="font-display text-lg font-bold text-stone-800 p-6 cursor-pointer list-none flex items-center justify-between hover:bg-amber-50 rounded-2xl transition-colors">

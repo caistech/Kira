@@ -52,7 +52,7 @@ const FAQ = [
   },
   {
     q: "What currency am I charged in?",
-    a: "Your own — we detect it automatically and default to Australian dollars. An AU owner is billed in AUD (ex-GST); international owners are billed by Stripe in their local currency.",
+    a: "Australian dollars by default (ex-GST) — this is an Australian product. Prefer another currency? Switch it on the valuation screen and the price follows; Stripe then bills you in that currency.",
   },
   {
     q: "Will my business information be used to train AI models?",
