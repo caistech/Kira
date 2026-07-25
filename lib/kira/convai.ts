@@ -25,6 +25,7 @@ import {
 import { createServiceClient } from '@/lib/supabase/server';
 import { createMemoryExtractor } from '@/lib/kira/memory-extract';
 import { kiraKnowledgeToolDef } from '@/lib/kira/knowledge-tool-def.mjs';
+import { kiraDispatchToolDef, kiraApproveToolDef } from '@/lib/kira/swarm/doing-tools-def.mjs';
 import { mnemoAdd } from '@/lib/kira/mnemo';
 import { dedupeUserMemory, activeMemoryKeys, normalizeMemory } from '@/lib/kira/memory-dedup';
 
@@ -185,6 +186,21 @@ export function kiraKnowledgeTool(baseUrl: string): ConvAITool {
 }
 
 /**
+ * The doing-slice tools (#12): dispatch_task (draft an owned task) + approve_task (execute on the
+ * owner's yes). Single-sourced from swarm/doing-tools-def.mjs. Same tool-secret header as the memory
+ * tools; identity is server-baked as ?uid by kiraAllTools (dispatch/approve resolve the owner from it).
+ */
+export function kiraDoingTools(baseUrl: string): ConvAITool[] {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const secret = process.env.KIRA_TOOL_WEBHOOK_SECRET;
+  if (secret) headers[KIRA_TOOL_SECRET_HEADER] = secret;
+  return [
+    kiraDispatchToolDef(baseUrl, headers) as ConvAITool,
+    kiraApproveToolDef(baseUrl, headers) as ConvAITool,
+  ];
+}
+
+/**
  * The full tool set attached to an operational agent: the 5 canonical memory tools + the owned-RAG
  * search_knowledge tool.
  *
@@ -197,10 +213,10 @@ export function kiraKnowledgeTool(baseUrl: string): ConvAITool {
  * The `x-kira-tool-secret` header still gates the routes, so a baked uid is not a bare-param hole.
  */
 export function kiraAllTools(baseUrl: string, userId?: string): ConvAITool[] {
-  const tools = [...kiraMemoryTools(baseUrl), kiraKnowledgeTool(baseUrl)];
+  const tools = [...kiraMemoryTools(baseUrl), kiraKnowledgeTool(baseUrl), ...kiraDoingTools(baseUrl)];
   for (const t of tools) {
     if (!t.webhook) continue;
-    const isUidTool = /\/(recall_memory|search_knowledge|save_memory|start_conversation)$/.test(t.webhook.url);
+    const isUidTool = /\/(recall_memory|search_knowledge|save_memory|start_conversation|dispatch_task|approve_task)$/.test(t.webhook.url);
     if (userId && isUidTool) {
       t.webhook.url = `${t.webhook.url}?uid=${encodeURIComponent(userId)}`;
     }
