@@ -13,6 +13,7 @@ import { redirect } from 'next/navigation';
 import {
   INTRODUCER_SESSION_COOKIE,
   getIntroducerFromSession,
+  hasAcceptedUndertaking,
   ownerProjection,
   type OwnerProjection,
 } from '@/lib/introducer';
@@ -49,6 +50,10 @@ export default async function IntroducerBoardPage() {
   const token = (await cookies()).get(INTRODUCER_SESSION_COOKIE)?.value;
   const introducer = await getIntroducerFromSession(token);
   if (!introducer) redirect('/introducer/expired');
+
+  // No board until the undertaking is accepted — the channel's consent position rests on its first
+  // clause, so seeing owner data before agreeing to it would be the wrong way round.
+  if (!hasAcceptedUndertaking(introducer)) redirect('/introducer/terms');
 
   const owners = await ownerProjection(introducer.id);
   const paying = owners.filter((o) => o.status === 'paying').length;

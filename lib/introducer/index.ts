@@ -13,6 +13,7 @@ import { canViewContent } from '@caistech/coordination-sdk/server';
 import { createHash, randomBytes } from 'node:crypto';
 
 import { createServiceClient } from '@/lib/supabase/server';
+import { UNDERTAKING_VERSION } from './undertaking';
 
 /** The scope an introduction is TO. Kira has one product, so it's constant — but scoped cookies
  * are what let a person be introduced to different things by different referrers later. */
@@ -42,6 +43,37 @@ export interface Introducer {
   role: 'introducer' | 'broker';
   status: 'invited' | 'active' | 'suspended';
   referral_token: string;
+  /** NULL until they accept the undertaking. The board is gated on this. */
+  terms_accepted_at: string | null;
+  terms_version: string | null;
+}
+
+/** The columns that make up an Introducer — one list, so every query returns the same shape. */
+const INTRODUCER_COLUMNS =
+  'id, email, name, org_name, role, status, referral_token, terms_accepted_at, terms_version';
+
+/**
+ * Has this introducer accepted the CURRENT undertaking?
+ *
+ * Version-sensitive on purpose: accepting superseded wording is not accepting the wording in force,
+ * so a change to the undertaking sends everyone back through it.
+ */
+export function hasAcceptedUndertaking(introducer: Introducer): boolean {
+  return Boolean(introducer.terms_accepted_at) && introducer.terms_version === UNDERTAKING_VERSION;
+}
+
+/** Record acceptance of the undertaking as it currently stands. */
+export async function acceptUndertaking(introducerId: string): Promise<void> {
+  const supabase = createServiceClient();
+  const { error } = await supabase
+    .from('introducers')
+    .update({
+      terms_accepted_at: new Date().toISOString(),
+      terms_version: UNDERTAKING_VERSION,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', introducerId);
+  if (error) throw new Error(`acceptUndertaking: ${error.message}`);
 }
 
 /** A row of the introducer's board — status and movement, never content. */
@@ -111,7 +143,7 @@ export async function resolveMagicLink(token: string): Promise<Introducer | null
 
   const { data: introducer } = await supabase
     .from('introducers')
-    .select('id, email, name, org_name, role, status, referral_token')
+    .select(INTRODUCER_COLUMNS)
     .eq('id', link.introducer_id)
     .maybeSingle();
 
@@ -185,7 +217,7 @@ export async function introducerByReferralToken(token: string): Promise<Introduc
   const supabase = createServiceClient();
   const { data } = await supabase
     .from('introducers')
-    .select('id, email, name, org_name, role, status, referral_token')
+    .select(INTRODUCER_COLUMNS)
     .eq('referral_token', token)
     .maybeSingle();
 

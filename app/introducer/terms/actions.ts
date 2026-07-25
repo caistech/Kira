@@ -1,0 +1,40 @@
+'use server';
+
+// The acceptance write.
+//
+// Identity comes from the SESSION COOKIE, resolved server-side — never from anything the form
+// submits. A server action is a callable endpoint, so an introducer id in the payload would let
+// anyone record an acceptance against anyone.
+
+import { cookies } from 'next/headers';
+
+import { INTRODUCER_SESSION_COOKIE, acceptUndertaking, getIntroducerFromSession } from '@/lib/introducer';
+
+export interface AcceptResult {
+  ok: boolean;
+  message: string;
+}
+
+export async function accept(formData: FormData): Promise<AcceptResult> {
+  // The checkbox is the acceptance. Without it there is nothing to record — and no partial
+  // "they clicked through" state, which would be worse than no record at all.
+  if (formData.get('confirmed') !== 'on') {
+    return { ok: false, message: 'Tick the box to continue.' };
+  }
+
+  const token = (await cookies()).get(INTRODUCER_SESSION_COOKIE)?.value;
+  const introducer = await getIntroducerFromSession(token);
+  if (!introducer) {
+    return { ok: false, message: 'Your sign-in link has expired. Ask for a fresh one.' };
+  }
+
+  try {
+    await acceptUndertaking(introducer.id);
+    return { ok: true, message: 'Thanks — you’re all set.' };
+  } catch (error) {
+    console.error('[introducer/terms] acceptance not recorded:', error);
+    // Do NOT let them through on a failed write: an unrecorded acceptance is the exact thing this
+    // page exists to prevent.
+    return { ok: false, message: 'Could not save that. Try again in a moment.' };
+  }
+}

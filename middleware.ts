@@ -21,6 +21,8 @@ const INTRODUCER_PREFIX = '/introducer';
 // The magic-link entry point mints the session, and the expired page explains its absence — both
 // must stay reachable without one.
 const INTRODUCER_PUBLIC = ['/introducer/enter', '/introducer/expired'];
+// /introducer/terms requires a session but NOT an accepted undertaking — it is where an introducer
+// goes to accept one, so gating it on acceptance would be a closed loop.
 // Presence-only check here (Edge middleware can't reach the database). The page itself resolves the
 // token against introducer_magic_links and redirects if it's stale — this only stops the obvious.
 const INTRODUCER_SESSION_COOKIE = 'kira_introducer';
