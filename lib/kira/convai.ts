@@ -24,6 +24,7 @@ import {
 } from '@caistech/elevenlabs-convai';
 import { createServiceClient } from '@/lib/supabase/server';
 import { createMemoryExtractor } from '@/lib/kira/memory-extract';
+import { kiraKnowledgeToolDef } from '@/lib/kira/knowledge-tool-def.mjs';
 
 // Kira's real tables mapped onto the canonical TableNames contract. The reconcile
 // migration adds the columns the handlers need (agent_id, anon_session_id, processed_at)
@@ -128,6 +129,30 @@ export function kiraMemoryTools(baseUrl: string): ConvAITool[] {
     }
   }
   return tools;
+}
+
+/**
+ * The owned-RAG retrieval tool (#11) — search over the documents/links the user has shared, from
+ * OUR store (kira_knowledge_chunks), cited. Not part of the canonical conversation-tools set (that's
+ * memory); this is Kira-specific. Carries the same tool-secret header as the memory tools so the
+ * route guard accepts it. It replaces the old, never-built search_knowledge/search_web CLAIMS the
+ * prompt used to make — this one is real and attached.
+ */
+export function kiraKnowledgeTool(baseUrl: string): ConvAITool {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const secret = process.env.KIRA_TOOL_WEBHOOK_SECRET;
+  if (secret) headers[KIRA_TOOL_SECRET_HEADER] = secret;
+  // Single-sourced from knowledge-tool-def.mjs so the new-agent + re-provision definitions can't drift.
+  return kiraKnowledgeToolDef(baseUrl, headers) as ConvAITool;
+}
+
+/**
+ * The full tool set attached to every operational agent: the 5 canonical memory tools + the
+ * owned-RAG search_knowledge tool. Use this at provision + re-provision so knowledge retrieval is
+ * present on every agent, never a routeless prompt claim.
+ */
+export function kiraAllTools(baseUrl: string): ConvAITool[] {
+  return [...kiraMemoryTools(baseUrl), kiraKnowledgeTool(baseUrl)];
 }
 
 // Re-export the canonical continuity prompt so provisioning appends the SAME instructions

@@ -22,7 +22,7 @@ import {
   JourneyType,
 } from '@/lib/kira/prompts';
 import { bindWorkspaceWebhook, setAllowlist, standardAllowlist, setAgentTools, setAgentOverrides, DEFAULT_AGENT_LLM } from '@caistech/elevenlabs-convai';
-import { kiraMemoryTools, conversationContinuityPrompt } from '@/lib/kira/convai';
+import { kiraAllTools, conversationContinuityPrompt } from '@/lib/kira/convai';
 import { buildProfileBriefing } from '@/lib/kira/discovery-schema';
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
@@ -338,7 +338,7 @@ export async function POST(req: NextRequest) {
       // prompt.tool_ids + enable per-session overrides.
       (async () => {
         try {
-          await setAgentTools(ELEVENLABS_API_KEY, agentId, kiraMemoryTools(APP_URL));
+          await setAgentTools(ELEVENLABS_API_KEY, agentId, kiraAllTools(APP_URL));
           await setAgentOverrides(ELEVENLABS_API_KEY, agentId);
           await log(supabase, requestId, 'tools_attach', 'success');
         } catch (e: any) {
