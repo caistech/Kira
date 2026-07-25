@@ -194,14 +194,29 @@ builder consumes** — two halves of one mechanism.
 
 ---
 
-## What CAS ships regardless (nobody is blocked)
+## What CAS ships regardless (nobody is blocked) — **all four seams are built (2026-07-25)**
 
-Our side as **TypeScript interfaces + a working stub** (interfaces first, stub in progress) —
-`SwarmCoordinator` (whose stub already runs the ~3 owned doing-tasks — see Seam 1), `MemoryGovernance`,
-`SystemOfRecord`, `AgentBuilder` — the stub accepts a dispatched intent, returns a fake `taskGroupId`
-+ `queued`, and exposes a task-state read. Kira builds against the **interface** now; each of you later
-ships an adapter implementing the same interface and we swap the stub out. These interfaces are
-designed to live at the `@caistech/elevenlabs-convai` canonical boundary (§5).
+Our side is now **TypeScript interfaces + working stubs for all four seams**, not a promise:
+
+- **Seam 1 — `SwarmCoordinator`** (`lib/kira/swarm/`): the stub **actually runs the ~3 owned
+  doing-tasks end-to-end** — classify → draft (LLM) → hold for approval → execute (email via Resend,
+  reminder, quote), persisted in `kira_tasks`, driven live by the `dispatch_task`/`approve_task` voice
+  tools. Unsupported intents are captured, never dropped (your swarm's future inbox). Your adapter
+  expands `dispatchIntent` from ~3 tasks to the whole back-office behind the same contract.
+- **Seam 2 — `MemoryGovernance`** (`lib/kira/integration/`): the stub wraps Kira's live Mnemo
+  distil→persist→recall on the experiential lane. Your/Shah's adapter takes over write-ownership when
+  you draw the working↔semantic boundary (§7–§11).
+- **Seam 3 — `SystemOfRecord`** (`lib/kira/integration/`): honest stub — records writes as `proposed`
+  with a `promote()`→`authoritative` HITL path, but does **not** pretend to be an authoritative store
+  (the CAS backbone isn't built in this repo). Your backbone adapter replaces it.
+- **Seam 4 — `AgentBuilder`** (`lib/kira/integration/`): the stub owns the half we own —
+  `fromDiscovery(clientProfile) → AgentSpec` (the converge point, §16); `build()` throws a clear
+  "builder not connected" rather than faking spin-up.
+
+Kira builds against the **interfaces** now; each of you ships an adapter implementing the same
+interface and we swap the stub out via an env flag (`KIRA_*_ADAPTER`) — in most cases with no change
+to Kira. These interfaces are designed to live at the `@caistech/elevenlabs-convai` canonical
+boundary (§5). *Files:* `lib/kira/swarm/coordinator.ts` + `lib/kira/integration/seams.ts`.
 
 ## What we need back
 
