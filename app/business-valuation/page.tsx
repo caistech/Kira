@@ -31,7 +31,7 @@ import {
   type ValuationInputs,
 } from '@/lib/valuation/model';
 import { SECTOR_MULTIPLES } from '@/lib/valuation/sde-multiples';
-import { formatMoney, detectCurrency, getCurrency, CURRENCIES } from '@/lib/valuation/currency';
+import { formatMoney, detectCurrency, getCurrency, CURRENCIES, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { encodeValuationParam } from '@/lib/valuation/share';
 
 type Answers = Partial<ValuationInputs>;
@@ -177,7 +177,7 @@ export default function BusinessValuationPage() {
   // Currency is display-only (the valuation math is a multiple of profit). Start on the SSR-safe
   // default, then use the owner's saved choice or the detected locale on mount. Persist any override
   // so it doesn't reset between questions.
-  const [currency, setCurrency] = useState('USD');
+  const [currency, setCurrency] = useState(DEFAULT_CURRENCY);
   useEffect(() => {
     let saved: string | null = null;
     try {
@@ -266,7 +266,7 @@ export default function BusinessValuationPage() {
               value={currency}
               onChange={(e) => changeCurrency(e.target.value)}
               aria-label="Display currency"
-              className="rounded-lg border border-amber-200 bg-white px-2 py-1.5 text-stone-700 min-h-[36px] focus:border-pink-400 focus:outline-none"
+              className="rounded-lg border border-amber-200 bg-white px-2 py-1.5 text-stone-700 min-h-[44px] focus:border-pink-400 focus:outline-none"
             >
               {CURRENCIES.map((c) => (
                 <option key={c.code} value={c.code}>

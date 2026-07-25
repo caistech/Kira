@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
-import { Loader2, FileEdit, CheckCircle, Sparkles, User, Briefcase, ArrowLeft } from 'lucide-react';
+import { Loader2, FileEdit, CheckCircle, Sparkles, Briefcase, ArrowLeft } from 'lucide-react';
 
 interface Draft {
   id: string;
@@ -221,13 +221,12 @@ export default function StartPage() {
     setSelectedJourney(journey);
   };
 
-  // Honor a ?journey= param (e.g. from the valuation test's "start building your Business Genome"
-  // CTA -> /start?journey=business). Read from location directly to avoid a Suspense boundary.
+  // Kira is business-only now — the personal journey is deprecated. Any ?journey= param (including a
+  // stale ?journey=personal from an old link) resolves to business; a direct visitor picks the single
+  // Business card below. Read from location directly to avoid a Suspense boundary.
   useEffect(() => {
     const param = new URLSearchParams(window.location.search).get('journey');
-    if (param === 'business' || param === 'personal') {
-      setSelectedJourney(param);
-    }
+    if (param) setSelectedJourney('business');
   }, []);
 
   const goBack = () => {
@@ -309,50 +308,26 @@ export default function StartPage() {
           </p>
         </div>
 
-        {/* JOURNEY SELECTION (before widget) */}
+        {/* JOURNEY SELECTION (before widget) — business-only; personal is deprecated */}
         {!selectedJourney && (
-          <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-            {/* Personal Journey */}
-            <button
-              onClick={() => selectJourney('personal')}
-              className="bg-stone-900/50 border border-stone-800 hover:border-amber-500/50 rounded-2xl p-6 text-left transition-all hover:bg-stone-900/80 group"
-            >
-              <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center mb-4 group-hover:bg-amber-500/30 transition-colors">
-                <User className="w-6 h-6 text-amber-400" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-2">Personal Journey</h3>
-              <p className="text-stone-400 text-sm mb-4">
-                Life decisions, career moves, personal projects, learning something new, or just thinking things through.
-              </p>
-              <span className="text-pink-400 text-sm font-medium inline-flex items-center gap-1">
-                Start talking
-              </span>
-            </button>
-
-            {/* Business Journey */}
+          <div className="max-w-xl mx-auto">
             <button
               onClick={() => selectJourney('business')}
-              className="bg-stone-900/50 border border-stone-800 hover:border-pink-500/50 rounded-2xl p-6 text-left transition-all hover:bg-stone-900/80 group"
+              className="w-full bg-stone-900/50 border border-stone-800 hover:border-pink-500/50 rounded-2xl p-6 text-left transition-all hover:bg-stone-900/80 group"
             >
               <div className="w-12 h-12 rounded-xl bg-pink-500/20 flex items-center justify-center mb-4 group-hover:bg-pink-500/30 transition-colors">
                 <Briefcase className="w-6 h-6 text-pink-400" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">Business Journey</h3>
+              <h3 className="text-xl font-bold text-white mb-2">Tell Kira about your business</h3>
               <p className="text-stone-400 text-sm mb-4">
-                Team processes, customer support, onboarding, training, or building AI assistants for your organization.
+                What you do, how it runs, what you&apos;re trying to sort out. Have a quick chat and Kira
+                builds a brief for you to review — then becomes your fractional exec.
               </p>
               <span className="text-pink-400 text-sm font-medium inline-flex items-center gap-1">
                 Start talking
               </span>
             </button>
           </div>
-        )}
-
-        {/* Not sure text */}
-        {!selectedJourney && (
-          <p className="text-center text-stone-500 text-sm mt-6">
-            Not sure? Pick one - Kira will help you figure it out.
-          </p>
         )}
 
         {/* CONVERSATION INTERFACE (after journey selected) */}

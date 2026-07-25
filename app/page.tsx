@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 
 export default function KiraLandingPage() {
   const [isVisible, setIsVisible] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     setIsVisible(true);
@@ -111,13 +112,33 @@ export default function KiraLandingPage() {
           </div>
           <div className="flex items-center gap-3 sm:gap-6">
             <a href="#how-it-works" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">How it works</a>
-            <a href="#pricing" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">Pricing</a>
+            <a href="/pricing" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">Pricing</a>
             <a href="/about" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">About</a>
             <a href="/admin/login" className="font-body text-stone-400 hover:text-stone-600 text-xs hidden sm:block">Admin</a>
             <a href="/login" className="font-body flex min-h-[44px] items-center px-2 text-sm font-medium text-stone-700 hover:text-pink-500">Sign in</a>
             <a href="/business-valuation" className="font-display gradient-sunny text-stone-800 px-4 py-2.5 rounded-full text-sm font-bold hover-pop shadow-md flex min-h-[44px] items-center">Value my business →</a>
+            <button
+              type="button"
+              aria-label="Open menu"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((o) => !o)}
+              className="md:hidden flex h-11 w-11 items-center justify-center rounded-lg text-stone-700 hover:bg-stone-100"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                {menuOpen ? <path d="M18 6L6 18M6 6l12 12" /> : <><path d="M3 12h18" /><path d="M3 6h18" /><path d="M3 18h18" /></>}
+              </svg>
+            </button>
           </div>
         </div>
+        {/* Mobile dropdown — same items, thumb-reachable */}
+        {menuOpen && (
+          <div className="md:hidden border-t border-amber-100 bg-white/95 backdrop-blur px-6 py-3 space-y-1">
+            <a href="#how-it-works" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">How it works</a>
+            <a href="/pricing" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">Pricing</a>
+            <a href="/about" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">About</a>
+            <a href="/admin/login" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-500 hover:bg-amber-50">Admin</a>
+          </div>
+        )}
       </nav>
 
       {/* Hero Section - Updated messaging */}
@@ -156,7 +177,6 @@ export default function KiraLandingPage() {
 
             <div className={`flex flex-col sm:flex-row items-center justify-center gap-4 ${isVisible ? 'fade-up fade-up-delay-3' : 'opacity-0'}`}>
               <a href="/business-valuation" className="font-display gradient-coral text-white px-8 py-4 rounded-full text-lg font-bold hover-pop shadow-xl shadow-pink-200 inline-block">Find out in 3 minutes →</a>
-              <a href="#personal" className="font-body text-stone-500 hover:text-violet-600 min-h-[44px] flex items-center">Just want a personal guide?</a>
             </div>
             <p className={`font-body text-sm text-stone-400 mt-4 ${isVisible ? 'fade-up fade-up-delay-3' : 'opacity-0'}`}>Free · no sign-up · an indicative valuation on the spot.</p>
           </div>
@@ -195,7 +215,7 @@ export default function KiraLandingPage() {
           <div className="text-center mb-16">
             <span className="text-5xl mb-4 block">✨</span>
             <h2 className="font-display text-4xl lg:text-5xl font-bold text-stone-800 mb-6">Every Kira is <span className="bg-gradient-to-r from-amber-500 to-pink-500 bg-clip-text text-transparent">different.</span></h2>
-            <p className="font-body text-xl text-stone-600 max-w-2xl mx-auto leading-relaxed">Because every person is different. And every goal deserves its own dedicated guide.</p>
+            <p className="font-body text-xl text-stone-600 max-w-2xl mx-auto leading-relaxed">Because every business is different. Yours deserves an exec who knows it inside out — not a generic bot.</p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-8 mb-16">
@@ -214,12 +234,12 @@ export default function KiraLandingPage() {
             <div className="bg-gradient-to-br from-amber-50 to-yellow-100 rounded-3xl p-8 border-2 border-amber-300">
               <div className="flex items-center gap-3 mb-4">
                 <span className="text-3xl">✨</span>
-                <h3 className="font-display text-xl font-bold text-stone-800">Your personal Kira</h3>
+                <h3 className="font-display text-xl font-bold text-stone-800">Your Kira — your fractional exec</h3>
               </div>
               <ul className="font-body text-stone-700 space-y-3">
-                <li className="flex items-start gap-2"><span className="text-amber-500">•</span> <strong>Built around YOUR specific goal</strong></li>
+                <li className="flex items-start gap-2"><span className="text-amber-500">•</span> <strong>Built around YOUR business</strong></li>
                 <li className="flex items-start gap-2"><span className="text-amber-500">•</span> Knows your context from day one</li>
-                <li className="flex items-start gap-2"><span className="text-amber-500">•</span> Asks questions before jumping to answers</li>
+                <li className="flex items-start gap-2"><span className="text-amber-500">•</span> Gets things done, then closes the loop</li>
                 <li className="flex items-start gap-2"><span className="text-amber-500">•</span> Remembers and builds on every conversation</li>
               </ul>
             </div>
@@ -258,28 +278,6 @@ export default function KiraLandingPage() {
         </div>
       </section>
 
-      {/* Personal Kira — the secondary journey */}
-      <section id="personal" className="bg-white py-20">
-        <div className="max-w-4xl mx-auto px-6">
-          <div className="journey-card bg-gradient-to-br from-violet-50 to-pink-50 rounded-3xl p-8 lg:p-10 border-2 border-violet-200">
-            <div className="flex flex-col md:flex-row items-start gap-8">
-              <div className="w-16 h-16 gradient-lavender rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">🧘</div>
-              <div>
-                <span className="text-xs font-body uppercase tracking-wider text-violet-500 font-semibold">Or, for life's other big decisions</span>
-                <h3 className="font-display text-2xl lg:text-3xl font-bold text-stone-800 mt-2 mb-3">Create a personal Kira</h3>
-                <p className="font-body text-stone-600 mb-6 leading-relaxed">A thinking partner built around one goal that matters to you — a career pivot, getting your finances sorted, a big life decision. She learns your context and thinks it through with you.</p>
-                <div className="flex flex-wrap gap-2 mb-6">
-                  {["Career decisions", "Financial planning", "Learning goals", "Life transitions"].map((item, i) => (
-                    <span key={i} className="text-sm font-body text-violet-700 bg-white/70 border border-violet-200 rounded-full px-3 py-1">{item}</span>
-                  ))}
-                </div>
-                <a href="/start?journey=personal" className="font-display text-violet-600 hover:text-violet-800 font-bold inline-flex items-center gap-1 min-h-[44px]">Create a personal Kira →</a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* How It Actually Works - The Real Flow */}
       <section id="how-it-works" className="bg-white py-24">
         <div className="max-w-5xl mx-auto px-6">
@@ -291,8 +289,8 @@ export default function KiraLandingPage() {
           <div className="grid md:grid-cols-3 gap-8 mb-16">
             <div className="text-center step-connector">
               <div className="gradient-sunny w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 text-white font-display font-bold text-3xl shadow-lg">1</div>
-              <h3 className="font-display text-xl font-bold text-stone-800 mb-3">Choose your journey</h3>
-              <p className="font-body text-stone-600">Personal or Business? Pick what you're working on and tell Setup Kira what you're trying to figure out.</p>
+              <h3 className="font-display text-xl font-bold text-stone-800 mb-3">Tell Kira about your business</h3>
+              <p className="font-body text-stone-600">Tell Setup Kira what you do and what you're trying to sort out — she builds a guide around your business from the first hello.</p>
             </div>
             <div className="text-center step-connector">
               <div className="gradient-coral w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 text-white font-display font-bold text-3xl shadow-lg">2</div>

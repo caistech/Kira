@@ -3,80 +3,64 @@ import Link from "next/link";
 export const metadata = {
   title: "Pricing — Kira",
   description:
-    "Simple pricing for Kira. Free to start, $12/month for unlimited Kiras, BYOK option for power users. AUD ex-GST.",
+    "Kira for business owners. A free 3-minute valuation, then a fractional exec that captures your business and makes it worth more. Priced in your currency, AUD default.",
 };
 
 const PLANS = [
   {
-    name: "Free",
+    name: "Free valuation",
     price: "$0",
-    period: "/month",
-    description: "For your first Kira and the first journey.",
+    period: "no sign-up",
+    description: "See what your business is worth today — and the gap hiding in your head.",
     features: [
-      "1 active Kira",
-      "Conversation memory up to 30 days",
-      "Standard model (Claude Haiku)",
-      "Email support",
+      "3-minute business valuation",
+      "Three honest numbers: walk-away, today, captured",
+      "The gap that's locked in your head, in dollars",
+      "An itemised 'where value is hiding' breakdown",
     ],
-    cta: "Create your first Kira",
-    href: "/start",
+    cta: "Value my business",
+    href: "/business-valuation",
     popular: false,
   },
   {
-    name: "Unlimited",
-    price: "$12",
+    name: "Kira Exec",
+    price: "from $249",
     period: "/month",
-    description: "For the person running multiple journeys in parallel.",
+    description: "Your fractional exec — captures the business, gets things done, makes it sellable.",
     features: [
-      "Unlimited Kiras",
-      "Persistent memory (no expiry)",
-      "Premium models (Claude Sonnet)",
-      "Voice mode (when launched)",
-      "Priority support",
-      "Export your Kira conversations",
+      "A voice-first exec that acts, not just advises",
+      "Captures your business into a transferable Business Genome",
+      "Remembers everything across every conversation",
+      "Drafts quotes, emails and reminders — nothing sent without your OK",
+      "Your documents, searchable in conversation",
+      "7-day free trial · cancel any time",
     ],
-    cta: "Go Unlimited",
-    href: "/start",
+    cta: "Start with my valuation",
+    href: "/business-valuation",
     popular: true,
-  },
-  {
-    name: "BYOK",
-    price: "$0",
-    period: "+ your API key",
-    description: "For power users who want to run on their own AI provider account.",
-    features: [
-      "Unlimited Kiras",
-      "Persistent memory",
-      "Choose your own model (Anthropic, OpenAI, Google)",
-      "All inference billed to your provider account",
-      "Same export rights as Unlimited",
-    ],
-    cta: "Add your API key",
-    href: "/start",
-    popular: false,
   },
 ];
 
 const FAQ = [
   {
-    q: "What does 'Kira' mean as a unit of pricing?",
-    a: "One Kira = one dedicated agent built around one journey (career pivot, finance reset, trip planning, etc.). Free plan gets one Kira at a time — you can archive and create a new one. Unlimited gets as many parallel Kiras as you want.",
+    q: "What does Kira Exec actually do?",
+    a: "She's a voice-first assistant for the hands-on owner. You talk to her between jobs; she captures how your business really runs, gets the small things done (drafts a quote, a follow-up, a reminder — for your approval), and turns the knowledge in your head into a documented, transferable asset that's worth more when you sell.",
   },
   {
-    q: "What does BYOK mean?",
-    a: "Bring Your Own Key. You provide an Anthropic / OpenAI / Google API key, Kira uses it for all inference, you pay the AI provider directly. The Kira app itself is free under BYOK — we're not making a margin on tokens.",
+    q: "How is it priced?",
+    a: "One monthly plan for the exec, starting at $249/month, scaled to the size of the value you're unlocking. Your 3-minute valuation shows the number first, so you decide with the gap in front of you. Seven-day free trial, cancel any time.",
   },
   {
-    q: "Will my Kira conversations be used to train AI models?",
-    a: "No. The AI providers we use (Anthropic, OpenAI, Google) are used through paid APIs under terms that exclude training on customer data. Your conversations stay between you and your Kira.",
+    q: "What currency am I charged in?",
+    a: "Your own — we detect it automatically and default to Australian dollars. An AU owner is billed in AUD (ex-GST); international owners are billed by Stripe in their local currency.",
   },
   {
-    q: "What happens to my Kira if I cancel?",
-    a: "Your conversations and Kira configurations are exportable at any time. After cancellation we keep the data for 30 days in case you re-activate, then delete. Export early if you want a copy outside the app.",
+    q: "Will my business information be used to train AI models?",
+    a: "No. The AI providers we use are accessed through paid APIs under terms that exclude training on customer data. What you tell Kira stays between you and your business, private and permissioned.",
   },
   {
-    q: "Are prices in AUD?",
-    a: "Yes — Australian dollars, ex-GST. International customers billed via Stripe in their local currency at the prevailing rate.",
+    q: "What happens to my data if I cancel?",
+    a: "Everything Kira has captured about your business is exportable at any time. After cancellation we keep it for 30 days in case you come back, then delete it. Export early if you want a copy outside the app.",
   },
 ];
 
@@ -89,21 +73,19 @@ export default function PricingPage() {
             Pricing
           </p>
           <h1 className="text-4xl sm:text-5xl font-bold leading-tight mb-4">
-            Three ways to use Kira
+            Start free. Pay when it&apos;s worth it.
           </h1>
           <p className="text-lg text-stone-600 max-w-2xl mx-auto leading-relaxed">
-            What this page is: every Kira cost spelled out. What to do here:
-            pick the plan that matches how many journeys you&apos;re running
-            at once. Why it matters: most personal-AI apps either charge a
-            premium for what is essentially API access or hide a low-quality
-            default model behind a high price. Kira does neither.
+            What this page is: what Kira costs a business owner. What to do here: run the free
+            valuation, see your number, then decide. Why it matters: you should never pay for the
+            exec before you&apos;ve seen the size of the gap she&apos;s helping you close.
           </p>
           <p className="text-sm text-stone-500 mt-3">
-            AUD ex-GST &middot; Cancel any time
+            Priced in your currency (AUD default, ex-GST) &middot; Cancel any time
           </p>
         </header>
 
-        <section className="grid md:grid-cols-3 gap-6 mb-16">
+        <section className="grid md:grid-cols-2 gap-6 mb-16 max-w-3xl mx-auto">
           {PLANS.map((p) => (
             <div
               key={p.name}
@@ -115,7 +97,7 @@ export default function PricingPage() {
             >
               {p.popular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-violet-500 to-pink-500 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">
-                  Most Popular
+                  The exec
                 </div>
               )}
               <h2 className="text-sm font-semibold text-stone-700">{p.name}</h2>
@@ -139,7 +121,7 @@ export default function PricingPage() {
               </ul>
               <Link
                 href={p.href}
-                className={`block text-center text-sm font-semibold py-2.5 rounded-full transition-colors ${
+                className={`block text-center text-sm font-semibold py-3 rounded-full transition-colors min-h-[44px] flex items-center justify-center ${
                   p.popular
                     ? "bg-gradient-to-r from-violet-500 to-pink-500 text-white hover:opacity-90"
                     : "bg-stone-100 text-stone-700 hover:bg-stone-200"
@@ -169,15 +151,15 @@ export default function PricingPage() {
         </section>
 
         <section className="text-center">
-          <h2 className="text-2xl font-bold mb-3">Ready to create yours?</h2>
+          <h2 className="text-2xl font-bold mb-3">See your number first.</h2>
           <p className="text-stone-600 mb-6">
-            Three minutes. Tell Kira what you&apos;re trying to figure out.
+            Three minutes, no sign-up. Then decide whether the exec is worth it.
           </p>
           <Link
-            href="/start"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-500 to-pink-500 text-white rounded-full font-semibold hover:opacity-90 transition"
+            href="/business-valuation"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-500 to-pink-500 text-white rounded-full font-semibold hover:opacity-90 transition min-h-[44px]"
           >
-            Create your first Kira
+            Value my business →
           </Link>
         </section>
       </article>
