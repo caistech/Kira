@@ -2,8 +2,14 @@
 #
 # Kira's voice-memory loop was "fixed" four times from code inspection and stayed broken each time,
 # because nobody ran the whole chain: talk -> disconnect -> reconnect -> assert recall. This runs
-# exactly that, against the DEPLOYED prod webhook loop, so a regression in tool-auth (link 4) or
-# cross-conversation recall (link 7) fails CI instead of shipping silently.
+# exactly that, against the DEPLOYED prod webhook loop, so a regression in tool-auth or
+# cross-conversation recall fails CI instead of shipping silently.
+#
+# It now runs the CANONICAL probe (@caistech/portfolio-gate's memory-loop gate, wrapping
+# probeMemoryLoop from @caistech/elevenlabs-convai) rather than Kira's own 202-line script.
+# That script was written during the four-failed-fixes saga, BEFORE the package shipped the guard
+# in 0.7.0 — so it was a fork of something the package now owns, and it could not have been
+# catching the continuity case the package added in 0.7.3.
 #
 # Secrets required (synced from cais-shared-services QA secrets):
 #   NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, KIRA_TOOL_WEBHOOK_SECRET
@@ -33,19 +39,23 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       KIRA_TOOL_WEBHOOK_SECRET: ${{ secrets.KIRA_TOOL_WEBHOOK_SECRET }}
       QA_TEST_USER_EMAIL: ${{ secrets.QA_TEST_USER_EMAIL }}
+      # The probe bakes identity into the tool URL as ?uid=, so it needs the USER ID.
+      MEMORY_LOOP_UID: ${{ secrets.QA_TEST_USER_ID }}
       NEXT_PUBLIC_APP_URL: ${{ vars.MEMORY_LOOP_APP_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Install @supabase/supabase-js
-        run: npm i --no-save @supabase/supabase-js
+      - name: Install dependencies
+        run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.CAISTECH_PACKAGES_TOKEN }}
       - name: Guard — required secrets present
         run: |
           if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] || [ -z "$KIRA_TOOL_WEBHOOK_SECRET" ]; then
             echo "::error::Missing SUPABASE_SERVICE_ROLE_KEY or KIRA_TOOL_WEBHOOK_SECRET — sync QA secrets from cais-shared-services."
             exit 1
           fi
-      - name: Run memory-loop E2E
-        run: node scripts/test-memory-loop.mjs
+      - name: Run memory-loop E2E (canonical probe)
+        run: npx --no-install portfolio-gate-memory-loop --config memory-loop.config.json

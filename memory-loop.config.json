@@ -1,0 +1,7 @@
+{
+  "webhookPath": "/api/kira/webhooks",
+  "memoryTable": "kira_memory",
+  "expectContinuity": true,
+  "startRoute": "start_conversation",
+  "toolSecretHeader": "x-kira-tool-secret"
+}

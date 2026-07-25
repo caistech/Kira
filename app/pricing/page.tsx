@@ -25,7 +25,7 @@ const PLANS = [
   },
   {
     name: "Kira Exec",
-    price: "from $249",
+    price: "from $99",
     period: "/month",
     description: "Your fractional exec — captures the business, gets things done, makes it sellable.",
     features: [
