@@ -32,41 +32,37 @@ export interface ConversationContextShape {
 /**
  * Turn a stored last_topic into something speakable.
  *
- * Stored topics are LLM summaries written in the THIRD PERSON about the conversation ("The user
- * clarified their current focus is…"). They must be converted to second person, not merely
- * prefix-stripped — stripping "The user " leaves a dangling verb that produces sentences like
- * "Last time we were on clarified their current focus…".
+ * Stored topics are LLM NARRATIONS of the call ("The conversation began with the user asking the
+ * agent to review a completed Iress Open form. The agent then…"). Spoken verbatim they sound like a
+ * machine reading a log. This takes the first sentence and rewrites the narration into natural
+ * second person ("you wanted me to review a completed Iress Open form"). The real fix is to have the
+ * distil write a clean topic in the first place — carried into #4 (canonical); this is the
+ * client-side cleanup until then.
  */
 function toSpokenTopic(rawTopic: string): string {
-  let topic = rawTopic.trim().replace(/\s+/g, ' ');
+  let t = String(rawTopic || '').trim().replace(/\s+/g, ' ');
 
-  // Stored topics are truncated at a fixed length and routinely end mid-word. Cut back to the last
-  // sentence boundary when there is one, so the agent never speaks a severed fragment.
-  const lastStop = Math.max(topic.lastIndexOf('. '), topic.lastIndexOf('; '));
-  if (lastStop > 60) topic = topic.slice(0, lastStop);
+  // First sentence only — the boundary can sit after a closing quote ("Executor AI." The agent…).
+  const m = t.match(/[.!?]["”’']?\s+[A-Z]/);
+  if (m && (m.index ?? 0) > 25) t = t.slice(0, (m.index ?? 0) + 1);
+  if (t.length > 140) t = t.slice(0, 140);
 
-  topic = topic.replace(/[\s,;:.]+$/, '');
+  // Rewrite the "The conversation began with X {verb}…" narration into second person.
+  t = t.replace(/^the conversation (began|started|opened|kicked off) with /i, '');
+  t = t.replace(/^the user asking the (agent|assistant) to /i, 'you wanted me to ');
+  t = t.replace(/^the user asking (the (agent|assistant) )?/i, 'you asked ');
+  t = t.replace(/^the user (telling|informing) the (agent|assistant)( that)? /i, 'you told me ');
+  t = t.replace(/^the user (requesting|wanting) /i, 'you wanted ');
+  t = t.replace(/^the user /i, 'you were ');
+  t = t.replace(/^the (agent|assistant) (recalling|confirming|reviewing|discussing|summari[sz]ing) /i, 'we went over ');
+  t = t.replace(/^the (agent|assistant) /i, 'we were ');
+  t = t.replace(/\bthe user's\b/gi, 'your').replace(/\bthe user\b/gi, 'you');
 
-  // Drop transcript framing that describes the CALL rather than the subject.
-  topic = topic.replace(
-    /^the conversation (began|started|opened) with (the agent|kira)[^.]*?[,.]\s*/i,
-    '',
-  );
+  // Drop a dangling opening quote whose partner was cut off with the rest of the sentence.
+  if (((t.match(/["“”]/g) || []).length) % 2 === 1) t = t.replace(/\s*["“”][^"“”]*$/, '');
 
-  // Third person -> second person, so she speaks TO them rather than about them.
-  topic = topic
-    .replace(/\bthe user's\b/gi, 'your')
-    .replace(/\bthe user\b/gi, 'you')
-    .replace(/\btheir\b/gi, 'your')
-    .replace(/\bthem\b/gi, 'you')
-    .replace(/\bthey were\b/gi, 'you were')
-    .replace(/\bthey are\b/gi, "you're")
-    .replace(/\bthey\b/gi, 'you');
-
-  // Lowercase a leading "You" so it reads as a clause inside the opener sentence.
-  topic = topic.replace(/^You\b/, 'you');
-
-  return topic;
+  t = t.replace(/[\s,;:.]+$/, '');
+  return t;
 }
 
 /**
@@ -91,16 +87,15 @@ export function buildWelcomeBackFirstMessage(
   const gap = context.time_gap_category;
   const lead =
     gap === 'recent'
-      ? `Right ${name}, picking up where we left off.`
+      ? `Right ${name} —`
       : gap === 'today'
-        ? `Hey ${name} — good to hear from you again.`
+        ? `Hey ${name}, good to hear from you again —`
         : gap === 'this_week'
-          ? `Hey ${name}, good to see you again.`
-          : `Hey ${name} — it's been a little while.`;
+          ? `Hey ${name}, good to see you again —`
+          : `Hey ${name}, it's been a little while —`;
 
-  // "Here's where we got to:" carries a full clause cleanly, where "Last time we were on X" only
-  // works for a noun phrase — and these summaries are sentences, not noun phrases.
-  // The close is a fork, not an open question: the standing requirement is that she states what we
-  // were doing and offers to continue OR pivot, without waiting to be asked.
-  return `${lead} Here's where we got to: ${topic}. Do you want to carry on with that, or is there something new?`;
+  // "Last time, <second-person phrase>." reads naturally now that the topic is rewritten from the
+  // narration. The close is a fork, not an open question: she states what we were doing and offers
+  // to continue OR pivot, without waiting to be asked.
+  return `${lead} last time, ${topic}. Do you want to carry on with that, or is there something new?`;
 }
