@@ -24,7 +24,10 @@ export const CURRENCIES: Currency[] = [
   { code: 'AED', symbol: 'د.إ', locale: 'en-AE', label: 'AED — UAE Dirham' },
 ];
 
-export const DEFAULT_CURRENCY = 'USD';
+// AUD is the fallback (Corporate AI Solutions / Global Buildtech is an Australian entity and AU is the
+// primary market). Buyers are still auto-detected to their own currency from locale (detectCurrency);
+// AUD only applies when we can't map the region — never a hardcoded £/$ for an AU owner.
+export const DEFAULT_CURRENCY = 'AUD';
 
 const BY_CODE = new Map(CURRENCIES.map((c) => [c.code, c]));
 

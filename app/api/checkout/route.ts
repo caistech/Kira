@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { computeValuation, type ValuationInputs } from '@/lib/valuation/model';
 import { priceForGap } from '@/lib/valuation/pricing';
-import { getCurrency } from '@/lib/valuation/currency';
+import { getCurrency, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 
 // Lazily construct Stripe at request time. Constructing at module load throws
 // ("Neither apiKey nor config.authenticator provided") during `next build` page-data
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const inputs = body?.inputs as ValuationInputs | undefined;
-    const currencyCode = (body?.currency as string) || 'USD';
+    const currencyCode = (body?.currency as string) || DEFAULT_CURRENCY;
 
     if (!inputs || typeof inputs.annualProfit !== 'number' || !inputs.industry) {
       return NextResponse.json({ error: 'Missing valuation inputs' }, { status: 400 });

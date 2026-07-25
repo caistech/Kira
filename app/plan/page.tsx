@@ -22,7 +22,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { computeValuation } from '@/lib/valuation/model';
-import { formatMoney } from '@/lib/valuation/currency';
+import { formatMoney, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { priceForGap } from '@/lib/valuation/pricing';
 import { decodeValuationParam, type ValuationPayload } from '@/lib/valuation/share';
 
@@ -45,7 +45,7 @@ export default function PlanPage() {
     return { result, quote };
   }, [payload]);
 
-  const money = (n: number) => formatMoney(n, payload?.currency || 'USD');
+  const money = (n: number) => formatMoney(n, payload?.currency || DEFAULT_CURRENCY);
 
   async function startCheckout() {
     if (!payload || !model) return;
