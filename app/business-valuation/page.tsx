@@ -31,7 +31,7 @@ import {
   type ValuationInputs,
 } from '@/lib/valuation/model';
 import { SECTOR_MULTIPLES } from '@/lib/valuation/sde-multiples';
-import { formatMoney, detectCurrency, getCurrency, CURRENCIES, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
+import { formatMoney, getCurrency, CURRENCIES, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { encodeValuationParam } from '@/lib/valuation/share';
 
 type Answers = Partial<ValuationInputs>;
@@ -177,13 +177,18 @@ export default function BusinessValuationPage() {
   // Currency is display-only (the valuation math is a multiple of profit). Start on the SSR-safe
   // default, then use the owner's saved choice or the detected locale on mount. Persist any override
   // so it doesn't reset between questions.
+  // AUD by default (this is an AU product — ABN lookups, AU sale data). We do NOT auto-switch from the
+  // browser LOCALE: navigator.language is the device's language region, not the owner's country, so an
+  // AU tradie on an en-GB/en-US laptop was being shown £/$US on the very number meant to hook them.
+  // Owners pick their own currency from the selector (persisted); true location-based detection (IP)
+  // is a later upgrade. Only a SAVED explicit choice overrides the AUD default.
   const [currency, setCurrency] = useState(DEFAULT_CURRENCY);
   useEffect(() => {
     let saved: string | null = null;
     try {
       saved = localStorage.getItem('kira_currency');
     } catch {}
-    setCurrency(saved || detectCurrency());
+    if (saved) setCurrency(saved);
   }, []);
   const changeCurrency = (c: string) => {
     setCurrency(c);
