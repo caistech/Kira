@@ -96,6 +96,37 @@ export interface IngestResult {
 }
 
 /**
+ * Supersede older versions of the SAME document for a user — latest upload wins. Without this, a
+ * user who re-uploads a doc (e.g. an uncompleted form, then the completed one) ends up with both
+ * versions in the store, and retrieval can't tell which is current (the real "completed vs draft"
+ * confusion). Matches on file_name (uploads) or url (links); deletes the older kira_knowledge rows,
+ * whose chunks cascade. Keeps `keepId`. Best-effort — never throws into the caller's happy path.
+ */
+export async function supersedeOlderVersions(
+  keepId: string,
+  userId: string,
+  match: { fileName?: string | null; url?: string | null },
+): Promise<number> {
+  if (!userId) return 0;
+  const supabase = createServiceClient();
+  try {
+    let q = supabase.from('kira_knowledge').select('id').eq('user_id', userId).neq('id', keepId);
+    if (match.url) q = q.eq('url', match.url);
+    else if (match.fileName) q = q.eq('file_name', match.fileName);
+    else return 0;
+    const { data: olders } = await q;
+    const ids = (olders ?? []).map((r: any) => r.id);
+    if (!ids.length) return 0;
+    // Chunks cascade on the parent delete (FK on delete cascade).
+    await supabase.from('kira_knowledge').delete().in('id', ids);
+    return ids.length;
+  } catch (e) {
+    console.error('[knowledge] supersedeOlderVersions failed:', e);
+    return 0;
+  }
+}
+
+/**
  * Ingest one kira_knowledge document into the owned chunk store. Idempotent: clears any existing
  * chunks for the document first, so a re-ingest replaces rather than duplicates. Degrade-don't-fake:
  * a document with no extractable text is recorded (status) and skipped, never faked.

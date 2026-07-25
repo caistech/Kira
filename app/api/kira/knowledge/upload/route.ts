@@ -3,7 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
-import { ingestKnowledgeDocument } from '@/lib/kira/knowledge-ingest';
+import { ingestKnowledgeDocument, supersedeOlderVersions } from '@/lib/kira/knowledge-ingest';
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
 
@@ -98,6 +98,12 @@ export async function POST(req: NextRequest) {
       try {
         const result = await ingestKnowledgeDocument(knowledgeRecord.id);
         console.log(`[knowledge/upload] ingested ${result.chunks} chunk(s) from ${result.chars} chars${result.skipped ? ` (skipped: ${result.skipped})` : ''}`);
+        // Latest upload of the same file wins — remove older versions so a re-upload (draft → final)
+        // doesn't leave both in the store.
+        if (userId) {
+          const superseded = await supersedeOlderVersions(knowledgeRecord.id, userId, { fileName: file.name });
+          if (superseded) console.log(`[knowledge/upload] superseded ${superseded} older version(s) of ${file.name}`);
+        }
       } catch (e) {
         console.error('[knowledge/upload] owned-RAG ingest failed:', e);
       }

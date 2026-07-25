@@ -176,10 +176,18 @@ export function kiraKnowledgeTool(baseUrl: string): ConvAITool {
  */
 export function kiraAllTools(baseUrl: string, userId?: string): ConvAITool[] {
   const tools = [...kiraMemoryTools(baseUrl), kiraKnowledgeTool(baseUrl)];
-  if (userId) {
-    for (const t of tools) {
-      if (t.webhook && /\/(recall_memory|search_knowledge)$/.test(t.webhook.url)) {
-        t.webhook.url = `${t.webhook.url}?uid=${encodeURIComponent(userId)}`;
+  for (const t of tools) {
+    if (!t.webhook) continue;
+    const isUidTool = /\/(recall_memory|search_knowledge)$/.test(t.webhook.url);
+    if (userId && isUidTool) {
+      t.webhook.url = `${t.webhook.url}?uid=${encodeURIComponent(userId)}`;
+    }
+    // recall_memory + search_knowledge identify the user from ?uid, so their conversation_id param
+    // is dead weight the LLM fills with junk — strip it. (The other memory tools still use it.)
+    if (isUidTool && t.parameters?.properties && 'conversation_id' in t.parameters.properties) {
+      delete (t.parameters.properties as Record<string, unknown>).conversation_id;
+      if (Array.isArray(t.parameters.required)) {
+        t.parameters.required = t.parameters.required.filter((r: string) => r !== 'conversation_id');
       }
     }
   }
