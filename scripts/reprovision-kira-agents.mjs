@@ -54,7 +54,7 @@ function buildToolsForUser(userId) {
   const tools = [...createConversationTools(APP_URL, '/api/kira/webhooks'), kiraKnowledgeToolDef(APP_URL)];
   for (const t of tools) {
     if (!t.webhook) continue;
-    if (userId && /\/(recall_memory|search_knowledge)$/.test(t.webhook.url)) {
+    if (userId && /\/(recall_memory|search_knowledge|save_memory|start_conversation)$/.test(t.webhook.url)) {
       t.webhook.url = `${t.webhook.url}?uid=${encodeURIComponent(userId)}`;
     }
     if (process.env.KIRA_TOOL_WEBHOOK_SECRET) {

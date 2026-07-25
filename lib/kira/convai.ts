@@ -200,7 +200,7 @@ export function kiraAllTools(baseUrl: string, userId?: string): ConvAITool[] {
   const tools = [...kiraMemoryTools(baseUrl), kiraKnowledgeTool(baseUrl)];
   for (const t of tools) {
     if (!t.webhook) continue;
-    const isUidTool = /\/(recall_memory|search_knowledge)$/.test(t.webhook.url);
+    const isUidTool = /\/(recall_memory|search_knowledge|save_memory|start_conversation)$/.test(t.webhook.url);
     if (userId && isUidTool) {
       t.webhook.url = `${t.webhook.url}?uid=${encodeURIComponent(userId)}`;
     }
