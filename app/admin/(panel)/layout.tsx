@@ -8,6 +8,7 @@ import { PortalShell, type NavItem } from '@/components/PortalShell';
 
 const ADMIN_NAV: NavItem[] = [
   { href: '/admin', label: 'Overview' },
+  { href: '/admin/exec', label: 'Kira Exec' },
   { href: '/admin/loi', label: 'LOIs' },
 ];
 
