@@ -26,23 +26,37 @@ export async function handleKiraRecall(req: Request): Promise<Response> {
     return json(400, { success: false, error: 'Invalid JSON' });
   }
 
-  const conversationId = String(body.conversation_id || '');
   const query = String(body.query || '').trim();
-  if (!conversationId || !query) {
-    return json(400, { success: false, error: 'Missing conversation_id or query' });
+  if (!query) {
+    return json(400, { success: false, error: 'Missing query' });
   }
 
   const supabase = createServiceClient();
 
-  // Identity from the conversation binding.
-  const { data: conv } = await supabase
-    .from('conversations')
-    .select('user_id, agent_id')
-    .eq('elevenlabs_conversation_id', conversationId)
-    .single();
-  if (!conv?.user_id) {
-    return json(200, { success: false, error: 'Conversation not found' });
+  // Identity is SERVER-BAKED into the tool URL at provision time (?uid=<user_id>), because
+  // ElevenLabs does NOT pass the conversation id to server-tool webhooks — the agent only sends the
+  // LLM-filled params (proven from the live conversation record). Kira provisions one agent per
+  // user, so the owner is known at provision and baked in; the agent never has to identify anyone.
+  // Fall back to the conversation binding for any legacy caller that still sends conversation_id.
+  const url = new URL(req.url);
+  let userId = url.searchParams.get('uid') || '';
+  let agentId: string | null = null;
+  if (!userId) {
+    const conversationId = String(body.conversation_id || '');
+    if (conversationId) {
+      const { data: conv } = await supabase
+        .from('conversations')
+        .select('user_id, agent_id')
+        .eq('elevenlabs_conversation_id', conversationId)
+        .single();
+      userId = (conv?.user_id as string) || '';
+      agentId = (conv?.agent_id as string) || null;
+    }
   }
+  if (!userId) {
+    return json(200, { success: false, error: 'No user identity on this request' });
+  }
+  const conv = { user_id: userId, agent_id: agentId };
 
   // 1. Mnemo semantic (deep) — the layer that makes cross-session, differently-worded recall work.
   const semantic = mnemoEnabled() ? await mnemoSearch(conv.user_id as string, query, 6) : [];

@@ -338,7 +338,7 @@ export async function POST(req: NextRequest) {
       // prompt.tool_ids + enable per-session overrides.
       (async () => {
         try {
-          await setAgentTools(ELEVENLABS_API_KEY, agentId, kiraAllTools(APP_URL));
+          await setAgentTools(ELEVENLABS_API_KEY, agentId, kiraAllTools(APP_URL, user.id));
           await setAgentOverrides(ELEVENLABS_API_KEY, agentId);
           await log(supabase, requestId, 'tools_attach', 'success');
         } catch (e: any) {

@@ -149,10 +149,23 @@ try {
         knowledge_id: kdoc.id, user_id: qaUser.id, kira_agent_id: agentRowId, chunk_index: 0,
         content: `The confidential project codename is ${DOC_SENTINEL}.`, embedding: vec,
       });
-      const sk = await post('search_knowledge', { conversation_id: convB, query: 'confidential project codename' });
-      check('search_knowledge retrieves a shared document, cited',
+      // Call as ElevenLabs REALLY calls it: body = query only, identity via the baked ?uid in the
+      // URL (EL does not pass the conversation id to server-tool webhooks). This closes the blind
+      // spot that made every prior round pass while live calls failed.
+      const skRes = await fetch(`${BASE}/search_knowledge?uid=${qaUser.id}`, {
+        method: 'POST', headers, body: JSON.stringify({ query: 'confidential project codename' }),
+      });
+      const sk = { json: await skRes.json() };
+      check('search_knowledge (uid in URL, no conversation_id) retrieves a shared doc, cited',
         (sk.json?.found ?? 0) >= 1 && JSON.stringify(sk.json?.results || []).includes(DOC_SENTINEL) && Boolean(sk.json?.results?.[0]?.source),
         `found=${sk.json?.found}`);
+      // And recall the SAME way — uid in URL, query only.
+      const recUid = await fetch(`${BASE}/recall_memory?uid=${qaUser.id}`, {
+        method: 'POST', headers, body: JSON.stringify({ query: SENTINEL }),
+      });
+      const recUidJson = await recUid.json();
+      check('recall_memory (uid in URL, no conversation_id) resolves the user',
+        (recUidJson?.found ?? 0) >= 1, `found=${recUidJson?.found}`);
     }
   } else {
     console.log('  · search_knowledge check skipped (no OPENAI_API_KEY)');

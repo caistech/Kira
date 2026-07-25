@@ -163,12 +163,27 @@ export function kiraKnowledgeTool(baseUrl: string): ConvAITool {
 }
 
 /**
- * The full tool set attached to every operational agent: the 5 canonical memory tools + the
- * owned-RAG search_knowledge tool. Use this at provision + re-provision so knowledge retrieval is
- * present on every agent, never a routeless prompt claim.
+ * The full tool set attached to an operational agent: the 5 canonical memory tools + the owned-RAG
+ * search_knowledge tool.
+ *
+ * IDENTITY: pass the agent owner's `userId` and it is baked into the recall_memory + search_knowledge
+ * webhook URLs as `?uid=<userId>`. This is how those tools know whose memory/documents to read —
+ * ElevenLabs does NOT pass the conversation id to server-tool webhooks (proven from the live
+ * conversation record: the agent sends only the LLM-filled params). Kira provisions one agent per
+ * user, so the owner is known at provision and baked in; the agent never has to identify anyone, and
+ * the handlers resolve the user from `?uid` (falling back to the conversation binding for legacy).
+ * The `x-kira-tool-secret` header still gates the routes, so a baked uid is not a bare-param hole.
  */
-export function kiraAllTools(baseUrl: string): ConvAITool[] {
-  return [...kiraMemoryTools(baseUrl), kiraKnowledgeTool(baseUrl)];
+export function kiraAllTools(baseUrl: string, userId?: string): ConvAITool[] {
+  const tools = [...kiraMemoryTools(baseUrl), kiraKnowledgeTool(baseUrl)];
+  if (userId) {
+    for (const t of tools) {
+      if (t.webhook && /\/(recall_memory|search_knowledge)$/.test(t.webhook.url)) {
+        t.webhook.url = `${t.webhook.url}?uid=${encodeURIComponent(userId)}`;
+      }
+    }
+  }
+  return tools;
 }
 
 // Re-export the canonical continuity prompt so provisioning appends the SAME instructions

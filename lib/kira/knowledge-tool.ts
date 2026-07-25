@@ -27,10 +27,9 @@ export async function handleSearchKnowledge(req: Request): Promise<Response> {
     return json(400, { success: false, error: 'Invalid JSON' });
   }
 
-  const conversationId = String(body.conversation_id || '');
   const query = String(body.query || '').trim();
-  if (!conversationId || !query) {
-    return json(400, { success: false, error: 'Missing conversation_id or query' });
+  if (!query) {
+    return json(400, { success: false, error: 'Missing query' });
   }
 
   if (!isEmbeddingsConfigured()) {
@@ -40,15 +39,26 @@ export async function handleSearchKnowledge(req: Request): Promise<Response> {
 
   const supabase = createServiceClient();
 
-  // Identity from the conversation binding — never from the request.
-  const { data: conv } = await supabase
-    .from('conversations')
-    .select('user_id')
-    .eq('elevenlabs_conversation_id', conversationId)
-    .single();
-  if (!conv?.user_id) {
-    return json(200, { success: false, error: 'Conversation not found' });
+  // Identity is SERVER-BAKED into the tool URL (?uid=<user_id>) — ElevenLabs does not pass the
+  // conversation id to server-tool webhooks. One agent per user, so the owner is known at provision.
+  // Fall back to the conversation binding for a legacy caller that still sends conversation_id.
+  const url = new URL(req.url);
+  let userId = url.searchParams.get('uid') || '';
+  if (!userId) {
+    const conversationId = String(body.conversation_id || '');
+    if (conversationId) {
+      const { data: c } = await supabase
+        .from('conversations')
+        .select('user_id')
+        .eq('elevenlabs_conversation_id', conversationId)
+        .single();
+      userId = (c?.user_id as string) || '';
+    }
   }
+  if (!userId) {
+    return json(200, { success: false, error: 'No user identity on this request' });
+  }
+  const conv = { user_id: userId };
 
   let embedding: number[];
   try {
