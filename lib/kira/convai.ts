@@ -25,6 +25,7 @@ import {
 import { createServiceClient } from '@/lib/supabase/server';
 import { createMemoryExtractor } from '@/lib/kira/memory-extract';
 import { kiraKnowledgeToolDef } from '@/lib/kira/knowledge-tool-def.mjs';
+import { mnemoAdd } from '@/lib/kira/mnemo';
 
 // Kira's real tables mapped onto the canonical TableNames contract. The reconcile
 // migration adds the columns the handlers need (agent_id, anon_session_id, processed_at)
@@ -69,6 +70,21 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
         extract: memoryExtractor,
         tables: KIRA_CONVAI_TABLES,
       });
+      // Dual-write the just-distilled facts to Mnemo (the experiential/semantic lane, #7). kira_memory
+      // stays the source of truth; Mnemo is the semantic index that makes cross-session, differently-
+      // worded recall work ("what happened on that job six weeks ago"). Fail-soft + non-fatal: a Mnemo
+      // outage never affects the post-call path — recall simply degrades to kira_memory alone.
+      try {
+        const { data: fresh } = await sb
+          .from(KIRA_CONVAI_TABLES.memory)
+          .select('user_id, content')
+          .eq('source_conversation_id', conv.id);
+        const userId = fresh?.[0]?.user_id as string | undefined;
+        const contents = (fresh ?? []).map((r: any) => r.content).filter(Boolean);
+        if (userId && contents.length) await mnemoAdd(userId, contents);
+      } catch (e) {
+        console.error('[kira/convai] Mnemo dual-write skipped:', e);
+      }
     },
     // Identity is SERVER-DERIVED from the agent binding, never from an agent-supplied
     // user_id. Kira provisions one agent per user, so the agent's owner IS the session
