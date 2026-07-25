@@ -128,6 +128,35 @@ try {
   const foreign = await post('recall_memory', { conversation_id: `${RUN}_nonexistent`, query: SENTINEL });
   check('recall on an unbound conversation returns nothing', !JSON.stringify(foreign.json).includes(SENTINEL),
     foreign.json?.error || `found=${foreign.json?.found}`);
+
+  // ---- Owned RAG (search_knowledge): a shared document is retrievable + cited (#11) ----
+  // Needs an embedding key to seed a chunk; skip cleanly (not fail) where it's absent (e.g. CI
+  // without OPENAI_API_KEY) — degrade-don't-fake.
+  if (process.env.OPENAI_API_KEY) {
+    const DOC_SENTINEL = `quokka-${RUN}`;
+    const emb = await fetch('https://api.openai.com/v1/embeddings', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'text-embedding-3-small', input: [`The confidential project codename is ${DOC_SENTINEL}.`], dimensions: 1536 }),
+    }).then((r) => r.json());
+    const vec = emb?.data?.[0]?.embedding;
+    if (vec) {
+      const { data: kdoc } = await supabase.from('kira_knowledge').insert({
+        user_id: qaUser.id, kira_agent_id: agentRowId, created_by: 'user', source_type: 'user_upload',
+        title: `E2E test doc ${RUN}`, summary: 'e2e', status: 'indexed',
+      }).select('id').single();
+      await supabase.from('kira_knowledge_chunks').insert({
+        knowledge_id: kdoc.id, user_id: qaUser.id, kira_agent_id: agentRowId, chunk_index: 0,
+        content: `The confidential project codename is ${DOC_SENTINEL}.`, embedding: vec,
+      });
+      const sk = await post('search_knowledge', { conversation_id: convB, query: 'confidential project codename' });
+      check('search_knowledge retrieves a shared document, cited',
+        (sk.json?.found ?? 0) >= 1 && JSON.stringify(sk.json?.results || []).includes(DOC_SENTINEL) && Boolean(sk.json?.results?.[0]?.source),
+        `found=${sk.json?.found}`);
+    }
+  } else {
+    console.log('  · search_knowledge check skipped (no OPENAI_API_KEY)');
+  }
 } catch (err) {
   check('run completed without throwing', false, err.message);
 } finally {
@@ -138,6 +167,9 @@ try {
       // BOTH so a test memory row can never orphan regardless of which column the insert set.
       await supabase.from('kira_memory').delete().eq('agent_id', agentRowId);
       await supabase.from('kira_memory').delete().eq('kira_agent_id', agentRowId);
+      // The test knowledge doc's agent FK is on-delete-set-null, so it won't cascade with the agent —
+      // delete it explicitly (chunks cascade on the doc's delete).
+      await supabase.from('kira_knowledge').delete().eq('kira_agent_id', agentRowId);
       const { data: convs } = await supabase.from('conversations').select('id').eq('agent_id', agentRowId);
       const convIds = (convs || []).map((c) => c.id);
       if (convIds.length) await supabase.from('conversation_messages').delete().in('conversation_id', convIds);
