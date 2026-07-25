@@ -186,7 +186,27 @@ builder consumes** — two halves of one mechanism.
 
 ## Cross-cutting (answer once)
 
-23. **Tenancy key** — one canonical `tenantId` across tasks, memory, records. Propose its shape; cross-tenant leakage is the failure we most want designed out.
+23. **Tenancy key — RESOLVED (2026-07-25, Workstream E).** The introducer/broker channel adds an org tier
+    above the owner, but it does **NOT** change the memory key. Two layers, deliberately separate:
+    - **Memory + task + record scope: unchanged, flat `tenantId` = the owner's business** (one owner, one
+      agent, per VOICE_MEMORY_STANDARD). **All three memory lanes (structured, working/swarm, Mnemo) stay
+      keyed on this owner `tenantId`. Gareth and Shah build to the flat key exactly as before — no change.**
+      The introducer NEVER enters this scope: never a participant in the owner's memory, never able to reach
+      `recall_memory` / `search_knowledge` / transcripts (those resolve `uid` = owner, server-derived).
+    - **Introducer tier: a read-only STATUS-PROJECTION overlay ABOVE the memory scope, keyed separately.** An
+      `introductions` relation `(introducer_id, owner_tenant_id, scope='status-only', first_touch_at,
+      attribution)` grants the introducer a server-enforced read of a *projection* of the owner's state
+      (valuation score, pipeline stage, movement over time) — **derived, never the underlying content.** This
+      maps 1:1 onto `@caistech/coordination-sdk`'s `project → participants(role)` model: the introducer is a
+      `participant` with `role: introducer`, `allowed_actions: ['view_status']` only.
+    - **The failure designed out:** cross-tenant leakage can't happen because the introducer's queries hit the
+      projection table gated by the `introductions` relation and **physically cannot address the memory lanes**
+      — enforced server-side, same discipline as server-derived memory identity. The owner `tenantId` is the
+      only key that ever reaches Gareth's swarm or Shah's Mnemo.
+    - **Consequence for you both:** nothing to change. The flat owner `tenantId` you already assumed is
+      correct and final; the introducer overlay lives entirely on the CAS product/backbone side and never
+      crosses these seams.
+24. **Auth between systems** — shared secret / signed tokens / mTLS? These seams carry live business data.
 24. **Auth between systems** — shared secret / signed tokens / mTLS? These seams carry live business data.
 25. **Observability** — a correlation id tracing one voice exchange → N tasks → completions across every hop.
 26. **Versioning** — a version field on every seam payload so one party's change can't silently break another.

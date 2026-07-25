@@ -1,0 +1,61 @@
+# Health sensors — scheduled probes against the live deploy.
+#
+# Catches the runtime failures CI can't see: a missing env var in Vercel, a
+# dead Supabase connection, an RLS change that 500s a public route. CI only
+# proves the code compiles; this proves the deployed thing still answers.
+#
+# Runs the same two portfolio-gate smoke checks as gate.yml, but on a cron
+# against the deployed URL instead of per-PR against a preview.
+
+name: health-sensors
+
+on:
+  schedule:
+    # Every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      PORTFOLIO_GATE_PREVIEW_URL: ${{ vars.PORTFOLIO_GATE_PREVIEW_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@caistech'
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.CAISTECH_PACKAGES_TOKEN }}
+
+      - name: Verify target URL is set
+        run: |
+          if [ -z "$PORTFOLIO_GATE_PREVIEW_URL" ]; then
+            echo "::error::PORTFOLIO_GATE_PREVIEW_URL is not set. Wire it via repo vars."
+            exit 1
+          fi
+          echo "Probing: $PORTFOLIO_GATE_PREVIEW_URL"
+
+      - name: Route smoke test
+        run: |
+          npx --no-install portfolio-gate-smoke-routes \
+            --config routes.config.json \
+            --base-url "$PORTFOLIO_GATE_PREVIEW_URL"
+
+      - name: Auth smoke test
+        run: |
+          npx --no-install portfolio-gate-smoke-auth \
+            --config auth.config.json \
+            --base-url "$PORTFOLIO_GATE_PREVIEW_URL"
