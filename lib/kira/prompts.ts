@@ -504,3 +504,30 @@ If you ever want to try again, I'll be here. Take care, ${firstName}."
 - Be genuinely curious, not defensive
 `;
 }
+
+// =============================================================================
+// LIVE-AGENT PERSONA UPGRADE (business journey → fractional exec)
+// =============================================================================
+
+// A distinctive line present ONLY in the exec persona — used to detect an already-upgraded agent
+// (both CORE_PHILOSOPHY and EXEC_PHILOSOPHY open with "## WHO YOU ARE", so the shared marker can't
+// tell them apart).
+const EXEC_PERSONA_FINGERPRINT = '## REMOVE A HEADACHE THEY DREAD';
+
+/**
+ * Swap the legacy curious-friend persona (CORE_PHILOSOPHY) for the fractional-exec persona inside an
+ * ALREADY-provisioned business agent's live system prompt. Deterministic: live business prompts were
+ * built with `${CORE_PHILOSOPHY}` embedded verbatim (the patch scripts only append at the end), so an
+ * exact-string replace is safe — no fragile boundary guessing. Idempotent.
+ *
+ * Returns { prompt, changed }. changed=false when the agent is already on the exec persona, or when
+ * the CORE block can't be found (leave the prompt untouched rather than risk a bad rewrite; the
+ * doing tools still attach separately).
+ */
+export function upgradeBusinessPersona(livePrompt: string, firstName: string): { prompt: string; changed: boolean } {
+  if (livePrompt.includes(EXEC_PERSONA_FINGERPRINT)) return { prompt: livePrompt, changed: false };
+  const core = CORE_PHILOSOPHY.trim();
+  if (!livePrompt.includes(core)) return { prompt: livePrompt, changed: false };
+  const exec = execPhilosophyFor(firstName).trim();
+  return { prompt: livePrompt.replace(core, exec), changed: true };
+}
