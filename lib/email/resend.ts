@@ -3,6 +3,8 @@
 
 import { Resend } from 'resend';
 
+import { sendCommercialEmail } from '@/lib/email/commercial';
+
 // Lazy init: the Resend SDK throws in its constructor when no key is present. Instantiating at
 // module scope made build-time page-data collection (which imports this module without the env)
 // fail. Create the client on first send instead, at request time when RESEND_API_KEY is set.
@@ -264,11 +266,11 @@ export async function sendWelcomeBackEmail({
 </html>
   `;
 
-  return sendEmail({
-    to: userEmail,
-    subject,
-    html,
-  });
+  // This is the one COMMERCIAL email Kira sends — a nudge to come back, not something the
+  // recipient asked for right now. So it goes through the compliant path: identification footer, a
+  // working unsubscribe link, List-Unsubscribe headers, and a send that is SKIPPED outright if the
+  // recipient is on the suppression list. The transactional emails above don't need any of that.
+  return sendCommercialEmail({ to: userEmail, subject, html });
 }
 
 // ============================================================================

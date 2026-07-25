@@ -17,8 +17,13 @@
 // canonical renders its own mode header.
 
 import { useMemo } from 'react';
-import { AuthForm as CanonicalAuthForm, type AuthMode } from '@caistech/corporate-components/auth';
+import {
+  AuthForm as CanonicalAuthForm,
+  type AuthExtraField,
+  type AuthMode,
+} from '@caistech/corporate-components/auth';
 import { createClient } from '@/lib/supabase/browser';
+import { TERMS_VERSION } from '@/lib/terms';
 
 type LocalMode = 'login' | 'signup' | 'forgot' | 'reset' | 'magic-link';
 
@@ -43,6 +48,53 @@ interface AuthFormProps {
 }
 
 const KIRA_ACCENT = '#fb7185'; // rose-400 — Kira's brand accent
+
+/**
+ * Signup-only fields.
+ *
+ * The terms checkbox is REQUIRED and unticked — a pre-ticked box is not agreement, and this is the
+ * record that someone consented to us emailing them. It carries the version so the acceptance
+ * stored against the account is answerable: not "they agreed once" but "they agreed to this."
+ *
+ * Values land in user_metadata; the auth trigger copies them onto the users row.
+ */
+function signupFields(askReferralSource: boolean): AuthExtraField[] {
+  const fields: AuthExtraField[] = [
+    {
+      name: 'terms_accepted',
+      type: 'checkbox',
+      required: true,
+      label: (
+        <>
+          I agree to the{' '}
+          <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline">
+            Terms
+          </a>
+          , including emails about Kira. I can unsubscribe any time.
+        </>
+      ),
+    },
+    {
+      // Constant, never rendered: records WHICH wording they agreed to. "They agreed" without
+      // "to what" is a record that can't answer the only question anyone would ever ask of it.
+      name: 'terms_version',
+      value: TERMS_VERSION,
+    },
+  ];
+
+  // Asked only when there's no signed attribution cookie — see app/signup/page.tsx.
+  if (askReferralSource) {
+    fields.push({
+      name: 'referral_source',
+      label: 'How did you hear about Kira? (optional)',
+      type: 'text',
+      placeholder: 'A broker, an accountant, a friend…',
+      autoComplete: 'off',
+    });
+  }
+
+  return fields;
+}
 
 const MODE_MAP: Record<LocalMode, AuthMode> = {
   login: 'login',
@@ -78,19 +130,7 @@ export function AuthForm({
       resetPasswordPath={admin ? '/admin/password-reset' : '/auth/reset-password'}
       callbackPath="/auth/callback"
       hideSignupLink={admin}
-      extraFields={
-        askReferralSource && mode === 'signup'
-          ? [
-              {
-                name: 'referral_source',
-                label: 'How did you hear about Kira? (optional)',
-                type: 'text',
-                placeholder: 'A broker, an accountant, a friend…',
-                autoComplete: 'off',
-              },
-            ]
-          : undefined
-      }
+      extraFields={mode === 'signup' ? signupFields(askReferralSource) : undefined}
     />
   );
 }
