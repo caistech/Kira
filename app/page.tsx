@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { OWNER_FAQ } from '@/lib/faq';
 
 export default function KiraLandingPage() {
   const [isVisible, setIsVisible] = useState(false);
@@ -113,6 +114,7 @@ export default function KiraLandingPage() {
           <div className="flex items-center gap-3 sm:gap-6">
             <a href="#how-it-works" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">How it works</a>
             <a href="/pricing" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">Pricing</a>
+            <a href="/advisors" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">Advisors</a>
             <a href="/about" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">About</a>
             <a href="/admin/login" className="font-body text-stone-400 hover:text-stone-600 text-xs hidden sm:block">Admin</a>
             <a href="/login" className="font-body flex min-h-[44px] items-center px-2 text-sm font-medium text-stone-700 hover:text-pink-500">Sign in</a>
@@ -135,6 +137,7 @@ export default function KiraLandingPage() {
           <div className="md:hidden border-t border-amber-100 bg-white/95 backdrop-blur px-6 py-3 space-y-1">
             <a href="#how-it-works" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">How it works</a>
             <a href="/pricing" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">Pricing</a>
+            <a href="/advisors" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">Advisors</a>
             <a href="/about" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">About</a>
             <a href="/admin/login" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-500 hover:bg-amber-50">Admin</a>
           </div>
@@ -403,7 +406,7 @@ export default function KiraLandingPage() {
             <h2 className="font-display text-4xl lg:text-5xl font-bold text-stone-800 mb-6">See the number. <span className="bg-gradient-to-r from-amber-500 to-pink-500 bg-clip-text text-transparent">Then decide.</span></h2>
             <div className="font-body text-xl text-stone-600 leading-relaxed space-y-4 mb-10">
               <p>The valuation is free — no sign-up, no card. It shows you the gap in about 3 minutes.</p>
-              <p>If you want Kira to close it, the plan is priced to <span className="font-semibold text-stone-800">a fraction of what you stand to unlock</span> — and starts with <span className="font-bold text-stone-800">7 days free</span>.</p>
+              <p>If you want Kira to close it, the plan is priced to <span className="font-semibold text-stone-800">a fraction of what you stand to unlock</span> — and your <span className="font-bold text-stone-800">first month is free</span>.</p>
               <p>No gap, no pressure. The number is yours to keep either way.</p>
             </div>
             <a href="/business-valuation" className="font-display gradient-coral text-white px-10 py-5 rounded-full text-xl font-bold hover-pop shadow-xl shadow-pink-200 inline-block">What&apos;s my business worth? →</a>
@@ -417,15 +420,7 @@ export default function KiraLandingPage() {
         <div className="max-w-3xl mx-auto px-6">
           <h2 className="font-display text-3xl font-bold text-stone-800 mb-12 text-center">Questions? 🙋‍♀️</h2>
           <div className="space-y-4">
-            {[
-              { q: "What do you mean 'my own Kira'?", a: "When you start, you'll have a quick conversation with Setup Kira. She learns what you're working on, your context, and what success looks like. Then we create a unique Kira agent just for you — one that knows your situation from day one." },
-              { q: "What can Kira actually help with?", a: "Running your business and making it worth more. Capturing how it works, getting the small things done (a quote, a follow-up, a reminder — for your approval), sorting the recurring headaches like the BAS, and turning the knowledge in your head into a transferable, sellable asset." },
-              { q: "What does it cost?", a: "The valuation is completely free — no sign-up, no card. If you want Kira to help close the gap, the business plan starts with a 7-day free trial, then a monthly price set to a small fraction of the value you saw. You'll see the exact figure before you enter any card details, and you can cancel anytime." },
-              { q: "What if she gets something wrong?", a: "She will sometimes. When that happens, tell her. She'll adjust and do better. That's how this partnership works." },
-              { q: "Is this like ChatGPT?", a: "Kira uses AI, but she's built to be YOUR guide, not a generic answer machine. She knows your specific context, asks questions before jumping to answers, and is designed for ongoing thinking partnerships — not one-off queries." },
-              { q: "What happens to my conversations?", a: "They stay private. Kira learns from your conversations to help you better, but your data isn't shared or sold. Ever." },
-              { q: "Can I have more than one Kira?", a: "For now, each Kira is focused on one business. If you run more than one, you can create a separate Kira for each." }
-            ].map((faq, index) => (
+            {OWNER_FAQ.map((faq, index) => (
               <details key={index} className="bg-white rounded-2xl border border-amber-100 group">
                 <summary className="font-display text-lg font-bold text-stone-800 p-6 cursor-pointer list-none flex items-center justify-between hover:bg-amber-50 rounded-2xl transition-colors">
                   {faq.q}

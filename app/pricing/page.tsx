@@ -1,3 +1,4 @@
+import { PRICING_FAQ } from '@/lib/faq';
 import Link from "next/link";
 
 export const metadata = {
@@ -33,7 +34,7 @@ const PLANS = [
       "Remembers everything across every conversation",
       "Drafts quotes, emails and reminders — nothing sent without your OK",
       "Your documents, searchable in conversation",
-      "7-day free trial · cancel any time",
+      "First month free · cancel any time",
     ],
     cta: "Start with my valuation",
     href: "/business-valuation",
@@ -41,28 +42,7 @@ const PLANS = [
   },
 ];
 
-const FAQ = [
-  {
-    q: "What does Kira Exec actually do?",
-    a: "She's a voice-first assistant for the hands-on owner. You talk to her between jobs; she captures how your business really runs, gets the small things done (drafts a quote, a follow-up, a reminder — for your approval), and turns the knowledge in your head into a documented, transferable asset that's worth more when you sell.",
-  },
-  {
-    q: "How is it priced?",
-    a: "One monthly plan for the exec, starting at $249/month, scaled to the size of the value you're unlocking. Your 3-minute valuation shows the number first, so you decide with the gap in front of you. Seven-day free trial, cancel any time.",
-  },
-  {
-    q: "What currency am I charged in?",
-    a: "Australian dollars by default (ex-GST) — this is an Australian product. Prefer another currency? Switch it on the valuation screen and the price follows; Stripe then bills you in that currency.",
-  },
-  {
-    q: "Will my business information be used to train AI models?",
-    a: "No. The AI providers we use are accessed through paid APIs under terms that exclude training on customer data. What you tell Kira stays between you and your business, private and permissioned.",
-  },
-  {
-    q: "What happens to my data if I cancel?",
-    a: "Everything Kira has captured about your business is exportable at any time. After cancellation we keep it for 30 days in case you come back, then delete it. Export early if you want a copy outside the app.",
-  },
-];
+const FAQ = PRICING_FAQ;
 
 export default function PricingPage() {
   return (
