@@ -116,7 +116,6 @@ export default function KiraLandingPage() {
             <a href="/pricing" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">Pricing</a>
             <a href="/advisors" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">Advisors</a>
             <a href="/about" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">About</a>
-            <a href="/admin/login" className="font-body text-stone-400 hover:text-stone-600 text-xs hidden sm:block">Admin</a>
             <a href="/login" className="font-body flex min-h-[44px] items-center px-2 text-sm font-medium text-stone-700 hover:text-pink-500">Sign in</a>
             <a href="/business-valuation" className="font-display gradient-sunny text-stone-800 px-4 py-2.5 rounded-full text-sm font-bold hover-pop shadow-md flex min-h-[44px] items-center">Value my business →</a>
             <button
@@ -139,7 +138,9 @@ export default function KiraLandingPage() {
             <a href="/pricing" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">Pricing</a>
             <a href="/advisors" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">Advisors</a>
             <a href="/about" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">About</a>
-            <a href="/admin/login" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-500 hover:bg-amber-50">Admin</a>
+            {/* No Admin link. The operator console is not a customer destination, and putting it in
+                the public nav advertises an attack surface to every visitor while telling the
+                customer this is a tool for someone else. Reachable directly at /admin/login. */}
           </div>
         )}
       </nav>
@@ -461,12 +462,16 @@ export default function KiraLandingPage() {
               <span className="text-stone-500">|</span>
               <a href="https://corporate-ai-solutions.vercel.app/marketplace" target="_blank" rel="noopener noreferrer" className="font-body text-sm text-stone-400 hover:text-amber-400 transition-colors">A Corporate AI Solutions Product</a>
             </div>
-            <div className="flex items-center gap-6 font-body text-sm text-stone-400">
-              <a href="/about" className="hover:text-pink-400 transition-colors">About</a>
-              <a href="#how-it-works" className="hover:text-pink-400 transition-colors">How it Works</a>
-              <a href="#pricing" className="hover:text-pink-400 transition-colors">Pricing</a>
-              <a href="/privacy" className="hover:text-pink-400 transition-colors">Privacy</a>
-              <a href="/terms" className="hover:text-pink-400 transition-colors">Terms</a>
+            {/* 44px minimum tap target (PRODUCT_STANDARDS §1). These were 18-20px high — legible,
+                but on a phone the gap between "Privacy" and "Terms" is smaller than a fingertip,
+                so the wrong one opens. Flex-wrap rather than a scroll: five items at full height
+                need two rows on a narrow screen, and a row that runs off-screen hides links. */}
+            <div className="flex flex-wrap items-center justify-center gap-x-6 font-body text-sm text-stone-400">
+              <a href="/about" className="flex min-h-[44px] items-center hover:text-pink-400 transition-colors">About</a>
+              <a href="#how-it-works" className="flex min-h-[44px] items-center hover:text-pink-400 transition-colors">How it Works</a>
+              <a href="#pricing" className="flex min-h-[44px] items-center hover:text-pink-400 transition-colors">Pricing</a>
+              <a href="/privacy" className="flex min-h-[44px] items-center hover:text-pink-400 transition-colors">Privacy</a>
+              <a href="/terms" className="flex min-h-[44px] items-center hover:text-pink-400 transition-colors">Terms</a>
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-stone-700 text-center">

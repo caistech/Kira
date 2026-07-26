@@ -14,25 +14,8 @@
 
 import { createEmailSender } from '@caistech/email-send';
 
+import { senderIdentityOrNull as senderIdentity } from '@/lib/email/sender';
 import { suppressionStore, unsubscribeUrl } from '@/lib/email/suppressions';
-
-function senderIdentity() {
-  const name = process.env.EMAIL_SENDER_NAME;
-  const email = process.env.EMAIL_SENDER_EMAIL;
-  if (!name || !email) {
-    console.warn(
-      '[email] EMAIL_SENDER_NAME / EMAIL_SENDER_EMAIL unset — sending without the identification footer.',
-    );
-    return undefined;
-  }
-  return {
-    name,
-    email,
-    abn: process.env.EMAIL_SENDER_ABN,
-    postal: process.env.EMAIL_SENDER_POSTAL,
-    phone: process.env.EMAIL_SENDER_PHONE,
-  };
-}
 
 export interface CommercialEmailParams {
   to: string;

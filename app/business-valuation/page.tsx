@@ -32,7 +32,7 @@ import {
 } from '@/lib/valuation/model';
 import { SECTOR_MULTIPLES } from '@/lib/valuation/sde-multiples';
 import { formatMoney, getCurrency, CURRENCIES, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
-import { encodeValuationParam } from '@/lib/valuation/share';
+import { storeValuation } from '@/lib/valuation/share';
 
 type Answers = Partial<ValuationInputs>;
 
@@ -239,10 +239,17 @@ export default function BusinessValuationPage() {
   }, [isResult, answers]);
 
   // Carry the valuation into the sales page (and on to checkout) so the price + dashboard use it.
-  const planHref = useMemo(
-    () => (isResult ? `/plan?v=${encodeValuationParam({ inputs: answers as ValuationInputs, currency })}` : '/plan'),
-    [isResult, answers, currency],
-  );
+  //
+  // Parked in sessionStorage rather than encoded into the link. The answers include annual turnover
+  // and profit, and a URL carrying them ends up in browser history, in the Referer header of every
+  // outbound click, in server logs, and in the email chain the moment someone forwards it. The two
+  // pages are one navigation apart in the same tab, so the URL was never needed to get it there.
+  useEffect(() => {
+    if (!isResult) return;
+    storeValuation({ inputs: answers as ValuationInputs, currency });
+  }, [isResult, answers, currency]);
+
+  const planHref = '/plan';
 
   const progress = isResult ? 100 : Math.round(((stepIndex + 1) / (total + 1)) * 100);
 
