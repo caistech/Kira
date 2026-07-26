@@ -52,3 +52,9 @@ supabase/.temp/
 naive-tester-reports/**/*.png
 naive-tester-reports/**/*.jpg
 naive-tester-reports/**/screenshots/
+
+# Collaborator commercial terms — named individuals, proposed splits, unsigned.
+# Deliberately local: a private repo is still the wrong place for someone else's
+# unagreed compensation, and it only takes one `git add -A` to publish it to
+# everyone with clone access.
+docs/collaborator-terms/
