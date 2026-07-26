@@ -465,11 +465,21 @@ export default function KiraLandingPage() {
               <a href="/about" className="hover:text-pink-400 transition-colors">About</a>
               <a href="#how-it-works" className="hover:text-pink-400 transition-colors">How it Works</a>
               <a href="#pricing" className="hover:text-pink-400 transition-colors">Pricing</a>
-              <a href="#" className="hover:text-pink-400 transition-colors">Privacy</a>
+              <a href="/privacy" className="hover:text-pink-400 transition-colors">Privacy</a>
+              <a href="/terms" className="hover:text-pink-400 transition-colors">Terms</a>
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-stone-700 text-center">
-            <p className="font-body text-stone-500 text-sm">
+            {/* The legal entity behind the product, named where a customer can find it. Required
+                for the Spam Act identification our emails already carry — a footer that omits it
+                while every outbound email states it is an inconsistency someone will notice. */}
+            <p className="font-body text-stone-400 text-sm">
+              Global Buildtech Australia Pty Ltd · ABN 54 672 395 685 · trading as Corporate AI Solutions
+            </p>
+            <p className="font-body text-stone-500 text-sm mt-1">
+              76-84 Brunswick Street, Fortitude Valley QLD 4006
+            </p>
+            <p className="font-body text-stone-500 text-sm mt-3">
               © 2026 Corporate AI Solutions · Created by Dennis McMahon ·
               <a href="https://corporate-ai-solutions.vercel.app/studio/thesis" target="_blank" rel="noopener noreferrer" className="text-amber-500 hover:text-amber-400 ml-1">Longtail AI Ventures</a>
             </p>
