@@ -1,0 +1,49 @@
+{
+  "$schema": "https://caistech.internal/regulatory-inclusions/v1",
+  "_doc": "Declares this repo's legal/consent surfaces per cais-shared-services/REGULATORY_INCLUSIONS.md. Every inclusion must be default, customised, or not-applicable WITH A REASON — silence is not acceptance.",
+
+  "operator": {
+    "_doc": "Trigger A. Kira is a CAS-owned product, so it carries OUR canonical identity (portfolio-manifest.yaml `shared:`). A white-label or distributor product would carry theirs — that is the gate, and this is the case where the default is correct rather than assumed.",
+    "entity": "Global Buildtech Australia Pty Ltd",
+    "trading_as": "Corporate AI Solutions",
+    "abn": "54672395685",
+    "postal": "76-84 Brunswick Street, Fortitude Valley QLD 4006",
+    "brand_owner": "cais",
+    "confirmed_by": "Dennis McMahon, 2026-07-27 (canonical portfolio identity, locked 2026-07-26)"
+  },
+
+  "review": {
+    "_doc": "Best-fit pages written from what the product actually does. Not legal advice — the same standing caveat lib/terms.ts already carries.",
+    "status": "operational-baseline",
+    "note": "A lawyer should review before real volume, together with the introducer agreement (BROKER_CHANNEL_BUILD_STATE guardrails). Not blocking today: Kira is CAS-owned, so unlike BucketLyst there is no third party whose entity we are guessing at."
+  },
+
+  "inclusions": {
+    "privacy": {
+      "state": "customised",
+      "url": "/privacy",
+      "note": "lib/privacy.ts, mirroring lib/terms.ts so the two versions and dates can be reasoned about together. Three sections that could not have come from a template: what an INTRODUCER can see (status only — enforced by introducer_owner_projection in SQL, so it is stated as fact not promise), what Kira remembers (distilled summary, per-account, deletable without closing the account), and the valuation figures (turnover and profit, collected before an account even exists)."
+    },
+    "terms": {
+      "state": "customised",
+      "url": "/terms",
+      "note": "lib/terms.ts. Version recorded at signup acceptance, so it is answerable which wording a given user agreed to."
+    },
+    "voice": {
+      "state": "default",
+      "note": "Vendor consent modal (ElevenLabs), unmodified. The package exposes NO consent-text configuration, so overriding it needs a direct API PATCH or a package addition. Mitigated by privacy §4, which states the same thing in our words. The naive-tester finding was that product copy CONTRADICTED the modal ('what you tell Kira stays between you and your business'); the privacy policy now reconciles it — the data stays with the account, and the processing by ElevenLabs is stated plainly rather than left to the vendor notice alone."
+    },
+    "ip_ack": {
+      "state": "not-applicable",
+      "reason": "Users do not create or share content built on third-party IP. What they produce is their own business information, and the terms already state it remains theirs."
+    },
+    "cookies": {
+      "state": "not-applicable",
+      "reason": "Session cookie only, strictly necessary to keep a signed-in user signed in. No analytics, no advertising, no cross-site tracking — disclosed in the privacy policy rather than gated behind a banner. Re-declare the moment any analytics is added."
+    },
+    "sender": {
+      "state": "default",
+      "note": "Canonical CAS identity via @caistech/email-compliance senderFromEnv(); assertCompliant() throws on a commercial send missing ABN or unsubscribe. EMAIL_SENDER_* are set in Vercel."
+    }
+  }
+}
