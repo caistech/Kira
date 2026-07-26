@@ -144,7 +144,7 @@ multiples." **Operator decision — do not implement either way without it.**
 
 ## Open PR
 
-**#28** — canonical memory guard + the pricing correction. CI green, unmerged.
+**#28** — canonical memory guard + the Mnemo pipeline migration + the pricing correction.
 
 ---
 
