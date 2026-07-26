@@ -28,8 +28,22 @@ export async function accept(formData: FormData): Promise<AcceptResult> {
     return { ok: false, message: 'Your sign-in link has expired. Ask for a fresh one.' };
   }
 
+  // Who we pay, captured on the same screen as the acceptance. The ABN is only ever the one the
+  // ABR lookup returned; anything else is dropped rather than stored as if it were verified.
+  const payeeType = formData.get('payee_type') === 'entity' ? 'entity' : 'individual';
+  const orgName = String(formData.get('org_name') || '').trim();
+  const abnDigits = String(formData.get('org_abn') || '').replace(/\D/g, '');
+
+  if (payeeType === 'entity' && !orgName) {
+    return { ok: false, message: 'Add the firm we should pay, or choose to be paid personally.' };
+  }
+
   try {
-    await acceptUndertaking(introducer.id);
+    await acceptUndertaking(introducer.id, {
+      payeeType,
+      orgName: orgName || undefined,
+      orgAbn: /^\d{11}$/.test(abnDigits) ? abnDigits : undefined,
+    });
     return { ok: true, message: 'Thanks — you’re all set.' };
   } catch (error) {
     console.error('[introducer/terms] acceptance not recorded:', error);

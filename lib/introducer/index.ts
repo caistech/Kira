@@ -62,18 +62,63 @@ export function hasAcceptedUndertaking(introducer: Introducer): boolean {
   return Boolean(introducer.terms_accepted_at) && introducer.terms_version === UNDERTAKING_VERSION;
 }
 
-/** Record acceptance of the undertaking as it currently stands. */
-export async function acceptUndertaking(introducerId: string): Promise<void> {
+/** Who the commission is actually paid to, captured alongside the acceptance. */
+export interface PayeeDetails {
+  /** Registered entity name from the ABR lookup, or whatever they typed if it did not match. */
+  orgName?: string;
+  /** Only ever an 11-digit ABN from the register; absent when it could not be verified. */
+  orgAbn?: string;
+  payeeType: 'individual' | 'entity';
+}
+
+/**
+ * Record acceptance of the undertaking as it currently stands, and who we pay.
+ *
+ * The two are written together on purpose. They are collected on the same screen because it is the
+ * one moment an introducer is both present and motivated — their link does not go live until they
+ * are through it — and splitting the write would allow an acceptance with no payee, which is the
+ * state that produces an awkward email months later when the first commission is due.
+ *
+ * `payee_name` is DERIVED rather than asked for: paying the firm means paying the registered
+ * entity, and paying the person means paying the name we already hold. A third free-text field
+ * would only invite a fourth spelling of the same party.
+ */
+export async function acceptUndertaking(
+  introducerId: string,
+  payee?: PayeeDetails,
+): Promise<void> {
   const supabase = createServiceClient();
-  const { error } = await supabase
-    .from('introducers')
-    .update({
-      terms_accepted_at: new Date().toISOString(),
-      terms_version: UNDERTAKING_VERSION,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', introducerId);
+
+  const update: Record<string, string | null> = {
+    terms_accepted_at: new Date().toISOString(),
+    terms_version: UNDERTAKING_VERSION,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (payee) {
+    const existing = await getIntroducerById(introducerId);
+    update.payee_type = payee.payeeType;
+    if (payee.orgName) update.org_name = payee.orgName;
+    if (payee.orgAbn) update.org_abn = payee.orgAbn;
+    update.payee_name =
+      payee.payeeType === 'entity'
+        ? payee.orgName || existing?.org_name || null
+        : existing?.name || null;
+  }
+
+  const { error } = await supabase.from('introducers').update(update).eq('id', introducerId);
   if (error) throw new Error(`acceptUndertaking: ${error.message}`);
+}
+
+/** Single-row read used when a write needs the introducer's existing values. */
+async function getIntroducerById(introducerId: string): Promise<Introducer | null> {
+  const supabase = createServiceClient();
+  const { data } = await supabase
+    .from('introducers')
+    .select(INTRODUCER_COLUMNS)
+    .eq('id', introducerId)
+    .maybeSingle();
+  return (data as Introducer | null) ?? null;
 }
 
 /** A row of the introducer's board — status and movement, never content. */
