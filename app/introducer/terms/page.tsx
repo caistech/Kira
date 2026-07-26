@@ -58,7 +58,7 @@ export default async function IntroducerTermsPage() {
       </ol>
 
       <div className="mt-10 rounded-2xl border border-gray-200 bg-white p-6">
-        <AcceptUndertakingForm />
+        <AcceptUndertakingForm defaultOrgName={introducer.org_name ?? ''} />
         <p className="mt-4 text-sm text-gray-500">
           We record that you accepted this, and when. Version {UNDERTAKING_VERSION}.
         </p>

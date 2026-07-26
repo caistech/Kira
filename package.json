@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@caistech/abn-lookup": "^0.1.1",
     "@caistech/attribution": "^0.1.0",
     "@caistech/beta-gate": "^0.2.0",
     "@caistech/coordination-sdk": "^0.4.1",

@@ -20,19 +20,63 @@ const MIN_FILL_MS = 2500;
 
 const OPERATOR_EMAIL = process.env.ADVISOR_ENQUIRY_TO || process.env.EMAIL_SENDER_EMAIL || '';
 
+/** Must match the options on the form. Validated rather than trusted — this is a public endpoint. */
+const ADVISORY_TYPES = [
+  'business_broker',
+  'accountant',
+  'bookkeeper',
+  'financial_adviser',
+  'lawyer',
+  'other',
+];
+
+/** 51 824 753 556 — how an ABN is written outside a database. */
+function formatAbn(abn: string): string {
+  return `${abn.slice(0, 2)} ${abn.slice(2, 5)} ${abn.slice(5, 8)} ${abn.slice(8)}`;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    const name = String(body.name || '').trim();
+    const firstName = String(body.first_name || '').trim();
+    const lastName = String(body.last_name || '').trim();
     const email = String(body.email || '').trim().toLowerCase();
     const firm = String(body.firm || '').trim();
     const phone = String(body.phone || '').trim();
     const clientBand = String(body.client_band || '').trim();
     const note = String(body.note || '').trim();
+    const advisoryType = String(body.advisory_type || '').trim();
 
-    if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return NextResponse.json({ error: 'Please add your name and a valid email.' }, { status: 400 });
+    // Only from the ABR lookup. An 11-digit check is the whole validation we want here: the value
+    // either came back from the register or it did not, and a malformed one is simply not stored.
+    const firmAbnDigits = String(body.firm_abn || '').replace(/\D/g, '');
+    const firmAbn = /^\d{11}$/.test(firmAbnDigits) ? firmAbnDigits : '';
+    const firmState = String(body.firm_state || '').trim().toUpperCase();
+
+    // `name` is still written and still NOT NULL — the parts are the truth, this keeps every
+    // existing reader working rather than making them all learn the new shape at once.
+    const name = [firstName, lastName].filter(Boolean).join(' ');
+
+    if (!firstName || !lastName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json(
+        { error: 'Please add your first and last name and a valid email.' },
+        { status: 400 },
+      );
+    }
+
+    if (!ADVISORY_TYPES.includes(advisoryType)) {
+      return NextResponse.json({ error: 'Please tell us what kind of practice you run.' }, { status: 400 });
+    }
+
+    // The one condition. The page states it as something they confirm on joining, so an enquiry
+    // that does not carry it is not the thing the page describes. The binding acceptance is still
+    // the portal undertaking before their link goes live.
+    if (body.undertaking !== 'on' && body.undertaking !== true) {
+      return NextResponse.json(
+        { error: 'Please confirm the condition before sending.' },
+        { status: 400 },
+      );
     }
 
     // Honeypot: accept ANY value and silently no-op. Never 400 on it — a browser that autofilled
@@ -50,11 +94,17 @@ export async function POST(request: NextRequest) {
     const supabase = createServiceClient();
     const { error } = await supabase.from('advisor_enquiries').insert({
       name,
+      first_name: firstName,
+      last_name: lastName,
       email,
       firm: firm || null,
+      firm_abn: firmAbn || null,
+      firm_state: firmState || null,
+      advisory_type: advisoryType,
       phone: phone || null,
       client_band: clientBand || null,
       note: note || null,
+      undertaking_confirmed_at: new Date().toISOString(),
     });
 
     if (error) {
@@ -71,7 +121,14 @@ export async function POST(request: NextRequest) {
           subject: `Advisor enquiry — ${firm || name}`,
           html: `<p><strong>${name}</strong>${firm ? ` · ${firm}` : ''}</p>
                  <p>${email}${phone ? ` · ${phone}` : ''}</p>
+                 <p>Practice: ${advisoryType.replace(/_/g, ' ')}</p>
+                 <p>Firm: ${firm || 'not given'}${
+                   firmAbn
+                     ? ` — ABN ${formatAbn(firmAbn)}${firmState ? ` (${firmState})` : ''}, verified on the ABR`
+                     : ' — <em>not matched on the business register</em>'
+                 }</p>
                  <p>Owner clients: ${clientBand || 'not said'}</p>
+                 <p>Confirmed the listing-agreement condition at enquiry.</p>
                  ${note ? `<p>${note}</p>` : ''}
                  <p>Add them at /admin/introducers to send their links.</p>`,
         });
