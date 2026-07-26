@@ -41,7 +41,12 @@ jobs:
       QA_TEST_USER_EMAIL: ${{ secrets.QA_TEST_USER_EMAIL }}
       # The probe bakes identity into the tool URL as ?uid=, so it needs the USER ID.
       MEMORY_LOOP_UID: ${{ secrets.QA_TEST_USER_ID }}
-      NEXT_PUBLIC_APP_URL: ${{ vars.MEMORY_LOOP_APP_URL }}
+      # The header above has always said this "defaults to https://kira-rho.vercel.app" — it did
+      # not. `vars.MEMORY_LOOP_APP_URL` was never set on the repo, so the probe received an empty
+      # base URL and failed closed on every run since it was wired. The fallback chain makes the
+      # documented default real, and prefers PORTFOLIO_GATE_PREVIEW_URL (already set) so there is
+      # one place to change the target rather than two that can disagree.
+      NEXT_PUBLIC_APP_URL: ${{ vars.MEMORY_LOOP_APP_URL || vars.PORTFOLIO_GATE_PREVIEW_URL || 'https://kira-rho.vercel.app' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
