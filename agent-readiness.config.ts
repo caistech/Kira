@@ -24,9 +24,9 @@ export const agentConfig: AgentReadinessConfig = {
       "description": "Follow a guided, step-by-step journey tailored to what you want to learn or achieve."
     },
     {
-      "title": "Pricing",
-      "url": "https://kira-rho.vercel.app/pricing",
-      "description": "Plans for your first Kira and the first journey, and beyond."
+      "title": "Free business valuation",
+      "url": "https://kira-rho.vercel.app/business-valuation",
+      "description": "A free 3-minute valuation: what the business is worth today, and the value still locked in the owner's head. Kira's monthly fee is a small fraction of that gap and is only shown once the valuation has run — there is no price list."
     },
     {
       "title": "About",

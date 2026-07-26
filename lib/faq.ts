@@ -7,6 +7,12 @@
 // Answers about money that disagree with what the checkout actually does are the worst kind of
 // stale copy — one source removes the possibility.
 //
+// The pricing page is now gone entirely. A price only ever appears in ONE place — /plan, after the
+// owner has seen their own gap — because Kira's price is a fraction of that gap and a number quoted
+// without it is just a number to flinch at. This FAQ is the only other place money is discussed,
+// and it deliberately describes the SHAPE of the price (a small fraction of the uplift, 30 days to
+// try it, cancel any time) without ever naming a figure. Do not add one here.
+//
 // The commercial terms live in lib/billing (TRIAL_DAYS), and the wording below is written to match
 // them. If the trial length changes, change it there and re-read this file.
 
@@ -17,11 +23,11 @@ export interface FaqItem {
 
 /** The terms, stated the same way everywhere. */
 export const TRIAL_TERMS = {
-  headline: 'First month free',
-  short: 'First month free, then monthly — cancel any time.',
+  headline: '30 days free',
+  short: 'Try it for 30 days, then monthly — cancel any time.',
   /** For the checkout, where someone is about to enter a card. */
   atCheckout:
-    'Your card is saved today but nothing is charged. The first payment comes out a month from now, and we email you three days before. Cancel before then and you pay nothing.',
+    'Your card is saved today but nothing is charged. The first payment comes out 30 days from now, and we email you three days before. Cancel before then and you pay nothing.',
 } as const;
 
 /** Owner-facing. Shown on the landing page. */
@@ -36,11 +42,27 @@ export const OWNER_FAQ: FaqItem[] = [
   },
   {
     q: 'What does it cost, and when do I pay?',
-    a: "The valuation is completely free — no sign-up, no card. If you want Kira to help close the gap, your first month is free. You add a card when you start, nothing is charged that day, and the first payment comes out a month later. We email you three days beforehand so it's never a surprise. Cancel any time before then and you pay nothing at all.",
+    a: "The valuation is completely free — no sign-up, no card. If you then want Kira to help close the gap, her monthly fee is set to the size of that gap: a small fraction of the value you stand to unlock, and a fraction of what the same work costs from a person. You see your own figure on screen before you decide anything — that's why there's no price list here. You get 30 days to try her; you're not invoiced until those 30 days are up, and you can cancel any time.",
   },
   {
-    q: 'Why do you need my card if the first month is free?',
-    a: "So Kira carries straight on at the end of the month instead of stopping dead and losing your thread. Nothing is charged until the month is up, you get three days' warning before the first payment, and cancelling takes one click in Settings.",
+    q: 'Why is the price different for different businesses?',
+    a: "Because what Kira is worth to you depends on what's locked in your head. The valuation shows the gap between what your business is worth today and what it's worth captured and transferable; her fee is a small fraction of that per year. A bigger gap means more for her to unlock, so the bands move with it — never the other way around, where you pay the same regardless of what you get out.",
+  },
+  {
+    q: 'Why do you need my card if the first 30 days are free?',
+    a: "So Kira carries straight on at the end of the trial instead of stopping dead and losing your thread. Nothing is charged for 30 days, you get three days' warning before the first payment, and cancelling takes one click in Settings.",
+  },
+  {
+    q: 'What currency am I charged in?',
+    a: 'Australian dollars by default — this is an Australian product. Prefer another currency? Switch it on the valuation screen and the price follows; Stripe then bills you in that currency.',
+  },
+  {
+    q: 'Will my business information be used to train AI models?',
+    a: 'No. The AI providers we use are accessed through paid APIs under terms that exclude training on customer data. What you tell Kira stays between you and your business, private and permissioned.',
+  },
+  {
+    q: 'What happens to my data if I cancel?',
+    a: 'Everything Kira has captured about your business is exportable at any time. After cancellation we keep it for 30 days in case you come back, then delete it. Export early if you want a copy outside the app.',
   },
   {
     q: 'How do I cancel?',
@@ -64,39 +86,21 @@ export const OWNER_FAQ: FaqItem[] = [
   },
 ];
 
-/** Pricing-page specific. Narrower, money-focused. */
-export const PRICING_FAQ: FaqItem[] = [
-  {
-    q: 'What does Kira Exec actually do?',
-    a: "She's a voice-first assistant for the hands-on owner. You talk to her between jobs; she captures how your business really runs, gets the small things done (drafts a quote, a follow-up, a reminder — for your approval), and turns the knowledge in your head into a documented, transferable asset that's worth more when you sell.",
-  },
-  {
-    q: 'How is it priced?',
-    a: "One monthly plan, priced to the size of the gap your valuation finds — from $99/month at the entry band up to $1,499 for the largest. Your 3-minute valuation shows your number before you decide anything, and you see the exact figure before entering a card.",
-  },
-  {
-    q: 'When am I actually charged?',
-    a: 'Not on the day you sign up. You add a card, your first month runs free, and the first payment is taken a month later — with an email from us three days before it happens. Cancel any time before that and you pay nothing.',
-  },
-  {
-    q: 'What currency am I charged in?',
-    a: 'Australian dollars by default (ex-GST) — this is an Australian product. Prefer another currency? Switch it on the valuation screen and the price follows; Stripe then bills you in that currency.',
-  },
-  {
-    q: 'Will my business information be used to train AI models?',
-    a: 'No. The AI providers we use are accessed through paid APIs under terms that exclude training on customer data. What you tell Kira stays between you and your business, private and permissioned.',
-  },
-  {
-    q: 'What happens to my data if I cancel?',
-    a: 'Everything Kira has captured about your business is exportable at any time. After cancellation we keep it for 30 days in case you come back, then delete it. Export early if you want a copy outside the app.',
-  },
-];
+// There was a PRICING_FAQ here, for the pricing page. Both are gone: the page, because a price
+// quoted before the valuation is a number without its denominator, and the separate FAQ with it —
+// its money answers now live in OWNER_FAQ above, stated as a fraction of the gap rather than a
+// figure. Nothing should reintroduce a second FAQ list; two lists about money is how the last drift
+// started.
 
 /** Advisor-facing — brokers, accountants, anyone with a book of owner clients. */
 export const ADVISOR_FAQ: FaqItem[] = [
   {
+    q: 'What does the owner pay?',
+    a: "There is no price list, and that is deliberate: Kira's monthly fee is set to the size of the value gap her valuation finds in that specific business — a small fraction of the uplift, per month. Your client sees their own figure at the end of the free 3-minute valuation, before any card. Run it yourself on a business you know and you'll see exactly what they see. They get 30 days to try her, aren't invoiced until then, and can cancel any time.",
+  },
+  {
     q: 'What do I actually get paid?',
-    a: '10% of what each owner you introduce pays us, every month, for as long as they keep paying. Not a one-off finder\'s fee — while the subscription runs, you earn on it. The free first month pays nothing because nothing is collected.',
+    a: '10% of what each owner you introduce pays us, every month, for as long as they keep paying. Not a one-off finder\'s fee — while the subscription runs, you earn on it. Their free 30 days pay nothing, because nothing is collected yet.',
   },
   {
     q: 'When and how am I paid?',

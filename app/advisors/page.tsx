@@ -47,7 +47,7 @@ export default function AdvisorsPage() {
             Kira
           </Link>
           <div className="flex items-center gap-4">
-            <Link href="/pricing" className="hidden text-sm font-medium text-stone-600 hover:text-pink-500 sm:block">
+            <Link href="/#pricing" className="hidden text-sm font-medium text-stone-600 hover:text-pink-500 sm:block">
               Pricing
             </Link>
             <a
@@ -165,7 +165,7 @@ export default function AdvisorsPage() {
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-6 text-sm text-stone-500">
           <p>Kira · Corporate AI Solutions</p>
           <div className="flex gap-5">
-            <Link href="/pricing" className="hover:text-pink-500">
+            <Link href="/#pricing" className="hover:text-pink-500">
               Pricing
             </Link>
             <Link href="/terms" className="hover:text-pink-500">

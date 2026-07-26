@@ -4,7 +4,7 @@
     { "path": "/" },
     { "path": "/about" },
     { "path": "/business-valuation" },
-    { "path": "/pricing" },
+    { "path": "/plan" },
     { "path": "/pubguard" },
     { "path": "/login" },
     { "path": "/signup" },

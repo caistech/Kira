@@ -5,8 +5,16 @@
 // fraction of a percent of what they stand to gain. Numbers are tunable here in one place.
 //
 // The amount is charged in the owner's chosen display currency (round marketing numbers, not FX-
-// converted): a GBP user pays £249/mo, a USD user $249/mo. The band is chosen by gap MAGNITUDE,
+// converted): a GBP user pays £999/mo, a USD user $999/mo. The band is chosen by gap MAGNITUDE,
 // which is currency-agnostic (a £2M gap and a $2M gap hit the same band).
+//
+// The bands are anchored on what they replace: a fractional exec or chief of staff, which is
+// $3-10k/month of a real person's time. The earlier $99 entry band priced Kira like a note-taking
+// app and undersold the thing it is being compared to.
+//
+// This module is the ONLY place a price exists. Nothing quotes a number before the valuation has
+// run - there is no pricing page and no "from $X" on the landing page, because a price stated
+// without the gap it is a fraction of is just a number to flinch at.
 
 export interface PriceTier {
   /** Lower bound of the gap band (inclusive). */
@@ -18,11 +26,11 @@ export interface PriceTier {
 }
 
 export const PRICE_TIERS: PriceTier[] = [
-  { min: 0, monthly: 99, label: 'Starter' },
-  { min: 250_000, monthly: 249, label: 'Growth' },
-  { min: 1_000_000, monthly: 499, label: 'Scale' },
-  { min: 3_000_000, monthly: 999, label: 'Enterprise' },
-  { min: 7_000_000, monthly: 1499, label: 'Legacy' },
+  { min: 0, monthly: 499, label: 'Starter' },
+  { min: 250_000, monthly: 999, label: 'Growth' },
+  { min: 1_000_000, monthly: 1999, label: 'Scale' },
+  { min: 3_000_000, monthly: 3499, label: 'Enterprise' },
+  { min: 7_000_000, monthly: 4999, label: 'Legacy' },
 ];
 
 export interface PriceQuote {
@@ -33,6 +41,12 @@ export interface PriceQuote {
   fractionOfGap: number;
   /** That fraction as a rounded percent string, e.g. "0.3%". */
   fractionOfGapPct: string;
+  /**
+   * Whether the fraction is small enough to be worth saying out loud. The whole pitch is "a small
+   * fraction of what you unlock", so on a gap so slight that a year of Kira is a fifth of it, the
+   * sentence argues against us - the surface shows the price plainly instead of quoting a share.
+   */
+  fractionWorthQuoting: boolean;
 }
 
 /** Pick the price band for a given gap and return the quote. */
@@ -47,5 +61,13 @@ export function priceForGap(gap: number): PriceQuote {
   const pct = fractionOfGap * 100;
   // Show one meaningful digit for small fractions (0.3%), no decimals when >= 10%.
   const fractionOfGapPct = pct >= 10 ? `${Math.round(pct)}%` : `${pct.toFixed(1)}%`;
-  return { monthly: tier.monthly, annual, label: tier.label, fractionOfGap, fractionOfGapPct };
+  const fractionWorthQuoting = fractionOfGap > 0 && fractionOfGap < 0.1;
+  return {
+    monthly: tier.monthly,
+    annual,
+    label: tier.label,
+    fractionOfGap,
+    fractionOfGapPct,
+    fractionWorthQuoting,
+  };
 }

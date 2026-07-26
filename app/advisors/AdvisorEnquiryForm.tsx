@@ -89,10 +89,10 @@ export function AdvisorEnquiryForm() {
             See what a client sees →
           </a>
           <a
-            href="/pricing"
+            href="/#pricing"
             className="font-display inline-flex min-h-[44px] items-center rounded-full border border-stone-300 px-5 py-2.5 text-sm font-bold text-stone-700 hover:border-stone-400"
           >
-            What owners pay
+            How owners are priced
           </a>
         </div>
       </div>

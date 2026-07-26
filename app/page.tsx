@@ -113,7 +113,7 @@ export default function KiraLandingPage() {
           </div>
           <div className="flex items-center gap-3 sm:gap-6">
             <a href="#how-it-works" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">How it works</a>
-            <a href="/pricing" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">Pricing</a>
+            <a href="#pricing" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">Pricing</a>
             <a href="/advisors" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">Advisors</a>
             <a href="/about" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">About</a>
             <a href="/login" className="font-body flex min-h-[44px] items-center px-2 text-sm font-medium text-stone-700 hover:text-pink-500">Sign in</a>
@@ -135,7 +135,7 @@ export default function KiraLandingPage() {
         {menuOpen && (
           <div className="md:hidden border-t border-amber-100 bg-white/95 backdrop-blur px-6 py-3 space-y-1">
             <a href="#how-it-works" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">How it works</a>
-            <a href="/pricing" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">Pricing</a>
+            <a href="#pricing" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">Pricing</a>
             <a href="/advisors" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">Advisors</a>
             <a href="/about" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">About</a>
             {/* No Admin link. The operator console is not a customer destination, and putting it in
@@ -407,7 +407,7 @@ export default function KiraLandingPage() {
             <h2 className="font-display text-4xl lg:text-5xl font-bold text-stone-800 mb-6">See the number. <span className="bg-gradient-to-r from-amber-500 to-pink-500 bg-clip-text text-transparent">Then decide.</span></h2>
             <div className="font-body text-xl text-stone-600 leading-relaxed space-y-4 mb-10">
               <p>The valuation is free — no sign-up, no card. It shows you the gap in about 3 minutes.</p>
-              <p>If you want Kira to close it, the plan is priced to <span className="font-semibold text-stone-800">a fraction of what you stand to unlock</span> — and your <span className="font-bold text-stone-800">first month is free</span>.</p>
+              <p>If you want Kira to close it, her fee is set to <span className="font-semibold text-stone-800">a small fraction of what you stand to unlock</span> — so you see your gap before you ever see a price. You get <span className="font-bold text-stone-800">30 days to try her</span>, you&apos;re not invoiced until they&apos;re up, and you can cancel any time.</p>
               <p>No gap, no pressure. The number is yours to keep either way.</p>
             </div>
             <a href="/business-valuation" className="font-display gradient-coral text-white px-10 py-5 rounded-full text-xl font-bold hover-pop shadow-xl shadow-pink-200 inline-block">What&apos;s my business worth? →</a>
