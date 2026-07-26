@@ -19,6 +19,7 @@ import {
   createConvaiWebhookRoutes,
   createConversationTools,
   conversationContinuityPrompt as canonicalContinuityPrompt,
+  CONVAI_TOOL_SECRET_HEADER,
   type ConvaiWebhookRoutes,
   type ConvAITool,
 } from '@caistech/elevenlabs-convai';
@@ -124,22 +125,68 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
   return cachedRoutes;
 }
 
-// Interim shared-secret guard for the OPERATIONAL tool webhooks (kira/webhooks/*). Unlike the
-// discovery tools (which resolve identity from a SIGNED session token), these resolve identity from
-// the PUBLIC elevenlabs_agent_id, so an unauthenticated caller could start_conversation as a victim
-// and then recall/poison their memory. The durable fix belongs in @caistech/elevenlabs-convai
-// (see HANDOFF_RESPONSE.md); until it lands we require a secret header the provisioned tools carry.
-export const KIRA_TOOL_SECRET_HEADER = 'x-kira-tool-secret';
+// Shared-secret guard for the OPERATIONAL tool webhooks (kira/webhooks/*). Unlike the discovery
+// tools (which resolve identity from a SIGNED session token), these resolve identity from the
+// PUBLIC elevenlabs_agent_id — an id that is shipped to the browser — so without this guard an
+// unauthenticated caller could start_conversation as a victim and then recall or poison their
+// memory.
+//
+// THE HEADER IS THE PACKAGE'S, NOT OURS. Kira previously defined its own `x-kira-tool-secret`
+// while @caistech/elevenlabs-convai already exported a canonical `x-convai-tool-secret`. A local
+// header name for a portfolio-wide mechanism is a fork, and this one had already bent shared
+// tooling: portfolio-gate's memory-loop probe 401'd against Kira, and gained a `toolSecretHeader`
+// config option to accommodate one repo's divergence. Removing the fork is the fix; the config
+// option stays for products that genuinely need a different name.
+export const TOOL_SECRET_HEADER = CONVAI_TOOL_SECRET_HEADER;
 
 /**
- * Guard for the operational tool routes. INERT when KIRA_TOOL_WEBHOOK_SECRET is unset (so a deploy
- * of the guard doesn't 401 agents that haven't been re-provisioned with the header yet) — activate
- * by setting the env AND re-running scripts/reprovision-kira-agents.mjs so agents send the header.
+ * The pre-canonical header, still ACCEPTED on inbound requests.
+ *
+ * Agents provisioned before the rename send this one, and they are live. Dropping it in the same
+ * change that flips the guard fail-closed would 401 every existing user's memory calls the moment
+ * this deploys. Rename in, re-provision, then rename out — never all at once.
+ *
+ * REMOVE once `scripts/reprovision-kira-agents.mjs` has run over every active agent and the audit
+ * shows zero agents sending it.
+ */
+const LEGACY_TOOL_SECRET_HEADER = 'x-kira-tool-secret';
+
+/**
+ * The configured secret.
+ *
+ * Resolved lazily — on the first REQUEST, never at module load. A module-load throw would break
+ * `next build`, which runs with placeholder env in CI, turning a security improvement into a
+ * broken pipeline.
+ *
+ * FAILS CLOSED. This used to return `true` when the secret was unset, so an environment that
+ * lost the variable silently lost the guard while every route kept answering 200. That is the
+ * worst shape a security control can have: indistinguishable, from the outside, from one that is
+ * working.
+ */
+function requireToolSecret(): string {
+  const secret = process.env.KIRA_TOOL_WEBHOOK_SECRET ?? process.env.CONVAI_TOOL_SECRET;
+  if (!secret) {
+    throw new Error(
+      'KIRA_TOOL_WEBHOOK_SECRET (or CONVAI_TOOL_SECRET) is not set. The Kira tool webhooks resolve ' +
+        'identity from a public agent id, so serving them unauthenticated would expose every ' +
+        "user's conversation memory. Refusing to serve.",
+    );
+  }
+  return secret;
+}
+
+/**
+ * Guard for the operational tool routes.
+ *
+ * Throws (→ 500) when the server is misconfigured, and returns false (→ 401) when the caller
+ * simply did not present the secret. Those are different failures and deserve different answers:
+ * a 401 tells an attacker they guessed wrong, a 500 tells the operator to fix their environment.
  */
 export function toolSecretOk(req: Request): boolean {
-  const secret = process.env.KIRA_TOOL_WEBHOOK_SECRET;
-  if (!secret) return true;
-  return req.headers.get(KIRA_TOOL_SECRET_HEADER) === secret;
+  const secret = requireToolSecret();
+  const presented =
+    req.headers.get(TOOL_SECRET_HEADER) ?? req.headers.get(LEGACY_TOOL_SECRET_HEADER);
+  return presented === secret;
 }
 
 /**
@@ -149,17 +196,17 @@ export function toolSecretOk(req: Request): boolean {
  * search_web / search_knowledge tools are intentionally NOT included here — their routes
  * do not exist yet, and attaching a routeless tool makes the agent call a 404.
  *
- * When KIRA_TOOL_WEBHOOK_SECRET is set, each tool carries it as a request header so the
- * toolSecretOk() route guard can reject calls that don't originate from our provisioned agents.
+ * Each tool carries the secret as a request header so the toolSecretOk() route guard can reject
+ * calls that don't originate from our provisioned agents. Unconditional: provisioning an agent
+ * without the header would produce one that cannot talk to its own webhooks now that the guard
+ * fails closed, which is worse than refusing to provision it.
  */
 export function kiraMemoryTools(baseUrl: string): ConvAITool[] {
   const tools = createConversationTools(baseUrl, KIRA_WEBHOOK_BASE_PATH);
-  const secret = process.env.KIRA_TOOL_WEBHOOK_SECRET;
-  if (secret) {
-    for (const t of tools) {
-      if (t.webhook) {
-        t.webhook.headers = { ...(t.webhook.headers ?? {}), [KIRA_TOOL_SECRET_HEADER]: secret };
-      }
+  const secret = requireToolSecret();
+  for (const t of tools) {
+    if (t.webhook) {
+      t.webhook.headers = { ...(t.webhook.headers ?? {}), [TOOL_SECRET_HEADER]: secret };
     }
   }
   return tools;
@@ -174,8 +221,7 @@ export function kiraMemoryTools(baseUrl: string): ConvAITool[] {
  */
 export function kiraKnowledgeTool(baseUrl: string): ConvAITool {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  const secret = process.env.KIRA_TOOL_WEBHOOK_SECRET;
-  if (secret) headers[KIRA_TOOL_SECRET_HEADER] = secret;
+  headers[TOOL_SECRET_HEADER] = requireToolSecret();
   // Single-sourced from knowledge-tool-def.mjs so the new-agent + re-provision definitions can't drift.
   return kiraKnowledgeToolDef(baseUrl, headers) as ConvAITool;
 }
@@ -187,8 +233,7 @@ export function kiraKnowledgeTool(baseUrl: string): ConvAITool {
  */
 export function kiraDoingTools(baseUrl: string): ConvAITool[] {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  const secret = process.env.KIRA_TOOL_WEBHOOK_SECRET;
-  if (secret) headers[KIRA_TOOL_SECRET_HEADER] = secret;
+  headers[TOOL_SECRET_HEADER] = requireToolSecret();
   return [
     kiraDispatchToolDef(baseUrl, headers) as ConvAITool,
     kiraApproveToolDef(baseUrl, headers) as ConvAITool,

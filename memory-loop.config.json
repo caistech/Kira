@@ -1,7 +1,7 @@
 {
+  "_doc": "Drives portfolio-gate's voice memory-loop probe in CI. The toolSecretHeader override is deliberately ABSENT: Kira now uses the package's canonical x-convai-tool-secret. It previously carried \"x-kira-tool-secret\" — a Kira-local name for a portfolio-wide mechanism, i.e. a fork, and one that forced the SHARED probe to grow this option purely to accommodate a single repo. The option stays in portfolio-gate for products that genuinely need a different name; Kira is no longer one of them. The route still ACCEPTS the legacy header until every agent is re-provisioned, which is exactly why the probe should exercise the canonical path.",
   "webhookPath": "/api/kira/webhooks",
   "memoryTable": "kira_memory",
   "expectContinuity": true,
-  "startRoute": "start_conversation",
-  "toolSecretHeader": "x-kira-tool-secret"
+  "startRoute": "start_conversation"
 }

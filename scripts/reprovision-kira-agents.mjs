@@ -19,6 +19,7 @@
 import { createClient } from '@supabase/supabase-js';
 import {
   createConversationTools,
+  CONVAI_TOOL_SECRET_HEADER,
   conversationContinuityPrompt,
   setAgentTools,
   setAgentOverrides,
@@ -49,17 +50,35 @@ const supabase = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KE
 // Build the tool set for a SPECIFIC agent owner. recall_memory + search_knowledge get the owner's
 // user id baked into the URL (?uid=<userId>), because ElevenLabs does not pass the conversation id
 // to server-tool webhooks — identity is server-known (one agent per user) and baked in at provision.
-// The x-kira-tool-secret header gates every tool route.
+// The tool-secret header gates every tool route.
+//
+// It is the PACKAGE's canonical header (`x-convai-tool-secret`), not a Kira-local name. Kira used
+// to define its own, and a local name for a portfolio-wide mechanism is a fork — this one had
+// already forced portfolio-gate's memory-loop probe to grow a `toolSecretHeader` option purely to
+// accommodate one repo.
+//
+// Running this script IS the migration: the route guard accepts the legacy header too, so agents
+// re-provisioned here move to the canonical one while un-re-provisioned agents keep working. Once
+// the audit shows zero agents on the legacy header, drop it from lib/kira/convai.ts.
 function buildToolsForUser(userId) {
+  const secret = process.env.KIRA_TOOL_WEBHOOK_SECRET ?? process.env.CONVAI_TOOL_SECRET;
+  if (!secret) {
+    // Refuse rather than silently provision agents that cannot authenticate. The route guard now
+    // fails closed, so a header-less agent is not "slightly degraded" — it is an agent whose every
+    // memory call 401s, which surfaces to the owner as Kira quietly forgetting them.
+    throw new Error(
+      'KIRA_TOOL_WEBHOOK_SECRET (or CONVAI_TOOL_SECRET) is not set. Re-provisioning without it ' +
+        'would produce agents that cannot call their own webhooks.',
+    );
+  }
+
   const tools = [...createConversationTools(APP_URL, '/api/kira/webhooks'), kiraKnowledgeToolDef(APP_URL)];
   for (const t of tools) {
     if (!t.webhook) continue;
     if (userId && /\/(recall_memory|search_knowledge|save_memory|start_conversation)$/.test(t.webhook.url)) {
       t.webhook.url = `${t.webhook.url}?uid=${encodeURIComponent(userId)}`;
     }
-    if (process.env.KIRA_TOOL_WEBHOOK_SECRET) {
-      t.webhook.headers = { ...(t.webhook.headers ?? {}), 'x-kira-tool-secret': process.env.KIRA_TOOL_WEBHOOK_SECRET };
-    }
+    t.webhook.headers = { ...(t.webhook.headers ?? {}), [CONVAI_TOOL_SECRET_HEADER]: secret };
   }
   return tools;
 }
