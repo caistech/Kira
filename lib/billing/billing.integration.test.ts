@@ -55,6 +55,27 @@ describe.skipIf(!canRun)('billing integration (Stripe test mode + Supabase)', ()
   let userId: string;
   const eventIds: string[] = [];
 
+  /**
+   * The clock this test's synthetic events are stamped with — deliberately a day ahead of the
+   * subscription it describes, which is the fix for a race that made this file fail only when the
+   * whole suite ran.
+   *
+   * We are not the only writer. Creating a subscription in the shared Stripe TEST account makes
+   * Stripe deliver `customer.subscription.created` to the registered endpoint — the DEPLOYED app —
+   * which resolves the customer's email, finds the row we just inserted, and applies it against the
+   * SAME Supabase this test reads. Its event is stamped a second after `subscription.created`, so
+   * our `checkout.session.completed` stamped AT `subscription.created` was genuinely older and the
+   * out-of-order guard correctly rejected it as 'stale'. Running this file alone simply beat the
+   * delivery; a full suite gave Stripe the extra seconds it needed. The reducer was right — the
+   * test was racing production.
+   *
+   * A day ahead puts every event here beyond anything the real endpoint can emit for this
+   * subscription, so the guard resolves in our favour whichever arrives first. Relative ordering
+   * between our own events (redelivery, out-of-order, cancellation) is preserved by offsetting
+   * from this base rather than from `subscription.created`.
+   */
+  let eventClock: number;
+
   /** Build a real, Stripe-signed webhook request for an event payload. */
   function signed(type: string, object: unknown, createdSeconds: number) {
     const event = {
@@ -139,6 +160,7 @@ describe.skipIf(!canRun)('billing integration (Stripe test mode + Supabase)', ()
       trial_period_days: TRIAL_DAYS,
       trial_settings: { end_behavior: { missing_payment_method: 'cancel' } },
     });
+    eventClock = subscription.created + 86_400;
 
     const { data, error } = await supabase
       .from('users')
@@ -184,8 +206,20 @@ describe.skipIf(!canRun)('billing integration (Stripe test mode + Supabase)', ()
 
   it('binds the account by email at checkout and records trialing (not active)', async () => {
     // The real signup sequence: at checkout the account is matched by EMAIL (it has no Stripe ids
-    // yet), which is what binds the customer + subscription ids every later event matches on.
-    const result = await deliver('checkout.session.completed', checkoutSession(), subscription.created);
+    // yet), which is what binds the customer + subscription ids every later event matches on. The
+    // reset restores that precondition even when the deployed endpoint got here first (see
+    // `eventClock`) — otherwise this silently becomes a match-by-subscription-id test.
+    await supabase
+      .from('users')
+      .update({
+        subscription_status: 'trial',
+        stripe_customer_id: null,
+        stripe_subscription_id: null,
+        last_stripe_event_at: null,
+      })
+      .eq('id', userId);
+
+    const result = await deliver('checkout.session.completed', checkoutSession(), eventClock);
 
     expect(result.status).toBe(200);
     expect(result.body.outcome).toBe('applied');
@@ -201,21 +235,21 @@ describe.skipIf(!canRun)('billing integration (Stripe test mode + Supabase)', ()
   }, 30_000);
 
   it('short-circuits a redelivery of the same event', async () => {
-    const result = await deliver('checkout.session.completed', checkoutSession(), subscription.created);
+    const result = await deliver('checkout.session.completed', checkoutSession(), eventClock);
     expect(result.body.outcome).toBe('duplicate');
   }, 30_000);
 
   it('ignores an out-of-order event older than the state already stored', async () => {
     // An hour-old "active" arriving after the trialing state must not win.
     const stale = { ...subscription, status: 'active' as const };
-    const result = await deliver('customer.subscription.updated', stale, subscription.created - 3600);
+    const result = await deliver('customer.subscription.updated', stale, eventClock - 3600);
 
     expect(result.body.outcome).toBe('stale');
     expect((await readUser()).subscription_status).toBe('trialing');
   }, 30_000);
 
   it('rejects a payload whose signature does not match', async () => {
-    const { payload } = signed('customer.subscription.updated', subscription, subscription.created + 5);
+    const { payload } = signed('customer.subscription.updated', subscription, eventClock + 5);
     const forged = stripe.webhooks.generateTestHeaderString({ payload, secret: 'whsec_wrong_secret' });
 
     const result = await handleSubscriptionWebhook(
@@ -230,7 +264,7 @@ describe.skipIf(!canRun)('billing integration (Stripe test mode + Supabase)', ()
 
   it('lands a cancellation as cancelled and clears the subscription id', async () => {
     const cancelled = { ...subscription, status: 'canceled' as const };
-    const result = await deliver('customer.subscription.deleted', cancelled, subscription.created + 60);
+    const result = await deliver('customer.subscription.deleted', cancelled, eventClock + 60);
 
     expect(result.body.outcome).toBe('applied');
 
