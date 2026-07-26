@@ -1,4 +1,5 @@
 {
+  "_doc": "Drives portfolio-gate's voice memory-loop probe in CI. toolSecretHeader still names the LEGACY header on purpose: the probe runs against PRODUCTION, and production only accepts the canonical x-convai-tool-secret once THIS branch has merged and deployed. Removing the override while the branch was still open made the gate fail — a config change is only valid once the code it depends on is live, which is the same ordering the header migration itself follows (rename in, re-provision, rename out). REMOVE this line in the follow-up commit, after the 13 agents are re-provisioned onto the canonical header and prod is serving the dual-accept route. The option then disappears from Kira entirely; it stays in portfolio-gate for products that genuinely need a different name.",
   "webhookPath": "/api/kira/webhooks",
   "memoryTable": "kira_memory",
   "expectContinuity": true,
