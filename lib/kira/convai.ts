@@ -15,10 +15,10 @@
 // supabase/migrations/20260720000000_convai_canonical_reconcile.sql.
 
 import {
+  completeConversationMemory,
   createConvaiWebhookRoutes,
   createConversationTools,
   conversationContinuityPrompt as canonicalContinuityPrompt,
-  distillConversationToMemory,
   type ConvaiWebhookRoutes,
   type ConvAITool,
 } from '@caistech/elevenlabs-convai';
@@ -27,8 +27,6 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { createMemoryExtractor } from '@/lib/kira/memory-extract';
 import { kiraKnowledgeToolDef } from '@/lib/kira/knowledge-tool-def.mjs';
 import { kiraDispatchToolDef, kiraApproveToolDef } from '@/lib/kira/swarm/doing-tools-def.mjs';
-import { mnemoAdd } from '@/lib/kira/mnemo';
-import { dedupeUserMemory, activeMemoryKeys, normalizeMemory } from '@/lib/kira/memory-dedup';
 
 // Kira's real tables mapped onto the canonical TableNames contract. The reconcile
 // migration adds the columns the handlers need (agent_id, anon_session_id, processed_at)
@@ -67,10 +65,17 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
     // distilled "important facts" layer). Degrade-don't-fake: a failing distil is logged + skipped,
     // never thrown out of the post-call path (canonical distillConversationToMemory guarantees this).
     onConversationComplete: async (conv, sb) => {
-      // Resolve the owner + snapshot their existing memory BEFORE distil, so we can tell which of
-      // this conversation's facts are genuinely NEW (worth adding to Mnemo) vs repeats.
+      // The whole post-call memory job — snapshot prior facts, distil, dedupe, then dual-write only
+      // the NET-NEW facts to Mnemo — is now the canonical sequence in @caistech/elevenlabs-convai.
+      //
+      // Kira assembled these four steps by hand, and the ordering is the trap: the snapshot must be
+      // taken BEFORE the distil, or every fact looks pre-existing and nothing is ever indexed. That
+      // is far too easy to get wrong to keep re-implementing per product — and the evidence was that
+      // of the two products on this package, only this one had assembled it at all.
+      //
+      // scopePrefix MUST stay 'kira-user-'. The Mnemo scope id IS the container; changing it would
+      // orphan every fact already written for every Kira user.
       let userId: string | undefined;
-      let priorKeys = new Set<string>();
       let durationSeconds = 0;
       try {
         const { data: crow } = await sb
@@ -80,42 +85,24 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
           .single();
         userId = crow?.user_id as string | undefined;
         durationSeconds = Number(crow?.duration_seconds ?? 0);
-        if (userId) priorKeys = await activeMemoryKeys(userId);
       } catch { /* non-fatal */ }
+
+      const memory = await completeConversationMemory(sb, {
+        conversationId: conv.id,
+        elevenlabsConversationId: conv.elevenlabsConversationId,
+        userId,
+        extract: memoryExtractor,
+        tables: KIRA_CONVAI_TABLES,
+        semantic: { scopePrefix: 'kira-user-' },
+      });
+      if (memory.errors.length) {
+        console.error('[kira/convai] memory pipeline reported:', memory.errors.join('; '));
+      }
 
       // Accrue this call's estimated cost against the free month's fair-use budget. Records only —
       // the call already happened, so it can never cut anyone off mid-sentence (Workstream B:
       // warn, don't hard-cut). Fail-soft inside accrueVoiceCost.
       if (userId) await accrueVoiceCost(userId, durationSeconds);
-
-      await distillConversationToMemory(sb, {
-        elevenlabsConversationId: conv.elevenlabsConversationId,
-        conversationId: conv.id,
-        extract: memoryExtractor,
-        tables: KIRA_CONVAI_TABLES,
-      });
-
-      // Collapse literal duplicate facts in kira_memory (#2 — recall stays clean over time), then
-      // dual-write ONLY the net-new facts to Mnemo (the experiential/semantic lane, #7), so Mnemo
-      // doesn't accumulate the same fact every session. kira_memory stays the source of truth;
-      // Mnemo is the semantic index that makes cross-session, differently-worded recall work.
-      // Fail-soft + non-fatal throughout: a Mnemo outage never affects the post-call path.
-      try {
-        if (userId) {
-          await dedupeUserMemory(userId);
-          const { data: fresh } = await sb
-            .from(KIRA_CONVAI_TABLES.memory)
-            .select('content')
-            .eq('source_conversation_id', conv.id)
-            .eq('active', true);
-          const netNew = (fresh ?? [])
-            .map((r: any) => r.content)
-            .filter((c: string) => c && !priorKeys.has(normalizeMemory(c)));
-          if (netNew.length) await mnemoAdd(userId, netNew);
-        }
-      } catch (e) {
-        console.error('[kira/convai] memory dedup / Mnemo write skipped:', e);
-      }
     },
     // Identity is SERVER-DERIVED from the agent binding, never from an agent-supplied
     // user_id. Kira provisions one agent per user, so the agent's owner IS the session
