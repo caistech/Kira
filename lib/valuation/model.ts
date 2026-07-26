@@ -262,12 +262,53 @@ export interface BuyerRationale {
   paragraphs: string[];
 }
 
-const WEAKNESS_PHRASE: Record<string, string> = {
-  ownerDependence: 'the business runs on you',
-  systems: 'the know-how lives in your head, not on paper',
-  recurringRevenue: "there's little locked-in revenue to count on",
-  clientConcentration: 'revenue leans on a few relationships you personally hold',
+/**
+ * How a shortfall is described, by SEVERITY.
+ *
+ * These used to be one phrase per factor, chosen whenever the factor scored below 1. That reads
+ * back an answer the owner did not give: someone who answered "it would mostly run — a few things
+ * would need me" (0.7) was told "the business runs on you", and someone who answered "partly
+ * written down" (0.5) was told the know-how "lives in your head, not on paper".
+ *
+ * Overstating their weakness is not the safe direction to be wrong in. This is a sales page for a
+ * product that fixes exactly these things, so exaggerating the problem it sells the cure for is
+ * the one error that costs credibility with the owner who knows their own business best — and it
+ * is 1 in 14 of all answer combinations, not an edge case.
+ */
+const WEAKNESS_PHRASE: Record<string, { severe: string; mild: string }> = {
+  ownerDependence: {
+    severe: 'the business runs on you',
+    mild: 'a few things still need you personally',
+  },
+  systems: {
+    severe: 'the know-how lives in your head, not on paper',
+    mild: 'some of how it runs is only partly written down',
+  },
+  recurringRevenue: {
+    severe: "there's little locked-in revenue to count on",
+    mild: 'only part of the revenue is locked in ahead of time',
+  },
+  clientConcentration: {
+    severe: 'revenue leans on a few relationships you personally hold',
+    mild: 'a handful of clients still make up a large share of revenue',
+  },
 };
+
+/** At or above this, a shortfall is a refinement rather than a risk, and is worded as one. */
+const MILD_AT_OR_ABOVE = 0.5;
+
+/**
+ * The owner-dependence score at which the "a buyer can see this running without you" story becomes
+ * honest. `mostly_runs` (0.7 — "it would mostly run, a few things would need me") clears it;
+ * `heavily_involved` (0.33) and `i_am_the_business` (0) do not, however strong everything else is.
+ */
+const OWNER_INDEPENDENCE_FOR_HIGH = 0.7;
+
+function weaknessPhrase(key: string, score: number): string | undefined {
+  const phrase = WEAKNESS_PHRASE[key];
+  if (!phrase) return undefined;
+  return score >= MILD_AT_OR_ABOVE ? phrase.mild : phrase.severe;
+}
 
 function joinPhrases(items: string[]): string {
   if (items.length === 0) return '';
@@ -286,18 +327,40 @@ export function buildBuyerRationale(result: ValuationResult): BuyerRationale {
     };
   }
 
+  const shortfalls = result.factors.filter((f) => f.capturable && f.score < 1);
   const weak = joinPhrases(
-    result.factors
-      .filter((f) => f.capturable && f.score < 1)
+    shortfalls
       .slice(0, 2)
-      .map((f) => WEAKNESS_PHRASE[f.key])
-      .filter(Boolean),
+      .map((f) => weaknessPhrase(f.key, f.score))
+      .filter((phrase): phrase is string => Boolean(phrase)),
   );
+
+  const ownerDependenceScore =
+    result.factors.find((f) => f.key === 'ownerDependence')?.score ?? 1;
 
   const opener =
     "A buyer isn't really paying for last year's profit - they're paying for how confident they can be it keeps coming in once you're gone. So what they actually price is risk.";
 
-  const band = result.readiness < 0.34 ? 'low' : result.readiness < 0.67 ? 'mid' : 'high';
+  // WHICH STORY WE TELL. Narrative only — `readiness` still drives every figure on the page, and
+  // nothing here moves a number. That distinction is the reason this fix was safe to make and a
+  // re-weighting was not: re-weighting would re-price valuations already shown to people.
+  //
+  // Owner-dependence CAPS the band. Readiness is a weighted average, so the other four factors
+  // carry 7 of 10 — meaning someone who answers "it would fall apart, I am the business" can still
+  // clear the 0.67 "high" threshold on the strength of systems, recurring revenue, spread and
+  // growth, and then be told "a buyer can largely see how this business runs without you" while
+  // the weakness line built from the same answer says "the business runs on you". Two sentences,
+  // one screen, flatly contradicting each other.
+  //
+  // A broker would never say it. No amount of recurring revenue compensates for the owner being
+  // the business — that IS the discount, and it is the thing this product exists to fix.
+  //
+  // Arithmetically this is 5 of 3,888 combinations. That understates it badly: it is the
+  // SELF-FLATTERING answer pattern — proud of the systems and the client book, blind to their own
+  // centrality — which is precisely the owner Kira is for. The tester hit it on a first pass.
+  const rawBand = result.readiness < 0.34 ? 'low' : result.readiness < 0.67 ? 'mid' : 'high';
+  const band =
+    rawBand === 'high' && ownerDependenceScore < OWNER_INDEPENDENCE_FOR_HIGH ? 'mid' : rawBand;
 
   if (band === 'low') {
     return {
@@ -316,7 +379,13 @@ export function buildBuyerRationale(result: ValuationResult): BuyerRationale {
       title: 'Why the number is what it is',
       paragraphs: [
         opener,
-        `You have made part of the business visible, but ${weak || 'some of how it runs'} is still largely in your head. A buyer can't verify what they can't see, so they hold back part of the multiple as contingency for it.`,
+        // Composed as a clause, not slotted into a sentence that assumes the phrase is a NOUN.
+        // The old form read "but the business runs on you is still largely in your head" whenever
+        // owner-dependence was the leading shortfall — already broken, and the band cap above now
+        // routes the worst cases here, so it would have been broken far more often.
+        `You have made part of the business visible, but ${
+          weak ? `a buyer still sees that ${weak}` : 'some of how it runs is still hard to see from the outside'
+        }. A buyer can't verify what they can't see, so they hold back part of the multiple as contingency for it.`,
         "Think of buying a car: the more service history and inspection you can show, the closer to full price it goes; the parts you can't prove, the buyer discounts for. Close those remaining gaps and the contingency shrinks - that is the difference between today's number and the captured one.",
       ],
     };
