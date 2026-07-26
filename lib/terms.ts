@@ -64,9 +64,10 @@ export const TERMS_SECTIONS: TermsSection[] = [
   {
     heading: 'Billing',
     paragraphs: [
-      'Your first month is free. We take your card at signup and the first payment is taken at the end of that month — we email you three days beforehand so it is never a surprise.',
+      'Your first 30 days are free. We take your card at signup and the first payment is taken at the end of those 30 days — we email you three days beforehand so it is never a surprise.',
+      'Your monthly fee is set from the value gap your valuation identifies, and the exact figure is shown to you before you enter a card. All prices are quoted exclusive of GST; for supplies to Australian customers, 10% GST is added and shown as a separate line on your tax invoice.',
       'Subscriptions are billed monthly in advance. You can cancel at any time from Settings; cancellation takes effect at the end of the period you have paid for, and partial periods are not refunded.',
-      'The free month includes a fair-use allowance. If you approach it we tell you — we do not cut you off mid-conversation.',
+      'The free 30 days include a fair-use allowance. If you approach it we tell you — we do not cut you off mid-conversation.',
     ],
   },
   {

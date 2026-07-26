@@ -16,6 +16,30 @@
 // run - there is no pricing page and no "from $X" on the landing page, because a price stated
 // without the gap it is a fraction of is just a number to flinch at.
 
+/** GST, as a rate. Australia's is 10% and has been since 2000. */
+export const GST_RATE = 0.1;
+
+/**
+ * Whether GST is part of the ask, given the currency the owner is being billed in.
+ *
+ * GST is an Australian tax on an Australian supply, so it rides on the AUD price and nothing else —
+ * a UK owner paying £999 is not charged 10% GST on top, and printing "+ GST" at them would be
+ * wrong. Every price surface asks this rather than hardcoding the suffix.
+ */
+export function gstApplies(currencyCode: string): boolean {
+  return (currencyCode || '').toUpperCase() === 'AUD';
+}
+
+/**
+ * The "+ GST" tail to append to a displayed price, or '' where GST does not apply.
+ *
+ * Every stated price in the product is EXCLUSIVE of GST and says so — a figure that could be read
+ * either way is the one an owner argues about on their first invoice.
+ */
+export function gstSuffix(currencyCode: string): string {
+  return gstApplies(currencyCode) ? ' + GST' : '';
+}
+
 export interface PriceTier {
   /** Lower bound of the gap band (inclusive). */
   min: number;

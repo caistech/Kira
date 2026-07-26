@@ -112,6 +112,9 @@ ELEVENLABS_WEBHOOK_SECRET          ← required; never use a hardcoded fallback
 STRIPE_SECRET_KEY
 STRIPE_WEBHOOK_SECRET
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+STRIPE_GST_TAX_RATE_ID            ← 10% AU GST, exclusive; every price is quoted ex-GST.
+                                     Per-mode (test and live are separate accounts) —
+                                     create with scripts/setup-gst-tax-rate.ts. Not a secret.
 GITHUB_TOKEN                       ← for PubGuard GitHub analysis
 SHODAN_API_KEY                     ← for PubGuard infrastructure scanning
 SERPER_API_KEY                     ← for PubGuard news/social signals
