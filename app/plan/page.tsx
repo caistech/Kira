@@ -24,7 +24,12 @@ import {
 import { computeValuation } from '@/lib/valuation/model';
 import { formatMoney, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { priceForGap } from '@/lib/valuation/pricing';
-import { decodeValuationParam, type ValuationPayload } from '@/lib/valuation/share';
+import {
+  decodeValuationParam,
+  readStoredValuation,
+  storeValuation,
+  type ValuationPayload,
+} from '@/lib/valuation/share';
 
 export default function PlanPage() {
   const [payload, setPayload] = useState<ValuationPayload | null>(null);
@@ -33,8 +38,25 @@ export default function PlanPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const v = new URLSearchParams(window.location.search).get('v');
-    setPayload(decodeValuationParam(v));
+    // sessionStorage first — that is where the valuation page now parks it, so the owner's turnover
+    // and profit never enter a URL (and so browser history, Referer headers and forwarded links
+    // don't carry them). The `?v=` read is a fallback for links sent before that change; nothing
+    // generates them any more.
+    const stored = readStoredValuation();
+    if (stored) {
+      setPayload(stored);
+      setReady(true);
+      return;
+    }
+
+    const legacy = decodeValuationParam(new URLSearchParams(window.location.search).get('v'));
+    if (legacy) {
+      // Re-park it and strip the query, so an old link stops leaking the figures the moment it is
+      // opened rather than every time the page is shared onward from here.
+      storeValuation(legacy);
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+    setPayload(legacy);
     setReady(true);
   }, []);
 
