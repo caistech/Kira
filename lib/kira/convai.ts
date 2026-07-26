@@ -140,18 +140,6 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
 export const TOOL_SECRET_HEADER = CONVAI_TOOL_SECRET_HEADER;
 
 /**
- * The pre-canonical header, still ACCEPTED on inbound requests.
- *
- * Agents provisioned before the rename send this one, and they are live. Dropping it in the same
- * change that flips the guard fail-closed would 401 every existing user's memory calls the moment
- * this deploys. Rename in, re-provision, then rename out — never all at once.
- *
- * REMOVE once `scripts/reprovision-kira-agents.mjs` has run over every active agent and the audit
- * shows zero agents sending it.
- */
-const LEGACY_TOOL_SECRET_HEADER = 'x-kira-tool-secret';
-
-/**
  * The configured secret.
  *
  * Resolved lazily — on the first REQUEST, never at module load. A module-load throw would break
@@ -184,9 +172,7 @@ function requireToolSecret(): string {
  */
 export function toolSecretOk(req: Request): boolean {
   const secret = requireToolSecret();
-  const presented =
-    req.headers.get(TOOL_SECRET_HEADER) ?? req.headers.get(LEGACY_TOOL_SECRET_HEADER);
-  return presented === secret;
+  return req.headers.get(TOOL_SECRET_HEADER) === secret;
 }
 
 /**

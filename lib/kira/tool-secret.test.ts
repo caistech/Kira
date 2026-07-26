@@ -45,15 +45,17 @@ describe('toolSecretOk', () => {
     expect(toolSecretOk(reqWith({ [TOOL_SECRET_HEADER]: SECRET }))).toBe(true);
   });
 
-  it('still accepts the LEGACY header — live agents send it until re-provisioned', () => {
-    // Dropping this in the same change that flips the guard fail-closed would 401 every existing
-    // user's memory calls on deploy. Rename in, re-provision, then rename out.
-    expect(toolSecretOk(reqWith({ [LEGACY_HEADER]: SECRET }))).toBe(true);
+  it('NO LONGER accepts the legacy header — the migration is complete', () => {
+    // Removed only after: prod deployed dual-accept, all 13 operational agents were re-provisioned
+    // onto the canonical header (verified 13/13 with 0 remaining on legacy), and the live probe
+    // passed 5/5 against production using the canonical header alone. Rename in, re-provision,
+    // rename out — this is the last step, and it is safe precisely because the middle one was
+    // verified rather than assumed.
+    expect(toolSecretOk(reqWith({ [LEGACY_HEADER]: SECRET }))).toBe(false);
   });
 
   it('rejects a wrong secret', () => {
     expect(toolSecretOk(reqWith({ [TOOL_SECRET_HEADER]: 'nope' }))).toBe(false);
-    expect(toolSecretOk(reqWith({ [LEGACY_HEADER]: 'nope' }))).toBe(false);
   });
 
   it('rejects a request with no header at all', () => {
