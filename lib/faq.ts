@@ -72,7 +72,7 @@ export const PRICING_FAQ: FaqItem[] = [
   },
   {
     q: 'How is it priced?',
-    a: "One monthly plan for the exec, starting at $249/month, scaled to the size of the value you're unlocking. Your 3-minute valuation shows the number first, so you decide with the gap in front of you.",
+    a: "One monthly plan, priced to the size of the gap your valuation finds — from $99/month at the entry band up to $1,499 for the largest. Your 3-minute valuation shows your number before you decide anything, and you see the exact figure before entering a card.",
   },
   {
     q: 'When am I actually charged?',
