@@ -163,3 +163,132 @@ describe('formatMoney', () => {
     expect(formatMoney(1900000, 'EUR')).toContain('1,900,000');
   });
 });
+
+// ---------------------------------------------------------------------------------------------
+// Narrative consistency.
+//
+// The valuation page previously told some owners two contradictory things on one screen: a
+// headline saying "a buyer can largely see how this business runs without you", above a weakness
+// line built from the same answers saying "the business runs on you".
+//
+// These tests are exhaustive rather than illustrative. The defect was found by a human tester on a
+// first pass but is only 5 of 3,888 combinations — a hand-picked fixture would very likely have
+// missed it, and would certainly miss the next one. Enumerating the whole input space is cheap
+// here (it is pure and finite), so it is enumerated.
+// ---------------------------------------------------------------------------------------------
+
+const OWNER_DEPENDENCE = ['i_am_the_business', 'heavily_involved', 'mostly_runs', 'fully_managed'] as const;
+const SYSTEMS = ['in_my_head', 'some', 'documented_team'] as const;
+const RECURRING = ['none', 'some', 'strong'] as const;
+const CONCENTRATION = ['concentrated', 'moderate', 'diversified'] as const;
+const PROFIT_TREND = ['declining', 'flat', 'growing', 'growing_strongly'] as const;
+const MARGIN_TREND = ['shrinking', 'stable', 'improving'] as const;
+const CLIENT_TREND = ['shrinking', 'stable', 'expanding'] as const;
+
+interface Narrated {
+  inputs: ValuationInputs;
+  text: string;
+  readiness: number;
+}
+
+function everyCombination(): Narrated[] {
+  const out: Narrated[] = [];
+  for (const ownerDependence of OWNER_DEPENDENCE)
+    for (const systems of SYSTEMS)
+      for (const recurringRevenue of RECURRING)
+        for (const clientConcentration of CONCENTRATION)
+          for (const profitTrend of PROFIT_TREND)
+            for (const marginTrend of MARGIN_TREND)
+              for (const clientTrend of CLIENT_TREND) {
+                const inputs: ValuationInputs = {
+                  ...base,
+                  ownerDependence,
+                  systems,
+                  recurringRevenue,
+                  clientConcentration,
+                  profitTrend,
+                  marginTrend,
+                  clientTrend,
+                };
+                const result = computeValuation(inputs);
+                out.push({
+                  inputs,
+                  readiness: result.readiness,
+                  text: buildBuyerRationale(result).paragraphs.join(' '),
+                });
+              }
+  return out;
+}
+
+const CLAIMS_INDEPENDENT = 'can largely see how this business runs without you';
+const SAYS_RUNS_ON_YOU = 'the business runs on you';
+
+describe('buyer rationale — narrative consistency', () => {
+  const all = everyCombination();
+
+  it('covers the whole input space', () => {
+    expect(all).toHaveLength(3888);
+  });
+
+  it('never claims the business runs without the owner AND that it runs on them', () => {
+    const contradictory = all.filter(
+      (c) => c.text.includes(CLAIMS_INDEPENDENT) && c.text.includes(SAYS_RUNS_ON_YOU),
+    );
+    expect(contradictory).toHaveLength(0);
+  });
+
+  it('never claims independence when the owner said the business would fall apart without them', () => {
+    // Readiness is a weighted average, so the other four factors carry 7 of 10 — enough to clear
+    // the "high" threshold on their own. Owner-dependence caps the NARRATIVE band so that cannot
+    // turn into a claim no broker would make. It caps the story only; no figure moves.
+    const wrong = all.filter(
+      (c) => c.inputs.ownerDependence === 'i_am_the_business' && c.text.includes(CLAIMS_INDEPENDENT),
+    );
+    expect(wrong).toHaveLength(0);
+  });
+
+  it('does not tell an owner the business runs on them when they said it would mostly run', () => {
+    // 'mostly_runs' scores 0.7 — a shortfall, but not the one this phrase describes. Overstating
+    // someone's weakness on a page selling the cure for it is the error that costs credibility
+    // with the person who knows their own business best.
+    const overstated = all.filter(
+      (c) => c.inputs.ownerDependence === 'mostly_runs' && c.text.includes(SAYS_RUNS_ON_YOU),
+    );
+    expect(overstated).toHaveLength(0);
+  });
+
+  it('composes every weakness phrase into a readable sentence', () => {
+    // The mid-band paragraph used to slot the phrase in as though it were a noun, producing
+    // "but the business runs on you is still largely in your head".
+    const broken = all.filter((c) => / (runs on you|not on paper) is still largely in your head/.test(c.text));
+    expect(broken).toHaveLength(0);
+  });
+
+  it('still tells the strongest possible story to an owner who has genuinely earned it', () => {
+    // The cap must not swallow the good case: fully managed, documented, recurring, diversified,
+    // growing should still read as an asset rather than a job.
+    const best = computeValuation({
+      ...base,
+      ownerDependence: 'fully_managed',
+      systems: 'documented_team',
+      recurringRevenue: 'strong',
+      clientConcentration: 'diversified',
+      profitTrend: 'growing_strongly',
+      marginTrend: 'improving',
+      clientTrend: 'expanding',
+    });
+    const text = buildBuyerRationale(best).paragraphs.join(' ');
+    expect(best.readiness).toBe(1);
+    expect(text).toContain(CLAIMS_INDEPENDENT);
+    expect(text).toContain('this reads as an asset, not a job');
+  });
+
+  it('leaves every valuation FIGURE untouched — this was a copy fix, not a repricing', () => {
+    // The distinction that made this change safe to ship. Re-weighting the factors would have
+    // re-priced numbers already shown to real people; changing which story is told does not.
+    const owned = computeValuation({ ...base, ownerDependence: 'i_am_the_business' });
+    expect(owned.readiness).toBeCloseTo(0.1625, 4);
+    expect(owned.today).toBeGreaterThan(0);
+    expect(owned.potential).toBeGreaterThan(owned.today);
+  });
+});
