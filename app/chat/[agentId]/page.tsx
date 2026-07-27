@@ -310,12 +310,14 @@ export default function ChatPage() {
                 >
                   <CheckCircleIcon /> <span className="font-medium">Complete project</span>
                 </button>
-                <button
-                  onClick={() => { setShowMenu(false); window.location.href = `/commit?source=chat&agent=${agentId}`; }}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-pink-50"
-                >
-                  <PenIcon /> <span className="font-medium">Put it in writing</span>
-                </button>
+                {/* "Put it in writing" (/commit) deliberately REMOVED from this menu.
+                    It is a pre-sale letter-of-intent capture — "I'd start a paid plan now", "I'd
+                    commit to a paid pilot" — and this menu belongs to someone who has already
+                    subscribed. Asking a paying customer whether they would consider paying reads as
+                    either a bug or a pitch to the wrong person, and it exposes founder-stage
+                    validation machinery inside the product they bought.
+                    The page still exists and still works; it belongs where it is in the logical
+                    flow, which is in front of a prospect, not behind the paywall. */}
               </div>
             </>
           )}
