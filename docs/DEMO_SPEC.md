@@ -29,6 +29,32 @@ So the demo's axis is **elapsed time, not steps**: week one versus month six, wi
 number climbing and the "still only in your head" list shrinking. A ten-step process walkthrough
 would tell the owner that Kira is a form he finishes, which is the opposite of the product.
 
+## What Ray changed (2026-07-28, after the ICP walkthrough)
+
+**The success criterion moved.** This was specced to make the flow understandable. Ray's answer to
+*"would you tell it the truth?"* was **no, not on day one** — he would give it boring facts and would
+not name the builder, the twenty-year secret discount, or the 2014 falling-out. Understanding the
+flow was never the blocker. **The demo's job is to make him willing to talk.**
+
+**Candour is the persuasion, not a caveat.** The only two things that moved him toward trust were
+admissions: `/genome` being honest about its own gaps, and the privacy-mode-not-built paragraph. So
+the demo **leads with what Kira cannot do** rather than closing with it. That is counter-intuitive
+and it is what the evidence says.
+
+Four hard rules that follow:
+
+1. **The demo may only show what actually exists.** Ray's verdict was *"when I got through the door,
+   the thing that had been described for ten minutes wasn't in there."* A demo that shows a capability
+   the product lacks does not oversell it — it repeats the exact failure that lost him. Anything
+   aspirational carries the same explicit ROADMAP label the privacy paragraph uses.
+2. **The narration must never imply people.** *"Behind her is a quiet team that does the actual work"*
+   was the single sentence that ended it for him. Kira saying anything like that out loud, in her own
+   voice, would be worse than reading it.
+3. **Real numbers, one business.** The hero oversold the engine by 2.4× and he found out at the
+   results page. The demo uses the engine's own output for the same plumbing business as `/genome`.
+4. **There must be a beat about what happens to what he says** — who can see it, who cannot, what
+   leaves the building. For this ICP that is not a privacy footnote, it is the conversion moment.
+
 ## The two demos
 
 Same machinery, same sample business (the 31-year-old plumbing business already in
