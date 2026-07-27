@@ -6,6 +6,8 @@
 
 import { useState, useTransition } from 'react';
 
+import { AbnLookupField } from '@/components/AbnLookupField';
+
 import { addIntroducer, type ActionResult } from './actions';
 
 export function AddIntroducerForm() {
@@ -39,14 +41,17 @@ export function AddIntroducerForm() {
           <span className="text-sm font-medium text-gray-700">Name</span>
           <input name="name" type="text" autoComplete="off" className={field} />
         </label>
-        <label className="block">
-          <span className="text-sm font-medium text-gray-700">Firm</span>
-          <input name="org_name" type="text" autoComplete="off" className={field} />
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium text-gray-700">Firm ABN</span>
-          <input name="org_abn" type="text" autoComplete="off" className={field} />
-        </label>
+        {/* Same live ABR lookup the public advisor form uses. It was two plain text boxes here,
+            which meant the operator-entered record was the one MORE likely to carry a typo'd or
+            invented ABN than the self-serve one — and this is the record a commission is paid
+            against. One component, one source of truth for the firm's legal identity. */}
+        <AbnLookupField
+          label="Firm"
+          nameField="org_name"
+          abnField="org_abn"
+          hint="Start typing the firm's name or ABN — we'll confirm it against the ABR."
+          inputClassName={field}
+        />
         <label className="block">
           <span className="text-sm font-medium text-gray-700">They call themselves</span>
           <select name="role" defaultValue="introducer" className={field}>

@@ -42,11 +42,24 @@ We are not going to call that "Enterprise AI" when the third line is a no.
 **The valuation number is arithmetic, not AI.**
 
 The figure your client sees — their current value, their potential, the gap — is produced by a
-deterministic calculation in code from the figures they enter: sector multiples calibrated on
-BizBuySell 2025 closed-deal data, a weighted readiness score, a floor and a ceiling. No language
-model is involved in producing it. Given the same inputs it returns the same number, every time,
-and it can be recomputed and audited years later because every valuation stores its inputs and the
-version of the model that read them.
+deterministic calculation in code from the figures they enter: sector multiples, a weighted
+readiness score, a floor and a ceiling. No language model is involved in producing it. Given the
+same inputs it returns the same number, every time, and it can be recomputed and audited years
+later because every valuation stores its inputs and the version of the model that read them.
+
+**And you should know where the multiples come from, because you will be asked.** They are
+BizBuySell's 2025 **US** small-business sale data — around 9,500 closed deals, market average ~2.5×
+SDE. We looked for an Australian equivalent and there isn't one at this granularity: the AIBB's
+transaction database is members-only, and the published Australian guides give broad EBITDA ranges
+across roughly two dozen industries rather than per-sector SDE medians — a different metric at a
+tenth of the resolution. Australian broker resources lean on the same US dataset for the same
+reason.
+
+So we present it as an **indicative benchmark, not an Australian market quote**, and we say so on
+the result screen rather than in a footnote. The sector *shape* travels — a laundromat trades
+higher than a panel beater in both markets — but the absolute number should be checked against
+local evidence before anyone acts on it. If your firm has access to AIBB comparables, that is a
+better cross-check than anything we can publish, and we would rather your client saw both.
 
 The AI is the **conversation** — the assistant your client talks to. Those are two different systems
 and it matters which one you are being asked to trust.
@@ -148,6 +161,8 @@ Stated deliberately, because a vendor page that claims nothing has nothing to ch
 - **No ISO 27001, SOC 2 or ISO/IEC 42001 certification.**
 - **No Australian data residency.**
 - **No independent security audit or penetration test** we can point you to.
+- **No Australian transaction data.** The multiples are US-sourced (above). We are not going to
+  dress that up as local evidence.
 - **No global kill switch** — incident containment is per-account or per-deploy, not product-wide.
 - **No contracted SLA** behind our incident timeframes. They are commitments we set and publish, on
   a single-operator product; they are not a service level you have bought.
