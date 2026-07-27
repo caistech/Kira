@@ -1,5 +1,6 @@
 import { getAuthUser, getCurrentAppUser } from '@/lib/auth';
 import { getBetaGate, VOICE_ACTION, VOICE_COST_CAP_USD } from '@/lib/billing';
+import { denyReason, derivePlanState } from '@/lib/billing/plan-state';
 import { PasswordChange } from '@/components/PasswordChange';
 import { DeleteAccount } from '@/components/DeleteAccount';
 import { ManageBillingButton } from '@/components/ManageBillingButton';
@@ -14,15 +15,30 @@ export default async function SettingsPage() {
   const appUser = await getCurrentAppUser();
 
   // Read the free-month meter server-side. Degrade, don't fake: if the gate can't be read we omit
-  // the meter rather than render a reassuring but fictional 0%.
+  // the panel rather than render a reassuring but fictional 0%.
+  //
+  // TWO reads, deliberately. status() is the authority on the trial CLOCK; check() is the authority
+  // on the BUDGET. Inferring the clock from the budget's zeroes is what told a brand-new account
+  // its free month had ended (naive-tester, 2026-07-27).
   let usage: Awaited<ReturnType<ReturnType<typeof getBetaGate>['check']>> | null = null;
+  let trialStatus: Awaited<ReturnType<ReturnType<typeof getBetaGate>['status']>> | null = null;
   if (appUser?.id) {
     try {
-      usage = await getBetaGate().check(appUser.id, VOICE_ACTION);
+      const gate = getBetaGate();
+      [trialStatus, usage] = await Promise.all([
+        gate.status(appUser.id),
+        gate.check(appUser.id, VOICE_ACTION),
+      ]);
     } catch (error) {
       console.error('[settings] usage meter unavailable:', error);
     }
   }
+
+  const plan = derivePlanState({
+    trialStatus,
+    hasCard: Boolean(appUser?.stripe_customer_id),
+    subscriptionStatus: appUser?.subscription_status ?? null,
+  });
 
   return (
     <div className="max-w-2xl">
@@ -69,24 +85,24 @@ export default async function SettingsPage() {
 
       <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-6">
         <h2 className="text-lg font-semibold text-gray-900">Plan &amp; usage</h2>
-        <p className="mt-1 text-sm text-gray-500">
-          Your first month is free. Your card is on file and the first payment comes out at the end
-          of it — we&apos;ll email you three days before, and you can cancel any time before then.
-        </p>
+        {/* One sentence, true of exactly this account's state — never the card claim by default. */}
+        <p className="mt-1 text-base text-gray-500">{plan.billingSentence}</p>
 
         {usage ? (
           <div className="mt-4">
             <UsageMeter
-              daysLeft={usage.daysLeft}
+              trialState={plan.trial}
+              daysLeft={plan.daysLeft}
               capUsd={VOICE_COST_CAP_USD}
               usedUsd={Math.round(usage.usedCost * 100) / 100}
               pctUsed={usage.pctUsed}
               warn={usage.warn}
               allowed={usage.allowed}
+              reason={denyReason(usage)}
             />
           </div>
         ) : (
-          <p className="mt-4 text-sm text-gray-500">
+          <p className="mt-4 text-base text-gray-500">
             Usage isn&apos;t available right now. Nothing has changed on your account.
           </p>
         )}

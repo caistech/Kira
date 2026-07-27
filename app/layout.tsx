@@ -42,9 +42,15 @@ export default function RootLayout({
         <AgentJsonLd config={agentConfig} />
         <div className="min-h-screen flex flex-col">
           <CorporateHeader productName="Kira" productAcronym="K" />
-          {/* bottom-left: keeps the report pill clear of the bottom-right/center primary CTAs +
-              voice controls it was dogpiling (naive-tester 2026-07-20). */}
-          <main className="flex-1">{children}<SayFixWidget repo="kira" position="bottom-left" /></main>
+          {/* No `position` — the widget auto-places, avoiding controls it would otherwise cover.
+              It USED to be pinned bottom-left to dodge the bottom-right CTAs (naive-tester
+              2026-07-20), but a hardcoded position is handed to the engine as a *preference* and
+              weighted in its favour, so pinning it left is what kept it parked on the Back button
+              through the whole eleven-question valuation (naive-tester 2026-07-27). The engine
+              exists to make this decision per page; giving it a thumb on the scale defeated it.
+              The other half of that collision — the "Ask Kira" pill sitting on Next — is gone; see
+              the note at the foot of app/business-valuation/page.tsx. */}
+          <main className="flex-1">{children}<SayFixWidget repo="kira" /></main>
           <CorporateFooter productName="Kira" />
         </div>
       </body>

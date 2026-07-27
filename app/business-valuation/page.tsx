@@ -3,14 +3,26 @@
 // app/business-valuation/page.tsx
 //
 // The Kira business valuation test - the quantified front door to the Operating Intelligence Layer.
-// A privately-owned business owner answers ~9 questions and instantly sees three numbers: the
-// walk-away floor, what it's worth today (a buyer buying a job), and what it's worth once the
-// operating knowledge in their head is captured into a Business Genome. The gap between the last
-// two is the headline - and the reason to start building their business's memory with Kira.
+// A privately-owned business owner answers the STEPS below (currently 11) and instantly sees three
+// numbers: the walk-away floor, what it's worth today (a buyer buying a job), and what it's worth
+// once the operating knowledge in their head is captured into a Business Genome. The gap between
+// the last two is the headline - and the reason to start building their business's memory with Kira.
 //
-// Public, no auth, free instant result (no gate). Voice clarifier reachable when configured.
+// Public, no auth, free instant result (no gate). Answers are parked in sessionStorage as they go,
+// so an interrupted owner resumes rather than restarting eleven questions.
+//
+// NO floating voice widget here — see the note where it was removed at the foot of the file. The
+// question count is rendered from STEPS.length rather than written in prose, because "a few
+// questions" against an actual eleven is the kind of drift a comment cannot prevent.
 
 import React, { useMemo, useState, useEffect } from 'react';
+
+import {
+  SDE_DEFINITION,
+  SDE_SHORT_REMINDER,
+  sdeExample,
+  sdeMarginNote,
+} from '@/lib/valuation/sde-copy';
 import {
   ArrowLeft,
   ArrowRight,
@@ -47,6 +59,9 @@ type Step =
   | { id: keyof ValuationInputs; kind: 'money'; icon: React.ReactNode; title: string; help: string; placeholder: string }
   | { id: keyof ValuationInputs; kind: 'choice'; icon: React.ReactNode; title: string; help: string; options: ChoiceOption[] };
 
+/** Where in-progress answers are parked so a reload resumes rather than restarting. */
+const PROGRESS_KEY = 'kira_valuation_progress';
+
 const STEPS: Step[] = [
   {
     id: 'industry',
@@ -68,7 +83,7 @@ const STEPS: Step[] = [
     kind: 'money',
     icon: <TrendingUp className="h-6 w-6" />,
     title: "And what's your annual PROFIT?",
-    help: "What's left after all costs, plus the salary and perks you pay yourself (often called SDE). Not turnover - the smaller number you actually keep. This is what the valuation runs on.",
+    help: SDE_DEFINITION,
     placeholder: 'e.g. 200,000',
   },
   {
@@ -167,13 +182,11 @@ const STEPS: Step[] = [
   },
 ];
 
-const SETUP_KIRA_AGENT_ID = process.env.NEXT_PUBLIC_SETUP_KIRA_AGENT_ID;
 
 export default function BusinessValuationPage() {
   const [stepIndex, setStepIndex] = useState(-1); // -1 = intro, STEPS.length = result
   const [answers, setAnswers] = useState<Answers>({});
   const [industryQuery, setIndustryQuery] = useState('');
-  const [voiceOpen, setVoiceOpen] = useState(false);
   // Currency is display-only (the valuation math is a multiple of profit). Start on the SSR-safe
   // default, then use the owner's saved choice or the detected locale on mount. Persist any override
   // so it doesn't reset between questions.
@@ -198,20 +211,46 @@ export default function BusinessValuationPage() {
   };
   const currencySymbol = getCurrency(currency).symbol;
 
+  // Answers survive a reload. Eleven questions is a long way to be asked to walk twice, and the
+  // people most likely to be interrupted mid-flow are exactly the target — an owner answering on a
+  // phone between jobs (naive-tester, 2026-07-27: "progress isn't durable").
+  //
+  // sessionStorage, matching the handoff in lib/valuation/share.ts and for the same reason: these
+  // answers include turnover and profit, and localStorage would leave them on a shared machine with
+  // nothing to clear them. Per-tab is the right lifetime for a figure this sensitive.
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(PROGRESS_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw) as { stepIndex?: number; answers?: Answers; industryQuery?: string };
+        if (saved.answers) setAnswers(saved.answers);
+        if (typeof saved.industryQuery === 'string') setIndustryQuery(saved.industryQuery);
+        // Never restore straight onto the result — recompute by stepping, so a stale partial answer
+        // set can't render a number as though it were freshly produced.
+        if (typeof saved.stepIndex === 'number') {
+          setStepIndex(Math.min(saved.stepIndex, STEPS.length - 1));
+        }
+      }
+    } catch {
+      /* private browsing or a bad blob — start clean rather than break the page */
+    }
+    setRestored(true);
+  }, []);
+
+  useEffect(() => {
+    if (!restored) return; // don't overwrite saved progress with the initial empty state
+    try {
+      sessionStorage.setItem(PROGRESS_KEY, JSON.stringify({ stepIndex, answers, industryQuery }));
+    } catch {
+      /* nothing to do; the visitor simply loses resume */
+    }
+  }, [restored, stepIndex, answers, industryQuery]);
+
   const total = STEPS.length;
   const isIntro = stepIndex === -1;
   const isResult = stepIndex === total;
   const step = !isIntro && !isResult ? STEPS[stepIndex] : null;
-
-  // Load the ElevenLabs voice widget only when the owner opens it (and only if configured).
-  useEffect(() => {
-    if (!voiceOpen || !SETUP_KIRA_AGENT_ID) return;
-    if (document.querySelector('script[src*="elevenlabs.io/convai-widget"]')) return;
-    const s = document.createElement('script');
-    s.src = 'https://elevenlabs.io/convai-widget/index.js';
-    s.async = true;
-    document.body.appendChild(s);
-  }, [voiceOpen]);
 
   const canAdvance = useMemo(() => {
     if (!step) return true;
@@ -303,8 +342,8 @@ export default function BusinessValuationPage() {
             </h1>
             <p className="text-stone-600 text-base leading-relaxed">
               For most owners, their business is their biggest asset — and the hardest thing to value.
-              Answer a few questions and see three honest numbers, plus the gap that's hiding inside your
-              own head. Takes about 3 minutes. Nothing to sign up for.
+              Answer {STEPS.length} short questions and see three honest numbers, plus the gap that&apos;s
+              hiding inside your own head. About 3 minutes. Nothing to sign up for.
             </p>
           </div>
         )}
@@ -325,9 +364,12 @@ export default function BusinessValuationPage() {
               onClick={next}
               className="grad-coral text-white font-display font-bold px-7 py-4 rounded-full text-lg inline-flex items-center gap-2 min-h-[52px] shadow-lg shadow-pink-200 hover:opacity-95"
             >
-              Start <ArrowRight className="h-5 w-5" />
+              Start the {STEPS.length} questions <ArrowRight className="h-5 w-5" />
             </button>
-            <p className="text-xs text-stone-400 mt-4">Indicative estimate for guidance only — not a formal business valuation.</p>
+            <p className="text-base text-stone-500 mt-4">
+              Indicative estimate for guidance only — not a formal business valuation. Your answers are kept
+              on this device as you go, so you can stop and come back.
+            </p>
           </div>
         )}
 
@@ -380,7 +422,19 @@ export default function BusinessValuationPage() {
                       ))}
                     </div>
                   )}
-                  <p className="text-xs text-stone-400 mt-2">Pick the closest match from the list — we&apos;ll use its sector-average multiple.</p>
+                  {/* Told at the QUESTION, not just on the result. "Underwater basket weaving" used to
+                      sail straight through with Next enabled and no signal that a market-average
+                      multiple had been substituted (naive-tester, 2026-07-27). */}
+                  {industryQuery.trim() && !exact && matches.length === 0 ? (
+                    <p className="mt-2 rounded-xl bg-amber-100/70 px-4 py-3 text-base text-stone-700">
+                      No sector match for &ldquo;{industryQuery.trim()}&rdquo;. You can carry on — we&apos;ll
+                      use the overall market-average multiple — but a closer match gives a better number.
+                    </p>
+                  ) : (
+                    <p className="text-base text-stone-500 mt-2">
+                      Pick the closest match from the list — we&apos;ll use its sector-average multiple.
+                    </p>
+                  )}
                 </div>
               );
             })()}
@@ -412,13 +466,13 @@ export default function BusinessValuationPage() {
                   if (turnover && profit && profit > 0) {
                     return (
                       <p className="text-xs text-stone-500 mt-2 leading-relaxed">
-                        That&apos;s a <strong>{Math.round((profit / turnover) * 100)}% margin</strong> on the {formatMoney(turnover, currency)} turnover you entered. Looks right? Profit is the smaller number you keep after all costs and your own pay.
+                        {sdeMarginNote(Math.round((profit / turnover) * 100), formatMoney(turnover, currency))}
                       </p>
                     );
                   }
                   return (
                     <p className="text-xs text-stone-500 mt-2 leading-relaxed">
-                      <strong>Profit, not sales.</strong> If the business turned over {turnover ? formatMoney(turnover, currency) : `${currencySymbol}2M`} but you kept {currencySymbol}200k after costs and your own pay, enter <strong>{currencySymbol}200,000</strong>.
+                      <strong>{SDE_SHORT_REMINDER}</strong> {sdeExample(currencySymbol)}
                     </p>
                   );
                 })()}
@@ -477,25 +531,17 @@ export default function BusinessValuationPage() {
         {isResult && result && <ResultView result={result} currency={currency} planHref={planHref} />}
       </main>
 
-      {/* Voice clarifier (reachable, degrades cleanly when unconfigured) */}
-      {SETUP_KIRA_AGENT_ID && (
-        <>
-          <button
-            onClick={() => setVoiceOpen((v) => !v)}
-            className="fixed bottom-5 right-5 z-50 grad-genome text-white rounded-full shadow-xl px-5 py-3 min-h-[48px] font-display font-semibold text-sm inline-flex items-center gap-2 hover:opacity-95"
-          >
-            <Sparkles className="h-4 w-4" /> Ask Kira
-          </button>
-          {voiceOpen && (
-            <div className="fixed bottom-20 right-5 z-50">
-              {React.createElement('elevenlabs-convai', {
-                'agent-id': SETUP_KIRA_AGENT_ID,
-                'dynamic-variables': JSON.stringify({ journey_type: 'business', context: 'business_valuation' }),
-              })}
-            </div>
-          )}
-        </>
-      )}
+      {/* The "Ask Kira" floating widget was REMOVED from this flow on 2026-07-27.
+          It sat fixed bottom-right, directly on top of the Next button, on all eleven question
+          screens — a mobile tester mis-tapped it twice — and it also covered the hero headline, the
+          question help text and the third result number. Two floating widgets competing for one
+          corner on a 375px screen is one too many, and this was the one whose absence costs least:
+          the questionnaire is eleven plain questions with inline help, not a surface that needs a
+          voice clarifier, and voice remains reachable from the authenticated chrome (TalkFab) where
+          the nuanced work actually happens.
+          It was also a raw CDN <elevenlabs-convai> embed rather than the canonical
+          @caistech/elevenlabs-convai VoiceWidget — so reinstating it here would mean adopting the
+          canonical component first, not restoring this. */}
     </div>
   );
 }
@@ -517,8 +563,10 @@ function ResultView({ result, currency, planHref }: { result: ReturnType<typeof 
           {noEarnings ? "Here's where your business stands" : "This is what your business could be worth"}
         </h1>
         {!result.sectorMatched && (
-          <p className="text-xs text-stone-500 mt-2">
-            We couldn't match your industry to a sector benchmark, so we've used the overall market-average multiple (~{result.sdeMultiple}× SDE).
+          <p className="mt-3 rounded-xl bg-amber-100/70 px-4 py-3 text-base text-stone-700">
+            We couldn&apos;t match <strong>your industry</strong> to a sector benchmark, so this uses the overall
+            market-average multiple (~{result.sdeMultiple}× SDE). Go back and pick a closer match if you can —
+            sector is one of the larger levers on the number.
           </p>
         )}
       </div>
@@ -628,13 +676,29 @@ function ResultView({ result, currency, planHref }: { result: ReturnType<typeof 
         </div>
       </div>
 
-      <p className="text-xs text-stone-400 leading-relaxed">
-        This is an indicative estimate for guidance only. It applies a multiple of your SDE (profit plus your own
-        pay), using real sector-median multiples from BizBuySell&apos;s 2025 small-business sale data (~9,500 closed
-        deals, market average ~2.5× SDE), adjusted for size, owner-dependence, recurring revenue, client
-        concentration and growth. It is not a formal business valuation or financial advice — real sale prices
-        depend on many factors specific to your business and buyer.
-      </p>
+      <div className="space-y-3 text-base text-stone-500 leading-relaxed">
+        <p>
+          <strong className="text-stone-700">This is the value of the business, before debt.</strong> It&apos;s
+          what the business itself is worth — not what lands in your pocket. Subtract any loans, equipment
+          finance, lease obligations or tax owing to get to that. It also doesn&apos;t account for your lease
+          terms, working capital, or how long you&apos;ve been trading, all of which a buyer will price.
+        </p>
+        <p>
+          <strong className="text-stone-700">Where the multiples come from.</strong> Sector medians are
+          BizBuySell&apos;s 2025 US small-business sale data — ~9,500 closed deals, market average ~2.5× SDE.
+          There is no equivalent Australian dataset at this granularity: the AIBB&apos;s transaction database
+          is members-only, and published Australian guides give broad EBITDA ranges across around two dozen
+          industries rather than per-sector SDE medians. Australian broker resources draw on the same US data
+          for that reason. We use it as an <strong className="text-stone-700">indicative benchmark, not an
+          Australian market quote</strong> — the sector shape travels well; the absolute number should be
+          checked against local evidence before anyone acts on it.
+        </p>
+        <p>
+          An indicative estimate for guidance only, adjusted for size, owner-dependence, recurring revenue,
+          client concentration and growth. Not a formal valuation and not financial advice — real sale prices
+          depend on many factors specific to your business and your buyer.
+        </p>
+      </div>
     </div>
   );
 }
