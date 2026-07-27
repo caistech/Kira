@@ -9,19 +9,27 @@ export interface Currency {
   symbol: string;
   locale: string;
   label: string;
+  /**
+   * What the consumption tax is CALLED in this jurisdiction.
+   *
+   * Every displayed price is tax-EXCLUSIVE and must say so next to the figure. "+ GST" is right in
+   * Australia and meaningless in Britain, so the label travels with the currency rather than being
+   * hardcoded — this product is reachable from anywhere and already lets a visitor switch currency.
+   */
+  tax: string;
 }
 
 export const CURRENCIES: Currency[] = [
-  { code: 'USD', symbol: '$', locale: 'en-US', label: 'USD — US Dollar' },
-  { code: 'AUD', symbol: '$', locale: 'en-AU', label: 'AUD — Australian Dollar' },
-  { code: 'GBP', symbol: '£', locale: 'en-GB', label: 'GBP — British Pound' },
-  { code: 'EUR', symbol: '€', locale: 'en-IE', label: 'EUR — Euro' },
-  { code: 'CAD', symbol: '$', locale: 'en-CA', label: 'CAD — Canadian Dollar' },
-  { code: 'NZD', symbol: '$', locale: 'en-NZ', label: 'NZD — NZ Dollar' },
-  { code: 'SGD', symbol: '$', locale: 'en-SG', label: 'SGD — Singapore Dollar' },
-  { code: 'ZAR', symbol: 'R', locale: 'en-ZA', label: 'ZAR — South African Rand' },
-  { code: 'INR', symbol: '₹', locale: 'en-IN', label: 'INR — Indian Rupee' },
-  { code: 'AED', symbol: 'د.إ', locale: 'en-AE', label: 'AED — UAE Dirham' },
+  { code: 'USD', symbol: '$', locale: 'en-US', label: 'USD — US Dollar', tax: 'sales tax' },
+  { code: 'AUD', symbol: '$', locale: 'en-AU', label: 'AUD — Australian Dollar', tax: 'GST' },
+  { code: 'GBP', symbol: '£', locale: 'en-GB', label: 'GBP — British Pound', tax: 'VAT' },
+  { code: 'EUR', symbol: '€', locale: 'en-IE', label: 'EUR — Euro', tax: 'VAT' },
+  { code: 'CAD', symbol: '$', locale: 'en-CA', label: 'CAD — Canadian Dollar', tax: 'GST/HST' },
+  { code: 'NZD', symbol: '$', locale: 'en-NZ', label: 'NZD — NZ Dollar', tax: 'GST' },
+  { code: 'SGD', symbol: '$', locale: 'en-SG', label: 'SGD — Singapore Dollar', tax: 'GST' },
+  { code: 'ZAR', symbol: 'R', locale: 'en-ZA', label: 'ZAR — South African Rand', tax: 'VAT' },
+  { code: 'INR', symbol: '₹', locale: 'en-IN', label: 'INR — Indian Rupee', tax: 'GST' },
+  { code: 'AED', symbol: 'د.إ', locale: 'en-AE', label: 'AED — UAE Dirham', tax: 'VAT' },
 ];
 
 // AUD is the fallback (Corporate AI Solutions / Global Buildtech is an Australian entity and AU is the
@@ -64,7 +72,23 @@ export function detectCurrency(): string {
   return DEFAULT_CURRENCY;
 }
 
-/** Format a dollar figure in the given currency, no cents. */
+/**
+ * The tax suffix for a displayed PRICE, e.g. "+ GST" / "+ VAT".
+ *
+ * Prices are quoted tax-exclusive and every surface that shows one must carry this. Stating it is
+ * not a nicety: a business buyer reads an unqualified figure as the amount that will leave their
+ * account, and in most of these jurisdictions it is not.
+ */
+export function taxSuffix(currencyCode: string = DEFAULT_CURRENCY): string {
+  return `+ ${getCurrency(currencyCode).tax}`;
+}
+
+/** A price with its tax qualifier — the ONLY way a price should reach a screen. */
+export function formatPrice(n: number, currencyCode: string = DEFAULT_CURRENCY): string {
+  return `${formatMoney(n, currencyCode)} ${taxSuffix(currencyCode)}`;
+}
+
+/** Format a dollar figure in the given currency, no cents. VALUATION figures only — for a PRICE use formatPrice. */
 export function formatMoney(n: number, currencyCode: string = DEFAULT_CURRENCY): string {
   const c = getCurrency(currencyCode);
   return new Intl.NumberFormat(c.locale, {
