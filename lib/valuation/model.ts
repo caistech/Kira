@@ -104,6 +104,19 @@ const CLIENT_TREND_SCORE: Record<ClientTrend, number> = { shrinking: 0, stable: 
 
 // --- Factor weights (sum = 10, so readiness = weighted sum / 10) ------------------------------
 
+/**
+ * The version of THIS model, stamped onto every valuation snapshot.
+ *
+ * BUMP IT whenever anything above changes a number: the sub-score maps, the weights, the multiple
+ * constants, the size premium. Without it a stored series is uninterpretable — re-weighting would
+ * silently rewrite everyone's history, which is the same objection that makes re-weighting unsafe
+ * in the first place ("it would re-price valuations already shown to people"). With it, an old
+ * snapshot stays readable as what it was: this input, scored by that code.
+ *
+ * Format: date of the change + a counter for same-day revisions.
+ */
+export const MODEL_VERSION = '2026-07-24.1';
+
 const WEIGHTS = { ownerDependence: 3, systems: 2, recurringRevenue: 2, clientConcentration: 1.5, growth: 1.5 } as const;
 const TOTAL_WEIGHT =
   WEIGHTS.ownerDependence + WEIGHTS.systems + WEIGHTS.recurringRevenue + WEIGHTS.clientConcentration + WEIGHTS.growth;

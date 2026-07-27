@@ -5,7 +5,14 @@
 // The channel's consent position rests on ONE rule: a broker only sends their link to owners they
 // already hold a current listing agreement with. That is what makes their email to an owner an
 // ordinary message inside an existing commercial relationship rather than cold marketing — and it
-// is the reason the compose-and-hand-off design is defensible.
+// is what keeps our own first contact clean, because the owner reaches us by opening their broker's
+// link and running their own valuation. They come to us; we do not go to them.
+//
+// The fee clauses (3 and 4) carry the introducer's own regulatory obligations: APES 110 s330 wants
+// written disclosure of the fee, its payer and its calculation, and the TPB's conflicts-of-interest
+// item wants the amount stated before or when the service is provided. Clause 4 is the one place
+// disclosure is not enough — a commission tied to an assurance client is prohibited outright.
+// Position + sources: orchestrator/REFERRAL_FEE_POSITION.md.
 //
 // A rule nobody records is a hope. This is the wording, versioned, so acceptance means something
 // specific and a later change of wording forces re-acceptance.
@@ -17,7 +24,7 @@
  * Bump this whenever the wording below changes. Everyone re-accepts on their next visit — an
  * acceptance of superseded terms is not an acceptance of the current ones.
  */
-export const UNDERTAKING_VERSION = '2026-07-26.1';
+export const UNDERTAKING_VERSION = '2026-07-27.1';
 
 export interface UndertakingClause {
   heading: string;
@@ -33,16 +40,28 @@ export const UNDERTAKING_CLAUSES: UndertakingClause[] = [
       'people who have already engaged you.',
   },
   {
-    heading: 'You send it, we do not',
+    heading: 'The introduction is yours to make',
     body:
-      'Introductions go out from your own email, in your own words, under your own name. We never ' +
-      'email an owner on your behalf, and we never contact your clients to sell around you.',
+      'Introductions go out from your own email, in your own words, under your own name — we do not ' +
+      'email an owner before you have introduced us, and we never approach your clients to sell ' +
+      'around you. Once an owner comes to us of their own accord, we deal with them directly: they ' +
+      'run their own valuation, we walk them through it, and we look after them from there.',
   },
   {
-    heading: 'You tell them you have an interest',
+    heading: 'You tell them what you are paid — in writing',
     body:
-      'When you introduce an owner to Kira, you tell them you are paid a commission if they ' +
-      'subscribe. It is a small thing to say and it protects the relationship you have with them.',
+      'When you introduce an owner, you tell them in writing that you are paid a commission if they ' +
+      'subscribe, who pays it, and how much. That is your professional obligation, not our ' +
+      'preference — so we write the wording for you and put it beside your link. Copy it into your ' +
+      'own message. Say it at the introduction, not later.',
+  },
+  {
+    heading: 'Not if you audit them',
+    body:
+      'If you provide audit or review services to an owner, we cannot pay you for introducing them ' +
+      '— that is one place disclosure does not fix the problem. Tell us and we will switch the fee ' +
+      'off for that introduction or for your whole account. The introduction still works and your ' +
+      'dashboard is unchanged; you simply are not paid for it.',
   },
   {
     heading: 'You see progress, never their business',

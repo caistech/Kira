@@ -12,6 +12,8 @@
 
 import { createEmailSender } from '@caistech/email-send';
 
+import { COMMISSION_RATE_PCT, commissionRange } from '@/lib/introducer/disclosure';
+
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app';
 
 function senderIdentity() {
@@ -90,6 +92,18 @@ export async function sendIntroducerInvite({
               </p>
               <p style="margin: 0 0 28px 0; padding: 14px 16px; background: #f6f7f9; border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; color: #333; word-break: break-all;">
                 ${referralUrl}
+              </p>
+
+              <h2 style="font-size: 16px; color: #333; margin: 0 0 8px 0;">What you're paid, and what you tell them</h2>
+              <p style="font-size: 15px; color: #555; line-height: 1.6; margin: 0 0 12px 0;">
+                ${COMMISSION_RATE_PCT}% of what an owner pays, every month, for as long as they stay
+                — currently ${commissionRange().text} a month depending on their price band. Nothing
+                is paid during their free month.
+              </p>
+              <p style="font-size: 15px; color: #555; line-height: 1.6; margin: 0 0 28px 0;">
+                You need to tell the owner that in writing when you introduce us. We've written the
+                wording for you — it's on your dashboard, next to your link. If you audit or review
+                an owner, we can't pay you for introducing them; tell us and we'll switch the fee off.
               </p>
 
               <h2 style="font-size: 16px; color: #333; margin: 0 0 8px 0;">Your dashboard</h2>
