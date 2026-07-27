@@ -96,8 +96,12 @@ function buildToolsForUser(userId, journeyType) {
   // stripped dispatch_task/approve_task off all 10 business agents, leaving their (correctly
   // uid-baked) workspace definitions orphaned. An incomplete set here is not a smaller migration,
   // it is a regression, so this list must stay in step with kiraAllTools.
+  // platformIdentity MUST match kiraMemoryTools() in lib/kira/convai.ts. This script cannot import
+  // that module (TS from .mjs), so the option is repeated here — and repeating it is the whole
+  // hazard: without it, re-provisioning quietly reverts every agent to LLM-filled conversation ids,
+  // which is the bug the flag exists to fix. Change one, change both.
   const tools = [
-    ...createConversationTools(APP_URL, '/api/kira/webhooks'),
+    ...createConversationTools(APP_URL, '/api/kira/webhooks', { platformIdentity: true }),
     kiraKnowledgeToolDef(APP_URL),
     ...(journeyType === 'business' ? [kiraDispatchToolDef(APP_URL), kiraApproveToolDef(APP_URL)] : []),
   ];

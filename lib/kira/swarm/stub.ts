@@ -39,7 +39,10 @@ const ClassifySchema = z.object({
   recipient_name: z.string().nullable(),
   recipient_email: z.string().nullable(),
   subject: z.string().nullable(),
-  due_hint: z.string().nullable(),        // e.g. "tomorrow 9am", "next Tuesday" — parsed later/human-set
+  due_hint: z.string().nullable(),        // the owner's own words ("tomorrow 9am") — kept for the readback
+  // The same instant, resolved. A reminder cannot fire off "tomorrow 9am"; something has to turn it
+  // into a timestamp, and the model already holds the sentence. Null when no time was stated.
+  due_at_iso: z.string().nullable(),
   reason_if_unsupported: z.string().nullable(),
 });
 
@@ -55,7 +58,28 @@ You triage an owner-operator's spoken request into ONE task their assistant can 
 - "reminder": set a reminder / follow-up for the owner themselves.
 - "unsupported": anything else (booking, invoicing to an external system, ordering materials, etc.).
 Extract any recipient, subject, and timing the owner stated. Use null for anything not stated; never invent an email address.
+
+TIMING: when the owner states a time ("tomorrow morning", "next Tuesday", "in two hours"), resolve it
+against the current time given below and return it as due_at_iso, an absolute ISO-8601 timestamp with
+offset. Keep their words in due_hint as well. If they stated no time, both are null — do not invent
+one. Prefer a sensible hour when they name only a day ("Tuesday" → 09:00 local).
 `.trim();
+
+// The owner's wall-clock. A relative time cannot be resolved without one, and the model has no clock
+// of its own. Kira has no per-user timezone yet (users carries no timezone column), so this is a
+// portfolio default and NOT a per-owner truth — an owner in Sydney saying "9am" currently gets 9am
+// Perth. Recorded on the artifact so a wrong reminder is diagnosable rather than mysterious.
+const DEFAULT_TIMEZONE = process.env.KIRA_DEFAULT_TIMEZONE || 'Australia/Perth';
+
+function localNow(timeZone: string): string {
+  try {
+    return new Intl.DateTimeFormat('en-AU', {
+      timeZone, dateStyle: 'full', timeStyle: 'short', hour12: false,
+    }).format(new Date());
+  } catch {
+    return new Date().toISOString();
+  }
+}
 
 /**
  * Build the drafting instruction per kind. Kept terse — the owner reviews before anything sends.
@@ -105,10 +129,11 @@ export class LocalSwarmStub implements SwarmCoordinator {
       .maybeSingle();
     if (existing.data) return this.toResult(existing.data);
 
+    const timeZone = await this.ownerTimezone(intent.tenantId);
     const { result: cls } = await this.runner().run({
       model: MODEL,
       system: CLASSIFY_SYSTEM,
-      input: intent.utterance,
+      input: `Current time: ${localNow(timeZone)} (${timeZone})\n\n${intent.utterance}`,
       schema: ClassifySchema,
     });
 
@@ -147,6 +172,8 @@ export class LocalSwarmStub implements SwarmCoordinator {
         recipient_email: cls.recipient_email,
         subject: cls.subject,
         due_hint: cls.due_hint,
+        due_at: cls.due_at_iso,
+        due_timezone: timeZone,
       },
     });
     return this.toResult(row);
@@ -193,9 +220,34 @@ export class LocalSwarmStub implements SwarmCoordinator {
       (row as KiraTaskRow).artifact = artifact;
     }
 
-    // Execute the owned task. Only email is wired to real delivery today (Resend is in-stack);
-    // reminder persists as a scheduled row (a cron/notification transport is the next increment);
-    // quote sends its covering message through the same email path when a recipient is known.
+    // A reminder is not DONE when it is approved — it is SCHEDULED. Marking it done here was the
+    // product promising something it could not deliver: the row was written, "Done." was spoken,
+    // and nothing ever fired because nothing swept the table. It now waits for its due time and
+    // /api/cron/reminders delivers it.
+    if (row.kind === 'reminder') {
+      const dueAt = parseDueAt((row.artifact || {}) as Record<string, unknown>);
+      if (!dueAt) {
+        // Degrade, don't fake: a reminder with no time is not a reminder. Say so rather than
+        // accept it and silently never fire.
+        const updated = await this.setStatus(
+          taskGroupId,
+          'failed',
+          { channel: 'reminder', error: 'no due time captured' },
+          'I could not work out when to remind you.',
+        );
+        return this.toResult(updated);
+      }
+      const updated = await this.setStatus(
+        taskGroupId,
+        'scheduled',
+        { channel: 'reminder', due_at: dueAt, scheduled_at: nowIso() },
+        'Scheduled.',
+        { due_at: dueAt },
+      );
+      return this.toResult(updated);
+    }
+
+    // Execute the owned task. Email and quote go through Resend, which is in-stack.
     try {
       const result = await this.execute(row);
       const updated = await this.setStatus(taskGroupId, 'done', result, 'Done.');
@@ -211,7 +263,10 @@ export class LocalSwarmStub implements SwarmCoordinator {
     }
   }
 
-  // --- execution (the honest seam: real where cheap, marked where it needs transport) ---
+  // --- execution ---
+  //
+  // Reaches only the send kinds: reminders branch to 'scheduled' in resolveApproval and are
+  // delivered later by /api/cron/reminders, which calls sendReminder below.
 
   private async execute(row: KiraTaskRow): Promise<Record<string, unknown>> {
     const art = (row.artifact || {}) as Record<string, unknown>;
@@ -227,9 +282,54 @@ export class LocalSwarmStub implements SwarmCoordinator {
       return { channel: 'email', to, subject, provider_id: (sent as { id?: string })?.id ?? null, sent_at: nowIso() };
     }
 
-    // reminder: persisted; the notification transport (cron → owner's preferred channel) is the
-    // next increment. The row itself IS the durable reminder; done = it's captured + scheduled.
-    return { channel: 'reminder', due_hint: art.due_hint ?? null, scheduled_at: nowIso() };
+    throw new Error(`execute() called for unexpected kind '${row.kind}'`);
+  }
+
+  /**
+   * Deliver a due reminder to the owner. Called by the cron sweeper, not by the voice path — the
+   * whole point of a reminder is that it arrives when the owner is not talking to Kira. Email is
+   * the only transport Kira has; when there is a push/SMS channel this is where it changes.
+   */
+  async deliverDueReminders(limit = 50): Promise<{ due: number; sent: number; failed: number }> {
+    const { data: rows, error } = await this.supabase
+      .from('kira_tasks')
+      .select('*')
+      .eq('status', 'scheduled')
+      .lte('due_at', nowIso())
+      .order('due_at', { ascending: true })
+      .limit(limit);
+    if (error) throw new Error(`kira_tasks sweep failed: ${error.message}`);
+
+    const out = { due: rows?.length ?? 0, sent: 0, failed: 0 };
+    for (const row of (rows ?? []) as KiraTaskRow[]) {
+      try {
+        const { data: owner } = await this.supabase
+          .from('users')
+          .select('email')
+          .eq('id', row.user_id)
+          .maybeSingle();
+        const to = (owner?.email || '').trim();
+        if (!to) throw new Error('owner has no email address');
+
+        const body = row.preview || row.summary || 'You asked me to remind you about this.';
+        const sent = await sendEmail({
+          to,
+          subject: `Reminder: ${row.summary || 'from Kira'}`.slice(0, 120),
+          html: `<p>${escapeHtml(body)}</p><p style="color:#666">You asked me to remind you: “${escapeHtml(row.utterance)}”</p>`,
+          text: `${body}\n\nYou asked me to remind you: "${row.utterance}"`,
+        });
+        await this.setStatus(row.id, 'done', {
+          channel: 'reminder', to, provider_id: (sent as { id?: string })?.id ?? null, fired_at: nowIso(),
+        }, 'Done.');
+        out.sent += 1;
+      } catch (e) {
+        // One bad row must not stop the sweep. Leave it 'scheduled' so the next run retries rather
+        // than burning the reminder on a transient mail failure.
+        console.error(`[reminders] ${row.id} failed:`, e);
+        out.failed += 1;
+      }
+    }
+    return out;
   }
 
   /**
@@ -237,6 +337,30 @@ export class LocalSwarmStub implements SwarmCoordinator {
    * (bridged to auth by users.auth_user_id), and tenantId IS users.id. Returns null rather than a
    * guess — draftSystem handles not knowing, and a wrong name on a client email is worse than none.
    */
+  /**
+   * The owner's IANA timezone, or the portfolio default when we have never captured one. NULL in
+   * the column means "not known", not "Perth" — so the fallback is explicit here rather than baked
+   * into the schema, and a captured zone is an improvement rather than an overwrite.
+   */
+  private async ownerTimezone(tenantId: TenantId): Promise<string> {
+    try {
+      const { data } = await this.supabase
+        .from('users')
+        .select('timezone')
+        .eq('id', tenantId)
+        .maybeSingle();
+      const tz = (data?.timezone || '').trim();
+      // Validate before trusting it: a bad zone name would throw inside Intl on every reminder.
+      if (tz) {
+        new Intl.DateTimeFormat('en-AU', { timeZone: tz });
+        return tz;
+      }
+    } catch {
+      /* fall through to the default */
+    }
+    return DEFAULT_TIMEZONE;
+  }
+
   private async ownerName(tenantId: TenantId): Promise<string | null> {
     try {
       const { data } = await this.supabase
@@ -276,10 +400,11 @@ export class LocalSwarmStub implements SwarmCoordinator {
     status: TaskState,
     result: Record<string, unknown>,
     _message: string,
+    patch?: Record<string, unknown>,
   ): Promise<KiraTaskRow> {
     const { data, error } = await this.supabase
       .from('kira_tasks')
-      .update({ status, result })
+      .update({ status, result, ...(patch ?? {}) })
       .eq('id', id)
       .select('*')
       .single();
@@ -295,11 +420,13 @@ export class LocalSwarmStub implements SwarmCoordinator {
     const message =
       row.status === 'awaiting_approval'
         ? 'Drafted — say the word and I’ll send it.'
-        : row.status === 'done'
-          ? 'Done.'
-          : row.status === 'unsupported'
-            ? (row.summary || 'Noted — I can’t do that one myself yet.')
-            : undefined;
+        : row.status === 'scheduled'
+          ? `Set — I’ll remind you ${spokenWhen(row.due_at, (row.artifact || {}).due_timezone as string | undefined)}.`
+          : row.status === 'done'
+            ? 'Done.'
+            : row.status === 'unsupported'
+              ? (row.summary || 'Noted — I can’t do that one myself yet.')
+              : undefined;
     return { taskGroupId: row.id, status: row.status, draft, message };
   }
 }
@@ -316,6 +443,37 @@ interface KiraTaskRow {
   artifact: Record<string, unknown> | null;
   result: Record<string, unknown> | null;
   handled_by: string;
+  due_at: string | null;
+}
+
+/**
+ * The reminder's absolute time, taken from the classifier's resolved value. Rejects anything
+ * unparseable or in the past — a reminder already overdue at approval would fire on the very next
+ * sweep, which is not what the owner asked for and reads as a bug.
+ */
+function parseDueAt(artifact: Record<string, unknown>): string | null {
+  const raw = artifact.due_at;
+  if (typeof raw !== 'string' || !raw.trim()) return null;
+  const when = new Date(raw);
+  if (Number.isNaN(when.getTime())) return null;
+  if (when.getTime() <= Date.now()) return null;
+  return when.toISOString();
+}
+
+/**
+ * How Kira says the due time out loud. Reads the zone recorded on the task rather than the current
+ * default, so a readback always describes the clock the reminder was actually set against — even if
+ * the owner's timezone is captured or corrected afterwards.
+ */
+function spokenWhen(dueAt: string | null, timeZone?: string): string {
+  if (!dueAt) return 'then';
+  try {
+    return new Intl.DateTimeFormat('en-AU', {
+      timeZone: timeZone || DEFAULT_TIMEZONE, weekday: 'long', hour: 'numeric', minute: '2-digit', hour12: true,
+    }).format(new Date(dueAt));
+  } catch {
+    return 'then';
+  }
 }
 
 function escapeHtml(s: string): string {

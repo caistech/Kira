@@ -194,7 +194,22 @@ export function toolSecretOk(req: Request): boolean {
  * fails closed, which is worse than refusing to provision it.
  */
 export function kiraMemoryTools(baseUrl: string): ConvAITool[] {
-  const tools = createConversationTools(baseUrl, KIRA_WEBHOOK_BASE_PATH);
+  // platformIdentity binds the identity parameters to ElevenLabs' system__conversation_id /
+  // system__agent_id dynamic variables, so the PLATFORM fills them instead of the LLM.
+  //
+  // Without it those params are declared LLM-filled — and an agent is never told its own
+  // conversation id, so it omits the field (400) or invents one. save_message and
+  // update_conversation_topic are keyed ONLY by conversation_id (they are not uid-tools, so
+  // kiraAllTools does not bake ?uid or strip the param), which means both were silently failing
+  // in live calls. Nothing surfaced it: the post-call webhook persists the whole transcript to
+  // conversation_messages afterwards, so the rows appear anyway, and the welcome-back opener is
+  // rendered server-side rather than from the tool. Capture-as-you-go was reconstructed after the
+  // call rather than happening during it.
+  //
+  // Kira is one-agent-per-user and keeps ?uid identity for the memory tools (see kiraAllTools) —
+  // these are not alternatives. uid answers "whose memory", the platform-filled conversation id
+  // answers "which conversation", and save_message needs the second one.
+  const tools = createConversationTools(baseUrl, KIRA_WEBHOOK_BASE_PATH, { platformIdentity: true });
   const secret = requireToolSecret();
   for (const t of tools) {
     if (t.webhook) {

@@ -27,6 +27,7 @@ export interface DispatchedIntent {
 export type TaskState =
   | 'queued'             // accepted, work in progress (or handed to the swarm)
   | 'awaiting_approval'  // a draft is ready; nothing sends until the owner approves (HITL)
+  | 'scheduled'          // approved, waiting for its due time — NOT yet done (see kira_tasks.due_at)
   | 'done'               // executed (and the owner notified)
   | 'failed'
   | 'unsupported';       // no owned handler + no swarm yet — captured, not silently dropped
