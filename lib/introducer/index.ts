@@ -132,6 +132,17 @@ export interface OwnerProjection {
   valuationToday: number | null;
   readiness: number | null;
   valuationAt: string | null;
+  // Where they started. Movement is a DIFFERENCE, and until the snapshots table existed the board
+  // had only a current figure to show — which is why it could not honour its own "valuation
+  // movement" promise. Null for an owner with no history yet.
+  baselineGap: number | null;
+  baselineToday: number | null;
+  baselineReadiness: number | null;
+  baselineAt: string | null;
+  /** That owner's ceiling (85 + their growth contribution) — moves when their trends move. */
+  readinessPotential: number | null;
+  /** How many points are on their curve. 1 means "started, nothing to compare yet". */
+  snapshotCount: number;
 }
 
 function hashToken(token: string): string {
@@ -249,6 +260,13 @@ export async function ownerProjection(introducerId: string): Promise<OwnerProjec
     valuationToday: row.valuation_today == null ? null : Number(row.valuation_today),
     readiness: row.readiness == null ? null : Number(row.readiness),
     valuationAt: (row.valuation_at as string) ?? null,
+    baselineGap: row.baseline_gap == null ? null : Number(row.baseline_gap),
+    baselineToday: row.baseline_today == null ? null : Number(row.baseline_today),
+    baselineReadiness: row.baseline_readiness == null ? null : Number(row.baseline_readiness),
+    baselineAt: (row.baseline_at as string) ?? null,
+    readinessPotential:
+      row.readiness_potential == null ? null : Number(row.readiness_potential),
+    snapshotCount: row.snapshot_count == null ? 0 : Number(row.snapshot_count),
   }));
 }
 

@@ -140,18 +140,6 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
 export const TOOL_SECRET_HEADER = CONVAI_TOOL_SECRET_HEADER;
 
 /**
- * The pre-canonical header, still ACCEPTED on inbound requests.
- *
- * Agents provisioned before the rename send this one, and they are live. Dropping it in the same
- * change that flips the guard fail-closed would 401 every existing user's memory calls the moment
- * this deploys. Rename in, re-provision, then rename out — never all at once.
- *
- * REMOVE once `scripts/reprovision-kira-agents.mjs` has run over every active agent and the audit
- * shows zero agents sending it.
- */
-const LEGACY_TOOL_SECRET_HEADER = 'x-kira-tool-secret';
-
-/**
  * The configured secret.
  *
  * Resolved lazily — on the first REQUEST, never at module load. A module-load throw would break
@@ -181,12 +169,16 @@ function requireToolSecret(): string {
  * Throws (→ 500) when the server is misconfigured, and returns false (→ 401) when the caller
  * simply did not present the secret. Those are different failures and deserve different answers:
  * a 401 tells an attacker they guessed wrong, a 500 tells the operator to fix their environment.
+ *
+ * The canonical header is now the ONLY one accepted. The legacy `x-kira-tool-secret` was removed
+ * once the audit showed zero callers presenting it: 13/13 operational agents re-provisioned onto
+ * the canonical header, and all 41 Kira-pointing workspace tools migrated — including 15 DETACHED
+ * ones that reprovision could never reach, because it only touches tools bound to a live agent.
+ * Those were harmless while unreferenced and would have become a 401 the moment anyone re-attached
+ * one. `scripts/patch-tool-secret-headers.mjs` is what reaches them.
  */
 export function toolSecretOk(req: Request): boolean {
-  const secret = requireToolSecret();
-  const presented =
-    req.headers.get(TOOL_SECRET_HEADER) ?? req.headers.get(LEGACY_TOOL_SECRET_HEADER);
-  return presented === secret;
+  return req.headers.get(TOOL_SECRET_HEADER) === requireToolSecret();
 }
 
 /**
@@ -250,7 +242,7 @@ export function kiraDoingTools(baseUrl: string): ConvAITool[] {
  * conversation record: the agent sends only the LLM-filled params). Kira provisions one agent per
  * user, so the owner is known at provision and baked in; the agent never has to identify anyone, and
  * the handlers resolve the user from `?uid` (falling back to the conversation binding for legacy).
- * The `x-kira-tool-secret` header still gates the routes, so a baked uid is not a bare-param hole.
+ * The `x-convai-tool-secret` header still gates the routes, so a baked uid is not a bare-param hole.
  */
 export function kiraAllTools(baseUrl: string, userId?: string): ConvAITool[] {
   const tools = [...kiraMemoryTools(baseUrl), kiraKnowledgeTool(baseUrl), ...kiraDoingTools(baseUrl)];
