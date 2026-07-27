@@ -4,11 +4,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { getCurrentAppUser, isCurrentUserAdmin } from '@/lib/auth';
+import { haltState } from '@/lib/kill-switch';
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 
 export async function POST(req: NextRequest) {
   try {
+    // The kill switch — same chokepoint reasoning as /api/kira/start: no signed URL, no new
+    // conversation, no redeploy needed. Both start routes are gated because halting one and not the
+    // other would be a control that only appears to work.
+    const halt = await haltState('conversations');
+    if (halt.halted) {
+      console.warn('[kill-switch] refused chat start:', halt.scope, halt.reason);
+      return NextResponse.json(
+        { error: 'Kira is briefly unavailable. Please try again shortly.' },
+        { status: 503 },
+      );
+    }
+
     if (!ELEVENLABS_API_KEY) {
       return NextResponse.json(
         { error: 'Missing ELEVENLABS_API_KEY' },
