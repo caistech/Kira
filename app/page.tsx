@@ -184,7 +184,7 @@ export default function KiraLandingPage() {
               profitable business that runs on <span className="font-semibold text-stone-800">them</span>. Everything that matters is
               in your head, not on paper — so a buyer isn&apos;t buying an asset, they&apos;re buying you, and they
               price it accordingly. <span className="font-semibold text-stone-800">Kira</span> works alongside you day to day, in
-              conversation, and turns what you know into a documented <span className="font-semibold text-violet-600">Business Genome</span> the
+              conversation, and turns what you know into a documented <a href="/genome" className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500">Business Genome</a> the
               business can be sold with. Most owners start this <span className="font-semibold text-stone-800">before they&apos;ve told anyone</span>.
             </p>
 

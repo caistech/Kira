@@ -36,6 +36,12 @@ const STEPS = [
     heading: 'You get paid, monthly',
     body: '10% of what they pay us, every month, for as long as they keep paying. On collected funds only.',
   },
+  {
+    // Stated to advisors as plainly as to owners. A broker is putting their own name on the
+    // introduction, so the first thing they need to know is what they are NOT vouching for yet.
+    heading: 'Privacy mode is on the roadmap, not built',
+    body: 'Where this goes: Kira sits in the background and wakes on her name, with a pause the owner controls — and Kira offering it herself when a conversation is obviously private. Today she listens only when the owner opens a conversation. Your client is not being recorded in the background, and we would rather you heard that from us than have to ask.',
+  },
 ];
 
 export default function AdvisorsPage() {
