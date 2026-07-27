@@ -61,6 +61,15 @@ Generate the narration with ElevenLabs TTS at build time using the canonical Kir
 files, and caption every line so it works with the sound off — a phone in a ute, or a man who does
 not want his office hearing it.
 
+**The voice id is `M7ya1YbaeFaPXljg9BpK` — "Hannah Jayne" (Australian, female).** This is the voice
+production actually uses, read from `NEXT_PUBLIC_KIRA_VOICE_ID`.
+
+⚠️ **Do NOT let the generator fall back to the code default.** `lib/kira/discovery-config.ts`
+defaults to `EXAVITQu4vr4xnSDxMaL`, which is a DIFFERENT voice — so a script that reads the env with
+a `||` fallback will silently produce a demo narrated by a woman the product does not use. A demo
+that sounds like someone else is worse than no audio, because it is the one thing a listener cannot
+un-hear. The generator must fail loudly if the id is missing rather than substitute.
+
 This is deliberately NOT a reopening of "public voice agent", which the operator has ruled out.
 
 ## Non-negotiables carried from the standards
