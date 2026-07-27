@@ -175,12 +175,17 @@ export default function KiraLandingPage() {
             </div>
 
             <h1 className={`font-display text-4xl lg:text-6xl font-bold text-stone-800 mb-6 leading-tight ${isVisible ? 'fade-up fade-up-delay-1' : 'opacity-0'}`}>
-              Your business is your <span className="bg-gradient-to-r from-amber-500 to-pink-500 bg-clip-text text-transparent">biggest asset.</span>
-              <br /><span className="text-2xl lg:text-4xl text-stone-600">Do you actually know what it's <span className="bg-gradient-to-r from-violet-500 to-pink-500 bg-clip-text text-transparent">worth?</span></span>
+              You spent thirty years building it.
+              <br /><span className="text-2xl lg:text-4xl text-stone-600">Now sell it for what it&apos;s <span className="bg-gradient-to-r from-violet-500 to-pink-500 bg-clip-text text-transparent">actually worth.</span></span>
             </h1>
 
             <p className={`font-body text-lg lg:text-xl text-stone-600 max-w-2xl mx-auto mb-6 leading-relaxed ${isVisible ? 'fade-up fade-up-delay-2' : 'opacity-0'}`}>
-              Most owners find out the hard way that a business runs on knowledge that lives only in their head — so a buyer pays for a <span className="font-semibold text-stone-800">job, not an asset.</span> Kira — <span className="font-semibold text-stone-800">your fractional exec</span> — captures that knowledge into a <span className="font-semibold text-violet-600">Business Genome</span>, so your business becomes transferable — and worth far more.
+              This is for one person: the owner in their sixties, three or four decades in, with a
+              profitable business that runs on <span className="font-semibold text-stone-800">them</span>. Everything that matters is
+              in your head, not on paper — so a buyer isn&apos;t buying an asset, they&apos;re buying you, and they
+              price it accordingly. <span className="font-semibold text-stone-800">Kira</span> works alongside you day to day, in
+              conversation, and turns what you know into a documented <span className="font-semibold text-violet-600">Business Genome</span> the
+              business can be sold with. Most owners start this <span className="font-semibold text-stone-800">before they&apos;ve told anyone</span>.
             </p>
 
             <div className={`flex flex-col sm:flex-row items-center justify-center gap-4 ${isVisible ? 'fade-up fade-up-delay-3' : 'opacity-0'}`}>
