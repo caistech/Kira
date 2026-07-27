@@ -129,10 +129,11 @@ export class LocalSwarmStub implements SwarmCoordinator {
       .maybeSingle();
     if (existing.data) return this.toResult(existing.data);
 
+    const timeZone = await this.ownerTimezone(intent.tenantId);
     const { result: cls } = await this.runner().run({
       model: MODEL,
       system: CLASSIFY_SYSTEM,
-      input: `Current time: ${localNow(DEFAULT_TIMEZONE)} (${DEFAULT_TIMEZONE})\n\n${intent.utterance}`,
+      input: `Current time: ${localNow(timeZone)} (${timeZone})\n\n${intent.utterance}`,
       schema: ClassifySchema,
     });
 
@@ -172,7 +173,7 @@ export class LocalSwarmStub implements SwarmCoordinator {
         subject: cls.subject,
         due_hint: cls.due_hint,
         due_at: cls.due_at_iso,
-        due_timezone: DEFAULT_TIMEZONE,
+        due_timezone: timeZone,
       },
     });
     return this.toResult(row);
@@ -336,6 +337,30 @@ export class LocalSwarmStub implements SwarmCoordinator {
    * (bridged to auth by users.auth_user_id), and tenantId IS users.id. Returns null rather than a
    * guess — draftSystem handles not knowing, and a wrong name on a client email is worse than none.
    */
+  /**
+   * The owner's IANA timezone, or the portfolio default when we have never captured one. NULL in
+   * the column means "not known", not "Perth" — so the fallback is explicit here rather than baked
+   * into the schema, and a captured zone is an improvement rather than an overwrite.
+   */
+  private async ownerTimezone(tenantId: TenantId): Promise<string> {
+    try {
+      const { data } = await this.supabase
+        .from('users')
+        .select('timezone')
+        .eq('id', tenantId)
+        .maybeSingle();
+      const tz = (data?.timezone || '').trim();
+      // Validate before trusting it: a bad zone name would throw inside Intl on every reminder.
+      if (tz) {
+        new Intl.DateTimeFormat('en-AU', { timeZone: tz });
+        return tz;
+      }
+    } catch {
+      /* fall through to the default */
+    }
+    return DEFAULT_TIMEZONE;
+  }
+
   private async ownerName(tenantId: TenantId): Promise<string | null> {
     try {
       const { data } = await this.supabase
@@ -396,7 +421,7 @@ export class LocalSwarmStub implements SwarmCoordinator {
       row.status === 'awaiting_approval'
         ? 'Drafted — say the word and I’ll send it.'
         : row.status === 'scheduled'
-          ? `Set — I’ll remind you ${spokenWhen(row.due_at)}.`
+          ? `Set — I’ll remind you ${spokenWhen(row.due_at, (row.artifact || {}).due_timezone as string | undefined)}.`
           : row.status === 'done'
             ? 'Done.'
             : row.status === 'unsupported'
@@ -435,12 +460,16 @@ function parseDueAt(artifact: Record<string, unknown>): string | null {
   return when.toISOString();
 }
 
-/** How Kira says the due time out loud, in the owner's timezone. */
-function spokenWhen(dueAt: string | null): string {
+/**
+ * How Kira says the due time out loud. Reads the zone recorded on the task rather than the current
+ * default, so a readback always describes the clock the reminder was actually set against — even if
+ * the owner's timezone is captured or corrected afterwards.
+ */
+function spokenWhen(dueAt: string | null, timeZone?: string): string {
   if (!dueAt) return 'then';
   try {
     return new Intl.DateTimeFormat('en-AU', {
-      timeZone: DEFAULT_TIMEZONE, weekday: 'long', hour: 'numeric', minute: '2-digit', hour12: true,
+      timeZone: timeZone || DEFAULT_TIMEZONE, weekday: 'long', hour: 'numeric', minute: '2-digit', hour12: true,
     }).format(new Date(dueAt));
   } catch {
     return 'then';
