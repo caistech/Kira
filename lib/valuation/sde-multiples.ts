@@ -98,6 +98,8 @@ export const SECTOR_MULTIPLES: SectorMultiple[] = [
 /** The overall market-average SDE multiple - the honest fallback for an unmatched sector. */
 export const AVERAGE_SDE_MULTIPLE = 2.5;
 
+import { synonymSector } from './industry-synonyms';
+
 const BY_NAME = new Map(SECTOR_MULTIPLES.map((s) => [s.name.toLowerCase(), s.sde]));
 
 /**
@@ -110,6 +112,20 @@ export function lookupSdeMultiple(industry: string): { sde: number; matched: boo
   const q = industry.trim().toLowerCase();
   const exact = BY_NAME.get(q);
   if (typeof exact === 'number') return { sde: exact, matched: true };
+
+  // The Australian word for the trade, before the loose match.
+  //
+  // Every sector name here is worded for an American — "Day Care & Child Care", "Hair Salons &
+  // Barber Shops" — so an owner typing "plumber", "sparky" or "childcare" matched nothing and was
+  // silently dropped onto the market average at question one. This runs first because it is exact:
+  // the loose match below would answer "concreter" with nothing and "civil" with nothing, while
+  // happily matching a stray substring somewhere else.
+  const viaSynonym = synonymSector(q);
+  if (viaSynonym) {
+    const sde = BY_NAME.get(viaSynonym.toLowerCase());
+    if (typeof sde === 'number') return { sde, matched: true };
+  }
+
   // Loose match: the query contains a sector name, or a sector name contains the query.
   for (const s of SECTOR_MULTIPLES) {
     const n = s.name.toLowerCase();

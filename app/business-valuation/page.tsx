@@ -196,6 +196,10 @@ export default function BusinessValuationPage() {
   // Owners pick their own currency from the selector (persisted); true location-based detection (IP)
   // is a later upgrade. Only a SAVED explicit choice overrides the AUD default.
   const [currency, setCurrency] = useState(DEFAULT_CURRENCY);
+  // The LLM backstop's answer, and the phrase we already asked about — so a blur/refocus loop
+  // cannot fire the same call repeatedly.
+  const [llmSector, setLlmSector] = useState<string | null>(null);
+  const [llmTried, setLlmTried] = useState<string | null>(null);
   useEffect(() => {
     let saved: string | null = null;
     try {
@@ -311,21 +315,25 @@ export default function BusinessValuationPage() {
           <a href="/" className="font-display font-bold text-xl bg-gradient-to-r from-amber-500 via-pink-500 to-violet-500 bg-clip-text text-transparent">
             Kira
           </a>
+          {/* CURRENCY SELECTOR — ARCHIVED, deliberately not deleted.
+              It offered ten currencies and CONVERTED NOTHING: changing it relabelled the same
+              number, so an Australian owner's gap could read as £752,919. A wrong number is worse
+              than a missing feature, and the fix is not a country picker — it is real FX plus an
+              honest statement that the multiple is US-derived either way.
+              We quote AUD only, because the ICP is Australian owner-operators and multi-currency is
+              scale infrastructure for a market we have deliberately narrowed away from.
+              The CURRENCIES table stays in lib/valuation/currency.ts and still carries each
+              currency's TAX NAME, which the "+ GST" suffix reads from — so re-enabling this is
+              restoring the markup below, not rebuilding the model.
+
           <label className="flex items-center gap-1.5 text-sm text-stone-500 font-body">
             <span className="hidden sm:inline">Currency</span>
-            <select
-              value={currency}
-              onChange={(e) => changeCurrency(e.target.value)}
-              aria-label="Display currency"
-              className="rounded-lg border border-amber-200 bg-white px-2 py-1.5 text-stone-700 min-h-[44px] focus:border-pink-400 focus:outline-none"
-            >
-              {CURRENCIES.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.code}
-                </option>
-              ))}
+            <select value={currency} onChange={(e) => changeCurrency(e.target.value)} aria-label="Display currency"
+              className="rounded-lg border border-amber-200 bg-white px-2 py-1.5 text-stone-700 min-h-[44px]">
+              {CURRENCIES.map((c) => (<option key={c.code} value={c.code}>{c.code}</option>))}
             </select>
           </label>
+          */}
         </div>
         {/* Progress */}
         <div className="h-1.5 w-full bg-amber-100">
@@ -399,6 +407,31 @@ export default function BusinessValuationPage() {
                       setIndustryQuery(e.target.value);
                       setAnswer('industry', e.target.value);
                     }}
+                    onBlur={() => {
+                      // The LLM backstop, and ONLY here: the mechanical layers (exact name, the
+                      // Australian synonym table, loose substring) have already run and missed.
+                      // On blur rather than per keystroke — a model call on the first field an
+                      // owner touches would add latency and cost to every visitor.
+                      const q = industryQuery.trim();
+                      if (!q || exact || matches.length > 0 || llmSector || llmTried === q) return;
+                      setLlmTried(q);
+                      fetch('/api/valuation/match-industry', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ industry: q }),
+                      })
+                        .then((r) => (r.ok ? r.json() : { matched: false }))
+                        .then((d) => {
+                          if (d?.matched && d.sector) {
+                            setLlmSector(d.sector);
+                            // Store the SECTOR, so the valuation uses the real multiple. His own
+                            // words stay in the box; the model's answer is shown below, not
+                            // silently swapped in.
+                            setAnswer('industry', d.sector);
+                          }
+                        })
+                        .catch(() => { /* stays unmatched — the honest message below already says so */ });
+                    }}
                     placeholder="Start typing your industry…"
                     className="w-full text-base rounded-2xl border-2 border-amber-200 focus:border-pink-400 focus:outline-none px-4 py-4 min-h-[52px] bg-amber-50/40"
                     autoFocus
@@ -425,7 +458,12 @@ export default function BusinessValuationPage() {
                   {/* Told at the QUESTION, not just on the result. "Underwater basket weaving" used to
                       sail straight through with Next enabled and no signal that a market-average
                       multiple had been substituted (naive-tester, 2026-07-27). */}
-                  {industryQuery.trim() && !exact && matches.length === 0 ? (
+                  {llmSector ? (
+                    <p className="mt-2 rounded-xl bg-emerald-50 px-4 py-3 text-base text-stone-700">
+                      Matched to <span className="font-semibold">{llmSector}</span> — that&apos;s the
+                      sector average we&apos;ll use. Not right? Pick another from the list.
+                    </p>
+                  ) : industryQuery.trim() && !exact && matches.length === 0 ? (
                     <p className="mt-2 rounded-xl bg-amber-100/70 px-4 py-3 text-base text-stone-700">
                       No sector match for &ldquo;{industryQuery.trim()}&rdquo;. You can carry on — we&apos;ll
                       use the overall market-average multiple — but a closer match gives a better number.
