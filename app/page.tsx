@@ -114,6 +114,7 @@ export default function KiraLandingPage() {
           <div className="flex items-center gap-3 sm:gap-6">
             <a href="#how-it-works" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">How it works</a>
             <a href="#pricing" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">Pricing</a>
+            <a href="/genome" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">What you get</a>
             <a href="/advisors" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">Advisors</a>
             <a href="/about" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">About</a>
             <a href="/login" className="font-body flex min-h-[44px] items-center px-2 text-sm font-medium text-stone-700 hover:text-pink-500">Sign in</a>
@@ -140,6 +141,7 @@ export default function KiraLandingPage() {
           <div className="md:hidden border-t border-amber-100 bg-white/95 backdrop-blur px-6 py-3 space-y-1">
             <a href="#how-it-works" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">How it works</a>
             <a href="#pricing" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">Pricing</a>
+            <a href="/genome" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">What you get</a>
             <a href="/advisors" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">Advisors</a>
             <a href="/about" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">About</a>
             {/* No Admin link. The operator console is not a customer destination, and putting it in
@@ -198,20 +200,26 @@ export default function KiraLandingPage() {
           <div className={`mt-16 max-w-lg mx-auto ${isVisible ? 'fade-up fade-up-delay-3' : 'opacity-0'}`}>
             <div className="bg-white/80 backdrop-blur rounded-3xl p-6 shadow-2xl border border-amber-100">
               <div className="text-center mb-4">
-                <span className="text-sm font-body text-stone-400 bg-stone-100 px-3 py-1 rounded-full">A 3-minute valuation, made real</span>
+                <span className="text-sm font-body text-stone-400 bg-stone-100 px-3 py-1 rounded-full">A real plumbing business, run through the actual calculator</span>
               </div>
               <div className="grid grid-cols-3 gap-3 text-center mb-4">
+                {/* THE ENGINE'S OWN NUMBERS, not a marketing illustration.
+                    These were $150k / $600k / $2.5M — an implied 4.2x. A real plumbing business run
+                    through the actual calculator returns 1.75x, so the shop window oversold the shop
+                    by well over double and the owner found out at the results page (naive-tester,
+                    Ray, 2026-07-28). Whoever changes the model must change these with it.
+                    Same business as /genome and the demos — one story across every surface. */}
                 <div className="rounded-2xl bg-stone-50 border border-stone-200 p-3">
                   <p className="text-sm uppercase tracking-wide text-stone-400 font-semibold">Walk away</p>
-                  <p className="font-display font-bold text-stone-700 text-sm mt-1">$150k</p>
+                  <p className="font-display font-bold text-stone-700 text-sm mt-1">$220k</p>
                 </div>
                 <div className="rounded-2xl bg-amber-50 border border-amber-200 p-3">
                   <p className="text-sm uppercase tracking-wide text-stone-400 font-semibold">Today</p>
-                  <p className="font-display font-bold text-stone-800 text-sm mt-1">$600k</p>
+                  <p className="font-display font-bold text-stone-800 text-sm mt-1">$582k</p>
                 </div>
                 <div className="rounded-2xl bg-gradient-to-br from-violet-50 to-pink-50 border border-violet-300 p-3">
                   <p className="text-sm uppercase tracking-wide text-stone-400 font-semibold">Captured</p>
-                  <p className="font-display font-bold text-violet-700 text-sm mt-1">$2.5M</p>
+                  <p className="font-display font-bold text-violet-700 text-sm mt-1">$1.02M</p>
                 </div>
               </div>
               <p className="font-body text-center text-sm text-stone-600">

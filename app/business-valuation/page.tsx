@@ -44,6 +44,7 @@ import {
 } from '@/lib/valuation/model';
 import { SECTOR_MULTIPLES } from '@/lib/valuation/sde-multiples';
 import { formatMoney, getCurrency, CURRENCIES, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
+import { synonymSector } from '@/lib/valuation/industry-synonyms';
 import { storeValuation } from '@/lib/valuation/share';
 
 type Answers = Partial<ValuationInputs>;
@@ -394,8 +395,20 @@ export default function BusinessValuationPage() {
             {/* Industry — filtered dropdown (a real picker, not a fickle datalist) */}
             {step.kind === 'industry' && (() => {
               const q = industryQuery.trim().toLowerCase();
+              // The suggestion list must know the same words the MULTIPLE does.
+              //
+              // Fixing lookupSdeMultiple alone made this worse, not better: the valuation quietly
+              // used the correct Plumbing multiple while the screen still said "No sector match".
+              // The number was right and the message was lying, which is harder to trust than
+              // being wrong consistently. So the synonym layer feeds the visible list too.
+              const synonymHit = q ? synonymSector(q) : null;
               const matches = (q
-                ? SECTOR_MULTIPLES.filter((s) => s.name.toLowerCase().includes(q) || s.group.toLowerCase().includes(q))
+                ? SECTOR_MULTIPLES.filter(
+                    (s) =>
+                      s.name.toLowerCase().includes(q) ||
+                      s.group.toLowerCase().includes(q) ||
+                      (synonymHit ? s.name === synonymHit : false),
+                  )
                 : SECTOR_MULTIPLES
               ).slice(0, 8);
               const exact = SECTOR_MULTIPLES.some((s) => s.name.toLowerCase() === q);
@@ -458,7 +471,12 @@ export default function BusinessValuationPage() {
                   {/* Told at the QUESTION, not just on the result. "Underwater basket weaving" used to
                       sail straight through with Next enabled and no signal that a market-average
                       multiple had been substituted (naive-tester, 2026-07-27). */}
-                  {llmSector ? (
+                  {exact ? (
+                    <p className="mt-2 rounded-xl bg-emerald-50 px-4 py-3 text-base text-stone-700">
+                      Matched to <span className="font-semibold">{industryQuery.trim()}</span> — we&apos;ll
+                      use that sector&apos;s average multiple.
+                    </p>
+                  ) : llmSector ? (
                     <p className="mt-2 rounded-xl bg-emerald-50 px-4 py-3 text-base text-stone-700">
                       Matched to <span className="font-semibold">{llmSector}</span> — that&apos;s the
                       sector average we&apos;ll use. Not right? Pick another from the list.

@@ -174,7 +174,16 @@ export default function PlanPage() {
           {/* How the machine works */}
           <section className="py-16">
             <h2 className="font-display text-2xl sm:text-3xl font-bold text-center mb-3">What happens when you talk to Kira</h2>
-            <p className="text-center text-stone-600 max-w-2xl mx-auto mb-12">You only ever talk to Kira. Behind her is a quiet team that does the actual work and remembers everything — so you never have to.</p>
+            <p className="text-center text-stone-600 max-w-2xl mx-auto mb-12">You only ever talk to Kira. Behind her is software that does the work and keeps the record — not a team of people. Nobody reads your conversations.</p>
+            {/* The page that asks for $999 had ZERO links to the page showing what you get for it.
+                Ray, 66, read the whole sales page and never learned the deliverable existed
+                (naive-tester, 2026-07-28). This is the difference between buying a promise and
+                seeing the thing. */}
+            <p className="text-center mb-12 -mt-8">
+              <a href="/genome" className="text-violet-600 font-semibold underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500 min-h-[44px] inline-flex items-center">
+                See an example of what you end up with →
+              </a>
+            </p>
             <div className="space-y-4">
               {[
                 { icon: <Mic className="h-5 w-5" />, t: 'Kira listens & clarifies', b: 'You talk about a job, a headache, a process. Kira asks the questions a good operator would until she knows exactly what you need.' },
