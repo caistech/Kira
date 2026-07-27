@@ -45,10 +45,14 @@ describe('toolSecretOk', () => {
     expect(toolSecretOk(reqWith({ [TOOL_SECRET_HEADER]: SECRET }))).toBe(true);
   });
 
-  it('still accepts the LEGACY header — live agents send it until re-provisioned', () => {
-    // Dropping this in the same change that flips the guard fail-closed would 401 every existing
-    // user's memory calls on deploy. Rename in, re-provision, then rename out.
-    expect(toolSecretOk(reqWith({ [LEGACY_HEADER]: SECRET }))).toBe(true);
+  it('REJECTS the legacy header — the rename is finished', () => {
+    // The last step of "rename in, re-provision, rename out", taken only once the audit showed
+    // zero callers on the legacy name: 13/13 agents re-provisioned and all 41 Kira workspace tools
+    // migrated, including 15 detached ones reprovision cannot reach.
+    //
+    // This asserts the SECRET IS RIGHT AND THE HEADER IS WRONG — the case that would silently pass
+    // if acceptance ever came back. A wrong-secret test cannot catch a re-added header.
+    expect(toolSecretOk(reqWith({ [LEGACY_HEADER]: SECRET }))).toBe(false);
   });
 
   it('rejects a wrong secret', () => {

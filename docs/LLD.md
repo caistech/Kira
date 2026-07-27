@@ -142,9 +142,11 @@ Mounted under `/api/kira/webhooks/*`:
 
 **Invariants**
 
-1. **Every tool webhook verifies `x-kira-tool-secret`.** Unverified → 401. Kira uses a
-   product-specific header name rather than the package default, so anything probing this must be
-   told the header (`memory-loop.config.json` carries it).
+1. **Every tool webhook verifies `x-convai-tool-secret`.** Unverified → 401. This is the package's
+   canonical header — Kira no longer defines a product-specific name, so nothing probing it needs to
+   be told the header and `memory-loop.config.json` carries no override. The legacy
+   `x-kira-tool-secret` is **not accepted**; it was removed once the audit showed zero callers on it
+   (13/13 agents re-provisioned, all 41 Kira workspace tools migrated).
 
    ⚠️ **Read this before changing it.** `toolSecretOk()` is **fail-OPEN when
    `KIRA_TOOL_WEBHOOK_SECRET` is unset** — it returns `true`. That was deliberate for rollout: the
@@ -189,10 +191,13 @@ One canonical call does distil → dedupe → persist to `kira_memory` → index
 `memory-loop.config.json` drives a probe on every push:
 
 ```json
-{ "webhookPath": "/api/kira/webhooks", "memoryTable": "kira_memory",
-  "expectContinuity": true, "startRoute": "start_conversation",
-  "toolSecretHeader": "x-kira-tool-secret" }
+{ "webhookPath": "/api/kira/webhooks", "postCallPath": "/api/convai/webhooks/post-call",
+  "memoryTable": "kira_memory", "conversationsTable": "conversations",
+  "agentsTable": "kira_agents", "identityMode": "uid",
+  "expectContinuity": true, "startRoute": "start_conversation" }
 ```
+
+No `toolSecretHeader` — the probe uses the package's canonical `x-convai-tool-secret`.
 
 Five runtime checks — save succeeds · recall finds it · a wrong secret is rejected (401) · a
 different uid does **not** see the fact · a *new* conversation sees the previous one — plus a

@@ -54,7 +54,7 @@ symptom; all now green + regression-tested):
 1. Post-call webhook **bound at workspace scope** (`/api/kira/webhook`).
 2. Post-call **HMAC verified** (`ELEVENLABS_WEBHOOK_SECRET`).
 3. The 5 memory tools **attached** to the agent (`get_conversation_context`, `save_message`, `update_conversation_topic`, `recall_memory`, `save_memory`).
-4. Tool-webhook **auth**: each tool carries `x-kira-tool-secret`; routes fail-closed via `toolSecretOk()`.
+4. Tool-webhook **auth**: each tool carries the canonical `x-convai-tool-secret`; routes fail-closed via `toolSecretOk()`. (The legacy `x-kira-tool-secret` is no longer accepted.)
 5. The **model** actually emits the tool call (why link 3's model pin matters — `gpt-4o-mini` drops tool calls over long calls).
 6. Post-call **distil** → durable memory (`distillConversationToMemory`, OpenAI extractor) writes `kira_memory`.
 7. **Recall** reads it back (`get_conversation_context` RPC + `recall_memory`).

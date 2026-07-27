@@ -1,15 +1,21 @@
 // scripts/patch-tool-secret-headers.mjs
-// Adds the x-kira-tool-secret header to the EXISTING Kira workspace tools.
+// Migrates Kira's workspace tools onto the CANONICAL x-convai-tool-secret header, removing the
+// legacy x-kira-tool-secret key.
 //
 // WHY THIS EXISTS (and why reprovision-kira-agents.mjs could not do it):
-// @caistech/elevenlabs-convai's ensureWorkspaceTools() matches an existing workspace tool by
-// name + url and, on a match, REUSES its id without ever updating its config. The 5 Kira memory
-// tools were created 2026-07-20 before KIRA_TOOL_WEBHOOK_SECRET existed, so every later
-// re-provision run silently skipped the header injection — every tool call has 401'd since the
-// toolSecretOk() guard went live. Re-running the re-provisioner would never have fixed it.
+// reprovision only touches tools that are ATTACHED to an active agent. Detached workspace tools
+// survive in the shared workspace with whatever header they were created with — 15 of them were
+// found still carrying the legacy key after all 13 agents had moved to the canonical one. They are
+// harmless while unreferenced and become a 401 the moment anyone re-attaches one, which is the
+// worst time to discover it. This clears that landmine so removing the legacy acceptance from
+// toolSecretOk() is unambiguously safe.
 //
-// This patches the workspace tool records in place. Idempotent: a tool that already carries the
-// correct header is left alone.
+// This script previously did the OPPOSITE — it ADDED the legacy header, which was correct during
+// the rename and became actively harmful once the route stopped accepting it. It is repurposed
+// rather than deleted so the capability (patch tool configs in place, scoped to our own host)
+// survives; ensureWorkspaceTools only updates on a name+url match, so detached tools need this.
+//
+// Idempotent: a tool already on the canonical header with no legacy key is left alone.
 //
 // Usage (from repo root):
 //   node --env-file=.env.local scripts/patch-tool-secret-headers.mjs [--dry-run]
@@ -18,7 +24,9 @@ const { ELEVENLABS_API_KEY, KIRA_TOOL_WEBHOOK_SECRET, NEXT_PUBLIC_APP_URL } = pr
 
 const DRY_RUN = process.argv.includes('--dry-run');
 const TOOLS_API = 'https://api.elevenlabs.io/v1/convai/tools';
-const HEADER = 'x-kira-tool-secret';
+// The package's canonical header. A product-local name for a portfolio-wide mechanism is a fork.
+const HEADER = 'x-convai-tool-secret';
+const LEGACY_HEADER = 'x-kira-tool-secret';
 // Only Kira's own operational tool routes — never another product's tools in the shared workspace.
 const KIRA_PATH = '/api/kira/webhooks/';
 
@@ -61,26 +69,33 @@ for (const tool of kiraTools) {
   const schema = cfg?.api_schema ?? {};
   const headers = schema.request_headers ?? {};
 
-  if (headers[HEADER] === KIRA_TOOL_WEBHOOK_SECRET) {
-    console.log(`  = ${name} — already correct, skipping`);
+  const onCanonical = headers[HEADER] === KIRA_TOOL_WEBHOOK_SECRET;
+  const hasLegacy = LEGACY_HEADER in headers;
+
+  if (onCanonical && !hasLegacy) {
+    console.log(`  = ${name} — already canonical, skipping`);
     skipped++;
     continue;
   }
 
   if (DRY_RUN) {
-    console.log(`  ~ ${name} (${tool.id}) — WOULD add ${HEADER}`);
+    console.log(
+      `  ~ ${name} (${tool.id}) — WOULD set ${HEADER}${hasLegacy ? ` and drop ${LEGACY_HEADER}` : ''}`,
+    );
     patched++;
     continue;
   }
 
-  // Preserve the entire existing tool_config; only add the auth header.
+  // Preserve the entire existing tool_config; set the canonical header and DROP the legacy key.
+  // Leaving the legacy key in place would keep the landmine armed — the point is that no tool
+  // presents a header the route no longer accepts.
+  const nextHeaders = { ...headers, [HEADER]: KIRA_TOOL_WEBHOOK_SECRET };
+  delete nextHeaders[LEGACY_HEADER];
+
   const body = {
     tool_config: {
       ...cfg,
-      api_schema: {
-        ...schema,
-        request_headers: { ...headers, [HEADER]: KIRA_TOOL_WEBHOOK_SECRET },
-      },
+      api_schema: { ...schema, request_headers: nextHeaders },
     },
   };
 
@@ -91,7 +106,7 @@ for (const tool of kiraTools) {
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
-    console.log(`  ✓ ${name} (${tool.id}) — header added`);
+    console.log(`  ✓ ${name} (${tool.id}) — migrated to ${HEADER}`);
     patched++;
   } catch (e) {
     console.error(`  ✗ ${name} (${tool.id}): ${e?.message ?? e}`);
