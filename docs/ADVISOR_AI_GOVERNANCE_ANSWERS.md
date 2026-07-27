@@ -79,9 +79,22 @@ produces is presented to your client as accounting, tax or financial advice**, a
 or lodged anywhere.
 
 **"Do you have a response protocol for when an AI output turns out to be wrong?" (Q9)**
-Partly. Every screen carries an in-product reporting widget that files the issue directly to our
-engineering backlog, and a person reads it. **We do not yet have a written, published AI incident
-response standard** with defined notification timeframes. It is on the list; it is not done.
+Yes — a written **AI Incident Response Standard**, with severity tiers, defined timeframes, and a
+specific playbook for the wrong-output case. Every screen carries an in-product reporting widget that
+files directly to our engineering backlog, and a person reads it.
+
+Two things in it worth knowing. It separates **data incidents** (information reaching someone it
+shouldn't — Privacy Act territory, including the Notifiable Data Breaches scheme) from **AI output
+incidents** (the system said something wrong), because they need different first moves. And when a
+figure is disputed we can **recompute it** from the stored inputs at the stored model version, which
+localises the fault to inputs, model version, or code rather than leaving it a matter of opinion.
+
+We will tell an affected client that an output was wrong without waiting for a statutory test to
+require it. What we notify **your** firm of is that an incident affected an account you introduced —
+never its contents. An incident does not suspend the content wall.
+
+It also lists what we don't have, including that there is no global kill switch and no contracted
+SLA behind those timeframes. Ask for the document if you want to read it.
 
 **"Does your PI insurer know you use AI?" (Q8)**
 That question is about your firm, not us. Worth noting that a referral is not you using AI in client
@@ -135,7 +148,9 @@ Stated deliberately, because a vendor page that claims nothing has nothing to ch
 - **No ISO 27001, SOC 2 or ISO/IEC 42001 certification.**
 - **No Australian data residency.**
 - **No independent security audit or penetration test** we can point you to.
-- **No published AI incident-response standard** yet (see Q9).
+- **No global kill switch** — incident containment is per-account or per-deploy, not product-wide.
+- **No contracted SLA** behind our incident timeframes. They are commitments we set and publish, on
+  a single-operator product; they are not a service level you have bought.
 - **These pages have not yet been reviewed by a lawyer** — that review is scheduled alongside the
   introducer agreement.
 
