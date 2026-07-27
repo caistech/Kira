@@ -39,7 +39,7 @@ export default async function IntroducerTermsPage() {
         <p className="mt-2 text-base text-gray-600">
           {reAccepting
             ? 'We’ve updated how this works. Have a read and confirm you’re happy — it takes a minute.'
-            : 'How the Kira introducer arrangement works, in five points. No small print.'}
+            : `How the Kira introducer arrangement works, in ${UNDERTAKING_CLAUSES.length} points. No small print.`}
         </p>
       </header>
 

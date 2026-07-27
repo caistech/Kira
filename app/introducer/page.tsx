@@ -17,6 +17,7 @@ import {
   ownerProjection,
   type OwnerProjection,
 } from '@/lib/introducer';
+import { COMMISSION_RATE_PCT, commissionRange, disclosureText } from '@/lib/introducer/disclosure';
 
 export const metadata = { title: 'Your introductions · Kira' };
 export const dynamic = 'force-dynamic';
@@ -59,6 +60,14 @@ export default async function IntroducerBoardPage() {
   const paying = owners.filter((o) => o.status === 'paying').length;
   const trialing = owners.filter((o) => o.status === 'trialing').length;
 
+  const referralUrl = `${process.env.NEXT_PUBLIC_APP_URL}/r/${introducer.referral_token}`;
+  // The disclosure sits WITH the link, in both states, because the obligation attaches at the
+  // introduction — not at conversion, and not in a settings page nobody opens.
+  const disclosure = disclosureText({
+    introducerName: introducer.name,
+    orgName: introducer.org_name,
+  });
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
       <header className="mb-8">
@@ -98,7 +107,7 @@ export default async function IntroducerBoardPage() {
             they sign up, so you can see what&apos;s landing.
           </p>
           <p className="mt-4 break-all rounded-lg bg-gray-50 px-4 py-3 font-mono text-sm text-gray-700">
-            {process.env.NEXT_PUBLIC_APP_URL}/r/{introducer.referral_token}
+            {referralUrl}
           </p>
         </div>
       ) : (
@@ -168,11 +177,30 @@ export default async function IntroducerBoardPage() {
           <div className="mt-8 rounded-2xl border border-gray-200 bg-white p-5">
             <p className="text-sm font-medium text-gray-900">Your link</p>
             <p className="mt-2 break-all rounded-lg bg-gray-50 px-4 py-3 font-mono text-sm text-gray-700">
-              {process.env.NEXT_PUBLIC_APP_URL}/r/{introducer.referral_token}
+              {referralUrl}
             </p>
           </div>
         </>
       )}
+
+      {/* Send this WITH the link. The introducer's disclosure obligation attaches at the
+          introduction, so the wording lives next to the thing they are about to send. */}
+      <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-5">
+        <h2 className="text-sm font-medium text-gray-900">Send this with your link</h2>
+        <p className="mt-2 max-w-prose text-sm text-gray-600">
+          You&apos;re paid {COMMISSION_RATE_PCT}% of what an owner pays, every month, for as long as
+          they stay — currently {commissionRange().text} a month depending on their price band.
+          Telling them that in writing is your obligation, so here is the wording. Paste it into your
+          own message, at the time you introduce us rather than afterwards.
+        </p>
+        <pre className="mt-3 max-w-prose whitespace-pre-wrap rounded-lg bg-gray-50 px-4 py-3 text-sm leading-relaxed text-gray-800">
+          {disclosure}
+        </pre>
+        <p className="mt-3 max-w-prose text-sm text-gray-500">
+          If you audit or review this owner, we can&apos;t pay you for the introduction — tell us and
+          we&apos;ll switch the fee off. The introduction still works.
+        </p>
+      </section>
     </div>
   );
 }

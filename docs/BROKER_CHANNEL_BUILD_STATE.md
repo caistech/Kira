@@ -41,7 +41,13 @@
 - **Valuation figures: keep current** (brief §A.3 "fix figures" overridden — held).
 - **CTAs: keep three for now** (brief §A.3 single-CTA overridden — held).
 - **Attribution: first-touch, 90-day window** (per brief §C.4) — but the OWNER↔INTRODUCER earn is lifetime.
-- **Email: introducer is always the sender, we never are** (brief §C.2). v1 = compose-and-hand-off.
+- ~~**Email: introducer is always the sender, we never are** (brief §C.2). v1 = compose-and-hand-off.~~
+  ⚠️ **STRUCK 2026-07-27 — obsolete, do not re-import.** The channel model changed: **advisors refer
+  the client to us**, and we run the valuation, the demo and onboarding directly. So we *are* the
+  sender to the client, and the prohibition is void. Retained here rather than deleted so a future
+  session sees it lapsed rather than re-deriving it. **Consequence: C5's compose-and-hand-off shape
+  was a consequence of this rule and must now be re-decided** (see C5 below). Full context:
+  `orchestrator/VALUATION_LOOP.md` §1 + `orchestrator/TODOS.md` decision D10.
 
 ---
 
@@ -143,9 +149,15 @@ failed). Fixed + published; pre-existing since 0.3.1.
 3. ~~Introducer dashboard~~ **DONE** (status + valuation movement, content wall enforced server-side).
 4. **Co-branded report** — extend `@caistech/report-generator` `ReportBrand` with a `coBrand`/secondary-logo
    field (audit row 7); closing line *"This is indicative. [Name] at [Brokerage] can give you the real number."*
-5. **Introducer email v1** = compose-and-hand-off (portal drafts, one click opens prefilled in THEIR mail
-   client; disclosure line non-removable; tracking off the unique link). Store contacts on the introducer's
-   behalf only.
+5. **Introducer email v1** — ⚠️ **RE-DECIDE before building (2026-07-27).** The compose-and-hand-off
+   shape below existed *because* of the "we are never the sender" rule, which is now struck. Under the
+   current model the advisor refers the client to us and we take it from there, so the question is no
+   longer "how does the introducer send?" but **"what, if anything, does the introducer send at all —
+   versus simply handing us the client?"** Do not build the drafting UI until that is answered.
+   <details><summary>Original v1 spec (retained)</summary>
+   Compose-and-hand-off: portal drafts, one click opens prefilled in THEIR mail client; disclosure line
+   non-removable; tracking off the unique link. Store contacts on the introducer's behalf only.
+   </details>
 
 ### Workstream D — commission ledger (greenfield)
 - Per audit row 10: build a **commission ledger** (product-local first, extract on 2nd consumer). **Pay on
@@ -155,6 +167,10 @@ failed). Fixed + published; pre-existing since 0.3.1.
 - Nominate-payee: individual **or** brokerage entity. Do NOT also discount the owner (pays the referral twice).
 
 ### Then Workstream C v2 (OAuth send) — ONLY after v1 shows introducers actually send.
+
+⚠️ **Gate may be void (2026-07-27).** This sequencing assumed introducers send the client email. With
+the "we are never the sender" rule struck, sending on the introducer's behalf may not be a product
+requirement at all — in which case C v2 is not deferred, it is **cancelled**. Resolve with C5 above.
 
 ---
 
