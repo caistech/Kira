@@ -35,6 +35,23 @@ export default function PlanPage() {
   const [payload, setPayload] = useState<ValuationPayload | null>(null);
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Is billing actually live? Defaults to FALSE and stays false if the check fails.
+  //
+  // The default is the safety property, not a placeholder. Claiming "your card will be charged in
+  // 30 days" when Stripe is in test mode tells someone they have subscribed when they have not —
+  // they find out when the service they think they bought never bills them. The reverse error
+  // (saying "beta, not charging yet" while live) is embarrassing but harmless, so that is the
+  // direction to fail in.
+  const [billingLive, setBillingLive] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/billing/mode')
+      .then((r) => (r.ok ? r.json() : { live: false }))
+      .then((d) => { if (!cancelled) setBillingLive(d?.live === true); })
+      .catch(() => { /* stay in the safe state */ });
+    return () => { cancelled = true; };
+  }, []);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -197,7 +214,19 @@ export default function PlanPage() {
             <div className="mt-8 bg-white rounded-3xl p-8 border-2 border-violet-200 shadow-sm max-w-lg mx-auto text-center">
               <span className="text-xs font-body uppercase tracking-wider text-violet-500 font-semibold">{model.quote.label} plan</span>
               <p className="font-display text-4xl font-bold text-stone-800 mt-2">{money(model.quote.monthly)}<span className="text-lg text-stone-400 font-body">/month {tax}</span></p>
-              <p className="text-sm text-stone-500 mt-1">Free for 30 days. Then {price(model.quote.monthly)}/month — cancel anytime.</p>
+              <p className="text-sm text-stone-500 mt-1">
+                {billingLive
+                  ? <>Free for 30 days. Then {price(model.quote.monthly)}/month — cancel anytime.</>
+                  : <>Free while we are in beta. {price(model.quote.monthly)}/month once billing goes live — we will tell you first.</>}
+              </p>
+              {/* A badge, not just a sentence. Someone skimming a checkout reads the button and the
+                  line under it; burying "we are not actually charging you" in a paragraph below the
+                  fold is how the current page ended up looking like a real purchase. */}
+              {!billingLive && (
+                <p className="mt-3 inline-block rounded-full bg-amber-100 text-amber-900 text-xs font-semibold px-3 py-1.5">
+                  Beta · payments not live — Stripe is in test mode
+                </p>
+              )}
               <ul className="text-left space-y-2.5 my-6 text-stone-700">
                 {[
                   '30 days free — nothing charged today',
@@ -219,7 +248,15 @@ export default function PlanPage() {
               </button>
               {error && <p className="text-rose-600 text-sm mt-3">{error}</p>}
               <p className="text-xs text-stone-400 mt-3">
-                Secure checkout by Stripe · billed by Corporate AI Solutions. Your card is saved today but nothing is charged. The first payment of {price(model.quote.monthly)} comes out 30 days from now, and we email you three days before. Cancel before then and you pay nothing. You set your password and meet Kira right after.
+                {billingLive ? (
+                  <>
+                    Secure checkout by Stripe · billed by Corporate AI Solutions. Your card is saved today but nothing is charged. The first payment of {price(model.quote.monthly)} comes out 30 days from now, and we email you three days before. Cancel before then and you pay nothing. You set your password and meet Kira right after.
+                  </>
+                ) : (
+                  <>
+                    <span className="font-bold">Beta — payments are not live yet.</span> Stripe is in test mode, so no card is charged, no real subscription is created, and nothing will come out in 30 days. You get full access now; we will email you before billing is switched on, and you can walk away before it is. You set your password and meet Kira right after.
+                  </>
+                )}
               </p>
             </div>
           </section>
