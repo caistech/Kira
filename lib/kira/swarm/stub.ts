@@ -57,12 +57,26 @@ You triage an owner-operator's spoken request into ONE task their assistant can 
 Extract any recipient, subject, and timing the owner stated. Use null for anything not stated; never invent an email address.
 `.trim();
 
-/** Build the drafting instruction per kind. Kept terse — the owner reviews before anything sends. */
-function draftSystem(kind: OwnedKind): string {
+/**
+ * Build the drafting instruction per kind. Kept terse — the owner reviews before anything sends.
+ *
+ * `preview` is sent VERBATIM on approval (see execute()), so a placeholder the model leaves in the
+ * sender's sign-off does not get filled in by anything downstream — it goes to the client as typed.
+ * The first live round trip did exactly that and mailed "Thanks, [Owner's Name]". Hence: pass the
+ * owner's name in, and when we genuinely don't know it, say so and forbid inventing one rather than
+ * leaving a gap that looks fillable but isn't (degrade, don't fake).
+ */
+function draftSystem(kind: OwnedKind, ownerName: string | null): string {
+  const signoff = ownerName
+    ? `The owner you are drafting as is ${ownerName} — sign off as them. `
+    : 'You do not know the owner\'s name: end after the final sentence with no sign-off name. ';
   const common =
     'You draft on behalf of a hands-on business owner. Match a busy, plain, professional tradesperson/' +
     'operator voice — warm, direct, no corporate fluff, no emoji. Return summary (one line the owner ' +
-    'hears) and preview (the full draft they will approve).';
+    'hears) and preview (the full draft they will approve). ' +
+    signoff +
+    'NEVER write a placeholder for the sender (no [Owner\'s Name], [Your Name], [Company]) — the ' +
+    'preview is sent exactly as written.';
   if (kind === 'quote')
     return `${common} Draft a short client-ready quote message. If amounts/scope are missing, draft the ` +
       `covering message and leave clearly-marked [line item] / [$amount] placeholders for the owner to fill.`;
@@ -109,11 +123,13 @@ export class LocalSwarmStub implements SwarmCoordinator {
     }
 
     const kind = cls.kind as OwnedKind;
+    const ownerName = await this.ownerName(intent.tenantId);
     const { result: draft } = await this.runner().run({
       model: MODEL,
-      system: draftSystem(kind),
+      system: draftSystem(kind, ownerName),
       input:
         `Owner said: "${intent.utterance}"\n` +
+        (ownerName ? `You are drafting as: ${ownerName}\n` : '') +
         (cls.recipient_name ? `Recipient: ${cls.recipient_name}\n` : '') +
         (cls.subject ? `Subject: ${cls.subject}\n` : '') +
         (cls.due_hint ? `When: ${cls.due_hint}\n` : '') +
@@ -214,6 +230,27 @@ export class LocalSwarmStub implements SwarmCoordinator {
     // reminder: persisted; the notification transport (cron → owner's preferred channel) is the
     // next increment. The row itself IS the durable reminder; done = it's captured + scheduled.
     return { channel: 'reminder', due_hint: art.due_hint ?? null, scheduled_at: nowIso() };
+  }
+
+  /**
+   * The owner's given name, for the draft's sign-off. `users` is the app-user record of truth
+   * (bridged to auth by users.auth_user_id), and tenantId IS users.id. Returns null rather than a
+   * guess — draftSystem handles not knowing, and a wrong name on a client email is worse than none.
+   */
+  private async ownerName(tenantId: TenantId): Promise<string | null> {
+    try {
+      const { data } = await this.supabase
+        .from('users')
+        .select('first_name, name')
+        .eq('id', tenantId)
+        .maybeSingle();
+      const first = (data?.first_name || '').trim();
+      if (first) return first;
+      const full = (data?.name || '').trim();
+      return full ? full.split(/\s+/)[0] : null;
+    } catch {
+      return null; // never block a draft on the name lookup
+    }
   }
 
   // --- persistence helpers ---
