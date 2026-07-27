@@ -65,13 +65,14 @@ export default function AdvisorsPage() {
           For brokers, accountants &amp; advisors
         </p>
         <h1 className="font-display mt-3 text-4xl font-bold leading-tight text-stone-900 sm:text-5xl">
-          The business runs on what&apos;s in the owner&apos;s head. That&apos;s what costs them at
-          sale.
+          Your clients in their sixties, whose business runs on them.
         </h1>
         <p className="mt-6 max-w-prose text-lg leading-relaxed text-stone-600">
-          You already know the ones. Good business, real profit, and everything that matters lives
-          with one person. The multiple suffers, due diligence drags, and deals fall over on things
-          nobody wrote down.
+          That is the only owner we work with: thirty or forty years in, genuinely profitable, and
+          every decision still routes through one person. You know the ones — you would list them
+          tomorrow if the owner weren&apos;t the product. The multiple suffers, due diligence drags, and
+          deals fall over on things nobody ever wrote down. Send us that client and we get the
+          business out of their head and onto the page, so what you list is an asset rather than a job.
         </p>
         <p className="mt-4 max-w-prose text-lg leading-relaxed text-stone-600">
           Kira is an AI executive assistant that gets that out of their head — by talking to them
