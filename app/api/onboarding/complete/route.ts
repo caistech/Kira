@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ATTRIBUTION_COOKIE, attachFirstTouch, attribution } from '@/lib/introducer';
 import { getStripe } from '@/lib/billing';
 import { createServiceClient } from '@/lib/supabase/server';
+import { recordValuationSnapshot } from '@/lib/valuation/snapshots';
 
 
 export async function POST(request: NextRequest) {
@@ -85,6 +86,24 @@ export async function POST(request: NextRequest) {
       },
       { onConflict: 'user_id' },
     );
+
+    // The first point on their curve. The upsert above keeps the CURRENT figures; this records that
+    // these were the figures on this date, under this model — so the introducer board can show
+    // movement rather than a number that silently replaces itself. Never throws: the valuation is
+    // already computed and paid for, and a history write must not fail a checkout.
+    await recordValuationSnapshot({
+      userId: appUser.id,
+      inputs,
+      source: 'onboarding',
+      currency: m.val_currency || 'USD',
+      gap: Number(m.val_gap || 0),
+      worthToday: Number(m.val_today || 0),
+      worthPotential: Number(m.val_potential || 0),
+      walkAway: Number(m.val_walk_away || 0),
+      sdeMultiple: m.val_sde_multiple ? Number(m.val_sde_multiple) : null,
+      readiness: m.val_readiness ? Number(m.val_readiness) : null,
+      reason: 'Your starting position, from the valuation you just ran.',
+    });
 
     await svc
       .from('users')

@@ -46,6 +46,45 @@ function when(iso: string | null): string {
   );
 }
 
+/**
+ * Readiness as movement, not a bare figure.
+ *
+ * The board has always promised "valuation movement" and, until the snapshots table, could only
+ * join one overwritten row — so it showed a number with no origin. This renders the difference
+ * where there is one, says so plainly where there isn't, and never dresses a single data point up
+ * as a trend.
+ */
+function Movement({ owner }: { owner: OwnerProjection }) {
+  if (owner.readiness == null) return <span className="text-gray-400">—</span>;
+
+  const now = Math.round(owner.readiness);
+  const ceiling = owner.readinessPotential == null ? null : Math.round(owner.readinessPotential);
+
+  // One point on the curve is a starting position, not a climb. Saying "no change yet" is honest
+  // and reads as the system working; an arrow that never moves reads as broken.
+  if (owner.baselineReadiness == null || owner.snapshotCount < 2) {
+    return (
+      <span className="text-gray-700">
+        {now}%{ceiling != null && <span className="text-gray-400"> of {ceiling}%</span>}
+        <span className="block text-sm text-gray-500">starting position</span>
+      </span>
+    );
+  }
+
+  const from = Math.round(owner.baselineReadiness);
+  const delta = now - from;
+  const tone = delta > 0 ? 'text-teal-700' : delta < 0 ? 'text-amber-700' : 'text-gray-500';
+
+  return (
+    <span className="text-gray-700">
+      {from}% → {now}%{ceiling != null && <span className="text-gray-400"> of {ceiling}%</span>}
+      <span className={`block text-sm ${tone}`}>
+        {delta > 0 ? `+${delta} points` : delta < 0 ? `${delta} points` : 'no change yet'}
+      </span>
+    </span>
+  );
+}
+
 export default async function IntroducerBoardPage() {
   const token = (await cookies()).get(INTRODUCER_SESSION_COOKIE)?.value;
   const introducer = await getIntroducerFromSession(token);
@@ -111,7 +150,7 @@ export default async function IntroducerBoardPage() {
                   <th className="px-5 py-3 font-medium">Owner</th>
                   <th className="px-5 py-3 font-medium">Status</th>
                   <th className="px-5 py-3 font-medium">Value gap</th>
-                  <th className="px-5 py-3 font-medium">Readiness</th>
+                  <th className="px-5 py-3 font-medium">Readiness movement</th>
                   <th className="px-5 py-3 font-medium">Introduced</th>
                 </tr>
               </thead>
@@ -127,8 +166,8 @@ export default async function IntroducerBoardPage() {
                       </span>
                     </td>
                     <td className="px-5 py-4 text-base text-gray-700">{money(owner.valuationGap)}</td>
-                    <td className="px-5 py-4 text-base text-gray-700">
-                      {owner.readiness == null ? '—' : `${Math.round(owner.readiness)}%`}
+                    <td className="px-5 py-4 text-base">
+                      <Movement owner={owner} />
                     </td>
                     <td className="px-5 py-4 text-base text-gray-500">{when(owner.firstTouchAt)}</td>
                   </tr>
@@ -154,9 +193,9 @@ export default async function IntroducerBoardPage() {
                     <dd className="text-base text-gray-900">{money(owner.valuationGap)}</dd>
                   </div>
                   <div>
-                    <dt className="text-gray-500">Readiness</dt>
+                    <dt className="text-gray-500">Readiness movement</dt>
                     <dd className="text-base text-gray-900">
-                      {owner.readiness == null ? '—' : `${Math.round(owner.readiness)}%`}
+                      <Movement owner={owner} />
                     </dd>
                   </div>
                 </dl>
