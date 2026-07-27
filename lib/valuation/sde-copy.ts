@@ -19,12 +19,13 @@
 /** The canonical definition, as shown on the question label. */
 export const SDE_DEFINITION =
   "What's left after all costs, plus the salary and perks you pay yourself (often called SDE). " +
+  'Also add back interest, depreciation, and any one-off costs that a new owner would not carry. ' +
   'Not turnover - the smaller number you actually keep, with your own pay added back. This is what ' +
   'the valuation runs on.';
 
 /** The short reminder shown under the input before anything is typed. */
 export const SDE_SHORT_REMINDER =
-  'Profit, not sales - and add back what you pay yourself.';
+  'Profit, not sales - and add back what you pay yourself, plus interest, depreciation and one-offs.';
 
 /**
  * The worked example. Deliberately shows the two components separately, because the whole failure

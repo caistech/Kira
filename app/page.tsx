@@ -106,7 +106,7 @@ export default function KiraLandingPage() {
               <span className="font-display font-bold text-2xl bg-gradient-to-r from-amber-500 via-pink-500 to-violet-500 bg-clip-text text-transparent">Kira</span>
             </a>
             <a href="https://corporate-ai-solutions.vercel.app/marketplace" target="_blank" rel="noopener noreferrer"
-              className="hidden md:flex items-center gap-2 cas-badge text-white px-3 py-1.5 rounded-full text-xs font-body">
+              className="hidden md:flex items-center gap-2 cas-badge text-white px-3 py-1.5 rounded-full text-sm font-body">
               <span className="opacity-80">by</span>
               <span className="font-semibold">Corporate AI Solutions</span>
             </a>
@@ -123,7 +123,11 @@ export default function KiraLandingPage() {
               aria-label="Open menu"
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((o) => !o)}
-              className="md:hidden flex h-11 w-11 items-center justify-center rounded-lg text-stone-700 hover:bg-stone-100"
+              /* shrink-0 is load-bearing: h-11 w-11 is already 44x44, but as a flex CHILD beside a
+                 long CTA it was being squeezed to 30px wide on a 375px screen — a tester measured
+                 it. A touch target that meets the rule in the class list and fails it on the device
+                 is the worst kind, because it looks compliant in review. */
+              className="md:hidden flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-stone-700 hover:bg-stone-100"
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 {menuOpen ? <path d="M18 6L6 18M6 6l12 12" /> : <><path d="M3 12h18" /><path d="M3 6h18" /><path d="M3 18h18" /></>}
@@ -158,7 +162,7 @@ export default function KiraLandingPage() {
                 className="inline-flex items-center gap-2 bg-stone-800/90 text-white px-4 py-2 rounded-full text-sm font-body hover:bg-stone-700 transition-colors">
                 <span className="text-amber-400">⚡</span>
                 <span>Part of the <span className="font-semibold text-amber-300">Corporate AI Solutions</span> Voice AI Suite</span>
-                <span className="text-xs opacity-60">→</span>
+                <span className="text-sm opacity-60">→</span>
               </a>
             </div>
 
@@ -189,19 +193,19 @@ export default function KiraLandingPage() {
           <div className={`mt-16 max-w-lg mx-auto ${isVisible ? 'fade-up fade-up-delay-3' : 'opacity-0'}`}>
             <div className="bg-white/80 backdrop-blur rounded-3xl p-6 shadow-2xl border border-amber-100">
               <div className="text-center mb-4">
-                <span className="text-xs font-body text-stone-400 bg-stone-100 px-3 py-1 rounded-full">A 3-minute valuation, made real</span>
+                <span className="text-sm font-body text-stone-400 bg-stone-100 px-3 py-1 rounded-full">A 3-minute valuation, made real</span>
               </div>
               <div className="grid grid-cols-3 gap-3 text-center mb-4">
                 <div className="rounded-2xl bg-stone-50 border border-stone-200 p-3">
-                  <p className="text-[10px] uppercase tracking-wide text-stone-400 font-semibold">Walk away</p>
+                  <p className="text-sm uppercase tracking-wide text-stone-400 font-semibold">Walk away</p>
                   <p className="font-display font-bold text-stone-700 text-sm mt-1">$150k</p>
                 </div>
                 <div className="rounded-2xl bg-amber-50 border border-amber-200 p-3">
-                  <p className="text-[10px] uppercase tracking-wide text-stone-400 font-semibold">Today</p>
+                  <p className="text-sm uppercase tracking-wide text-stone-400 font-semibold">Today</p>
                   <p className="font-display font-bold text-stone-800 text-sm mt-1">$600k</p>
                 </div>
                 <div className="rounded-2xl bg-gradient-to-br from-violet-50 to-pink-50 border border-violet-300 p-3">
-                  <p className="text-[10px] uppercase tracking-wide text-stone-400 font-semibold">Captured</p>
+                  <p className="text-sm uppercase tracking-wide text-stone-400 font-semibold">Captured</p>
                   <p className="font-display font-bold text-violet-700 text-sm mt-1">$2.5M</p>
                 </div>
               </div>
@@ -324,7 +328,7 @@ export default function KiraLandingPage() {
               <div className="flex items-center gap-3 bg-gradient-to-r from-amber-100 to-pink-100 rounded-full px-5 py-3 shadow-sm border-2 border-amber-300">
                 <div className="avatar-ring"><div className="w-8 h-8 rounded-full overflow-hidden bg-white"><img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" /></div></div>
                 <span className="font-display font-bold text-stone-800">YOUR Kira</span>
-                <span className="text-xs bg-amber-400 text-stone-800 px-2 py-0.5 rounded-full font-bold">Personalized</span>
+                <span className="text-sm bg-amber-400 text-stone-800 px-2 py-0.5 rounded-full font-bold">Personalized</span>
               </div>
             </div>
           </div>
@@ -389,7 +393,7 @@ export default function KiraLandingPage() {
               <div key={index} className="bg-white rounded-2xl p-6 hover-pop shadow-sm border border-amber-100">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-3xl">{item.emoji}</span>
-                  <span className={`text-xs font-body px-3 py-1 rounded-full ${item.type === 'Personal' ? 'bg-violet-100 text-violet-600' : 'bg-amber-100 text-amber-600'}`}>{item.type}</span>
+                  <span className={`text-sm font-body px-3 py-1 rounded-full ${item.type === 'Personal' ? 'bg-violet-100 text-violet-600' : 'bg-amber-100 text-amber-600'}`}>{item.type}</span>
                 </div>
                 <p className="font-body text-stone-700 leading-relaxed">"{item.quote}"</p>
               </div>
