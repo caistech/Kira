@@ -14,6 +14,7 @@
 
 import { createEmailSender } from '@caistech/email-send';
 
+import { assertNotHalted } from '@/lib/kill-switch';
 import { senderIdentityOrNull as senderIdentity } from '@/lib/email/sender';
 import { suppressionStore, unsubscribeUrl } from '@/lib/email/suppressions';
 
@@ -40,6 +41,12 @@ export interface CommercialSendResult {
 export async function sendCommercialEmail(
   params: CommercialEmailParams,
 ): Promise<CommercialSendResult> {
+  // The kill switch, checked before anything leaves. Commercial email is the one path where the
+  // damage is unrecoverable and scales — one bad template times every recipient, under our ABN, at
+  // whatever hour the cron runs. Refusing to send is always recoverable; an unsend does not exist.
+  // Throws rather than returning quietly: a caller in a loop must stop, not skip one and continue.
+  await assertNotHalted('outbound_email');
+
   const sender = senderIdentity();
   const sendEmail = createEmailSender({ sender, suppressions: suppressionStore() });
 

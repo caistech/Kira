@@ -82,9 +82,22 @@ Stop it getting worse before understanding why. Actions available today:
 - **Withdraw the output** — where a wrong figure or statement has been shown, tell the affected user
   directly. Do not wait for the root cause.
 
-⚠️ **Control we do not have: a global kill switch.** There is no single flag that halts assistant
-conversations product-wide. Today containment is per-account or per-deploy. Recorded as a gap in §7,
-not papered over.
+- **Throw the kill switch** — halts new work product-wide within ~10 seconds, no redeploy:
+
+  ```sql
+  UPDATE system_flags SET halted = TRUE, reason = '<what is wrong>', set_by = '<who>'
+  WHERE flag = 'all';        -- or 'conversations' / 'outbound_email' for a narrower stop
+  ```
+
+  `conversations` refuses the signed URL, so no new conversation starts (calls already in progress
+  are not torn down — this stops the bleeding, it does not reach into a live call).
+  `outbound_email` makes the commercial send path **throw**, so a caller in a loop stops rather than
+  skipping one and continuing. Clearing it is the same statement with `halted = FALSE`.
+
+  It **fails closed on an unknown state** — if the flag has never been read and cannot be read, work
+  halts. The trade is deliberate: the flags live in the same Postgres everything else needs, so an
+  unreadable database is already an outage, and the moment you most want this switch is the moment
+  you least want "we weren't sure, so we carried on."
 
 ### 4.2 Assess (Class A: the clock is running)
 
@@ -165,11 +178,17 @@ Stated so an accountant assessing us can check it rather than take it on faith:
 
 Listed because a standard that claims completeness is not credible:
 
-- **No global kill switch** (§4.1). Containment is per-account or per-deploy.
+- ~~No global kill switch~~ — **built 2026-07-27** (§4.1). Note its limit: it stops *new* work. It
+  does not tear down a conversation already in progress, and it cannot recall an email already sent.
+- ~~No automated cross-account leakage detector~~ — **built 2026-07-27.** `/api/cron/memory-integrity`
+  runs hourly and asserts that every memory row naming an agent has the same owner as that agent.
+  **It alarms; it does not auto-halt** — an unproven detector that can take production down on a
+  false positive is a worse risk than the thing it watches. Revisit once it has a track record.
 - **No formal on-call rotation.** Single-operator product; response is best-effort against the
-  timeframes above, not a contracted SLA. Say so rather than implying otherwise.
-- **No automated cross-account leakage detector.** The memory-loop probe tests isolation in CI; it
-  does not monitor production continuously.
+  timeframes above, not a contracted SLA. Say so rather than implying otherwise. **This one cannot
+  be engineered away** — it is resolved by a second person, not a control.
+- **The detector samples up to 5,000 memory rows per run.** Fine now; becomes a real ceiling later,
+  and a silent one if nobody revisits it.
 - **Not yet lawyer-reviewed** (see top).
 - **Timeframes are commitments we set, not ones a customer has contracted for.** If a distributor
   agreement ever needs contractual timeframes, they are negotiated there, not assumed from here.

@@ -4,10 +4,25 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
+import { haltState } from '@/lib/kill-switch';
+
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const SETUP_AGENT_ID = process.env.KIRA_SETUP_AGENT_ID;
 
 export async function GET(request: NextRequest) {
+  // The kill switch. A signed URL is permission to start talking, so this is the chokepoint: refuse
+  // it and no new conversation begins, without a redeploy. 503 rather than 500 — this is a
+  // deliberate, temporary refusal, and the reason is NOT returned to the caller because it can
+  // carry incident detail meant for operators.
+  const halt = await haltState('conversations');
+  if (halt.halted) {
+    console.warn('[kill-switch] refused conversation start:', halt.scope, halt.reason);
+    return NextResponse.json(
+      { error: 'Kira is briefly unavailable. Please try again shortly.' },
+      { status: 503 },
+    );
+  }
+
   if (!ELEVENLABS_API_KEY) {
     return NextResponse.json(
       { error: 'ElevenLabs API key not configured' },
