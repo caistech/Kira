@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import { getAuthUser, getCurrentAppUser } from '@/lib/auth';
 import { PortalShell, type NavItem } from '@/components/PortalShell';
 import { TalkFab } from '@/components/TalkFab';
+import { ClaimStoredValuation } from '@/components/ClaimStoredValuation';
 
 const USER_NAV: NavItem[] = [
   { href: '/dashboard', label: 'My Kiras' },
@@ -20,6 +21,10 @@ export async function UserShell({ children }: { children: React.ReactNode }) {
 
   return (
     <PortalShell title="Kira" homeHref="/dashboard" items={USER_NAV} userEmail={authUser.email ?? ''}>
+      {/* If they ran a valuation before signing up, attach it to the account now. Mounted on the
+          shell rather than in each signup flow, because the condition is "is signed in", not
+          "arrived via checkout" — which is how the free-signup path lost it entirely. */}
+      <ClaimStoredValuation />
       {children}
       {/* Always-there one-tap mic — Siri-simple access from anywhere in the portal. */}
       <TalkFab />
