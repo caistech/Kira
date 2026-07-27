@@ -11,6 +11,13 @@
 // Public, no auth, free instant result (no gate). Voice clarifier reachable when configured.
 
 import React, { useMemo, useState, useEffect } from 'react';
+
+import {
+  SDE_DEFINITION,
+  SDE_SHORT_REMINDER,
+  sdeExample,
+  sdeMarginNote,
+} from '@/lib/valuation/sde-copy';
 import {
   ArrowLeft,
   ArrowRight,
@@ -68,7 +75,7 @@ const STEPS: Step[] = [
     kind: 'money',
     icon: <TrendingUp className="h-6 w-6" />,
     title: "And what's your annual PROFIT?",
-    help: "What's left after all costs, plus the salary and perks you pay yourself (often called SDE). Not turnover - the smaller number you actually keep. This is what the valuation runs on.",
+    help: SDE_DEFINITION,
     placeholder: 'e.g. 200,000',
   },
   {
@@ -412,13 +419,13 @@ export default function BusinessValuationPage() {
                   if (turnover && profit && profit > 0) {
                     return (
                       <p className="text-xs text-stone-500 mt-2 leading-relaxed">
-                        That&apos;s a <strong>{Math.round((profit / turnover) * 100)}% margin</strong> on the {formatMoney(turnover, currency)} turnover you entered. Looks right? Profit is the smaller number you keep after all costs and your own pay.
+                        {sdeMarginNote(Math.round((profit / turnover) * 100), formatMoney(turnover, currency))}
                       </p>
                     );
                   }
                   return (
                     <p className="text-xs text-stone-500 mt-2 leading-relaxed">
-                      <strong>Profit, not sales.</strong> If the business turned over {turnover ? formatMoney(turnover, currency) : `${currencySymbol}2M`} but you kept {currencySymbol}200k after costs and your own pay, enter <strong>{currencySymbol}200,000</strong>.
+                      <strong>{SDE_SHORT_REMINDER}</strong> {sdeExample(currencySymbol)}
                     </p>
                   );
                 })()}
