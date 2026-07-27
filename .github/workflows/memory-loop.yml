@@ -24,11 +24,18 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+    # Every input the probe's verdict actually depends on. A path missing here is a change that
+    # can break the loop without re-running the gate that exists to catch it.
     paths:
       - 'lib/kira/convai.ts'
+      - 'lib/kira/recall.ts'
       - 'app/api/kira/webhooks/**'
+      - 'app/api/convai/webhooks/**'
       - 'app/api/kira/create/route.ts'
-      - 'scripts/test-memory-loop.mjs'
+      # The config IS the probe's configuration — target routes, tables, identity mode, the
+      # tool-secret header. Editing it silently changed what the gate asserts and never re-ran it.
+      - 'memory-loop.config.json'
+      - '.github/workflows/memory-loop.yml'
 
 jobs:
   memory-loop:
