@@ -96,7 +96,7 @@ export const OWNER_FAQ: FaqItem[] = [
 export const ADVISOR_FAQ: FaqItem[] = [
   {
     q: 'What does the owner pay?',
-    a: "There is no price list, and that is deliberate: Kira's monthly fee is set to the size of the value gap her valuation finds in that specific business — a small fraction of the uplift, per month. Your client sees their own figure at the end of the free 3-minute valuation, before any card. Run it yourself on a business you know and you'll see exactly what they see. They get 30 days to try her, aren't invoiced until then, and can cancel any time.",
+    a: "There is no price list, and that is deliberate: Kira's monthly fee is set to the size of the value gap her valuation finds in that specific business — a small fraction of the uplift, per month. Your client sees their own figure at the end of the free 3-minute valuation, before any card. Run it yourself on a business you know and you'll see exactly what they see. They get 30 days to try her, aren't invoiced until then, and can cancel any time. All prices are quoted excluding GST (or the equivalent tax where your client is based).",
   },
   {
     q: 'What do I actually get paid?',

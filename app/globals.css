@@ -5,3 +5,31 @@
 :root {
   --primary: oklch(0.586 0.19 145.71);
 }
+
+/* ---------------------------------------------------------------------------
+ * Workaround for a defect in @caistech/elevenlabs-convai's /react widget.
+ *
+ * Its stylesheet carries `@media (max-width: 640px) { .convai-panel { width:
+ * 100vw; max-width: 100vw; padding: 20px } }`. That block targets the bare
+ * class, so it also hits `.convai-panel--embedded` — the inline variant that
+ * deliberately sets `width: 100%` — at equal specificity but LATER in the
+ * sheet. On a phone the embedded widget therefore renders a full viewport wide
+ * INSIDE a padded container and pushes the page sideways: a mobile tester
+ * measured scrollWidth 391 against a 375 viewport on /chat, immediately after
+ * signup (naive-tester, 2026-07-27).
+ *
+ * ⚠️ THIS IS A WORKAROUND, NOT THE FIX. The real repair is one selector in the
+ * shared package — scope that media block to the floating variant
+ * (`.convai-panel:not(.convai-panel--embedded):not(.convai-panel--fullpage)`).
+ * Overriding it here is, as the shared-services catalogue says of the identical
+ * BucketLyst override, "a fork of the shared component's layout by another
+ * name" — so it is deliberately narrow, and the upstream fix is owed. Remove
+ * this block once the package ships it.
+ * ------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+  .convai-panel--embedded {
+    width: 100%;
+    max-width: 100%;
+    padding: 0;
+  }
+}

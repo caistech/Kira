@@ -22,7 +22,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { computeValuation } from '@/lib/valuation/model';
-import { formatMoney, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
+import { formatMoney, formatPrice, taxSuffix, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { priceForGap } from '@/lib/valuation/pricing';
 import {
   decodeValuationParam,
@@ -68,6 +68,11 @@ export default function PlanPage() {
   }, [payload]);
 
   const money = (n: number) => formatMoney(n, payload?.currency || DEFAULT_CURRENCY);
+  // Every PRICE carries its tax qualifier; `money` stays for valuation figures, which are not
+  // prices and must not gain a '+ GST'. The label follows the visitor's currency — this product
+  // is reachable from anywhere, and '+ GST' is meaningless to a buyer in London.
+  const price = (n: number) => formatPrice(n, payload?.currency || DEFAULT_CURRENCY);
+  const tax = taxSuffix(payload?.currency || DEFAULT_CURRENCY);
 
   async function startCheckout() {
     if (!payload || !model) return;
@@ -181,7 +186,7 @@ export default function PlanPage() {
               <p className="text-white/80 font-medium">You could unlock</p>
               <p className="font-display text-4xl sm:text-5xl font-bold mt-1">{money(model.result.gap)}</p>
               <p className="text-white/90 max-w-lg mx-auto mt-4 leading-relaxed">
-                Kira is <span className="font-bold">{money(model.quote.monthly)}/month</span> (your first 30 days are free)
+                Kira is <span className="font-bold">{money(model.quote.monthly)}/month {tax}</span> (your first 30 days are free)
                 {model.quote.fractionWorthQuoting ? (
                   <> — about <span className="font-bold">{model.quote.fractionOfGapPct}</span> a year of what you stand to unlock</>
                 ) : null}
@@ -191,8 +196,8 @@ export default function PlanPage() {
 
             <div className="mt-8 bg-white rounded-3xl p-8 border-2 border-violet-200 shadow-sm max-w-lg mx-auto text-center">
               <span className="text-xs font-body uppercase tracking-wider text-violet-500 font-semibold">{model.quote.label} plan</span>
-              <p className="font-display text-4xl font-bold text-stone-800 mt-2">{money(model.quote.monthly)}<span className="text-lg text-stone-400 font-body">/month</span></p>
-              <p className="text-sm text-stone-500 mt-1">Free for 30 days. Then {money(model.quote.monthly)}/month — cancel anytime.</p>
+              <p className="font-display text-4xl font-bold text-stone-800 mt-2">{money(model.quote.monthly)}<span className="text-lg text-stone-400 font-body">/month {tax}</span></p>
+              <p className="text-sm text-stone-500 mt-1">Free for 30 days. Then {price(model.quote.monthly)}/month — cancel anytime.</p>
               <ul className="text-left space-y-2.5 my-6 text-stone-700">
                 {[
                   '30 days free — nothing charged today',
@@ -214,7 +219,7 @@ export default function PlanPage() {
               </button>
               {error && <p className="text-rose-600 text-sm mt-3">{error}</p>}
               <p className="text-xs text-stone-400 mt-3">
-                Secure checkout by Stripe · billed by Corporate AI Solutions. Your card is saved today but nothing is charged. The first payment of {money(model.quote.monthly)} comes out 30 days from now, and we email you three days before. Cancel before then and you pay nothing. You set your password and meet Kira right after.
+                Secure checkout by Stripe · billed by Corporate AI Solutions. Your card is saved today but nothing is charged. The first payment of {price(model.quote.monthly)} comes out 30 days from now, and we email you three days before. Cancel before then and you pay nothing. You set your password and meet Kira right after.
               </p>
             </div>
           </section>

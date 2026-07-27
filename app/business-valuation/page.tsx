@@ -311,7 +311,7 @@ export default function BusinessValuationPage() {
           <a href="/" className="font-display font-bold text-xl bg-gradient-to-r from-amber-500 via-pink-500 to-violet-500 bg-clip-text text-transparent">
             Kira
           </a>
-          <label className="flex items-center gap-1.5 text-xs text-stone-500 font-body">
+          <label className="flex items-center gap-1.5 text-sm text-stone-500 font-body">
             <span className="hidden sm:inline">Currency</span>
             <select
               value={currency}
@@ -417,7 +417,7 @@ export default function BusinessValuationPage() {
                           className="w-full text-left px-4 py-3 min-h-[44px] hover:bg-amber-50 flex items-center justify-between gap-3 border-b border-amber-50 last:border-0"
                         >
                           <span className="text-stone-800">{s.name}</span>
-                          <span className="text-xs text-stone-400 flex-shrink-0">{s.group}</span>
+                          <span className="text-sm text-stone-400 flex-shrink-0">{s.group}</span>
                         </button>
                       ))}
                     </div>
@@ -458,20 +458,20 @@ export default function BusinessValuationPage() {
                   const profit = typeof answers.annualProfit === 'number' ? answers.annualProfit : null;
                   if (turnover && profit && profit > turnover) {
                     return (
-                      <p className="text-xs text-rose-600 mt-2 leading-relaxed">
+                      <p className="text-sm text-rose-600 mt-2 leading-relaxed">
                         That&apos;s higher than the turnover you entered ({formatMoney(turnover, currency)}). Profit is what you keep <em>after</em> costs, so it should be lower than turnover — did you mean to enter sales here?
                       </p>
                     );
                   }
                   if (turnover && profit && profit > 0) {
                     return (
-                      <p className="text-xs text-stone-500 mt-2 leading-relaxed">
+                      <p className="text-sm text-stone-500 mt-2 leading-relaxed">
                         {sdeMarginNote(Math.round((profit / turnover) * 100), formatMoney(turnover, currency))}
                       </p>
                     );
                   }
                   return (
-                    <p className="text-xs text-stone-500 mt-2 leading-relaxed">
+                    <p className="text-sm text-stone-500 mt-2 leading-relaxed">
                       <strong>{SDE_SHORT_REMINDER}</strong> {sdeExample(currencySymbol)}
                     </p>
                   );
@@ -587,7 +587,7 @@ function ResultView({ result, currency, planHref }: { result: ReturnType<typeof 
             <NumberCard
               label="Walk away"
               value={money(result.walkAway)}
-              sub="Sell the gear, close the doors"
+              sub="Book value of the gear — a quick auction typically returns 40–60c in the dollar"
               tone="floor"
             />
             <NumberCard
@@ -642,7 +642,7 @@ function ResultView({ result, currency, planHref }: { result: ReturnType<typeof 
                     </div>
                     <div className="text-right flex-shrink-0">
                       <p className="font-display font-bold text-lg text-pink-600">+{money(f.uplift)}</p>
-                      <p className="text-xs text-stone-400">once captured</p>
+                      <p className="text-sm text-stone-400">once captured</p>
                     </div>
                   </div>
                 ))}
@@ -712,9 +712,9 @@ function NumberCard({ label, value, sub, tone }: { label: string; value: string;
   const valueColor = tone === 'genome' ? 'text-violet-700' : 'text-stone-800';
   return (
     <div className={`rounded-2xl border-2 p-5 ${styles}`}>
-      <p className="text-xs uppercase tracking-wide text-stone-500 font-semibold mb-1">{label}</p>
+      <p className="text-sm uppercase tracking-wide text-stone-500 font-semibold mb-1">{label}</p>
       <p className={`font-display text-2xl sm:text-[1.75rem] font-bold ${valueColor} leading-tight`}>{value}</p>
-      <p className="text-xs text-stone-500 mt-2 leading-snug">{sub}</p>
+      <p className="text-sm text-stone-500 mt-2 leading-snug">{sub}</p>
     </div>
   );
 }
