@@ -86,3 +86,50 @@ describe('toolSecretOk', () => {
     expect(() => TOOL_SECRET_HEADER).not.toThrow();
   });
 });
+
+// ─── rotation ────────────────────────────────────────────────────────────────
+// The PREVIOUS secret exists so a rotation has no window: the environment and the header baked into
+// every provisioned tool cannot change at the same instant, and without dual-accept the gap between
+// them is every owner's memory tools 401ing mid-conversation.
+
+describe('rotation window', () => {
+  const saved = {
+    current: process.env.KIRA_TOOL_WEBHOOK_SECRET,
+    previous: process.env.KIRA_TOOL_WEBHOOK_SECRET_PREVIOUS,
+  };
+
+  afterEach(() => {
+    if (saved.current === undefined) delete process.env.KIRA_TOOL_WEBHOOK_SECRET;
+    else process.env.KIRA_TOOL_WEBHOOK_SECRET = saved.current;
+    if (saved.previous === undefined) delete process.env.KIRA_TOOL_WEBHOOK_SECRET_PREVIOUS;
+    else process.env.KIRA_TOOL_WEBHOOK_SECRET_PREVIOUS = saved.previous;
+  });
+
+  function req(secret: string) {
+    return new Request('https://x/api/kira/webhooks/recall_memory', {
+      method: 'POST',
+      headers: { 'x-convai-tool-secret': secret },
+    });
+  }
+
+  it('accepts an agent still carrying the outgoing secret mid-rotation', () => {
+    process.env.KIRA_TOOL_WEBHOOK_SECRET = 'new-one';
+    process.env.KIRA_TOOL_WEBHOOK_SECRET_PREVIOUS = 'old-one';
+    expect(toolSecretOk(req('new-one'))).toBe(true);
+    expect(toolSecretOk(req('old-one'))).toBe(true);
+  });
+
+  it('rejects the old secret once the rotation is finished and PREVIOUS is unset', () => {
+    process.env.KIRA_TOOL_WEBHOOK_SECRET = 'new-one';
+    delete process.env.KIRA_TOOL_WEBHOOK_SECRET_PREVIOUS;
+    // Leaving PREVIOUS set is a second live credential nobody is tracking, so the test pins that
+    // removing it actually takes effect rather than the old value lingering somewhere.
+    expect(toolSecretOk(req('old-one'))).toBe(false);
+  });
+
+  it('still rejects a wrong secret while a rotation is in progress', () => {
+    process.env.KIRA_TOOL_WEBHOOK_SECRET = 'new-one';
+    process.env.KIRA_TOOL_WEBHOOK_SECRET_PREVIOUS = 'old-one';
+    expect(toolSecretOk(req('neither-of-them'))).toBe(false);
+  });
+});

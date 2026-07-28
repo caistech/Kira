@@ -182,7 +182,29 @@ function requireToolSecret(): string {
  * one. `scripts/patch-tool-secret-headers.mjs` is what reaches them.
  */
 export function toolSecretOk(req: Request): boolean {
-  return req.headers.get(TOOL_SECRET_HEADER) === requireToolSecret();
+  const presented = req.headers.get(TOOL_SECRET_HEADER);
+  // requireToolSecret() first, always — a misconfigured server must 500 before any comparison, or
+  // an unset secret becomes an open door disguised as a failed auth.
+  const current = requireToolSecret();
+  if (presented === current) return true;
+
+  // ROTATION WINDOW. A secret lives in two places that cannot change at the same instant: this
+  // environment, and the header baked into every provisioned tool. Whichever moves first, the other
+  // is briefly wrong — and the agents can only be re-provisioned one at a time, so "briefly" is as
+  // long as that takes, with every owner's memory tools 401ing in the middle of live conversations.
+  //
+  // Setting KIRA_TOOL_WEBHOOK_SECRET_PREVIOUS to the outgoing value closes that window entirely:
+  // both are accepted while the fleet moves across, and the variable is deleted afterwards.
+  //
+  // It is not a fallback and must never be left set. Two valid secrets is twice the surface, and a
+  // "previous" that outlives its rotation is just a second live credential nobody is tracking.
+  const previous = process.env.KIRA_TOOL_WEBHOOK_SECRET_PREVIOUS;
+  if (previous && presented === previous) {
+    console.warn('[tools] accepted the PREVIOUS tool secret — finish the rotation and unset it.');
+    return true;
+  }
+
+  return false;
 }
 
 /**
