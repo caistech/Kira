@@ -15,7 +15,7 @@
 // and it would look like it worked. A demo that sounds like someone else is worse than no audio,
 // because it is the one thing a listener cannot un-hear.
 
-import { mkdir, writeFile, stat } from 'node:fs/promises';
+import { mkdir, writeFile, stat, readdir, unlink } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 
@@ -100,7 +100,23 @@ async function main() {
   }
 
   await writeFile(path.join(OUT_DIR, 'manifest.json'), JSON.stringify(manifest, null, 2));
-  console.log(`\n  ${made} generated, ${skipped} already present. Voice: ${VOICE_ID}\n`);
+
+  // Prune anything the current script no longer references.
+  //
+  // Filenames are content-addressed, so every edit to a line leaves its previous recording behind.
+  // Three passes over this script left 21 orphans and 5MB of dead audio in the repo — invisible,
+  // because the manifest only ever pointed at live files and everything worked perfectly. Pruning
+  // here means the next person cannot inherit the same quiet accumulation.
+  const referenced = new Set(Object.values(manifest).map((p) => String(p).split('/').pop()));
+  let pruned = 0;
+  for (const f of await readdir(OUT_DIR)) {
+    if (f.endsWith('.mp3') && !referenced.has(f)) {
+      await unlink(path.join(OUT_DIR, f));
+      pruned += 1;
+    }
+  }
+
+  console.log(`\n  ${made} generated, ${skipped} already present, ${pruned} orphans pruned. Voice: ${VOICE_ID}\n`);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });
