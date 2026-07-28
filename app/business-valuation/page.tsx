@@ -15,7 +15,7 @@
 // question count is rendered from STEPS.length rather than written in prose, because "a few
 // questions" against an actual eleven is the kind of drift a comment cannot prevent.
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 
 import {
   SDE_DEFINITION,
@@ -201,6 +201,7 @@ export default function BusinessValuationPage() {
   // cannot fire the same call repeatedly.
   const [llmSector, setLlmSector] = useState<string | null>(null);
   const [llmTried, setLlmTried] = useState<string | null>(null);
+  const [llmPending, setLlmPending] = useState(false);
   useEffect(() => {
     let saved: string | null = null;
     try {
@@ -268,8 +269,60 @@ export default function BusinessValuationPage() {
     setAnswers((a) => ({ ...a, [id]: value }));
   }
 
-  function next() {
-    if (!canAdvance) return;
+  /**
+   * Ask the server-side backstop what sector a phrase belongs to.
+   *
+   * Extracted from the input's onBlur so that `next()` can AWAIT it. The model call takes a second
+   * or two; firing it on blur ALONE meant the answer routinely arrived after the owner had already
+   * pressed Next and the industry step had unmounted, so it landed nowhere and the screen that
+   * asked the question never showed the answer to it. "it development" and "ai development" both
+   * match correctly at the API — `IT & Software Services` and `Software & App Companies` — and
+   * both looked completely dead on screen for exactly this reason.
+   */
+  const resolveIndustry = useCallback(async (raw: string): Promise<string | null> => {
+    const q = raw.trim();
+    if (!q) return null;
+    setLlmPending(true);
+    try {
+      const response = await fetch('/api/valuation/match-industry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ industry: q }),
+      });
+      const data = response.ok ? await response.json() : { matched: false };
+      if (data?.matched && data.sector) {
+        setLlmSector(data.sector);
+        // Store the SECTOR so the valuation uses the real multiple. His own words stay in the box;
+        // the model's answer is shown below, never silently swapped in.
+        setAnswer('industry', data.sector);
+        return data.sector as string;
+      }
+      return null;
+    } catch {
+      // Stays unmatched — the honest "no sector match" message already says so.
+      return null;
+    } finally {
+      setLlmTried(q);
+      setLlmPending(false);
+    }
+  }, []);
+
+  async function next() {
+    if (!canAdvance || llmPending) return;
+
+    // Settle the backstop BEFORE leaving the industry question, so its answer can never arrive
+    // after the step it belongs to has gone. Skipped when the phrase is already a sector name or
+    // the synonym table resolves it — those are instant and free, and the model adds nothing.
+    if (step?.id === 'industry' && !llmSector) {
+      const raw = String(answers.industry ?? '').trim();
+      const lower = raw.toLowerCase();
+      const alreadyKnown =
+        SECTOR_MULTIPLES.some((s) => s.name.toLowerCase() === lower) || Boolean(synonymSector(lower));
+      if (raw && !alreadyKnown && llmTried !== raw) {
+        await resolveIndustry(raw);
+      }
+    }
+
     setStepIndex((i) => Math.min(i + 1, total));
   }
   function back() {
@@ -427,23 +480,9 @@ export default function BusinessValuationPage() {
                       // owner touches would add latency and cost to every visitor.
                       const q = industryQuery.trim();
                       if (!q || exact || matches.length > 0 || llmSector || llmTried === q) return;
-                      setLlmTried(q);
-                      fetch('/api/valuation/match-industry', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ industry: q }),
-                      })
-                        .then((r) => (r.ok ? r.json() : { matched: false }))
-                        .then((d) => {
-                          if (d?.matched && d.sector) {
-                            setLlmSector(d.sector);
-                            // Store the SECTOR, so the valuation uses the real multiple. His own
-                            // words stay in the box; the model's answer is shown below, not
-                            // silently swapped in.
-                            setAnswer('industry', d.sector);
-                          }
-                        })
-                        .catch(() => { /* stays unmatched — the honest message below already says so */ });
+                      // Fire early so the answer is usually on screen before Next is pressed; next()
+                      // awaits the same call as a backstop when it isn't.
+                      void resolveIndustry(q);
                     }}
                     placeholder="Start typing your industry…"
                     className="w-full text-base rounded-2xl border-2 border-amber-200 focus:border-pink-400 focus:outline-none px-4 py-4 min-h-[52px] bg-amber-50/40"
@@ -480,6 +519,13 @@ export default function BusinessValuationPage() {
                     <p className="mt-2 rounded-xl bg-emerald-50 px-4 py-3 text-base text-stone-700">
                       Matched to <span className="font-semibold">{llmSector}</span> — that&apos;s the
                       sector average we&apos;ll use. Not right? Pick another from the list.
+                    </p>
+                  ) : llmPending ? (
+                    /* Never leave the field looking dead while a model call is in flight — silence
+                       here is indistinguishable from the matcher being broken, which is precisely
+                       how it was reported. */
+                    <p className="mt-2 rounded-xl bg-stone-100 px-4 py-3 text-base text-stone-600">
+                      Checking &ldquo;{industryQuery.trim()}&rdquo; against our sector list…
                     </p>
                   ) : industryQuery.trim() && !exact && matches.length === 0 ? (
                     <p className="mt-2 rounded-xl bg-amber-100/70 px-4 py-3 text-base text-stone-700">
@@ -573,10 +619,14 @@ export default function BusinessValuationPage() {
               {step.kind !== 'choice' && (
                 <button
                   onClick={next}
-                  disabled={!canAdvance}
+                  disabled={!canAdvance || llmPending}
                   className="grad-coral text-white font-display font-bold px-7 py-3 rounded-full inline-flex items-center gap-2 min-h-[48px] disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  {stepIndex === total - 1 ? 'See my valuation' : 'Next'} <ArrowRight className="h-4 w-4" />
+                  {llmPending
+                    ? 'Checking…'
+                    : stepIndex === total - 1
+                      ? 'See my valuation'
+                      : 'Next'} <ArrowRight className="h-4 w-4" />
                 </button>
               )}
             </div>
