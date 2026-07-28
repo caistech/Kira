@@ -18,38 +18,60 @@ function usingRemoteBrain(): boolean {
 }
 
 /**
- * Record a dispatch that could not be done, in KIRA's own table.
+ * Mirror a dispatched task into KIRA's own table, whatever its status.
  *
- * The local stub writes its own row; the orchestrator writes to a DIFFERENT Supabase project. So
- * the moment dispatch moved to the orchestrator, every operator surface reading kira_tasks went
- * quietly blind — /admin/asked-for would sit showing stale rows while real requests arrived
- * somewhere it never looks, which reads as "nobody is asking for anything" and is the worst
- * possible thing for a queue whose entire job is to tell you what to build.
+ * WHY TWO DATABASES AT ALL. Each product owns its own Supabase and nothing holds another's
+ * service-role key — the orchestrator's `connections` table carries Xero refresh tokens, which are
+ * standing access to a business's complete financial position, so a leaked Kira env must not be
+ * able to reach it. The boundary is crossed over HTTP with a shared secret, and state both sides
+ * need is COPIED across it rather than read across it.
  *
- * One table serves the owner's and the operator's surfaces whichever brain did the work. Fail-soft:
- * this runs inside a live voice call and is the least important thing happening in it.
+ * WHY AT DISPATCH AND NOT AT COMPLETION. The mirror used to happen only when a task finished or
+ * failed, so a task waiting on the owner's approval existed in the orchestrator and nowhere else.
+ * Measured: 8 tasks at `awaiting_approval` in the orchestrator, 0 of them in kira_tasks. The owner's
+ * "Waiting on you" list — the top half of his dashboard — would have shown nothing while eight
+ * things waited on him. A surface that looks calm because it queries the wrong database is the same
+ * class of failure as a page that says a thing was sent when it wasn't.
+ *
+ * Writing the row the moment the task exists makes Kira's copy complete by construction, rather
+ * than contingent on every later callback arriving.
+ *
+ * KEYED `orch:<taskGroupId>` — the SAME key the completion callback upserts on. Anything else and
+ * the callback creates a second row for the same task instead of updating this one, which is how a
+ * mirror turns into two opinions that disagree.
+ *
+ * AUTHORITY: the orchestrator owns execution state. This table is a READ MODEL for the owner's
+ * surfaces and the operator's queue. Nothing may decide an approval or a send from it.
+ *
+ * Fail-soft: it runs inside a live voice call and is the least important thing happening in one.
  */
-async function mirrorUndoneTask(args: {
+async function mirrorTask(args: {
   userId: string;
-  intentId: string;
+  taskGroupId: string;
   utterance: string;
-  status: 'unsupported' | 'failed';
+  status: string;
+  kind: string | null;
   summary: string | null;
-  handledBy: string;
 }): Promise<void> {
-  if (!usingRemoteBrain()) return; // the local stub already wrote it — don't double-record
+  if (!usingRemoteBrain()) return; // the local stub writes its own row — don't double-record
+  if (!args.taskGroupId) return; // nothing to key on; the dispatch itself never landed
   try {
-    await createServiceClient().from('kira_tasks').insert({
-      user_id: args.userId,
-      intent_id: args.intentId,
-      kind: 'unsupported',
-      status: args.status,
-      utterance: args.utterance,
-      summary: args.summary,
-      handled_by: args.handledBy,
-    });
+    await createServiceClient()
+      .from('kira_tasks')
+      .upsert(
+        {
+          user_id: args.userId,
+          intent_id: `orch:${args.taskGroupId}`,
+          kind: args.kind ?? 'unsupported',
+          status: args.status,
+          utterance: args.utterance,
+          summary: args.summary,
+          handled_by: 'orchestrator',
+        },
+        { onConflict: 'user_id,intent_id' },
+      );
   } catch (error) {
-    console.error('[swarm] could not mirror an undone task (ignored):', error);
+    console.error('[swarm] could not mirror a task (ignored):', error);
   }
 }
 
@@ -92,16 +114,30 @@ export async function handleDispatchTask(req: Request): Promise<Response> {
     // being written and read by nobody; a build queue you have to remember to open goes stale, and
     // the freshness is the whole value of the signal. Deliberately not awaited into the response
     // path — a mail failure must never delay or break a live voice call.
-    if (result.status === 'unsupported') {
+    // 'failed' belongs here as much as 'unsupported'. They mean opposite things — we never could
+    // versus we should have and didn't — and the second is the one that had been landing as an
+    // invisible `queued` row while the owner was told his email had gone.
+    if (result.status === 'unsupported' || result.status === 'failed') {
       const classify = (result.draft?.artifact as { classify?: { reason_if_unsupported?: string } } | undefined)
         ?.classify;
       void sendUnansweredRequestAlert({
         utterance,
-        reason: classify?.reason_if_unsupported ?? result.draft?.summary ?? null,
+        reason: classify?.reason_if_unsupported ?? result.draft?.summary ?? result.message ?? null,
         ownerUserId: userId,
-        status: 'unsupported',
+        status: result.status,
       });
     }
+
+    // Mirror EVERY dispatch, not only the ones that ended badly — awaiting_approval above all,
+    // since that is the state the owner's dashboard is built around.
+    void mirrorTask({
+      userId,
+      taskGroupId: result.taskGroupId,
+      utterance,
+      status: result.status,
+      kind: result.draft?.kind ?? null,
+      summary: result.draft?.summary ?? result.message ?? null,
+    });
 
     const art = (result.draft?.artifact ?? {}) as Record<string, unknown>;
     const isSend = result.draft?.kind === 'email' || result.draft?.kind === 'quote';
