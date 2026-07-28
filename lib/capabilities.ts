@@ -48,6 +48,11 @@ export const CAN: Capability[] = [
     answer: 'Set against your own working week, and she raises it with you when it comes around.',
   },
   {
+    ask: '“What’s in the bank?”',
+    answer:
+      'Balance on each account and the total, read from your accounting system. She reads only — she cannot move a cent.',
+  },
+  {
     ask: '“Who owes me?” · “What do I owe?”',
     answer:
       'She reads it straight out of your accounting system and tells you — how much is outstanding, how much of it is overdue, and who the oldest ones are. She reads only; she cannot move a cent.',
@@ -67,9 +72,9 @@ export const CAN: Capability[] = [
 /** Things she cannot do. Each one has no path, not a bad description. */
 export const CANNOT: Limit[] = [
   {
-    thing: 'Tell you your bank balance, or read your P&L',
+    thing: 'Talk you through your profit and loss',
     detail:
-      'She can see your invoices — money owed to you and by you — because that is what your accounting connection currently permits. Balances and reports need a wider permission that has to be granted separately, and until it is, she will say so rather than guess.',
+      'She can reach the report and currently reads only the income line out of it, which is half an answer and worse than none. Until she can give you the whole picture she will not pretend to.',
   },
   {
     thing: 'Move money',

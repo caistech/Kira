@@ -35,20 +35,19 @@ connected.
 
 | Ask | Returns |
 |---|---|
+| **What's in the bank?** | Balance per account and the total |
 | **Who owes me?** | Count, total, how much is overdue, and the five oldest with names and amounts |
 | **What do I owe?** | The same, for bills payable |
+| **What does Xero have for us?** | Business name, base currency, financial year end |
 
-**Verified live 2026-07-28** against a real connection: both work.
+**Verified live 2026-07-28** against a real connection, after re-consent with the widened scopes
+(`accounting.settings.read`, `accounting.reports.profitandloss.read`,
+`accounting.reports.banksummary.read`). All four return real values, not structurally-valid zeros.
 
-⚠️ **Three more resources are BUILT and do not work yet — a scope limit, not a code gap.**
-`bank_balances`, `profit_and_loss` and `organisation` are implemented and return `upstream_error`,
-because the connection was granted only `accounting.invoices.read` + `accounting.contacts.read`.
-Balances and the org record need `accounting.settings.read`; the reports need a reports scope which
-Xero **rejects for this app** — apps registered after 2 March 2026 get only the granular scopes, and
-`accounting.reports.read` is broad-only. Fixing it means widening the scope list AND re-consenting,
-and for reports it means finding the granular name (`reports.<name>.read`) that this app will accept.
-Until then they are listed under CANNOT on the public page, which is the whole reason that page is
-generated from one source.
+⚠️ **`profit_and_loss` reaches the report and parses only ONE line out of it** — `Total Income`, no
+expenses and no net profit. The scope is granted and the call succeeds; the row-walk in
+`xero-read.ts` only picks up one section of Xero's nested report structure. It stays on the CANNOT
+list until it returns the whole picture, because half a P&L is a worse answer than none.
 
 **She says these figures; she never saves them.** She may remember what they *mean* — "money owed is
 concentrated in a few clients" — and never the amounts, balances, invoice numbers or client names.
