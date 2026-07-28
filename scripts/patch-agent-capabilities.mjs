@@ -123,7 +123,7 @@ ${boundary}`;
       headers: { 'xi-api-key': apiKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         conversation_config: {
-          agent: { prompt: { prompt: `${current}\n\n${boundary}` } },
+          agent: { prompt: { prompt: next } },
         },
       }),
     });
@@ -134,12 +134,20 @@ ${boundary}`;
     const after = await (
       await fetch(`https://api.elevenlabs.io/v1/convai/agents/${id}`, { headers: { 'xi-api-key': apiKey } })
     ).json();
-    const hasMarker = (after?.conversation_config?.agent?.prompt?.prompt || '').includes(MARKER);
+    const afterPrompt = after?.conversation_config?.agent?.prompt?.prompt || '';
+    const markerCount = afterPrompt.split(MARKER).length - 1;
     const toolCount = (after?.conversation_config?.agent?.prompt?.tool_ids || []).length;
-    if (!hasMarker) throw new Error('patch returned 200 but the marker is absent on read-back');
+    if (markerCount === 0) throw new Error('patch returned 200 but the marker is absent on read-back');
+    // Assert exactly ONE. An earlier version of this script sent `current + boundary` while the
+    // dedupe logic sat unused a few lines above, so every run stacked another copy of the section
+    // onto the same prompt — four deep before anyone counted. A read-back that only checks the text
+    // is PRESENT cannot see that failure, because it is present four times.
+    if (markerCount > 1) {
+      throw new Error(`patch left ${markerCount} copies of the section on this agent — dedupe failed`);
+    }
 
     patched += 1;
-    console.log(`  + ${id} ${a.agent_name ?? ''} — appended · ${toolCount} tools still attached`);
+    console.log(`  + ${id} ${a.agent_name ?? ''} — ${updating ? 'updated' : 'appended'} · ${toolCount} tools still attached`);
   } catch (error) {
     failed += 1;
     console.error(`  ! ${id} — ${error.message}`);

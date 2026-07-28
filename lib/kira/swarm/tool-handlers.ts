@@ -9,6 +9,49 @@
 
 import { sendUnansweredRequestAlert } from '@/lib/email/unanswered-request';
 import { getSwarmCoordinator } from '@/lib/kira/swarm';
+import { createServiceClient } from '@/lib/supabase/server';
+
+/** True when dispatch is going to the orchestrator rather than Kira's own local stub. */
+function usingRemoteBrain(): boolean {
+  const adapter = (process.env.KIRA_SWARM_ADAPTER || 'local').toLowerCase();
+  return adapter !== 'local';
+}
+
+/**
+ * Record a dispatch that could not be done, in KIRA's own table.
+ *
+ * The local stub writes its own row; the orchestrator writes to a DIFFERENT Supabase project. So
+ * the moment dispatch moved to the orchestrator, every operator surface reading kira_tasks went
+ * quietly blind — /admin/asked-for would sit showing stale rows while real requests arrived
+ * somewhere it never looks, which reads as "nobody is asking for anything" and is the worst
+ * possible thing for a queue whose entire job is to tell you what to build.
+ *
+ * One table serves the owner's and the operator's surfaces whichever brain did the work. Fail-soft:
+ * this runs inside a live voice call and is the least important thing happening in it.
+ */
+async function mirrorUndoneTask(args: {
+  userId: string;
+  intentId: string;
+  utterance: string;
+  status: 'unsupported' | 'failed';
+  summary: string | null;
+  handledBy: string;
+}): Promise<void> {
+  if (!usingRemoteBrain()) return; // the local stub already wrote it — don't double-record
+  try {
+    await createServiceClient().from('kira_tasks').insert({
+      user_id: args.userId,
+      intent_id: args.intentId,
+      kind: 'unsupported',
+      status: args.status,
+      utterance: args.utterance,
+      summary: args.summary,
+      handled_by: args.handledBy,
+    });
+  } catch (error) {
+    console.error('[swarm] could not mirror an undone task (ignored):', error);
+  }
+}
 
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -107,7 +150,12 @@ export async function handleApproveTask(req: Request): Promise<Response> {
       task_id: result.taskGroupId,
       status: result.status,
       message: result.message ?? (result.status === 'done' ? 'Done.' : ''),
+      // The agent must be able to tell "it went" from "it did not" without inferring it from prose.
+      // `done` alone was ambiguous when a task ended any other way, and an agent that guesses tells
+      // an owner his email was sent when it was not.
       done: result.status === 'done',
+      sent: result.status === 'done',
+      failed: result.status === 'failed',
     });
   } catch (e) {
     console.error('[swarm] approve_task failed:', e);

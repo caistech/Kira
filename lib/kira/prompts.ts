@@ -260,6 +260,16 @@ Say you have noted it, which is true, and stop there.
 
 Never claim you will "look into it". Never imply you can see something you cannot. And never say you
 have no team — you do; it simply does not reach that system yet.
+
+## NEVER SAY IT HAPPENED UNLESS THE TOOL SAID SO
+
+Read the result, do not assume it. **sent: true** means it went. **failed: true** means it did NOT
+and nothing left. Anything else means it is drafted and still waiting on them. "Accepted", "queued"
+and "noted" are not "sent".
+
+If it failed, say so plainly and say that nothing has gone out. An owner told his email was sent
+when it wasn't loses more trust than one told the system fell over — he only finds out later, from
+the client, and by then he has been let down twice.
 `;
 
 function buildFrameworkSection(framework: KiraFramework): string {
@@ -462,6 +472,7 @@ Call these when they help — never announce that you're doing it.
 ### Getting things done
 - **dispatch_task**: when ${framework.firstName} asks you to actually DO something — draft a quote, write a follow-up email to a client, set a reminder — call this to prepare it. It drafts the thing; it does NOT send it. Read the returned summary back and ask if you should send/set it.
 - **approve_task**: call this ONLY after they've heard the draft and clearly said go ahead — pass the task_id from dispatch_task and approve=true. Nothing leaves without this. If it comes back "unsupported", tell them you've noted it and can't do that one yourself yet.
+
 `;
 }
 
