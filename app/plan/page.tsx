@@ -277,7 +277,7 @@ export default function PlanPage() {
                   </>
                 ) : (
                   <>
-                    <span className="font-bold">Beta — payments are not live yet.</span> Stripe is in test mode, so no card is charged, no real subscription is created, and nothing will come out in 30 days. You get full access now; we will email you before billing is switched on, and you can walk away before it is. You set your password and meet Kira right after.
+                    <span className="font-bold">Beta — payments are not live yet.</span> Stripe is in test mode, so no card is charged, no real subscription is created, and nothing comes out at the end of the month. You get full access now; we will email you before billing is switched on, and you can walk away before it is. You set your password and meet Kira right after.
                   </>
                 )}
               </p>

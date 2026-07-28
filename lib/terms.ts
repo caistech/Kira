@@ -64,9 +64,14 @@ export const TERMS_SECTIONS: TermsSection[] = [
   {
     heading: 'Billing',
     paragraphs: [
-      'Your first month is free. We take your card at signup and the first payment is taken at the end of that month — we email you three days beforehand so it is never a surprise.',
-      'Subscriptions are billed monthly in advance. You can cancel at any time from Settings; cancellation takes effect at the end of the period you have paid for, and partial periods are not refunded.',
-      'The free month includes a fair-use allowance. If you approach it we tell you — we do not cut you off mid-conversation.',
+      // These three paragraphs described a free first month and billing IN ADVANCE — the opposite of
+      // what the code does, and the opposite of what /plan promises. They also said cancellation
+      // takes effect at the end of the period you have paid for with no refund for partial periods,
+      // which negates the waiver entirely. This is the document a customer AGREES to, so it was the
+      // most serious of the surfaces that drifted when billing moved to arrears.
+      'We take your card when you sign up and charge nothing at that point. Each month is billed once it has finished, for the month just gone, and we email you three days before every payment so it is never a surprise.',
+      'You are never billed for the month you are in. Cancel at any time from Settings and the month in progress is written off — no payment for it, no part-month charge, and nothing further afterwards. Months already invoiced and paid are not refunded.',
+      'Your plan includes a fair-use allowance on voice. If you approach it we tell you — we do not cut you off mid-conversation.',
     ],
   },
   {

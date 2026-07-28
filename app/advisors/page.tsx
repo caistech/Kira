@@ -36,7 +36,16 @@ const STEPS = [
   },
   {
     heading: 'You get paid, monthly',
-    body: '10% of what they pay us, every month, for as long as they keep paying. On collected funds only.',
+    body: '10% of what they pay us, every month, for as long as they keep paying. On collected funds only — and because an owner is invoiced at the END of each month, for the month just gone, your first payment follows theirs.',
+  },
+  {
+    // The one place the site was selling without saying the awkward thing first. /plan discloses
+    // test mode plainly to owners; this page quoted "10% of collected funds" to a broker weighing
+    // up whether to spend her own reputation, without mentioning that collections are currently
+    // zero. A naive-tester run flagged it as the reason she would not refer a client — not the fact
+    // itself, which she called reasonable, but finding it out somewhere other than here.
+    heading: 'Payments are switched off while we are in beta',
+    body: 'Nothing is being collected from any owner yet, so nothing is being paid out yet either. Introductions made now are recorded and attributed to you from the first click, and they earn from the month billing is switched on. We would rather you knew that before you spent your name on it than found it out afterwards.',
   },
   {
     // Stated to advisors as plainly as to owners. A broker is putting their own name on the

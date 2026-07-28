@@ -50,7 +50,7 @@ export const CAN: Capability[] = [
   {
     ask: '“What’s in the bank?”',
     answer:
-      'Balance on each account and the total, read from your accounting system. She reads only — she cannot move a cent.',
+      'Balance on each account and the total, read out of Xero once you have connected it. She reads only — she cannot move a cent, and she cannot see your bank directly, only what your bookkeeping says.',
   },
   {
     ask: '“Who owes me?” · “What do I owe?”',
@@ -86,8 +86,13 @@ export const CANNOT: Limit[] = [
     detail: 'She can write the email about one. Creating it in your accounting system is not something she does.',
   },
   {
-    thing: 'Touch your bank, calendar or job software',
-    detail: 'She has no connection to any of them. She cannot see your diary, book anything, or move a job.',
+    // A tester read "reads from your accounting system" next to "no connection to your bank" and
+    // could not tell whether she was in the books or not. Xero is now named on both sides, and the
+    // bank/bookkeeping distinction is drawn rather than implied — an owner deciding whether to
+    // connect his accounts needs to know exactly which door he is opening.
+    thing: 'Touch your bank, your calendar or your job software',
+    detail:
+      'Xero is the only system she connects to, and only to read it. She has no link to your bank itself, cannot see your diary, cannot book anything and cannot move a job.',
   },
   {
     thing: 'Order materials or make bookings',

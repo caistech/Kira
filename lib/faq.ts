@@ -10,24 +10,40 @@
 // The pricing page is now gone entirely. A price only ever appears in ONE place — /plan, after the
 // owner has seen their own gap — because Kira's price is a fraction of that gap and a number quoted
 // without it is just a number to flinch at. This FAQ is the only other place money is discussed,
-// and it deliberately describes the SHAPE of the price (a small fraction of the uplift, 30 days to
-// try it, cancel any time) without ever naming a figure. Do not add one here.
+// and it deliberately describes the SHAPE of the price (a small fraction of the uplift, never billed
+// for the month you are in) without ever naming a figure. Do not add one here.
 //
-// The commercial terms live in lib/billing (TRIAL_DAYS), and the wording below is written to match
-// them. If the trial length changes, change it there and re-read this file.
+// ⚠️ THIS FILE DRIFTED AGAIN, THE SAME DAY THE MODEL CHANGED (2026-07-28). Billing moved to arrears
+// — the month is owed from day one and invoiced when it closes, and cancelling writes off the month
+// you are in — and /plan, the pricing block and Settings were all updated while these answers went
+// on promising a 30-day free trial. Two naive testers, walking separately, both found four different
+// deals on one site.
+//
+// The sweep that was supposed to catch it ran with `head -20` on the grep and the file's matches
+// fell below the cut. A completeness check that truncates its own output is not a completeness check.
+//
+// The commercial terms live in lib/billing/arrears.ts. If the model changes, change it there and
+// re-read this file — and grep without a `head`.
 
 export interface FaqItem {
   q: string;
   a: string;
 }
 
-/** The terms, stated the same way everywhere. */
-export const TRIAL_TERMS = {
-  headline: '30 days free',
-  short: 'Try it for 30 days, then monthly — cancel any time.',
+/**
+ * The terms, stated the same way everywhere.
+ *
+ * ⚠️ NOTHING IMPORTS THIS. It was written to be the one source and no surface ever consumed it,
+ * which is exactly why the answers below were free to drift away from what the checkout does. Wire
+ * it in or delete it — an unused constant claiming to be the single source is worse than no
+ * constant at all, because it makes the next person believe the problem is solved.
+ */
+export const BILLING_TERMS = {
+  headline: 'Never billed for the month you’re in',
+  short: 'Billed at the end of each month, for the month just gone — cancel any time.',
   /** For the checkout, where someone is about to enter a card. */
   atCheckout:
-    'Your card is saved today but nothing is charged. The first payment comes out 30 days from now, and we email you three days before. Cancel before then and you pay nothing.',
+    'Your card is saved today but nothing is charged. At the end of each month you pay for the month just finished, and we email you three days before. Cancel at any point and the month you are in is written off.',
 } as const;
 
 /** Owner-facing. Shown on the landing page. */
@@ -42,15 +58,15 @@ export const OWNER_FAQ: FaqItem[] = [
   },
   {
     q: 'What does it cost, and when do I pay?',
-    a: "The valuation is completely free — no sign-up, no card. If you then want Kira to help close the gap, her monthly fee is set to the size of that gap: a small fraction of the value you stand to unlock, and a fraction of what the same work costs from a person. You see your own figure on screen before you decide anything — that's why there's no price list here. You get 30 days to try her; you're not invoiced until those 30 days are up, and you can cancel any time.",
+    a: "The valuation is completely free — no sign-up, no card. If you then want Kira to help close the gap, her monthly fee is set to the size of that gap: a small fraction of the value you stand to unlock, and a fraction of what the same work costs from a person. You see your own figure on screen before you decide anything — that's why there's no price list here. You're never invoiced for the month you're in: each month is billed once it has finished, and if you cancel, that month is on us.",
   },
   {
     q: 'Why is the price different for different businesses?',
     a: "Because what Kira is worth to you depends on what's locked in your head. The valuation shows the gap between what your business is worth today and what it's worth captured and transferable; her fee is a small fraction of that per year. A bigger gap means more for her to unlock, so the bands move with it — never the other way around, where you pay the same regardless of what you get out.",
   },
   {
-    q: 'Why do you need my card if the first 30 days are free?',
-    a: "So Kira carries straight on at the end of the trial instead of stopping dead and losing your thread. Nothing is charged for 30 days, you get three days' warning before the first payment, and cancelling takes one click in Settings.",
+    q: 'Why do you need my card before anything is charged?',
+    a: "So Kira carries straight on at the end of the month instead of stopping dead and losing your thread. Nothing is charged today; each month is billed once it has finished, you get three days' warning before every payment, and cancelling takes one click in Settings — the month you're in is never billed.",
   },
   {
     q: 'What currency am I charged in?',
@@ -96,11 +112,11 @@ export const OWNER_FAQ: FaqItem[] = [
 export const ADVISOR_FAQ: FaqItem[] = [
   {
     q: 'What does the owner pay?',
-    a: "There is no price list, and that is deliberate: Kira's monthly fee is set to the size of the value gap her valuation finds in that specific business — a small fraction of the uplift, per month. Your client sees their own figure at the end of the free 3-minute valuation, before any card. Run it yourself on a business you know and you'll see exactly what they see. They get 30 days to try her, aren't invoiced until then, and can cancel any time. All prices are quoted excluding GST (or the equivalent tax where your client is based).",
+    a: "There is no price list, and that is deliberate: Kira's monthly fee is set to the size of the value gap her valuation finds in that specific business — a small fraction of the uplift, per month. Your client sees their own figure at the end of the free 3-minute valuation, before any card. Run it yourself on a business you know and you'll see exactly what they see. They are never invoiced for the month they are in — each month is billed once it has finished — and they can cancel any time. All prices are quoted excluding GST (or the equivalent tax where your client is based).",
   },
   {
     q: 'What do I actually get paid?',
-    a: '10% of what each owner you introduce pays us, every month, for as long as they keep paying. Not a one-off finder\'s fee — while the subscription runs, you earn on it. Their free 30 days pay nothing, because nothing is collected yet.',
+    a: "10% of what each owner you introduce pays us, every month, for as long as they keep paying. Not a one-off finder's fee — while the subscription runs, you earn on it. Commission follows collection: an owner's first month is invoiced once it has finished, so your first payment follows theirs. And while we are in beta, payments are switched off entirely — nothing is being collected from anyone yet, so nothing is being paid out yet either.",
   },
   {
     q: 'When and how am I paid?',
