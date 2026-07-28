@@ -195,6 +195,19 @@ export default function KiraLandingPage() {
 
             <div className={`flex flex-col sm:flex-row items-center justify-center gap-4 ${isVisible ? 'fade-up fade-up-delay-3' : 'opacity-0'}`}>
               <a href="/business-valuation" className="font-display gradient-coral text-white px-8 py-4 rounded-full text-lg font-bold hover-pop shadow-xl shadow-pink-200 inline-block">Find out in 3 minutes →</a>
+
+              {/* THE DEMO, IN THE HERO — not a section further down and not a route of its own.
+                  A 66-year-old who has told nobody he is selling does not scroll a marketing page
+                  looking for proof, and he certainly does not click into a /demo tab. The one thing
+                  that differentiates this product is that he can hear her and watch the gap close,
+                  so it goes where his eyes already are. It ends by asking him to run his own
+                  valuation, with the button on that beat. */}
+              <div className="mt-12 text-left">
+                <p className="font-body text-center text-stone-600 mb-4">
+                  Or watch what happens over six months — <span className="font-semibold">Kira will talk you through it herself.</span>
+                </p>
+                <LandingDemo />
+              </div>
             </div>
             <p className={`font-body text-sm text-stone-400 mt-4 ${isVisible ? 'fade-up fade-up-delay-3' : 'opacity-0'}`}>Free · no sign-up · an indicative valuation on the spot.</p>
           </div>
@@ -229,26 +242,6 @@ export default function KiraLandingPage() {
                 The <span className="font-semibold text-violet-600">$438k gap</span> is the knowledge in your head. Kira helps you capture it.
               </p>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* THE DEMO, ON THE LANDING PAGE — not a route of its own.
-          A 66-year-old who has told nobody he is selling does not go exploring a nav bar; a /demo
-          link is a page he never clicks. The one thing that differentiates this product is that he
-          can hear her and watch the gap close, so it belongs where he already is. */}
-      <section className="bg-amber-50/60 py-20 border-y border-amber-100">
-        <div className="max-w-3xl mx-auto px-5">
-          <h2 className="font-display text-2xl sm:text-3xl font-bold text-center">Watch what happens over six months</h2>
-          <p className="font-body text-center text-stone-600 mt-4 max-w-2xl mx-auto leading-relaxed">
-            A real-shaped plumbing business — thirty-one years old, nine staff, and it runs on one man.
-            Press start and Kira will talk you through it herself. Nothing here is a real business.
-          </p>
-          <p className="font-body text-center text-sm text-stone-500 mt-2">
-            About three minutes. Pause any time, and it reads fine with the sound off.
-          </p>
-          <div className="mt-8">
-            <LandingDemo />
           </div>
         </div>
       </section>
