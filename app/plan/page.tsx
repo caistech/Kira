@@ -212,7 +212,7 @@ export default function PlanPage() {
               <p className="text-white/80 font-medium">You could unlock</p>
               <p className="font-display text-4xl sm:text-5xl font-bold mt-1">{money(model.result.gap)}</p>
               <p className="text-white/90 max-w-lg mx-auto mt-4 leading-relaxed">
-                Kira is <span className="font-bold">{money(model.quote.monthly)}/month {tax}</span> (your first 30 days are free)
+                Kira is <span className="font-bold">{money(model.quote.monthly)}/month {tax}</span>{billingLive ? ' (your first 30 days are free)' : ' (nothing is charged while we are in beta)'}
                 {model.quote.fractionWorthQuoting ? (
                   <> — about <span className="font-bold">{model.quote.fractionOfGapPct}</span> a year of what you stand to unlock</>
                 ) : null}
@@ -236,13 +236,20 @@ export default function PlanPage() {
                   Beta · payments not live — Stripe is in test mode
                 </p>
               )}
+              {/* Every claim on this card follows the SAME billingLive switch as the price line and
+                  the fine print. Three strings were made conditional when the beta badge went in and
+                  four were left asserting a 30-day trial, so in beta the card promised "30 days free"
+                  and "free while we are in beta" side by side — two different offers, on the page
+                  that asks for $999. A tester read it as the most expensive page being the least
+                  clear one (naive-tester, Ray, 2026-07-28). A partial switch is worse than none,
+                  because it reads as deliberate. */}
               <ul className="text-left space-y-2.5 my-6 text-stone-700">
                 {[
-                  '30 days free — nothing charged today',
+                  billingLive ? '30 days free — nothing charged today' : 'Nothing is charged while we are in beta',
                   'Always-on Kira — talk anytime, she remembers everything',
                   'Kira quietly captures your know-how into a Business Genome',
                   'Your knowledge stays private and yours to keep',
-                  'We email you 3 days before the first payment',
+                  billingLive ? 'We email you 3 days before the first payment' : 'We email you before billing is switched on',
                   'Cancel any time before then and pay nothing',
                 ].map((f, i) => (
                   <li key={i} className="flex items-start gap-2.5 text-sm"><Check className="h-4 w-4 text-violet-500 mt-0.5 flex-shrink-0" /> {f}</li>
@@ -253,7 +260,7 @@ export default function PlanPage() {
                 disabled={loading}
                 className="grad-coral text-white font-display font-bold px-8 py-4 rounded-full text-lg inline-flex items-center gap-2 min-h-[52px] shadow-lg shadow-pink-200 w-full justify-center disabled:opacity-60"
               >
-                {loading ? <><Loader2 className="h-5 w-5 animate-spin" /> Starting…</> : <>Start free — 30 days <ArrowRight className="h-5 w-5" /></>}
+                {loading ? <><Loader2 className="h-5 w-5 animate-spin" /> Starting…</> : <>{billingLive ? 'Start free — 30 days' : 'Start now — free while in beta'} <ArrowRight className="h-5 w-5" /></>}
               </button>
               {error && <p className="text-rose-600 text-sm mt-3">{error}</p>}
               <p className="text-xs text-stone-400 mt-3">
