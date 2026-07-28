@@ -263,6 +263,13 @@ export default function PlanPage() {
                 {loading ? <><Loader2 className="h-5 w-5 animate-spin" /> Starting…</> : <>{billingLive ? 'Start now' : 'Start now — free while in beta'} <ArrowRight className="h-5 w-5" /></>}
               </button>
               {error && <p className="text-rose-600 text-sm mt-3">{error}</p>}
+              <p className="mt-4 text-sm text-stone-500">
+                Before you decide:{' '}
+                <a href="/what-she-does" className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500">
+                  what she does, and what she doesn&apos;t
+                </a>
+                .
+              </p>
               <p className="text-xs text-stone-400 mt-3">
                 {billingLive ? (
                   <>

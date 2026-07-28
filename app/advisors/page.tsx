@@ -194,6 +194,12 @@ export default function AdvisorsPage() {
             ))}
           </div>
 
+          <Link
+            href="/what-she-does"
+            className="font-display mt-8 mr-3 inline-flex min-h-[48px] items-center rounded-full bg-stone-800 px-6 font-semibold text-white hover:bg-stone-900"
+          >
+            What she can and can&apos;t do
+          </Link>
           <a
             href="/api/trust"
             className="font-display mt-8 inline-flex min-h-[48px] items-center rounded-full border border-stone-300 bg-white px-6 font-semibold text-stone-800 hover:border-stone-400"
