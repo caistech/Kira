@@ -15,6 +15,7 @@
 // failure path here returns a result Kira can SAY — never an exception that surfaces as silence in
 // the middle of a conversation.
 
+import { createServiceClient } from '@/lib/supabase/server';
 import type {
   SwarmCoordinator,
   DispatchedIntent,
@@ -77,7 +78,32 @@ export class OrchestratorAdapter implements SwarmCoordinator {
     }
   }
 
+  /**
+   * The owner's given name, for the draft's sign-off.
+   *
+   * Looked up HERE and passed across, because the identity of a PERSON belongs to Kira — the
+   * orchestrator holds a tenant, which is a business. Sending it means a drafted email signs off as
+   * him rather than ending with a placeholder, which is the failure that once mailed
+   * "Thanks, [Owner's Name]" to a real address.
+   */
+  private async ownerName(tenantId: TenantId): Promise<string | null> {
+    try {
+      const { data } = await createServiceClient()
+        .from('users')
+        .select('first_name, name')
+        .eq('id', tenantId)
+        .maybeSingle();
+      const first = (data?.first_name || '').trim();
+      if (first) return first;
+      const full = (data?.name || '').trim();
+      return full ? full.split(/\s+/)[0] : null;
+    } catch {
+      return null; // the drafter is told to omit the sign-off rather than invent one
+    }
+  }
+
   async dispatchIntent(intent: DispatchedIntent): Promise<DispatchResult> {
+    const ownerName = await this.ownerName(intent.tenantId);
     const wire = await this.call('/api/v1/dispatch', {
       version: CONTRACT_VERSION,
       tenantId: intent.tenantId,
@@ -86,7 +112,7 @@ export class OrchestratorAdapter implements SwarmCoordinator {
       // events, schedules and thresholds it raises itself.
       ingress: 'SAY',
       utterance: intent.utterance,
-      context: intent.context,
+      context: { ...(intent.context ?? {}), ownerName },
     });
 
     if (!wire?.taskGroupId) {
