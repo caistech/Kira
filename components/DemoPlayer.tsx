@@ -37,6 +37,9 @@ export function DemoPlayer({
   const [i, setI] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [sound, setSound] = useState(false);
+  // A browser refusing to play is told to the viewer rather than silently turning sound back off —
+  // otherwise the button appears to do nothing and there is no way to tell why.
+  const [blocked, setBlocked] = useState(false);
   const [manifest, setManifest] = useState<Record<string, string>>({});
   const [src, setSrc] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -69,14 +72,22 @@ export function DemoPlayer({
   useEffect(() => {
     const el = audioRef.current;
     if (!el || !src) return;
-    if (sound && playing) {
+
+    // "Hear Kira" must actually play her.
+    //
+    // This used to require `sound && playing` — but `playing` is only ever set by the auto-mode
+    // Start button, so on the advisor demo (manual) audio could NEVER play, and on the ICP demo it
+    // stayed silent unless you happened to press Start before Hear Kira. The button said one thing
+    // and did nothing, which on a page whose whole point is "you can hear her" is worse than having
+    // no button.
+    const shouldPlay = sound && (mode === 'manual' || playing);
+    if (shouldPlay) {
       el.currentTime = 0;
-      // Autoplay can be refused; the demo must carry on visually rather than stall.
-      el.play().catch(() => setSound(false));
+      el.play().catch(() => setBlocked(true));  // surfaced, not silently swallowed
     } else {
       el.pause();
     }
-  }, [src, sound, playing, i]);
+  }, [src, sound, playing, i, mode]);
 
   const btn = big
     ? 'min-h-[56px] px-7 text-lg rounded-full font-display font-bold'
@@ -131,9 +142,11 @@ export function DemoPlayer({
           </>
         )}
 
-        <button onClick={() => setSound((s) => !s)} className={`${btn} border border-stone-300`}>
+        <button onClick={() => { setBlocked(false); setSound((s) => !s); }} className={`${btn} border border-stone-300`}>
           {sound ? 'Sound off' : 'Hear Kira'}
         </button>
+        {!src && sound && <span className="text-sm text-stone-500">No audio for this step yet.</span>}
+        {blocked && <span className="text-sm text-amber-700">Your browser blocked the sound — press Hear Kira again.</span>}
 
         {i > 0 && (
           <button onClick={() => { setI(0); setPlaying(false); }} className="text-stone-500 underline underline-offset-4 min-h-[44px]">

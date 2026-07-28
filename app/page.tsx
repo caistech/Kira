@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { OWNER_FAQ } from '@/lib/faq';
+import { LandingDemo } from '@/components/LandingDemo';
 
 export default function KiraLandingPage() {
   const [isVisible, setIsVisible] = useState(false);
@@ -225,9 +226,29 @@ export default function KiraLandingPage() {
                 </div>
               </div>
               <p className="font-body text-center text-sm text-stone-600">
-                The <span className="font-semibold text-violet-600">$1.9M gap</span> is the knowledge in your head. Kira helps you capture it.
+                The <span className="font-semibold text-violet-600">$438k gap</span> is the knowledge in your head. Kira helps you capture it.
               </p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* THE DEMO, ON THE LANDING PAGE — not a route of its own.
+          A 66-year-old who has told nobody he is selling does not go exploring a nav bar; a /demo
+          link is a page he never clicks. The one thing that differentiates this product is that he
+          can hear her and watch the gap close, so it belongs where he already is. */}
+      <section className="bg-amber-50/60 py-20 border-y border-amber-100">
+        <div className="max-w-3xl mx-auto px-5">
+          <h2 className="font-display text-2xl sm:text-3xl font-bold text-center">Watch what happens over six months</h2>
+          <p className="font-body text-center text-stone-600 mt-4 max-w-2xl mx-auto leading-relaxed">
+            A real-shaped plumbing business — thirty-one years old, nine staff, and it runs on one man.
+            Press start and Kira will talk you through it herself. Nothing here is a real business.
+          </p>
+          <p className="font-body text-center text-sm text-stone-500 mt-2">
+            About three minutes. Pause any time, and it reads fine with the sound off.
+          </p>
+          <div className="mt-8">
+            <LandingDemo />
           </div>
         </div>
       </section>
