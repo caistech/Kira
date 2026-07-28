@@ -65,7 +65,12 @@ async function main() {
       tenantId: SEED_TENANT,
       intentId,
       ingress: 'SAY',
-      utterance: 'Chase the Wavecrest invoice — harness run, not a real request.',
+      // A REALISTIC utterance. The first version said "harness run, not a real request", and the
+      // classifier duly returned unsupported — it was told it wasn't a real request. The harness
+      // marker belongs in the intentId, which nothing reads for meaning, never in the words the
+      // model is asked to interpret.
+      utterance: 'Chase Dave about the Wavecrest quote — see if he wants to go ahead.',
+      context: { ownerName: 'Ray' },
     },
     { 'x-orchestrator-secret': ORCH_SECRET },
   );
@@ -75,6 +80,24 @@ async function main() {
   if (!taskId) return finish();
 
   check('dispatch answers in the contract version it speaks', created.version === '1', `version=${created.version}`);
+
+  // ── 2b. CAPABILITY, not just transport ──────────────────────────────────────────────────────
+  // The wire tests above all passed while /v1/dispatch did nothing but write a 'queued' row and
+  // answer "Accepted." — an owner would have spoken, been acknowledged, and waited forever. A
+  // transport-only harness cannot tell the difference between a connected system and a working
+  // one, so these assert what the OWNER actually gets back.
+  check('a spoken request comes back HELD for approval', created.status === 'awaiting_approval', `status=${created.status}`);
+  check('…with a draft he can actually hear', !!created.draft?.preview, (created.draft?.preview ?? '').slice(0, 44));
+  check(
+    '…signed as the owner, never a placeholder',
+    !!created.draft?.preview && !/\[.*(name|owner|company).*\]/i.test(created.draft.preview),
+    'no placeholder in the sign-off',
+  );
+  check(
+    '…and says a recipient is missing rather than dead-ending later',
+    created.needsRecipient === true,
+    `needsRecipient=${created.needsRecipient}`,
+  );
 
   // ── 3. IDEMPOTENCY — the same trigger twice is one task ─────────────────────────────────────
   const replay = await post(
