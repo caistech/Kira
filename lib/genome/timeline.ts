@@ -13,6 +13,12 @@
 // "because you were never going to fill in a form, and we know that". Every process beat carries its
 // reason.
 //
+// KIRA IS THE NARRATOR, SO SHE SPEAKS AS HERSELF. "I ask, you answer" — never "Kira asks" or "she
+// asks". The narration was already first person; the CAPTIONS were not, and a caption is the
+// transcript of what she just said, so a viewer with the sound on heard "I" and read "Kira". Third
+// person from a narrator about herself reads as marketing copy pasted under a voice track, which is
+// the one thing this demo cannot afford to sound like.
+//
 // PERSON MATTERS, AND IT IS NOT THE SAME FOR BOTH SCRIPTS.
 // The owner's script is SECOND PERSON throughout — "you talk to me", "your biggest builder", "what a
 // buyer discounts YOU for". It previously opened by addressing him and then slid into narrating a
@@ -90,7 +96,7 @@ export const ICP_BEATS: Beat[] = [
       "to open a conversation and press the button. I don't read your email. And nobody at our end " +
       "reads what you tell me. I'd rather you heard that from me than found it out later.",
     caption:
-      'What Kira cannot do: no background listening, no reading your email, and nobody at our end reads your conversations.',
+      'What I cannot do: no background listening, no reading your email, and nobody at our end reads your conversations.',
   },
   {
     when: 'Week one',
@@ -116,7 +122,7 @@ export const ICP_BEATS: Beat[] = [
       "the ute, waiting on a supplier, at the end of the day. Two minutes at a time. I ask the " +
       "questions, and you answer them the way you'd answer an offsider.",
     caption:
-      'You talk to Kira between jobs — two minutes at a time, in the ute or waiting on a supplier. She asks; you answer.',
+      'You talk to me between jobs — two minutes at a time, in the ute or waiting on a supplier. I ask; you answer.',
   },
   {
     when: 'Why it works that way',
@@ -158,7 +164,7 @@ export const ICP_BEATS: Beat[] = [
       "By month three I've started asking about the things I'm missing rather than waiting for them " +
       "to come up. Not a questionnaire — just the next obvious question, while you're already talking.",
     caption:
-      'Month three: Kira starts asking about the gaps rather than waiting for them — the next obvious question, while you are already talking.',
+      'Month three: I start asking about the gaps rather than waiting for them — the next obvious question, while you are already talking.',
     stillOpen: [
       'When you walk away from a job — you have a clear instinct and have never put words to it',
       'Which jobs your newer crew is not ready for',
@@ -260,11 +266,11 @@ export const ADVISOR_BEATS: Beat[] = [
     when: 'What your client actually does',
     scene: 'ute',
     narration:
-      "Nothing that feels like homework. He talks to Kira between jobs, two minutes at a time, and " +
-      "she asks the questions you'd ask in a listing appraisal. He was never going to fill in a form, " +
+      "Nothing that feels like homework. He talks to me between jobs, two minutes at a time, and I ask " +
+      "him the questions you'd ask in a listing appraisal. He was never going to fill in a form, " +
       "and we built it knowing that.",
     caption:
-      'No homework. He talks to Kira between jobs, two minutes at a time; she asks the questions you would ask in a listing appraisal.',
+      'No homework. He talks to me between jobs, two minutes at a time; I ask him the questions you would ask in a listing appraisal.',
   },
   {
     when: 'What gets written down',
