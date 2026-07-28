@@ -84,7 +84,17 @@ export function DemoPlayer({
     const shouldPlay = sound && (mode === 'manual' || playing);
     if (shouldPlay) {
       el.currentTime = 0;
-      el.play().catch(() => setBlocked(true));  // surfaced, not silently swallowed
+      // ONLY a real autoplay refusal counts as blocked. Changing `src` while a play() is still
+      // pending rejects with AbortError ("interrupted by a new load request") — which happens on
+      // essentially every beat advance, and does NOT mean the sound failed. Treating every
+      // rejection as a block put "your browser blocked the sound" on screen while she was audibly
+      // talking, which reads as the page being broken rather than the message being wrong.
+      el.play().then(
+        () => setBlocked(false),
+        (err: unknown) => {
+          if ((err as { name?: string })?.name === 'NotAllowedError') setBlocked(true);
+        },
+      );
     } else {
       el.pause();
     }
@@ -185,6 +195,9 @@ export function DemoPlayer({
       <audio
         ref={audioRef}
         src={src ?? undefined}
+        // The element is the authority on whether sound is coming out. Clearing here means the
+        // warning can never outlive actual playback, whatever the play() promise did.
+        onPlaying={() => setBlocked(false)}
         onEnded={() => { if (mode === 'auto' && playing) { i + 1 < beats.length ? next() : setPlaying(false); } }}
         preload="none"
       />
