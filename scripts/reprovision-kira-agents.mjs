@@ -32,7 +32,11 @@ import {
   updateAgent,
 } from '@caistech/elevenlabs-convai';
 import { kiraKnowledgeToolDef } from '../lib/kira/knowledge-tool-def.mjs';
-import { kiraDispatchToolDef, kiraApproveToolDef } from '../lib/kira/swarm/doing-tools-def.mjs';
+import {
+  kiraDispatchToolDef,
+  kiraApproveToolDef,
+  kiraFinancialsToolDef,
+} from '../lib/kira/swarm/doing-tools-def.mjs';
 
 const {
   ELEVENLABS_API_KEY,
@@ -103,13 +107,17 @@ function buildToolsForUser(userId, journeyType) {
   const tools = [
     ...createConversationTools(APP_URL, '/api/kira/webhooks', { platformIdentity: true }),
     kiraKnowledgeToolDef(APP_URL),
-    ...(journeyType === 'business' ? [kiraDispatchToolDef(APP_URL), kiraApproveToolDef(APP_URL)] : []),
+    ...(journeyType === 'business'
+      ? [kiraDispatchToolDef(APP_URL), kiraApproveToolDef(APP_URL), kiraFinancialsToolDef(APP_URL)]
+      : []),
   ];
   for (const t of tools) {
     if (!t.webhook) continue;
     if (
       userId &&
-      /\/(recall_memory|search_knowledge|save_memory|start_conversation|dispatch_task|approve_task)$/.test(t.webhook.url)
+      /\/(recall_memory|search_knowledge|save_memory|start_conversation|dispatch_task|approve_task|look_up_financials)$/.test(
+        t.webhook.url,
+      )
     ) {
       t.webhook.url = `${t.webhook.url}?uid=${encodeURIComponent(userId)}`;
     }

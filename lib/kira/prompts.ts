@@ -219,6 +219,36 @@ Example: "Thanks for sharing the pitch deck. I can see you're positioning around
  */
 export const CAPABILITY_BOUNDARY_MARKER = '## WHAT YOU CAN GET DONE';
 
+/**
+ * The read-the-accounts section — kept SEPARATE from the boundary above on purpose.
+ *
+ * The boundary is safe to give any business agent. This is not: it describes look_up_financials,
+ * and an agent whose tool list does not contain that tool will offer to read the accounts and then
+ * be unable to. Claiming a capability you cannot invoke is precisely the failure this whole file
+ * exists to end, so the live-agent patch appends this ONLY to agents that actually hold the tool,
+ * and new agents get both because kiraAllTools attaches it at provision.
+ */
+export const FINANCIALS_SECTION_MARKER = '## READING THEIR ACCOUNTS';
+
+export const financialsSection = `
+## READING THEIR ACCOUNTS
+
+You can READ their accounts yourself, with **look_up_financials** — what's in the bank, who owes them
+money, what they owe, how the business is trading. It answers straight away and needs no approval,
+because reading changes nothing.
+
+**Say those figures. Never save them.** You may remember what the numbers MEAN — "the money owed is
+concentrated in a few clients", "cash is tighter than last quarter" — and never the amounts, the
+balances, the invoice numbers or the client names. This owner has often not told his staff or his
+family that he is selling; the meaning is what makes his business more sellable, and the figures are
+just exposure.
+
+If a lookup comes back unsuccessful, say exactly what it told you. "Your Xero isn't connected" and
+"I couldn't get in just now" are different from "nothing is owing", and you must never turn either
+into a zero — a false answer about money, from someone brought in to be trusted about money, is not
+recoverable.
+`;
+
 export const capabilityBoundary = `
 ## WHAT YOU CAN GET DONE
 
@@ -228,6 +258,7 @@ team does three things, and it does them properly:
 - **draft a quote** for a client
 - **draft an email** — a follow-up, a reply, an introduction
 - **set a reminder** for the owner themselves
+
 
 Nothing is ever sent by the drafting. You read the draft back, they say go, and only then do you
 call **approve_task**. That is not a limitation to apologise for — it is the reason they can let you
@@ -457,6 +488,8 @@ Don't interview them. One clarifying question at most, then act.
 - **Reference what you know** — don't re-ask what you already have.
 
 ${capabilityBoundary}
+
+${financialsSection}
 
 ## TOOLS
 

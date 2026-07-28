@@ -55,6 +55,35 @@ const boundary = match[1].trim();
 const MARKER = '## WHAT YOU CAN GET DONE';
 if (!boundary.includes(MARKER)) throw new Error(`capabilityBoundary is missing its marker ${MARKER}`);
 
+// The accounts section is appended ONLY to agents that actually hold look_up_financials.
+//
+// An agent told it can read the books, whose tool list does not contain the tool, will offer and
+// then fail — the same broken promise this script was written to repair, arriving from the opposite
+// direction. Attaching the tool is a separate job (scripts/reprovision-kira-agents.mjs, which needs
+// KIRA_TOOL_WEBHOOK_SECRET); until that has run for a given agent, that agent is not told.
+//
+// Self-correcting on purpose: the section appears by itself on the next run after the tool lands,
+// rather than depending on someone remembering to do both halves in the right order.
+const FIN_MARKER = '## READING THEIR ACCOUNTS';
+const finMatch = promptsSrc.match(/export const financialsSection = `([\s\S]*?)`;/);
+if (!finMatch) throw new Error('Could not read financialsSection from lib/kira/prompts.ts');
+const financials = finMatch[1].trim();
+
+/** Does this agent hold the look_up_financials tool? tool_ids are ids, so they must be resolved. */
+async function hasFinancialsTool(prompt) {
+  for (const toolId of prompt?.tool_ids ?? []) {
+    try {
+      const t = await (
+        await fetch(`https://api.elevenlabs.io/v1/convai/tools/${toolId}`, { headers: { 'xi-api-key': apiKey } })
+      ).json();
+      if (t?.tool_config?.name === 'look_up_financials') return true;
+    } catch {
+      // A tool we cannot read is a tool we cannot count on — treat it as absent rather than assume.
+    }
+  }
+  return false;
+}
+
 async function sb(pathname, init = {}) {
   const res = await fetch(`${supabaseUrl}/rest/v1/${pathname}`, {
     ...init,
@@ -97,9 +126,18 @@ for (const a of agents) {
     // from the marker and re-appending the current text. A pure skip-if-present guard would have
     // frozen the first version onto the fleet forever — which is the very failure this script
     // exists to undo, one level up.
-    const base = current.includes(MARKER) ? current.slice(0, current.indexOf(MARKER)).trimEnd() : current;
-    const updating = current.includes(MARKER);
-    const next = `${base}
+    // Cut at whichever of our sections appears first — both are always appended last, in order.
+    const cuts = [current.indexOf(MARKER), current.indexOf(FIN_MARKER)].filter((i) => i >= 0);
+    const base = cuts.length ? current.slice(0, Math.min(...cuts)).trimEnd() : current;
+    const updating = cuts.length > 0;
+    const canRead = await hasFinancialsTool(live?.conversation_config?.agent?.prompt);
+    const next = canRead
+      ? `${base}
+
+${boundary}
+
+${financials}`
+      : `${base}
 
 ${boundary}`;
 

@@ -27,7 +27,11 @@ import { accrueVoiceCost } from '@/lib/billing';
 import { createServiceClient } from '@/lib/supabase/server';
 import { createMemoryExtractor } from '@/lib/kira/memory-extract';
 import { kiraKnowledgeToolDef } from '@/lib/kira/knowledge-tool-def.mjs';
-import { kiraDispatchToolDef, kiraApproveToolDef } from '@/lib/kira/swarm/doing-tools-def.mjs';
+import {
+  kiraDispatchToolDef,
+  kiraApproveToolDef,
+  kiraFinancialsToolDef,
+} from '@/lib/kira/swarm/doing-tools-def.mjs';
 
 // Kira's real tables mapped onto the canonical TableNames contract. The reconcile
 // migration adds the columns the handlers need (agent_id, anon_session_id, processed_at)
@@ -244,6 +248,9 @@ export function kiraDoingTools(baseUrl: string): ConvAITool[] {
   return [
     kiraDispatchToolDef(baseUrl, headers) as ConvAITool,
     kiraApproveToolDef(baseUrl, headers) as ConvAITool,
+    // The READ half. It changes nothing, so it needs no approval step — but it reads a business's
+    // financial position, so it takes the same server-baked identity as the rest.
+    kiraFinancialsToolDef(baseUrl, headers) as ConvAITool,
   ];
 }
 
@@ -263,7 +270,7 @@ export function kiraAllTools(baseUrl: string, userId?: string): ConvAITool[] {
   const tools = [...kiraMemoryTools(baseUrl), kiraKnowledgeTool(baseUrl), ...kiraDoingTools(baseUrl)];
   for (const t of tools) {
     if (!t.webhook) continue;
-    const isUidTool = /\/(recall_memory|search_knowledge|save_memory|start_conversation|dispatch_task|approve_task)$/.test(t.webhook.url);
+    const isUidTool = /\/(recall_memory|search_knowledge|save_memory|start_conversation|dispatch_task|approve_task|look_up_financials)$/.test(t.webhook.url);
     if (userId && isUidTool) {
       t.webhook.url = `${t.webhook.url}?uid=${encodeURIComponent(userId)}`;
     }
