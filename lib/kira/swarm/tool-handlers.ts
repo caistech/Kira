@@ -7,6 +7,7 @@
 // passes the conversation id to a server tool. Nothing is ever sent without the owner's approval:
 // dispatch only drafts; approve_task(approve=true) is the only path that executes.
 
+import { sendUnansweredRequestAlert } from '@/lib/email/unanswered-request';
 import { getSwarmCoordinator } from '@/lib/kira/swarm';
 
 function json(status: number, body: unknown): Response {
@@ -44,6 +45,21 @@ export async function handleDispatchTask(req: Request): Promise<Response> {
     });
     // A send needs a recipient email the classifier can't invent. Tell the agent when it's missing so
     // it asks the owner ("what's Dave's email?") before approving, instead of dead-ending on send.
+    // Alert the operator the moment something is asked for that we cannot do. The row was already
+    // being written and read by nobody; a build queue you have to remember to open goes stale, and
+    // the freshness is the whole value of the signal. Deliberately not awaited into the response
+    // path — a mail failure must never delay or break a live voice call.
+    if (result.status === 'unsupported') {
+      const classify = (result.draft?.artifact as { classify?: { reason_if_unsupported?: string } } | undefined)
+        ?.classify;
+      void sendUnansweredRequestAlert({
+        utterance,
+        reason: classify?.reason_if_unsupported ?? result.draft?.summary ?? null,
+        ownerUserId: userId,
+        status: 'unsupported',
+      });
+    }
+
     const art = (result.draft?.artifact ?? {}) as Record<string, unknown>;
     const isSend = result.draft?.kind === 'email' || result.draft?.kind === 'quote';
     const needsRecipientEmail = isSend && !art.recipient_email;

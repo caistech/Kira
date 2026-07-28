@@ -11,6 +11,7 @@ const ADMIN_NAV: NavItem[] = [
   { href: '/admin/exec', label: 'Kira Exec' },
   { href: '/admin/introducers', label: 'Introducers' },
   { href: '/admin/loi', label: 'LOIs' },
+  { href: '/admin/asked-for', label: 'Asked for' },
 ];
 
 export default async function AdminPanelLayout({ children }: { children: React.ReactNode }) {
