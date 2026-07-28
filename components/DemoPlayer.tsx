@@ -121,7 +121,7 @@ export function DemoPlayer({
         {typeof beat.coverage === 'number' && (
           <div className="mb-5">
             <div className="flex items-baseline justify-between">
-              <span className="text-sm uppercase tracking-wide text-stone-400 font-semibold">On the page, not in his head</span>
+              <span className="text-sm uppercase tracking-wide text-stone-400 font-semibold">{mode === 'auto' ? 'On the page, not in your head' : 'On the page, not in his head'}</span>
               <span className="font-display font-bold text-2xl">{beat.coverage}%</span>
             </div>
             <div className="h-2 w-full bg-amber-100 rounded-full mt-2 overflow-hidden">
@@ -133,6 +133,17 @@ export function DemoPlayer({
 
         {/* The caption IS the content. Sound is an enhancement, never a requirement. */}
         <p className={`leading-relaxed text-stone-800 ${big ? 'text-xl' : 'text-lg'}`}>{beat.caption}</p>
+
+        {/* The action, on the beat that asks for it — not buried below the player. */}
+        {beat.cta && (
+          <a
+            href={beat.cta.href}
+            className={`mt-6 inline-flex items-center justify-center text-white font-display font-bold rounded-full ${big ? 'min-h-[60px] px-9 text-xl' : 'min-h-[52px] px-7 text-lg'}`}
+            style={{ background: 'linear-gradient(135deg,#fb7185,#f472b6)' }}
+          >
+            {beat.cta.label} →
+          </a>
+        )}
 
         {beat.stillOpen && beat.stillOpen.length > 0 && (
           <div className="mt-5 rounded-2xl bg-amber-100/70 px-4 py-4">
