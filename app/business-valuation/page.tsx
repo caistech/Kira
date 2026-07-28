@@ -472,6 +472,20 @@ export default function BusinessValuationPage() {
                     onChange={(e) => {
                       setIndustryQuery(e.target.value);
                       setAnswer('industry', e.target.value);
+                      // Forget the previous answer the moment the question changes.
+                      //
+                      // Without this, llmSector stuck: the green "Matched to X" panel kept showing
+                      // the sector resolved for an EARLIER phrase, and — worse — the blur guard
+                      // treats a set llmSector as "already handled", so the backstop never fired
+                      // again for anything typed afterwards. Type "motor", get Auto Repair, clear
+                      // the box, type "it development", and the screen still says Auto Repair while
+                      // silently never asking about the new words. Both phrases match correctly at
+                      // the API; only the display was stuck, which is indistinguishable from the
+                      // matcher being badly wrong.
+                      if (llmSector || llmTried) {
+                        setLlmSector(null);
+                        setLlmTried(null);
+                      }
                     }}
                     onBlur={() => {
                       // The LLM backstop, and ONLY here: the mechanical layers (exact name, the
@@ -498,6 +512,10 @@ export default function BusinessValuationPage() {
                           onClick={() => {
                             setIndustryQuery(s.name);
                             setAnswer('industry', s.name);
+                            // An explicit pick beats any model answer — and must not leave the
+                            // previous one on screen underneath it.
+                            setLlmSector(null);
+                            setLlmTried(null);
                           }}
                           className="w-full text-left px-4 py-3 min-h-[44px] hover:bg-amber-50 flex items-center justify-between gap-3 border-b border-amber-50 last:border-0"
                         >
