@@ -12,7 +12,7 @@
 import { createSubscriptionCheckoutSession } from '@caistech/subscription-billing';
 import { NextRequest, NextResponse } from 'next/server';
 
-import { getStripe, TRIAL_DAYS } from '@/lib/billing';
+import { getStripe, METER_EVENT_NAME, PRICE_LOOKUP_PREFIX } from '@/lib/billing';
 import { getCurrency, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { computeValuation, type ValuationInputs } from '@/lib/valuation/model';
 import { priceForGap } from '@/lib/valuation/pricing';
@@ -61,7 +61,16 @@ export async function POST(request: NextRequest) {
 
     const session = await createSubscriptionCheckoutSession({
       stripe: getStripe(),
+      // ARREARS, not a trial. The month is owed from day one and invoiced when the period closes;
+      // cancel before that bill falls due and the month is waived. See lib/billing/arrears.ts.
+      //
+      // There is deliberately NO `trialDays` here, and the package throws if one is passed with
+      // this shape. Kira ran `trialDays: 30` until this change, which is a different contract
+      // wearing the same dates: it gave month one away and then billed a month in advance.
       lineItem: {
+        arrears: true,
+        meterEventName: METER_EVENT_NAME,
+        lookupKeyPrefix: PRICE_LOOKUP_PREFIX,
         currency: currency.code,
         unitAmount: Math.round(quote.monthly * 100),
         interval: 'month',
@@ -69,11 +78,10 @@ export async function POST(request: NextRequest) {
         productDescription:
           'Your always-on AI partner: talk to Kira and she builds your business systems.',
       },
-      // First month free, card captured at signup. `cardAtSignup` defaults true in the package and
-      // is stated explicitly here because it is a commercial decision, not a default to inherit
-      // silently: without it Stripe creates the subscription with no payment method and the first
-      // charge fails on day 30, after a month of use.
-      trialDays: TRIAL_DAYS,
+      // Card captured at signup. `cardAtSignup` defaults true in the package and is stated
+      // explicitly because it is a commercial decision, not a default to inherit silently: without
+      // it Stripe creates the subscription with no payment method and the first charge fails when
+      // the period closes, after a month of use.
       cardAtSignup: true,
       successUrl: `${base}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${base}/plan`,

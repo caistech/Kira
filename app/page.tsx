@@ -438,7 +438,7 @@ export default function KiraLandingPage() {
             <h2 className="font-display text-4xl lg:text-5xl font-bold text-stone-800 mb-6">See the number. <span className="bg-gradient-to-r from-amber-500 to-pink-500 bg-clip-text text-transparent">Then decide.</span></h2>
             <div className="font-body text-xl text-stone-600 leading-relaxed space-y-4 mb-10">
               <p>The valuation is free — no sign-up, no card. It shows you the gap in about 3 minutes.</p>
-              <p>If you want Kira to close it, her fee is set to <span className="font-semibold text-stone-800">a small fraction of what you stand to unlock</span> — so you see your gap before you ever see a price. You get <span className="font-bold text-stone-800">30 days to try her</span>, you&apos;re not invoiced until they&apos;re up, and you can cancel any time.</p>
+              <p>If you want Kira to close it, her fee is set to <span className="font-semibold text-stone-800">a small fraction of what you stand to unlock</span> — so you see your gap before you ever see a price. You&apos;re <span className="font-bold text-stone-800">never invoiced for the month you&apos;re in</span> — each month is billed once it has finished, and if you cancel, that month is on us.</p>
               <p>No gap, no pressure. The number is yours to keep either way.</p>
             </div>
             <a href="/business-valuation" className="font-display gradient-coral text-white px-10 py-5 rounded-full text-xl font-bold hover-pop shadow-xl shadow-pink-200 inline-block">What&apos;s my business worth? →</a>

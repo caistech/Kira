@@ -1,11 +1,15 @@
 // lib/email/trial-ending.ts
 //
-// The reminder that goes out three days before the first charge.
+// The notice that goes out three days before each charge.
 //
-// Kira captures a card at signup and charges on day 30. Charging someone who has forgotten they
-// signed up is how a subscription earns a chargeback and a bad review — so we tell them first, in
-// plain terms, with the amount, the date, and a one-click way to cancel. This email is the reason
-// card-on-file is a fair thing to do.
+// Kira captures a card at signup and bills in ARREARS — the month is owed from day one and invoiced
+// when the period closes (lib/billing/arrears.ts). Charging someone who has forgotten they signed up
+// is how a subscription earns a chargeback and a bad review — so we tell them first, in plain terms,
+// with the amount, the date, and a one-click way to cancel. This email is the reason card-on-file is
+// a fair thing to do.
+//
+// It is NOT a trial-ending email. It once was, when the first month was free; the wording below was
+// rewritten with the billing model rather than left describing a trial that no longer exists.
 //
 // Sending goes through @caistech/email-send (verified sender + Spam Act identification footer);
 // the template stays here, because the voice is Kira's.
@@ -42,7 +46,7 @@ export interface TrialEndingEmailParams {
   /** Monthly amount in major units (e.g. 499 for $499). */
   monthlyAmount: number;
   currencyCode: string;
-  /** When the first payment will be taken. */
+  /** When this period's payment will be taken — the day the period closes. */
   chargeDate: Date;
 }
 
@@ -78,7 +82,7 @@ export async function sendTrialEndingEmail({
   const when = formatDate(chargeDate);
   const settingsUrl = `${APP_URL}/settings`;
 
-  const subject = `Your free month ends ${when}`;
+  const subject = `Your Kira payment of ${amount} is due ${when}`;
 
   const html = `
 <!DOCTYPE html>
@@ -86,7 +90,7 @@ export async function sendTrialEndingEmail({
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Your free month is ending</title>
+  <title>Your next Kira payment</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
@@ -99,8 +103,9 @@ export async function sendTrialEndingEmail({
               <p style="font-size: 18px; color: #333; margin: 0 0 24px 0;">Hi ${firstName},</p>
 
               <p style="font-size: 16px; color: #555; line-height: 1.6; margin: 0 0 24px 0;">
-                Your free month with Kira ends on <strong>${when}</strong>. On that day we'll take the
-                first payment of <strong>${amount}</strong> from the card you added when you signed up.
+                Your month with Kira finishes on <strong>${when}</strong>. On that day we'll take
+                <strong>${amount}</strong> from the card you added when you signed up — that covers the
+                month just gone, not the one ahead.
               </p>
 
               <p style="font-size: 16px; color: #555; line-height: 1.6; margin: 0 0 24px 0;">
@@ -109,8 +114,8 @@ export async function sendTrialEndingEmail({
               </p>
 
               <p style="font-size: 16px; color: #555; line-height: 1.6; margin: 0 0 32px 0;">
-                If Kira isn't for you, you can cancel before ${when} and you won't be charged at all.
-                It takes one click.
+                If Kira isn't for you, cancel before ${when} and the month you're in is on us — no
+                payment, no proration, nothing to argue about. It takes one click.
               </p>
 
               <table width="100%" cellpadding="0" cellspacing="0">

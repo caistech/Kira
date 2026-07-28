@@ -18,15 +18,26 @@ import {
 
 import { createServiceClient } from '@/lib/supabase/server';
 
-/**
- * First month free. The card is captured at signup (card-on-file), the first charge lands on
- * day 30. Locked 2026-07-25 with the broker channel — do not change without changing the landing
- * copy, the checkout, and the reminder email together.
- */
-export const TRIAL_DAYS = 30;
+import { syncIntroductionForSubscription } from '@/lib/introducer';
+
+import { reportPeriodIfNew } from './arrears';
 
 /**
- * Fair-use ceiling on the free month, in USD of underlying voice/LLM spend. WARN, not hard-cut:
+ * The fair-use window, in days — how long the voice-cost ceiling below is measured over.
+ *
+ * This is NOT a billing trial. It was one until the billing model was corrected to arrears (see
+ * ./arrears.ts): the month is owed from day one and invoiced when the period closes, so nothing is
+ * given away and there is no trial to be in. What survives is the cost guard — a ceiling on what a
+ * single owner's voice usage may cost us early on, which beta-gate happens to express as a trial
+ * clock.
+ *
+ * Renamed from TRIAL_DAYS on purpose: a constant called TRIAL_DAYS is how the free month got into
+ * the checkout in the first place.
+ */
+export const FAIR_USE_WINDOW_DAYS = 30;
+
+/**
+ * Fair-use ceiling on voice spend per window, in USD of underlying voice/LLM cost. WARN, not hard-cut:
  * the product surfaces usage as it approaches the ceiling rather than cutting an owner off
  * mid-sentence. beta-gate still hard-denies at 100% — the warn band is what makes that fair.
  */
@@ -44,7 +55,7 @@ export const VOICE_ACTION = 'voice';
  * It is an ESTIMATE, not a metered actual — ElevenLabs bills per-minute on the workspace, not
  * per-conversation, so nothing on the post-call payload carries a real dollar figure. Override with
  * VOICE_COST_PER_MINUTE_USD once a real month of invoices gives a defensible blended rate. It only
- * ever decides when the free month's fair-use meter fills, never what anyone is charged.
+ * ever decides when the fair-use meter fills, never what anyone is charged.
  */
 export const VOICE_COST_PER_MINUTE_USD = Number(process.env.VOICE_COST_PER_MINUTE_USD ?? 0.1);
 
@@ -52,6 +63,14 @@ export const VOICE_COST_PER_MINUTE_USD = Number(process.env.VOICE_COST_PER_MINUT
 // so every existing `import { getStripe } from '@/lib/billing'` keeps working and automatically
 // becomes mode-aware. There is exactly one place that decides which keys are in play.
 export { getStripe, isLiveMode, stripeMode, stripeWebhookSecret } from './stripe-mode';
+
+// The arrears model — what "owed but unbilled until the period closes" means in code.
+export {
+  cancelSubscriptionWithWaiver,
+  METER_EVENT_NAME,
+  PRICE_LOOKUP_PREFIX,
+  reportPeriodIfNew,
+} from './arrears';
 
 /**
  * The trial clock + fair-use cap.
@@ -63,7 +82,7 @@ export function getBetaGate(): BetaGate {
   return createBetaGate({
     supabase: createServiceClient(),
     config: {
-      trialDays: TRIAL_DAYS,
+      trialDays: FAIR_USE_WINDOW_DAYS,
       warnAt: USAGE_WARN_AT,
       caps: { [VOICE_ACTION]: { costCap: VOICE_COST_CAP_USD } },
     },
@@ -101,7 +120,7 @@ export async function accrueVoiceCost(userId: string, durationSeconds: number): 
 export function getSubscriptionAdapter(): SubscriptionAdapter {
   const supabase = createServiceClient();
 
-  return createSupabaseSubscriptionAdapter({
+  const adapter = createSupabaseSubscriptionAdapter({
     supabase,
     table: 'users',
     columns: {
@@ -129,6 +148,32 @@ export function getSubscriptionAdapter(): SubscriptionAdapter {
       );
     },
   });
+
+  // Arrears reporting rides on `apply`, after the state write, for two reasons that both matter.
+  //
+  // It has to happen on EVERY event that could open a period — the first one at subscription
+  // creation, each later one when an invoice settles and the next period starts — and `apply` is
+  // the one place all of those converge with a normalized state in hand.
+  //
+  // And it has to be able to fail loudly. A throw here propagates to a 500, the reducer releases
+  // its idempotency claim, and Stripe retries — which is precisely what an unreported period needs.
+  // Reporting somewhere fire-and-forget would leave a subscription that invoices $0 while every
+  // screen reports perfect health.
+  return {
+    ...adapter,
+    apply: async (record, state) => {
+      await adapter.apply(record, state);
+      const outcome = await reportPeriodIfNew(state);
+      if (outcome === 'reported') {
+        console.log(`[billing] period owed reported for ${state.stripeSubscriptionId}`, {
+          periodEnd: state.currentPeriodEnd,
+        });
+      }
+      // The introducer's board reads from `introductions.status`, and nothing was advancing it —
+      // so an advisor watching for their commission saw "Signed up" forever. Fail-soft inside.
+      await syncIntroductionForSubscription(record.id, state.status);
+    },
+  };
 }
 
 /** Webhook idempotency, backed by `stripe_webhook_events`. */

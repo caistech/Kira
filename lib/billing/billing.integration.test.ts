@@ -22,7 +22,14 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createSubscriptionCheckoutSession } from '@caistech/subscription-billing';
 
-import { getIdempotencyStore, getSubscriptionAdapter, TRIAL_DAYS } from './index';
+import { getIdempotencyStore, getSubscriptionAdapter, METER_EVENT_NAME } from './index';
+
+/**
+ * The fixture subscription below is created `trialing` on purpose — it exists to prove the reducer
+ * normalizes Stripe's `trialing` rather than flattening it to `active`. It is NOT Kira's commercial
+ * model: Kira bills in arrears and issues no trials (see ./arrears.ts and the checkout test).
+ */
+const FIXTURE_TRIAL_DAYS = 30;
 
 const stripeKey = process.env.STRIPE_SECRET_KEY ?? '';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
@@ -157,7 +164,7 @@ describe.skipIf(!canRun)('billing integration (Stripe test mode + Supabase)', ()
     subscription = await stripe.subscriptions.create({
       customer: customer.id,
       items: [{ price: price.id }],
-      trial_period_days: TRIAL_DAYS,
+      trial_period_days: FIXTURE_TRIAL_DAYS,
       trial_settings: { end_behavior: { missing_payment_method: 'cancel' } },
     });
     eventClock = subscription.created + 86_400;
@@ -180,29 +187,61 @@ describe.skipIf(!canRun)('billing integration (Stripe test mode + Supabase)', ()
     if (productId) await stripe.products.update(productId, { active: false }).catch(() => {});
   }, 60_000);
 
-  it('creates a checkout session with a 30-day trial that still demands a card', async () => {
+  it('creates an ARREARS checkout session — metered, no trial, card still demanded', async () => {
     const session = await createSubscriptionCheckoutSession({
       stripe,
       lineItem: {
+        arrears: true,
+        meterEventName: METER_EVENT_NAME,
+        lookupKeyPrefix: 'kira-verify',
         currency: 'AUD',
         unitAmount: 49900,
         productName: 'Kira Business Plan — verification',
       },
-      trialDays: TRIAL_DAYS,
       cardAtSignup: true,
       successUrl: 'https://kira-rho.vercel.app/onboarding',
       cancelUrl: 'https://kira-rho.vercel.app/plan',
     });
 
-    // Read back what Stripe actually stored, not what we sent.
-    const stored = await stripe.checkout.sessions.retrieve(session.id);
+    // Read back what Stripe actually stored, not what we sent. The price being METERED is the whole
+    // point: a metered subscription invoices at period CLOSE, which is what "owed but unbilled
+    // until the month is up" means mechanically. A licensed price would bill in advance and every
+    // other assertion here would still pass.
+    const stored = await stripe.checkout.sessions.retrieve(session.id, {
+      expand: ['line_items.data.price'],
+    });
     expect(stored.mode).toBe('subscription');
     expect(stored.payment_method_collection).toBe('always');
     expect(stored.currency).toBe('aud');
     expect(stored.url).toBeTruthy();
 
+    const price = stored.line_items?.data[0]?.price as Stripe.Price | undefined;
+    expect(price?.recurring?.usage_type).toBe('metered');
+    expect(price?.recurring?.meter).toBeTruthy();
+
     await stripe.checkout.sessions.expire(session.id).catch(() => {});
-  }, 30_000);
+  }, 45_000);
+
+  it('refuses a trial on an arrears line item rather than silently picking one', async () => {
+    // The two contracts are indistinguishable for thirty days and then invert. Kira shipped the
+    // trial shape for weeks without noticing, which is exactly why this throws instead of choosing.
+    await expect(
+      createSubscriptionCheckoutSession({
+        stripe,
+        lineItem: {
+          arrears: true,
+          meterEventName: METER_EVENT_NAME,
+          lookupKeyPrefix: 'kira-verify',
+          currency: 'AUD',
+          unitAmount: 49900,
+          productName: 'Kira Business Plan — verification',
+        },
+        trialDays: 30,
+        successUrl: 'https://kira-rho.vercel.app/onboarding',
+        cancelUrl: 'https://kira-rho.vercel.app/plan',
+      }),
+    ).rejects.toThrow(/trialDays cannot be combined with an arrears line item/);
+  }, 15_000);
 
   it('binds the account by email at checkout and records trialing (not active)', async () => {
     // The real signup sequence: at checkout the account is matched by EMAIL (it has no Stripe ids

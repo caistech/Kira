@@ -212,7 +212,7 @@ export default function PlanPage() {
               <p className="text-white/80 font-medium">You could unlock</p>
               <p className="font-display text-4xl sm:text-5xl font-bold mt-1">{money(model.result.gap)}</p>
               <p className="text-white/90 max-w-lg mx-auto mt-4 leading-relaxed">
-                Kira is <span className="font-bold">{money(model.quote.monthly)}/month {tax}</span>{billingLive ? ' (your first 30 days are free)' : ' (nothing is charged while we are in beta)'}
+                Kira is <span className="font-bold">{money(model.quote.monthly)}/month {tax}</span>{billingLive ? ' (and you are never billed for the month you are in)' : ' (nothing is charged while we are in beta)'}
                 {model.quote.fractionWorthQuoting ? (
                   <> — about <span className="font-bold">{model.quote.fractionOfGapPct}</span> a year of what you stand to unlock</>
                 ) : null}
@@ -225,7 +225,7 @@ export default function PlanPage() {
               <p className="font-display text-4xl font-bold text-stone-800 mt-2">{money(model.quote.monthly)}<span className="text-lg text-stone-400 font-body">/month {tax}</span></p>
               <p className="text-sm text-stone-500 mt-1">
                 {billingLive
-                  ? <>Free for 30 days. Then {price(model.quote.monthly)}/month — cancel anytime.</>
+                  ? <>Billed at the end of each month, for the month just gone. Cancel any time and the month you are in is on us.</>
                   : <>Free while we are in beta. {price(model.quote.monthly)}/month once billing goes live — we will tell you first.</>}
               </p>
               {/* A badge, not just a sentence. Someone skimming a checkout reads the button and the
@@ -245,12 +245,12 @@ export default function PlanPage() {
                   because it reads as deliberate. */}
               <ul className="text-left space-y-2.5 my-6 text-stone-700">
                 {[
-                  billingLive ? '30 days free — nothing charged today' : 'Nothing is charged while we are in beta',
+                  billingLive ? 'Nothing is charged today — your card is saved, not billed' : 'Nothing is charged while we are in beta',
                   'Always-on Kira — talk anytime, she remembers everything',
                   'Kira quietly captures your know-how into a Business Genome',
                   'Your knowledge stays private and yours to keep',
-                  billingLive ? 'We email you 3 days before the first payment' : 'We email you before billing is switched on',
-                  'Cancel any time before then and pay nothing',
+                  billingLive ? 'We email you 3 days before every payment' : 'We email you before billing is switched on',
+                  billingLive ? 'Cancel any time — the month you are in is never billed' : 'Cancel any time before then and pay nothing',
                 ].map((f, i) => (
                   <li key={i} className="flex items-start gap-2.5 text-sm"><Check className="h-4 w-4 text-violet-500 mt-0.5 flex-shrink-0" /> {f}</li>
                 ))}
@@ -260,13 +260,13 @@ export default function PlanPage() {
                 disabled={loading}
                 className="grad-coral text-white font-display font-bold px-8 py-4 rounded-full text-lg inline-flex items-center gap-2 min-h-[52px] shadow-lg shadow-pink-200 w-full justify-center disabled:opacity-60"
               >
-                {loading ? <><Loader2 className="h-5 w-5 animate-spin" /> Starting…</> : <>{billingLive ? 'Start free — 30 days' : 'Start now — free while in beta'} <ArrowRight className="h-5 w-5" /></>}
+                {loading ? <><Loader2 className="h-5 w-5 animate-spin" /> Starting…</> : <>{billingLive ? 'Start now' : 'Start now — free while in beta'} <ArrowRight className="h-5 w-5" /></>}
               </button>
               {error && <p className="text-rose-600 text-sm mt-3">{error}</p>}
               <p className="text-xs text-stone-400 mt-3">
                 {billingLive ? (
                   <>
-                    Secure checkout by Stripe · billed by Corporate AI Solutions. Your card is saved today but nothing is charged. The first payment of {price(model.quote.monthly)} comes out 30 days from now, and we email you three days before. Cancel before then and you pay nothing. You set your password and meet Kira right after.
+                    Secure checkout by Stripe · billed by Corporate AI Solutions. Your card is saved today but nothing is charged. We bill in arrears: at the end of each month you pay {price(model.quote.monthly)} for the month just finished, and we email you three days before. Cancel at any point and the month you are in is written off — no payment, no proration. You set your password and meet Kira right after.
                   </>
                 ) : (
                   <>

@@ -365,3 +365,44 @@ export async function attachFirstTouch(params: {
     });
   }
 }
+
+/**
+ * Advance an introduction to match the owner's subscription.
+ *
+ * The board promised an introducer four states and only ever wrote one: nothing in the codebase set
+ * `trialing` or `paying`, so "Paying" sat at zero however many owners were being billed, and the two
+ * headline tiles counted nothing. An introducer reads that board to decide whether introducing
+ * people to Kira is worth doing — a commission story frozen at "Signed up" answers no.
+ *
+ * There is no `trialing` any more. Kira bills in arrears (lib/billing/arrears.ts): the owner is
+ * billable from day one, so a subscription that exists is a paying one, and the free-month state the
+ * board used to show never occurs.
+ *
+ * Fail-soft by design. This runs inside the Stripe webhook, where the load-bearing work is the
+ * subscription state and the meter report; an introducer's board being a few minutes stale is not
+ * worth failing a billing event over.
+ */
+export async function syncIntroductionForSubscription(
+  ownerUserId: string,
+  subscriptionStatus: string,
+): Promise<void> {
+  const next =
+    subscriptionStatus === 'active' || subscriptionStatus === 'past_due' || subscriptionStatus === 'trialing'
+      ? 'paying'
+      : subscriptionStatus === 'cancelled' || subscriptionStatus === 'unpaid'
+        ? 'lapsed'
+        : null;
+
+  if (!next) return;
+
+  try {
+    const supabase = createServiceClient();
+    await supabase
+      .from('introductions')
+      .update({ status: next, updated_at: new Date().toISOString() })
+      .eq('owner_user_id', ownerUserId)
+      .neq('status', next);
+  } catch (error) {
+    console.error('[introducer] Could not sync introduction status:', error);
+  }
+}

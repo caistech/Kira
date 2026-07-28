@@ -1,7 +1,7 @@
 // components/UsageMeter.tsx
 //
-// The free month, made visible: where the trial clock stands and how much of the fair-use budget
-// is spent.
+// Voice usage, made visible: where the fair-use clock stands and how much of the allowance is
+// spent. NOT a billing clock — Kira bills in arrears and has no free month (lib/billing/arrears.ts).
 //
 // Presentational only — the caller reads the numbers server-side from @caistech/beta-gate. It
 // exists because "warn, don't hard-cut" is a promise the owner can only rely on if they can SEE
@@ -23,7 +23,7 @@ import type { TrialPresentation } from '@/lib/billing/plan-state';
 export interface UsageMeterProps {
   /** Where the trial clock actually is — not inferred from a zero. */
   trialState: TrialPresentation;
-  /** Whole days remaining in the free month. Only meaningful when trialState is 'active'. */
+  /** Whole days remaining in the fair-use window. Only meaningful when trialState is 'active'. */
   daysLeft: number;
   /** Fair-use budget and what's been used of it, in USD. */
   capUsd: number;
@@ -42,15 +42,21 @@ function money(amount: number): string {
   return `$${amount.toFixed(amount < 10 ? 2 : 0)}`;
 }
 
-/** The clock line. Each branch is a state the account is genuinely in. */
+/**
+ * The clock line. Each branch is a state the account is genuinely in.
+ *
+ * This is the FAIR-USE window on voice spend, not a billing clock — Kira bills in arrears and has no
+ * free month (lib/billing/arrears.ts). The wording says so, because "days left in your free month"
+ * next to a paid plan is the kind of contradiction this component exists to prevent.
+ */
 function clockLabel(trialState: TrialPresentation, daysLeft: number): string {
   switch (trialState) {
     case 'not_started':
-      return 'Your free month hasn’t started yet';
+      return 'Your included usage hasn’t started counting yet';
     case 'active':
-      return `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left in your free month`;
+      return `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left in this usage period`;
     case 'ended':
-      return 'Your free month has ended';
+      return 'This usage period has ended';
     case 'converted':
       return 'You’re on a paid plan';
   }
@@ -97,23 +103,23 @@ export function UsageMeter({
       <p className="mt-3 text-base text-gray-600">
         {capReached ? (
           <>
-            You&apos;ve reached the fair-use ceiling for the free month. Your Kira stays here — talk
-            to us and we&apos;ll sort it out, or your paid month starts on schedule.
+            You&apos;ve reached the fair-use ceiling on voice for this period. Your Kira stays
+            here — talk to us and we&apos;ll sort it out.
           </>
         ) : trialState === 'not_started' ? (
           <>
-            The free month includes a fair-use allowance for voice. Nothing is counting yet — the
-            clock starts when you begin.
+            Your plan includes a fair-use allowance for voice. Nothing is counting yet — the clock
+            starts when you begin.
           </>
         ) : warn ? (
           <>
-            You&apos;ve used most of your free month&apos;s allowance. Nothing stops working without
-            us telling you first.
+            You&apos;ve used most of this period&apos;s voice allowance. Nothing stops working
+            without us telling you first.
           </>
         ) : (
           <>
-            The free month includes a fair-use allowance for voice. Most owners never come close —
-            this is here so you always know where you stand.
+            Your plan includes a fair-use allowance for voice. Most owners never come close — this
+            is here so you always know where you stand.
           </>
         )}
       </p>

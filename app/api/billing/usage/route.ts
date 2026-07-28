@@ -1,6 +1,8 @@
 // app/api/billing/usage/route.ts
 //
-// The in-app usage meter's data source: where the signed-in owner stands in their free month.
+// The in-app usage meter's data source: where the signed-in owner stands against the fair-use
+// ceiling on voice spend. Not a billing clock — Kira bills in arrears (lib/billing/arrears.ts), so
+// there is no free month to be inside; this is the cost guard, which beta-gate expresses as one.
 //
 // "Surface usage, don't hard-cut without warning" only works if the usage is actually visible —
 // a cap the owner can't see is indistinguishable from the product breaking. This is the read side
@@ -10,7 +12,7 @@ import { NextResponse } from 'next/server';
 
 import {
   getBetaGate,
-  TRIAL_DAYS,
+  FAIR_USE_WINDOW_DAYS,
   USAGE_WARN_AT,
   VOICE_ACTION,
   VOICE_COST_CAP_USD,
@@ -31,8 +33,8 @@ export async function GET() {
     const usage = await getBetaGate().check(user.id, VOICE_ACTION);
 
     return NextResponse.json({
-      // Trial clock
-      trialDays: TRIAL_DAYS,
+      // The fair-use window (not a billing trial — Kira bills in arrears; see lib/billing/arrears.ts)
+      trialDays: FAIR_USE_WINDOW_DAYS,
       daysLeft: usage.daysLeft,
       // Fair-use budget
       capUsd: VOICE_COST_CAP_USD,

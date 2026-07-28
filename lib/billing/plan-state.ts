@@ -23,10 +23,22 @@
 //
 // The rule: derive the state from what we actually know, name it, and let each surface render that
 // name. Never infer a state from the absence of data.
+//
+// REWRITTEN 2026-07-28 for arrears. Every sentence below used to describe a free first month, which
+// stopped being true the moment Kira's billing became "owed from day one, invoiced when the period
+// closes" (lib/billing/arrears.ts). Leaving them would have reproduced the exact failure this module
+// was written to fix — a Settings page confidently telling an advisor's client something about their
+// money that is not so. The billing sentence is now derived from the SUBSCRIPTION, not from the
+// fair-use clock, which is a cost guard and was never a statement about billing.
 
 import type { CapCheck, TrialStatus } from '@caistech/beta-gate';
 
-/** The trial clock, as something a screen can render without inferring. */
+/**
+ * The fair-use clock, as something a screen can render without inferring.
+ *
+ * Named for its history, not its meaning: beta-gate expresses the voice-cost window as a trial, and
+ * these are its states. It says nothing about whether anyone is being billed.
+ */
 export type TrialPresentation = 'not_started' | 'active' | 'ended' | 'converted';
 
 export interface PlanState {
@@ -62,26 +74,22 @@ export function derivePlanState(args: {
 
   const daysLeft = trialStatus?.daysLeft ?? 0;
 
-  // Each sentence is true of exactly one state. The card claim in particular is made ONLY when
-  // Stripe holds a customer for this account — that is the fact the old copy assumed.
+  // Each sentence is true of exactly one state, and it is derived from the SUBSCRIPTION — the only
+  // thing that actually decides whether money moves. The card claim in particular is made ONLY when
+  // Stripe holds a customer for this account; that is the fact the old copy assumed.
   const billingSentence = (() => {
-    if (trial === 'converted') {
-      return 'You’re on a paid plan. You can review or cancel it any time from Manage billing.';
+    if (subscriptionStatus === 'active' || subscriptionStatus === 'trialing') {
+      return 'You’re on a paid plan. Each month is billed when it finishes, for the month just gone — and if you cancel, the month you’re in is never billed.';
     }
-    if (trial === 'active') {
-      return hasCard
-        ? 'Your first month is free. Your card is on file and the first payment comes out at the end of it — we’ll email you three days before, and you can cancel any time before then.'
-        : 'Your first month is free. There’s no card on your account yet, so nothing can be charged — you’ll be asked for one before any paid month starts.';
+    if (subscriptionStatus === 'past_due') {
+      return 'A payment didn’t go through. Update your card and we’ll try it again — nothing is lost in the meantime.';
     }
-    if (trial === 'ended') {
-      return hasCard
-        ? 'Your free month has ended and your paid plan has started. Manage or cancel it any time from Manage billing.'
-        : 'Your free month has ended. There’s no card on your account, so nothing has been charged.';
+    if (subscriptionStatus === 'cancelled') {
+      return 'Your plan is cancelled and the month you were in was written off, as promised. Nothing further will be charged.';
     }
-    // not_started
     return hasCard
-      ? 'Your first month is free and hasn’t started yet. Your card is on file; nothing is charged until the free month ends.'
-      : 'Your first month is free and hasn’t started yet. There’s no card on your account, so nothing can be charged.';
+      ? 'Your card is on file and nothing has been charged. Billing starts when your plan does.'
+      : 'There’s no card on your account, so nothing can be charged.';
   })();
 
   return { trial, daysLeft, hasCard, billingSentence };

@@ -3,6 +3,7 @@ import { getBetaGate, VOICE_ACTION, VOICE_COST_CAP_USD } from '@/lib/billing';
 import { denyReason, derivePlanState } from '@/lib/billing/plan-state';
 import { PasswordChange } from '@/components/PasswordChange';
 import { DeleteAccount } from '@/components/DeleteAccount';
+import { CancelPlanButton } from '@/components/CancelPlanButton';
 import { ManageBillingButton } from '@/components/ManageBillingButton';
 import { UsageMeter } from '@/components/UsageMeter';
 import { updateProfile, updateNotifications } from './actions';
@@ -107,13 +108,17 @@ export default async function SettingsPage() {
           </p>
         )}
 
-        <div className="mt-5">
+        <div className="mt-5 space-y-4">
           <ManageBillingButton disabled={!appUser?.stripe_customer_id} />
           {!appUser?.stripe_customer_id && (
             <p className="mt-2 text-sm text-gray-500">
               You don&apos;t have a subscription yet, so there&apos;s nothing to manage.
             </p>
           )}
+          {/* Cancelling is OURS, not the portal's. Kira bills in arrears and waives the month in
+              progress; Stripe's portal cancel would invoice it. See lib/billing/arrears.ts. */}
+          {appUser?.stripe_subscription_id &&
+            appUser?.subscription_status !== 'cancelled' && <CancelPlanButton />}
         </div>
       </section>
 

@@ -25,7 +25,9 @@ export const dynamic = 'force-dynamic';
 const STATUS_LABEL: Record<OwnerProjection['status'], { text: string; tone: string }> = {
   clicked: { text: 'Looking', tone: 'bg-gray-100 text-gray-700' },
   signed_up: { text: 'Signed up', tone: 'bg-blue-50 text-blue-700' },
-  trialing: { text: 'Free month', tone: 'bg-amber-50 text-amber-700' },
+  // Legacy: Kira bills in arrears and issues no trials, so no NEW introduction reaches this state.
+  // Rows written before the billing model changed still carry it, so it keeps a truthful label.
+  trialing: { text: 'First month', tone: 'bg-amber-50 text-amber-700' },
   paying: { text: 'Paying', tone: 'bg-teal-50 text-teal-700' },
   lapsed: { text: 'Lapsed', tone: 'bg-red-50 text-red-700' },
 };
@@ -97,7 +99,9 @@ export default async function IntroducerBoardPage() {
 
   const owners = await ownerProjection(introducer.id);
   const paying = owners.filter((o) => o.status === 'paying').length;
-  const trialing = owners.filter((o) => o.status === 'trialing').length;
+  // Everyone who has an account but is not yet being billed. The tile used to count "free month",
+  // which under arrears is a state that never occurs — it would have read zero forever.
+  const signedUp = owners.filter((o) => o.status === 'signed_up' || o.status === 'trialing').length;
 
   const referralUrl = `${process.env.NEXT_PUBLIC_APP_URL}/r/${introducer.referral_token}`;
   // The disclosure sits WITH the link, in both states, because the obligation attaches at the
@@ -129,8 +133,8 @@ export default async function IntroducerBoardPage() {
           <p className="mt-1 text-3xl font-bold text-gray-900">{owners.length}</p>
         </div>
         <div className="rounded-2xl border border-gray-200 bg-white p-5">
-          <p className="text-sm text-gray-500">In their free month</p>
-          <p className="mt-1 text-3xl font-bold text-gray-900">{trialing}</p>
+          <p className="text-sm text-gray-500">Signed up, not yet billed</p>
+          <p className="mt-1 text-3xl font-bold text-gray-900">{signedUp}</p>
         </div>
         <div className="rounded-2xl border border-gray-200 bg-white p-5">
           <p className="text-sm text-gray-500">Paying</p>
