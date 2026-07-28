@@ -1,162 +1,292 @@
-// The demo's data — the same plumbing business as `/genome`, shown at two points in time.
+// The demo's script — the same plumbing business as `/genome`, followed through time.
 //
 // THE AXIS IS ELAPSED TIME, NOT STEPS. ExecutorAI's demo is a ten-step walkthrough because its flow
 // is linear and finite: organise, die, open, probate, done. Kira's never completes — the Genome
 // fills in and the score moves. A step-based walkthrough would tell an owner that Kira is a form he
 // finishes, which is the opposite of the product.
 //
-// So the demo runs week one against month six, with coverage climbing and the "still only in your
-// head" list shrinking. That list shrinking IS the product working.
+// IT LEADS WITH THE PAIN, NOT THE PRODUCT. The ICP tester would not have told this thing the truth
+// on day one. He does not need the mechanism explained to him first; he needs to believe it
+// understands his situation. So the opening beats are recognition, and the mechanism arrives once
+// he is nodding.
 //
-// ONE BUSINESS ACROSS EVERY SURFACE. Reuses `lib/genome/example.ts` deliberately: the landing hero
-// numbers, /genome, the ICP demo and the advisor section all describe the same 31-year-old plumbing
-// business. ExecutorAI does the same thing between /demo and /sample, and the reason is that two
-// artifacts describing two different fictional businesses read as marketing, while one that follows
-// a single business through time reads as a record.
+// AND IT EXPLAINS THE WHY, NOT ONLY THE WHAT. "She talks to you between jobs" means nothing without
+// "because you were never going to fill in a form, and we know that." Every process beat carries its
+// reason.
+//
+// ONE BUSINESS ACROSS EVERY SURFACE — landing hero, /genome, both demos. Two artifacts describing
+// two different fictional businesses read as marketing; one business followed through time reads as
+// a record.
 
-import { EXAMPLE_GENOME, overallCoverage } from './example';
+import { overallCoverage } from './example';
 
 export interface Beat {
-  /** Where we are in the owner's life with Kira. */
   when: string;
   /** Kira's narration, in her voice — this is what gets generated as audio. */
   narration: string;
-  /** Caption shown regardless of sound, and used as the audio's transcript. */
+  /** Caption shown regardless of sound, and the audio's transcript. */
   caption: string;
-  /** Which genome section to highlight, if any. */
-  section?: string;
-  /** Coverage to display at this beat (0-100). */
+  /** Illustration key — see components/DemoScene.tsx. */
+  scene?: string;
   coverage?: number;
-  /** Gaps still open at this beat — the honest half, shrinking. */
   stillOpen?: string[];
+  /** A figure worth showing large, with its label. */
+  figure?: { value: string; label: string };
 }
 
-/** Coverage at week one — before Kira has had more than a couple of conversations. */
 export const WEEK_ONE_COVERAGE = 12;
+export const MONTH_THREE_COVERAGE = 34;
 export const MONTH_SIX_COVERAGE = overallCoverage();
 
-/**
- * The ICP demo. Auto-advancing, so it is written to be WATCHED rather than driven.
- *
- * It opens on what Kira cannot do. That is deliberate and it is the evidence, not a hunch: the only
- * two things that moved the ICP tester toward trusting this were admissions — the Genome being
- * honest about its own gaps, and privacy mode being labelled unbuilt. Leading with the limits is
- * what buys the right to make a claim afterwards.
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// The owner
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const ICP_BEATS: Beat[] = [
   {
-    when: 'Before anything',
+    when: 'The conversation you have had with yourself',
+    scene: 'kitchen-table',
     narration:
-      "Before I show you anything — a few things I can't do yet. I can't sit in the background and " +
-      "listen; you have to open a conversation and press the button. I don't read your email. And " +
-      "nobody at our end reads what you tell me. I'd rather you heard that from me than found it out.",
+      "You've thought about what happens next. Maybe you've mentioned it to nobody — not the staff, " +
+      "not the kids, some weeks not even your wife. And somewhere in the back of it is a worry you " +
+      "haven't said out loud: that after thirty years, the thing you'd be selling is mostly you.",
     caption:
-      "What Kira can't do yet: no background listening, no reading your email, and nobody at our end reads your conversations.",
+      "You have thought about what comes next, and probably told nobody. And underneath it: after thirty years, the thing you would be selling is mostly you.",
+  },
+  {
+    when: 'Why a buyer pays less',
+    scene: 'handshake',
+    narration:
+      "Here's what a buyer sees. He can't ring your builders, he doesn't know what you charge them, " +
+      "and he can't tell which customers pay on time. So he prices the risk. That's not him being " +
+      "difficult — it's the only thing he can do when the business runs on one man's memory.",
+    caption:
+      "A buyer cannot see your relationships, your pricing, or which customers actually pay. So he prices the risk. That is the discount.",
+  },
+  {
+    when: 'Before I show you anything',
+    scene: 'phone',
+    narration:
+      "Before any of it — a few things I can't do. I can't sit in the background and listen; you have " +
+      "to open a conversation and press the button. I don't read your email. And nobody at our end " +
+      "reads what you tell me. I'd rather you heard that from me than found it out later.",
+    caption:
+      "What Kira cannot do: no background listening, no reading your email, and nobody at our end reads your conversations.",
   },
   {
     when: 'Week one',
-    narration:
-      "This is a plumbing business. Thirty-one years old, nine staff, and it runs on one man. " +
-      "Here's what I know about it after a week — almost nothing. Twelve percent of how this " +
-      "business works is written down anywhere. The rest is in his head.",
-    caption: 'Week one: 12% of the business is documented. The rest is in the owner\'s head.',
+    scene: 'office',
+    figure: { value: '12%', label: 'of the business is written down' },
     coverage: WEEK_ONE_COVERAGE,
+    narration:
+      "This is a plumbing business — thirty-one years old, nine staff. After a week I know almost " +
+      "nothing about how it runs. Twelve percent of it exists on paper anywhere. The rest is in his " +
+      "head, which is exactly where it's been the whole time.",
+    caption: 'Week one: 12% of how the business runs exists anywhere but in the owner’s head.',
     stillOpen: [
       'How work is priced — including the discount his biggest builder gets',
-      'Why the crews are allocated the way they are each morning',
+      'Why the crews get allocated the way they do each morning',
       'Which customers pay, and which need chasing',
     ],
   },
   {
-    when: 'A Tuesday, in the ute',
+    when: 'How it actually works',
+    scene: 'ute',
     narration:
-      "He talks to me between jobs. Not a form, not homework — the same way he'd tell an offsider. " +
-      "Today he mentioned that Hartley gets about twelve percent off list and forty-five day terms, " +
-      "and that it's been that way since a job in two thousand and four that went badly and got " +
-      "fixed at his own cost. He's never written that down. Now it exists.",
+      "Here's the part that matters. He doesn't sit down and do this. He talks to me between jobs — " +
+      "in the ute, waiting on a supplier, at the end of the day. Two minutes at a time. I ask the " +
+      "questions, he answers them the way he'd answer an offsider.",
     caption:
-      'He mentions the builder discount in passing. It has never been written down anywhere. Now it exists.',
-    section: 'pricing',
+      'He talks to Kira between jobs — two minutes at a time, in the ute or waiting on a supplier. She asks; he answers.',
   },
   {
-    when: 'Month six',
+    when: 'Why it works that way',
+    scene: 'ute',
     narration:
-      "Six months on. Sixty-one percent of the business is on the page — how work comes in, how it's " +
-      "priced, who the relationships belong to, what must not lapse. And the part that still only " +
-      "lives in his head is named, not hidden, because that's the part a buyer discounts him for.",
-    caption: 'Month six: 61% documented — and what remains is named rather than hidden.',
-    coverage: MONTH_SIX_COVERAGE,
+      "And here's why it's built like that. You were never going to fill in a form. Nobody who's run " +
+      "a business for thirty years is going to sit down on a Sunday and write an operations manual — " +
+      "not because you can't, but because there is always something more urgent. Talking costs you " +
+      "nothing you weren't already spending.",
+    caption:
+      'Why conversation and not forms: you were never going to write an operations manual on a Sunday. Talking costs you nothing you were not already spending.',
+  },
+  {
+    when: 'A Tuesday, between jobs',
+    scene: 'ute',
+    narration:
+      "Today he mentioned, in passing, that Hartley gets about twelve percent off list and forty-five " +
+      "day terms — and that it goes back to a job in two thousand and four that went wrong and got " +
+      "fixed at his own cost. He's never written that down anywhere. He's never had a reason to.",
+    caption:
+      'In passing: the biggest builder gets 12% off list and 45-day terms, going back to a job in 2004 that was fixed at his own cost. Never written down anywhere.',
+  },
+  {
+    when: 'Why that one mattered',
+    scene: 'document',
+    narration:
+      "That's not trivia. A buyer who doesn't know it will either lose that builder or discover the " +
+      "discount after settlement and feel misled. Either way it comes off the price. One sentence, " +
+      "said out the window of a ute, is worth real money at sale.",
+    caption:
+      'A buyer who does not know that either loses the builder or feels misled after settlement. Either way it comes off the price.',
+  },
+  {
+    when: 'Month three',
+    scene: 'office',
+    figure: { value: '34%', label: 'documented' },
+    coverage: MONTH_THREE_COVERAGE,
+    narration:
+      "By month three I've started asking about the things I'm missing rather than waiting for them " +
+      "to come up. Not a questionnaire — just the next obvious question, when he's already talking.",
+    caption:
+      'Month three: Kira starts asking about the gaps rather than waiting for them — the next obvious question, while he is already talking.',
     stillOpen: [
-      'When to walk away from a job — he has a clear instinct and has never put it into words',
-      'What he would tell a buyer never to change',
+      'When to walk away from a job — he has a clear instinct and has never put words to it',
+      'Which jobs the newer crew is not ready for',
     ],
   },
   {
-    when: 'What he ends up with',
+    when: 'Month six',
+    scene: 'document',
+    figure: { value: '61%', label: 'on the page, not in his head' },
+    coverage: MONTH_SIX_COVERAGE,
     narration:
-      "This is what he owns at the end of it. One document a buyer's accountant can read cold, and a " +
-      "copy of everything, exportable whenever he likes. If he stops paying us, he keeps it. That's " +
-      "the difference between selling a job and selling a business.",
+      "Six months. Sixty-one percent of how this business runs is on the page — where work comes " +
+      "from, how it's priced, who owns the relationships, what must not lapse. And what's still only " +
+      "in his head is named rather than hidden, because that's the part a buyer discounts him for.",
     caption:
-      "A handover document a buyer's accountant can read, and a copy of everything — exportable, and yours if you leave.",
+      'Month six: 61% documented — and what remains is named rather than hidden, because that is what a buyer discounts you for.',
+    stillOpen: ['What he would tell a buyer never to change'],
+  },
+  {
+    when: 'What due diligence looks like now',
+    scene: 'handshake',
+    narration:
+      "When it's time, the buyer's accountant asks the questions they always ask — and the answers " +
+      "already exist, in writing, with the gaps stated honestly. That's weeks off the process, and " +
+      "it's a different conversation about the multiple.",
+    caption:
+      'At sale: the buyer’s accountant asks the usual questions and the answers already exist in writing. Weeks off due diligence, and a different conversation about price.',
+  },
+  {
+    when: 'What you end up owning',
+    scene: 'document',
+    narration:
+      "And this is yours. One document a buyer's accountant can read cold, and a copy of everything, " +
+      "downloadable whenever you like. If you stop paying us, you keep it. It's your business — we're " +
+      "just the ones who wrote it down.",
+    caption:
+      'Yours to keep: a handover document a buyer’s accountant can read, and a copy of everything. If you stop paying us, you keep it.',
   },
 ];
 
-/**
- * The advisor section. Prev/next, because an advisor is EVALUATING and will want to go back and
- * re-read the commission terms — where the owner watches, the advisor interrogates.
- *
- * Framed on the visibility boundary, because that is what makes an introduction possible at all: an
- * advisor who could read their client's conversations could not, professionally, refer anyone.
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// The advisor
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const ADVISOR_BEATS: Beat[] = [
   {
     when: 'The client you already have',
+    scene: 'kitchen-table',
     narration:
-      "You know the ones. Thirty years in, genuinely profitable, and everything that matters routes " +
-      "through one person. You'd list them tomorrow if the owner weren't the product.",
-    caption: 'The client: 30+ years in, profitable, and the business runs on the owner.',
+      "You already know this client. Thirty years in, genuinely profitable, and every decision still " +
+      "routes through one person. You'd take the listing tomorrow if the owner weren't the product.",
+    caption:
+      'Thirty years in, genuinely profitable, and every decision routes through one person. You would list them tomorrow if the owner were not the product.',
   },
   {
-    when: 'What your client experiences',
+    when: 'The question worth asking yourself',
+    scene: 'handshake',
     narration:
-      "They talk to me between jobs. I ask the questions a buyer's advisor would ask them anyway, and " +
-      "what comes out gets written down — pricing, relationships, who does what when they're not there.",
+      "Put it this way. If Bob the plumber walked in tomorrow — good book, nine staff, and nothing " +
+      "written down anywhere — would you find that harder to sell than the same business with " +
+      "documented systems? You know the answer, and you know roughly what it costs him.",
     caption:
-      "Your client talks; the answers a buyer would demand get documented as they go.",
+      'If Bob the plumber walked in — good book, nine staff, nothing written down — would that be harder to sell than the same business with documented systems? You already know.',
+  },
+  {
+    when: 'What it costs him',
+    scene: 'document',
+    figure: { value: '$438,000', label: 'the gap on one ordinary plumbing business' },
+    narration:
+      "On this one — two point four million turnover, two hundred and sixty thousand of owner " +
+      "earnings — the difference between selling it as it is and selling it documented is about four " +
+      "hundred and thirty-eight thousand dollars. Not a projection: the same multiple applied to a " +
+      "business a buyer can actually take over.",
+    caption:
+      '$2.4M turnover, $260k owner earnings: roughly $438,000 between selling it as it is and selling it documented. Same multiple, applied to a business a buyer can take over.',
+  },
+  {
+    when: 'Why the multiple moves',
+    scene: 'handshake',
+    narration:
+      "It moves because the risk moves. A buyer discounts what he can't verify — the pricing, the " +
+      "relationships, whether the crews run without him. Take that uncertainty away and you're " +
+      "arguing about a business rather than about a man.",
+    caption:
+      'The multiple moves because the risk moves. A buyer discounts what he cannot verify; remove the uncertainty and you are negotiating over a business rather than a person.',
+  },
+  {
+    when: 'What your client actually does',
+    scene: 'ute',
+    narration:
+      "Nothing that feels like homework. He talks to Kira between jobs, two minutes at a time, and " +
+      "she asks the questions you'd ask in a listing appraisal. He was never going to fill in a form, " +
+      "and we built it knowing that.",
+    caption:
+      'No homework. He talks to Kira between jobs, two minutes at a time; she asks the questions you would ask in a listing appraisal.',
+  },
+  {
+    when: 'What gets written down',
+    scene: 'document',
     coverage: MONTH_SIX_COVERAGE,
+    narration:
+      "Where work comes from and whether it depends on him. How he prices, including the handshake " +
+      "discounts nobody has recorded. How the work runs when he isn't there. Suppliers, licences, " +
+      "renewals. And explicitly, the things only he knows — because naming those is what makes the " +
+      "rest believable.",
+    caption:
+      'Where work comes from · how he prices, including handshake discounts · how it runs without him · suppliers and licences · and explicitly, what only he knows.',
   },
   {
-    when: 'What you see — and what you never see',
+    when: 'What you see, and what you never see',
+    scene: 'office',
     narration:
-      "You see that they signed up, and you see their readiness moving. You never see their " +
+      "You see that they signed up and you see their readiness moving. You never see their " +
       "conversations, and you never see the contents of their Genome. That boundary is the reason you " +
-      "can introduce someone at all — if you could read your client's private business, you couldn't.",
+      "can introduce anyone at all — if you could read your client's private business, you couldn't.",
     caption:
-      'You see signup and score movement. You never see their conversations or the contents of their Genome.',
+      'You see signup and score movement. You never see their conversations or the contents of their Genome — which is what makes an introduction possible at all.',
   },
   {
     when: 'What you list afterwards',
+    scene: 'handshake',
     narration:
-      "When it's time, they hand a buyer a documented business instead of a shrug. Due diligence gets " +
-      "shorter, the multiple argument gets easier, and the listing is an asset rather than a job.",
-    caption: 'At sale: a documented business, shorter due diligence, an easier multiple conversation.',
+      "When it comes to market, you're listing a documented business. Due diligence gets shorter, the " +
+      "questions have answers, and your appraisal has something behind it other than your own " +
+      "judgement.",
+    caption:
+      'You list a documented business: shorter due diligence, questions that have answers, and an appraisal with something behind it.',
   },
   {
     when: 'What you get paid',
+    scene: 'document',
+    figure: { value: '10%', label: 'monthly, on collected funds, for the life of the subscription' },
     narration:
       "Ten percent of what they pay us, every month, for as long as they keep paying — on funds " +
-      "actually collected. First touch is yours and cannot be quietly reassigned. And you tell them " +
-      "you're paid a commission; we give you the wording.",
+      "actually collected. First touch is yours and can't be quietly reassigned. And you tell them " +
+      "you're paid a commission; we give you the wording to paste into your own email.",
     caption:
-      '10% monthly on collected funds, for the life of the subscription. First-touch attribution. You disclose the commission — we supply the wording.',
+      '10% monthly on collected funds, for the life of the subscription. First-touch attribution that cannot be reassigned. You disclose the commission; we supply the wording.',
   },
   {
     when: 'What is not built yet',
+    scene: 'phone',
     narration:
-      "One thing you should know before you put your name on an introduction. Privacy mode — where I " +
-      "sit in the background and only wake when I'm called — isn't built. Today your client has to " +
-      "open a conversation. I'd rather you heard that from us than had to ask.",
-    caption: 'Not built yet: background listening / privacy mode. Your client opens a conversation deliberately.',
+      "One thing before you put your name on an introduction. Privacy mode — where I sit in the " +
+      "background and only wake when I'm called — isn't built. Today your client opens a conversation " +
+      "deliberately. I'd rather you heard that from us than had to ask.",
+    caption:
+      'Not built yet: background listening. Today your client opens a conversation deliberately. You should hear that from us rather than have to ask.',
   },
 ];

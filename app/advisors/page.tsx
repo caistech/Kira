@@ -54,6 +54,12 @@ export default function AdvisorsPage() {
             Kira
           </Link>
           <div className="flex items-center gap-4">
+            <Link href="/" className="text-sm font-medium text-stone-600 hover:text-pink-500">
+              Home
+            </Link>
+            <Link href="/genome" className="hidden text-sm font-medium text-stone-600 hover:text-pink-500 sm:block">
+              What your client gets
+            </Link>
             <Link href="/#pricing" className="hidden text-sm font-medium text-stone-600 hover:text-pink-500 sm:block">
               Pricing
             </Link>

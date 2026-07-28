@@ -26,7 +26,12 @@ export default function DemoPage() {
       <header className="sticky top-0 z-40 bg-amber-50/85 backdrop-blur border-b border-amber-200/60">
         <div className="max-w-3xl mx-auto px-5 py-3 flex items-center justify-between">
           <a href="/" className="font-display font-bold text-xl bg-gradient-to-r from-amber-500 via-pink-500 to-violet-500 bg-clip-text text-transparent">Kira</a>
-          <a href="/business-valuation" className="text-base text-stone-600 hover:text-pink-500 min-h-[44px] flex items-center">Value my business</a>
+          <div className="flex items-center gap-5">
+            <a href="/" className="text-base text-stone-600 hover:text-pink-500 min-h-[44px] flex items-center">Home</a>
+            <a href="/genome" className="text-base text-stone-600 hover:text-pink-500 min-h-[44px] hidden sm:flex items-center">What you get</a>
+            <a href="/advisors" className="text-base text-stone-600 hover:text-pink-500 min-h-[44px] hidden sm:flex items-center">Advisors</a>
+            <a href="/business-valuation" className="text-base font-semibold text-stone-800 hover:text-pink-500 min-h-[44px] flex items-center">Value my business</a>
+          </div>
         </div>
       </header>
 
@@ -58,6 +63,9 @@ export default function DemoPage() {
              style={{ background: 'linear-gradient(135deg,#fb7185,#f472b6)' }}>
             Value my business →
           </a>
+          <p className="mt-8">
+            <a href="/" className="text-stone-600 underline underline-offset-4 min-h-[44px] inline-flex items-center text-base">← Back to the home page</a>
+          </p>
         </section>
       </main>
     </div>

@@ -14,6 +14,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Beat } from '@/lib/genome/timeline';
+import { DemoScene } from '@/components/DemoScene';
 
 type Mode = 'auto' | 'manual';
 
@@ -102,6 +103,21 @@ export function DemoPlayer({
       </div>
 
       <div className="px-5 py-6 sm:px-7 sm:py-8">
+        {/* The picture first — this audience should see the room before they read about it. */}
+        {beat.scene && <DemoScene scene={beat.scene} className="mb-6" />}
+
+        {/* A single figure, large, when the beat turns on a number. A dollar gap read aloud is
+            forgettable; the same gap sitting on the screen is the argument. */}
+        {beat.figure && (
+          <div className="mb-5">
+            <p className="font-display font-bold text-4xl sm:text-5xl leading-none"
+               style={{ background: 'linear-gradient(135deg,#8b5cf6,#f472b6)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>
+              {beat.figure.value}
+            </p>
+            <p className="text-stone-500 mt-2">{beat.figure.label}</p>
+          </div>
+        )}
+
         {typeof beat.coverage === 'number' && (
           <div className="mb-5">
             <div className="flex items-baseline justify-between">
