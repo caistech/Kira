@@ -33,6 +33,15 @@ export interface OwnerEntry {
   capturedAt: string;
   importance: number | null;
   section: SectionKey | 'unsorted';
+  /**
+   * Where this came from — the conversation he said it in.
+   *
+   * This is the difference between a handover document and a list of assertions. "The pricing rule
+   * is X" is a claim a buyer's accountant discounts; "the owner stated on 3 March that the pricing
+   * rule is X" is evidence they can put in a file. Null where the source could not be resolved,
+   * and shown as unsourced rather than quietly presented as if it were sourced.
+   */
+  source: { conversationId: string; spokenOn: string } | null;
 }
 
 export interface OwnerSection {
@@ -53,6 +62,8 @@ export interface OwnerGenome {
   worthToday: number | null;
   /** True when nothing has been captured — the empty state must be honest, not decorative. */
   empty: boolean;
+  /** How many entries can be traced to a conversation. Stated plainly; a buyer will ask. */
+  sourced: number;
 }
 
 const SECTION_KEYS = GENOME_SECTIONS.map((s) => s.key) as string[];
@@ -107,10 +118,22 @@ export async function deriveOwnerGenome(userId: string, opts: { classifyLimit?: 
 
   const { data: rows } = await supabase
     .from('kira_memory')
-    .select('id, content, created_at, importance, genome_section')
+    .select('id, content, created_at, importance, genome_section, source_conversation_id')
     .eq('user_id', userId)
     .neq('active', false)
     .order('created_at', { ascending: false });
+
+  // The conversation each fact came from. One extra round trip rather than a join, so a missing or
+  // deleted conversation degrades that entry to unsourced instead of dropping the fact itself.
+  const sourceIds = [...new Set((rows ?? []).map((r) => r.source_conversation_id).filter(Boolean))];
+  const spokenOn = new Map<string, string>();
+  if (sourceIds.length > 0) {
+    const { data: convs } = await supabase
+      .from('conversations')
+      .select('id, started_at')
+      .in('id', sourceIds as string[]);
+    for (const c of convs ?? []) spokenOn.set(String(c.id), String(c.started_at));
+  }
 
   const { data: valuation } = await supabase
     .from('business_valuations')
@@ -133,6 +156,13 @@ export async function deriveOwnerGenome(userId: string, opts: { classifyLimit?: 
       capturedAt: String(r.created_at),
       importance: (r.importance as number) ?? null,
       section: (SECTION_KEYS.includes(String(r.genome_section)) ? r.genome_section : 'unsorted') as SectionKey | 'unsorted',
+      source:
+        r.source_conversation_id && spokenOn.has(String(r.source_conversation_id))
+          ? {
+              conversationId: String(r.source_conversation_id),
+              spokenOn: spokenOn.get(String(r.source_conversation_id)) as string,
+            }
+          : null,
     }));
 
   const sections: OwnerSection[] = GENOME_SECTIONS.map((s) => ({
@@ -151,6 +181,7 @@ export async function deriveOwnerGenome(userId: string, opts: { classifyLimit?: 
     gap: valuation?.gap != null ? Number(valuation.gap) : null,
     worthToday: valuation?.worth_today != null ? Number(valuation.worth_today) : null,
     empty: all.length === 0,
+    sourced: all.filter((e) => e.source).length,
   };
 }
 
