@@ -92,15 +92,26 @@ for (const a of agents) {
     ).json();
 
     const current = live?.conversation_config?.agent?.prompt?.prompt || '';
-    if (current.includes(MARKER)) {
+
+    // The boundary is always the LAST section, so an agent that already has it is updated by cutting
+    // from the marker and re-appending the current text. A pure skip-if-present guard would have
+    // frozen the first version onto the fleet forever — which is the very failure this script
+    // exists to undo, one level up.
+    const base = current.includes(MARKER) ? current.slice(0, current.indexOf(MARKER)).trimEnd() : current;
+    const updating = current.includes(MARKER);
+    const next = `${base}
+
+${boundary}`;
+
+    if (next === current) {
       already += 1;
-      console.log(`  = ${id} ${a.agent_name ?? ''} — already has it`);
+      console.log(`  = ${id} ${a.agent_name ?? ''} — already current`);
       continue;
     }
 
     if (!APPLY) {
       patched += 1;
-      console.log(`  + ${id} ${a.agent_name ?? ''} — would append (${boundary.length} chars)`);
+      console.log(`  + ${id} ${a.agent_name ?? ''} — would ${updating ? 'UPDATE' : 'append'} (${boundary.length} chars)`);
       continue;
     }
 
