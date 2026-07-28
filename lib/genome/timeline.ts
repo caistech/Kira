@@ -320,14 +320,17 @@ export const ADVISOR_BEATS: Beat[] = [
       'Not built yet: background listening. Today your client opens a conversation deliberately. You should hear that from us rather than have to ask.',
   },
   {
-    when: 'Try it on someone you know',
+    // Deliberately calls back to the Bob question near the top. She has already answered it in her
+    // head by now; this makes her count, which turns an abstract product into a number of real
+    // people she can picture — and it asks on their behalf rather than ours.
+    when: 'How many Bobs are on your list?',
     scene: 'phone',
     narration:
-      "Best way to judge this is to run it. Pick a client off the top of your head — or make one up " +
-      "with numbers you'd recognise — and put them through the valuation. Three minutes, and you'll " +
-      "see exactly what your client would see before you send anyone.",
+      "So — how many Bobs are on your client list? Two? A dozen? Pick one of them, or make one up " +
+      "with numbers you'd recognise, and run him through the valuation. Three minutes, and you'll " +
+      "see exactly what he'd see. Then let's help them get more for thirty years of hard work.",
     caption:
-      'Run it yourself: pick a client, or invent one with numbers you would recognise. Three minutes, and you see exactly what they would see before you refer anyone.',
-    cta: { label: 'Run a valuation', href: '/business-valuation' },
+      'How many Bobs are on your client list? Pick one — or invent one with numbers you would recognise — and run him through it. Three minutes, and you see exactly what he would see. Then let us help them get more for thirty years of hard work.',
+    cta: { label: 'Run one of your clients through it', href: '/business-valuation' },
   },
 ];
