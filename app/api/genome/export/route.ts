@@ -12,6 +12,12 @@
 // The gaps are exported TOO. A handover document that silently omits what is still only in the
 // owner's head would misrepresent the business to a buyer, which is precisely the harm this product
 // exists to prevent.
+//
+// EVERY LINE CARRIES ITS SOURCE. "The pricing rule is X" is a claim a buyer's accountant discounts;
+// "the owner stated this on 3 March 2026" is evidence they can put in a file, and shortening due
+// diligence is the reason this document is worth paying for. Entries we cannot trace say so rather
+// than sitting silently among the sourced ones — an unmarked mix would make the whole document only
+// as trustworthy as its weakest line.
 
 import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
@@ -77,7 +83,10 @@ export async function GET(request: Request) {
       lines.push('> Nothing recorded here yet. This is still carried by the owner alone.', '');
     } else {
       for (const e of s.entries) {
-        lines.push(`- ${e.content}`);
+        const said = e.source
+          ? `stated ${new Date(e.source.spokenOn).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}`
+          : 'source not recorded';
+        lines.push(`- ${e.content} *(${said})*`);
       }
       lines.push('');
     }
@@ -93,6 +102,10 @@ export async function GET(request: Request) {
     'Prepared with Kira. Figures are indicative and self-reported; a buyer should verify them ' +
       'independently. Sections marked as carried by the owner alone are the parts of the business ' +
       'that are not yet transferable.',
+    '',
+    `Each entry above is dated to the conversation in which the owner stated it. ${g.sourced} of ` +
+      `${g.totalCaptured} entries are traceable this way; any marked "source not recorded" were ` +
+      'captured without a conversation reference and should be confirmed with the owner directly.',
     '',
   );
 

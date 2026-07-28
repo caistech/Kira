@@ -99,6 +99,15 @@ export default async function MyGenome() {
           <p className="text-base text-stone-500 mt-6">
             {g.totalCaptured} {g.totalCaptured === 1 ? 'thing' : 'things'} captured
             {g.documents > 0 ? `, plus ${g.documents} document${g.documents === 1 ? '' : 's'} you have shared` : ''}.
+            {g.sourced > 0 && (
+              <>
+                {' '}
+                <span className="text-stone-600">
+                  {g.sourced} of them are dated to the conversation you said them in — that is what a
+                  buyer&apos;s accountant will want to see.
+                </span>
+              </>
+            )}
           </p>
 
           <div className="mt-6 space-y-3">
@@ -118,9 +127,12 @@ export default async function MyGenome() {
                       {s.entries.map((e) => (
                         <li key={e.id}>
                           <p className="text-stone-800 leading-relaxed">{e.content}</p>
+                          {/* Sourced to the conversation he said it in — the thing that makes this
+                              evidence rather than an assertion when a buyer's accountant reads it. */}
                           <p className="text-xs text-stone-400 mt-1">
-                            Captured{' '}
-                            {new Date(e.capturedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}
+                            {e.source
+                              ? `You said this on ${new Date(e.source.spokenOn).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}`
+                              : `Captured ${new Date(e.capturedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })} — conversation not recorded`}
                           </p>
                         </li>
                       ))}

@@ -10,6 +10,7 @@
 import Link from 'next/link';
 
 import { ADVISOR_FAQ } from '@/lib/faq';
+import { TRUST_ANSWERS } from '@/lib/trust';
 import { AdvisorDemo } from './AdvisorDemo';
 
 import { AdvisorEnquiryForm } from './AdvisorEnquiryForm';
@@ -162,6 +163,46 @@ export default function AdvisorsPage() {
               </div>
             ))}
           </dl>
+        </div>
+      </section>
+
+      {/* Put in front of her, not filed behind a link.
+          She is risking her licence and a relationship she has held for years, so these four answers
+          are the ones standing between "interesting" and an introduction. Open on the page rather
+          than inside an accordion — an assurance you have to click to find reads as one being kept
+          quiet — and downloadable, because the person who has to be satisfied is usually her
+          compliance officer rather than her. */}
+      <section className="border-y border-amber-100 bg-stone-50 py-16">
+        <div className="mx-auto max-w-3xl px-6">
+          <h2 className="font-display text-2xl font-bold text-stone-900">
+            Before you put your name on it
+          </h2>
+          <p className="mt-3 max-w-prose leading-relaxed text-stone-600">
+            You are introducing a client you have acted for, sometimes for decades. These are the
+            four questions we get asked before that happens, answered plainly.
+          </p>
+
+          <div className="mt-8 space-y-6">
+            {TRUST_ANSWERS.map((t) => (
+              <div key={t.q} className="rounded-2xl border border-stone-200 bg-white p-6">
+                <h3 className="font-display text-lg font-bold text-stone-900">{t.q}</h3>
+                <p className="mt-3 leading-relaxed text-stone-600">{t.a}</p>
+                <p className="mt-3 text-sm leading-relaxed text-stone-500">
+                  <span className="font-semibold text-stone-600">How that is enforced:</span> {t.basis}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <a
+            href="/api/trust"
+            className="font-display mt-8 inline-flex min-h-[48px] items-center rounded-full border border-stone-300 bg-white px-6 font-semibold text-stone-800 hover:border-stone-400"
+          >
+            Download this as a one-page briefing
+          </a>
+          <p className="mt-3 text-sm text-stone-500">
+            For your file, or for whoever asks you to justify the introduction.
+          </p>
         </div>
       </section>
 

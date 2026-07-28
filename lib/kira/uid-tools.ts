@@ -29,6 +29,27 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
   const importance = Number(body.importance) || 6;
 
   const supabase = createServiceClient();
+
+  // Provenance: which conversation did he say this in.
+  //
+  // The post-call distil gets this free — it calls the canonical handleSaveMemory WITHOUT an
+  // identity, so the conversation binding resolves and fills source_conversation_id. The uid branch
+  // hard-codes `id: null`, because uid mode historically had no conversation id to bind to. It does
+  // now: `platformIdentity: true` makes ElevenLabs fill system__conversation_id, so a mid-call save
+  // can be sourced like every other memory. Without this, 7 of 61 facts reach the handover document
+  // as assertions with nothing behind them — and a claim a buyer cannot trace is a claim the buyer
+  // discounts. Best-effort: an unresolvable id costs provenance, never the memory.
+  let sourceConversationId: string | null = null;
+  const elConvId = String(body.conversation_id || body.elevenlabs_conversation_id || '').trim();
+  if (elConvId) {
+    const { data: conv } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('elevenlabs_conversation_id', elConvId)
+      .maybeSingle();
+    sourceConversationId = (conv?.id as string) ?? null;
+  }
+
   // One agent per user — link the fact to it so recall's agent-scoped query finds it.
   const { data: agent } = await supabase
     .from('kira_agents')
@@ -45,6 +66,7 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
     memory_type: memoryType,
     content,
     importance,
+    source_conversation_id: sourceConversationId,
   });
   if (error) return json(200, { success: false, error: 'Failed to save memory' });
 

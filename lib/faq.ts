@@ -114,6 +114,21 @@ export const ADVISOR_FAQ: FaqItem[] = [
     q: 'What if the owner comes back later through someone else?',
     a: "They stay yours. Attribution is first-touch: whoever introduced them is credited, not whoever they happened to click last. It's recorded when they first open your link and it cannot be quietly reassigned afterwards.",
   },
+  // The three assurance answers an introducing adviser needs, alongside the commercial ones. The
+  // long-form versions with what enforces each are on the advisor page itself (lib/trust.ts) and in
+  // the downloadable briefing — these are here so someone scanning the accordion still finds them.
+  {
+    q: 'If Kira tells my client something wrong, whose problem is that?',
+    a: "Ours to fix, and nobody's to rely on as advice. Kira is not a licensed adviser and gives no financial, legal, tax or valuation advice. The valuation is an indicative figure from your client's own self-reported numbers, and it says so on the screen, in the exported document, and in the terms they accept. It starts the conversation you are having with them; it does not replace your judgement or your engagement.",
+  },
+  {
+    q: 'Two of my clients are competitors. Can anything cross between them?',
+    a: "No. Each owner's conversations, memory and documents are isolated at the database row level and scoped to their own account — enforced by the database rather than by code remembering to filter, which is the difference between a rule and a guarantee. Their information also stays on our own infrastructure; the substance of their business is not handed to a third-party memory service.",
+  },
+  {
+    q: 'If my client sells, retires or dies, does their information come out?',
+    a: "Yes, at any time, without asking us. They can export the whole Business Genome themselves — a handover document a buyer's accountant can read cold, and the raw data in a form another system can read. Every entry is dated to the conversation the owner said it in, so it reads as evidence rather than assertion. If they stop paying us, they keep it.",
+  },
   {
     q: 'What can I see about my clients?',
     a: "Whether they've opened your link, whether they've signed up, and how their business valuation is moving. You will never see their conversations with Kira, their transcripts, or anything she remembers about them. That boundary is built into the system, not a policy we promise to follow.",
