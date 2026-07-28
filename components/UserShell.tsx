@@ -10,6 +10,9 @@ import { ClaimStoredValuation } from '@/components/ClaimStoredValuation';
 
 const USER_NAV: NavItem[] = [
   { href: '/dashboard', label: 'My Kiras' },
+  // The thing he is paying for. It was reachable only by typing the URL, which for this audience
+  // means it did not exist.
+  { href: '/my-genome', label: 'My Genome' },
   { href: '/knowledge', label: 'Knowledge' },
   { href: '/start', label: 'New Kira' },
 ];

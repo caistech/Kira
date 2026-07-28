@@ -10,6 +10,7 @@
 import Link from 'next/link';
 
 import { ADVISOR_FAQ } from '@/lib/faq';
+import { AdvisorDemo } from './AdvisorDemo';
 
 import { AdvisorEnquiryForm } from './AdvisorEnquiryForm';
 
@@ -53,6 +54,12 @@ export default function AdvisorsPage() {
             Kira
           </Link>
           <div className="flex items-center gap-4">
+            <Link href="/" className="text-sm font-medium text-stone-600 hover:text-pink-500">
+              Home
+            </Link>
+            <Link href="/genome" className="hidden text-sm font-medium text-stone-600 hover:text-pink-500 sm:block">
+              What your client gets
+            </Link>
             <Link href="/#pricing" className="hidden text-sm font-medium text-stone-600 hover:text-pink-500 sm:block">
               Pricing
             </Link>
@@ -99,6 +106,24 @@ export default function AdvisorsPage() {
           >
             See what a client sees
           </Link>
+        </div>
+      </section>
+
+      {/* The advisor demo. PREV/NEXT rather than auto-advance, because an advisor is evaluating and
+          will want to go back and re-read the commission terms — where the owner watches, she
+          interrogates. Same sample business as /genome and the ICP demo, so every surface describes
+          one business rather than three. */}
+      <section className="border-y border-amber-100 bg-white py-16">
+        <div className="mx-auto max-w-3xl px-6">
+          <h2 className="font-display text-2xl font-bold text-stone-900">See it before you refer anyone</h2>
+          <p className="mt-3 max-w-prose leading-relaxed text-stone-600">
+            Six screens, in Kira&apos;s own voice, on a real-shaped client: what they experience, what you
+            see, what you never see, and what you get paid. No real business, no real data — and it
+            reads fine with the sound off.
+          </p>
+          <div className="mt-8">
+            <AdvisorDemo />
+          </div>
         </div>
       </section>
 

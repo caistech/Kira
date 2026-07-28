@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { OWNER_FAQ } from '@/lib/faq';
+import { LandingDemo } from '@/components/LandingDemo';
 
 export default function KiraLandingPage() {
   const [isVisible, setIsVisible] = useState(false);
@@ -114,6 +115,7 @@ export default function KiraLandingPage() {
           <div className="flex items-center gap-3 sm:gap-6">
             <a href="#how-it-works" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">How it works</a>
             <a href="#pricing" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">Pricing</a>
+            <a href="/demo" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">Watch a demo</a>
             <a href="/genome" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">What you get</a>
             <a href="/advisors" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">Advisors</a>
             <a href="/about" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">About</a>
@@ -141,6 +143,7 @@ export default function KiraLandingPage() {
           <div className="md:hidden border-t border-amber-100 bg-white/95 backdrop-blur px-6 py-3 space-y-1">
             <a href="#how-it-works" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">How it works</a>
             <a href="#pricing" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">Pricing</a>
+            <a href="/demo" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">Watch a demo</a>
             <a href="/genome" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">What you get</a>
             <a href="/advisors" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">Advisors</a>
             <a href="/about" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">About</a>
@@ -223,9 +226,29 @@ export default function KiraLandingPage() {
                 </div>
               </div>
               <p className="font-body text-center text-sm text-stone-600">
-                The <span className="font-semibold text-violet-600">$1.9M gap</span> is the knowledge in your head. Kira helps you capture it.
+                The <span className="font-semibold text-violet-600">$438k gap</span> is the knowledge in your head. Kira helps you capture it.
               </p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* THE DEMO, ON THE LANDING PAGE — not a route of its own.
+          A 66-year-old who has told nobody he is selling does not go exploring a nav bar; a /demo
+          link is a page he never clicks. The one thing that differentiates this product is that he
+          can hear her and watch the gap close, so it belongs where he already is. */}
+      <section className="bg-amber-50/60 py-20 border-y border-amber-100">
+        <div className="max-w-3xl mx-auto px-5">
+          <h2 className="font-display text-2xl sm:text-3xl font-bold text-center">Watch what happens over six months</h2>
+          <p className="font-body text-center text-stone-600 mt-4 max-w-2xl mx-auto leading-relaxed">
+            A real-shaped plumbing business — thirty-one years old, nine staff, and it runs on one man.
+            Press start and Kira will talk you through it herself. Nothing here is a real business.
+          </p>
+          <p className="font-body text-center text-sm text-stone-500 mt-2">
+            About three minutes. Pause any time, and it reads fine with the sound off.
+          </p>
+          <div className="mt-8">
+            <LandingDemo />
           </div>
         </div>
       </section>
