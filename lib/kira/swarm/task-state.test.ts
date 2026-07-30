@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { asTaskState, TASK_STATES } from './coordinator';
+import { days, spokenLine, type OpenTaskSummary } from './open-tasks';
 import { recipientConcern, recipientFrom, spellForSpeech } from './recipient';
 
 describe('asTaskState', () => {
@@ -78,6 +79,61 @@ describe('recipientConcern', () => {
     // The real failure: plausible to every machine check, and not his address.
     expect(recipientConcern('mcdennis@gmail.com')).toBeNull();
     expect(recipientConcern('mcmdennis@gmail.com')).toBeNull();
+  });
+});
+
+describe('days', () => {
+  // Built from LOCAL components on purpose: `days` counts the owner's calendar days, so a test
+  // written in UTC passes or fails depending on which side of midnight the runner's zone sits.
+  const local = (y: number, m: number, d: number, h: number) => new Date(y, m - 1, d, h);
+
+  it('counts calendar days, so Tuesday evening is two days ago on Thursday evening', () => {
+    // The real case: the live ledger called a task raised on the 28th "1 day ago" on the 30th,
+    // because 38 elapsed hours divided by 24 and floored is 1.
+    expect(days(local(2026, 7, 28, 20).toISOString(), local(2026, 7, 30, 18))).toBe(2);
+  });
+
+  it('is 0 earlier the same day, and never negative for a future timestamp', () => {
+    expect(days(local(2026, 7, 30, 9).toISOString(), local(2026, 7, 30, 23))).toBe(0);
+    expect(days(local(2026, 7, 31, 9).toISOString(), local(2026, 7, 30, 23))).toBe(0);
+  });
+});
+
+describe('spokenLine', () => {
+  const task = (over: Partial<OpenTaskSummary>): OpenTaskSummary => ({
+    id: 'x',
+    kind: 'email',
+    status: 'queued',
+    state: 'accepted and not finished',
+    summary: 'something',
+    requested: '2026-07-28T12:00:00Z',
+    ageDays: 2,
+    ...over,
+  });
+
+  it('leads with the quote, not the oldest throwaway — the live regression', () => {
+    const line = spokenLine([
+      task({ summary: 'Forwarding a test message to myself', ageDays: 3 }),
+      task({ summary: 'Test email to Kira', ageDays: 3 }),
+      task({ kind: 'quote', summary: 'Quote for $60,000 for Trinh', ageDays: 2 }),
+    ]);
+    expect(line).toContain('Quote for $60,000 for Trinh');
+    expect(line).toContain('from 2 days ago');
+    expect(line).toContain('are 2 others');
+  });
+
+  it('falls back to the longest-waiting item when nothing is a quote', () => {
+    const line = spokenLine([task({ summary: 'newer', ageDays: 1 }), task({ summary: 'older', ageDays: 5 })]);
+    expect(line).toContain('older');
+    expect(line).toContain('is 1 other');
+  });
+
+  it('says nothing at all when nothing is open', () => {
+    expect(spokenLine([])).toBe('');
+  });
+
+  it('omits the age for something raised today', () => {
+    expect(spokenLine([task({ ageDays: 0 })])).not.toContain('day');
   });
 });
 

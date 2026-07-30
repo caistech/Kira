@@ -55,8 +55,17 @@ function plainState(status: string): string {
   }
 }
 
-function days(iso: string): number {
-  return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+/**
+ * CALENDAR days, not elapsed-hours-divided-by-24.
+ *
+ * A task from Tuesday evening is "two days ago" to the owner on Thursday morning, and 38 hours to
+ * `Math.floor`, which reports it as one. Under-stating the age of the thing he is waiting on is the
+ * one direction this must not round, since the age is the whole reason to mention it.
+ */
+export function days(iso: string, now: Date = new Date()): number {
+  const then = new Date(iso);
+  const startOfDay = (d: Date) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+  return Math.max(0, Math.round((startOfDay(now) - startOfDay(then)) / 86_400_000));
 }
 
 function toSummary(row: {
@@ -113,15 +122,19 @@ export async function readTaskLedger(userId: string): Promise<TaskLedger> {
 }
 
 /**
- * The line she opens with. Deliberately names the OLDEST thing rather than counting — "three things
- * are open" invites "which ones?", and the answer he needs is the one that has been waiting longest.
+ * The line she opens with. It names ONE thing rather than a count — "three things are open" only
+ * invites "which ones?" — and which one it names is not simply the oldest.
+ *
+ * Money first, then age. Read strictly oldest-first, the live ledger opened on a throwaway test email
+ * while a $60,000 quote to a client sat third in the same list. A quote is the item with a client and
+ * a number on the other end of it, so it leads; everything else is ordered by how long it has waited.
  */
-function spokenLine(open: OpenTaskSummary[]): string {
+export function spokenLine(open: OpenTaskSummary[]): string {
   if (open.length === 0) return '';
-  const oldest = open[0];
-  const waited =
-    oldest.ageDays >= 1 ? ` from ${oldest.ageDays} day${oldest.ageDays === 1 ? '' : 's'} ago` : '';
+  const rank = (t: OpenTaskSummary) => (t.kind === 'quote' ? 0 : 1);
+  const lead = [...open].sort((a, b) => rank(a) - rank(b) || b.ageDays - a.ageDays)[0];
+  const waited = lead.ageDays >= 1 ? ` from ${lead.ageDays} day${lead.ageDays === 1 ? '' : 's'} ago` : '';
   const others =
     open.length > 1 ? ` There ${open.length === 2 ? 'is 1 other' : `are ${open.length - 1} others`}.` : '';
-  return `Still open${waited}: ${oldest.summary} — ${oldest.state}.${others}`;
+  return `Still open${waited}: ${lead.summary} — ${lead.state}.${others}`;
 }
