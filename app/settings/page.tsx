@@ -1,4 +1,8 @@
+import Link from 'next/link';
 import { getAuthUser, getCurrentAppUser } from '@/lib/auth';
+import { composePostalAddress, displayName, formatAbn } from '@/lib/business-identity';
+import { getBusinessIdentity } from '@/lib/business-identity/store';
+import { retryIdentitySync } from '@/app/setup/business/actions';
 import { getBetaGate, VOICE_ACTION, VOICE_COST_CAP_USD } from '@/lib/billing';
 import { denyReason, derivePlanState } from '@/lib/billing/plan-state';
 import { PasswordChange } from '@/components/PasswordChange';
@@ -14,6 +18,15 @@ export const dynamic = 'force-dynamic';
 export default async function SettingsPage() {
   const authUser = await getAuthUser();
   const appUser = await getCurrentAppUser();
+
+  // Degrade, don't fake: a read failure omits the section rather than rendering an empty one that
+  // reads as "you have no business details" and invites a pointless re-entry.
+  let identity = null;
+  try {
+    identity = appUser?.id ? await getBusinessIdentity(appUser.id) : null;
+  } catch (error) {
+    console.error('[settings] business identity unavailable:', error);
+  }
 
   // Read the free-month meter server-side. Degrade, don't fake: if the gate can't be read we omit
   // the panel rather than render a reassuring but fictional 0%.
@@ -82,6 +95,79 @@ export default async function SettingsPage() {
             Save profile
           </button>
         </form>
+      </section>
+
+      {/*
+        Business identity — whose name is on the mail Kira sends.
+        A summary and a link rather than a second copy of the form: one form, at /setup/business, so
+        the validation and the two writes cannot drift apart between the place it is first entered
+        and the place it is corrected.
+      */}
+      <section id="business" className="mb-6 rounded-2xl border border-gray-200 bg-white p-6">
+        <h2 className="text-lg font-semibold text-gray-900">Your business</h2>
+        <p className="mt-1 text-base text-gray-600">
+          The name, ABN and address that appear at the bottom of every email Kira sends for you.
+        </p>
+
+        {identity ? (
+          <>
+            <dl className="mt-4 space-y-1 text-base text-gray-800">
+              <div>
+                <dt className="sr-only">Business</dt>
+                <dd className="font-medium">{displayName(identity)}</dd>
+              </div>
+              {identity.trading_name ? (
+                <div>
+                  <dt className="sr-only">Registered entity</dt>
+                  <dd className="text-gray-600">{identity.legal_name}</dd>
+                </div>
+              ) : null}
+              <div>
+                <dt className="sr-only">ABN</dt>
+                <dd className="text-gray-600">ABN {formatAbn(identity.abn)}</dd>
+              </div>
+              <div>
+                <dt className="sr-only">Address</dt>
+                <dd className="text-gray-600">{composePostalAddress(identity)}</dd>
+              </div>
+              <div>
+                <dt className="sr-only">Replies</dt>
+                <dd className="text-gray-600">Replies go to {identity.reply_email}</dd>
+              </div>
+            </dl>
+
+            {identity.synced_to_orchestrator_at ? null : (
+              <div className="mt-4 rounded-xl bg-amber-50 p-4">
+                <p className="text-base text-gray-800">
+                  These are saved here, but the system that sends your email hasn&apos;t confirmed them
+                  yet. Until it does, Kira can draft but not send.
+                </p>
+                <form action={retryIdentitySync}>
+                  <button
+                    type="submit"
+                    className="mt-3 min-h-[44px] rounded-lg bg-gray-900 px-4 py-2.5 text-base font-semibold text-white"
+                  >
+                    Try again
+                  </button>
+                </form>
+              </div>
+            )}
+
+            <Link
+              href="/setup/business?edit=1"
+              className="mt-4 inline-block min-h-[44px] rounded-lg border border-gray-300 px-4 py-2.5 text-base font-semibold text-gray-800"
+            >
+              Edit business details
+            </Link>
+          </>
+        ) : (
+          <Link
+            href="/setup/business"
+            className="mt-4 inline-block min-h-[44px] rounded-lg bg-teal-600 px-4 py-2.5 text-base font-semibold text-white"
+          >
+            Add your business details
+          </Link>
+        )}
       </section>
 
       <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-6">

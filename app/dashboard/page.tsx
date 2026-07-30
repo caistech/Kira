@@ -1,5 +1,8 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { getCurrentAppUser } from '@/lib/auth';
+import { canSend } from '@/lib/business-identity';
+import { getBusinessIdentity } from '@/lib/business-identity/store';
 import { createServiceClient } from '@/lib/supabase/server';
 import { formatMoney } from '@/lib/valuation/currency';
 
@@ -15,11 +18,28 @@ interface Valuation {
   industry: string | null;
 }
 
-export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ welcome?: string }> }) {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ welcome?: string; identity?: string }>;
+}) {
   const sp = await searchParams;
   const isWelcome = sp?.welcome === '1';
   const user = await getCurrentAppUser();
   const svc = createServiceClient();
+
+  // WHO IS KIRA WRITING AS — asked once, before the dashboard, because she cannot send anything
+  // without it and the alternative is his first request being the one that fails.
+  //
+  // Gated on the identity being COMPLETE, not on a row existing: the sender refuses a tenant missing
+  // any of entity / ABN / address, so "there is a row" is the easier question and answering it is how
+  // a screen ends up reassuring someone about a send that will be refused.
+  const identity = user?.id ? await getBusinessIdentity(user.id) : null;
+  if (user?.id && !canSend(identity)) redirect('/setup/business');
+
+  // Saved here, not held by the system that sends. A real state, and one he must be able to see —
+  // he is not trapped in setup over our outage, but he is not told it worked either.
+  const identityUnsynced = Boolean(identity && !identity.synced_to_orchestrator_at);
 
   const { data: agents } = user
     ? await svc
@@ -55,6 +75,24 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   return (
     <div>
+      {identityUnsynced && (
+        <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-5">
+          <p className="text-base font-semibold text-stone-900">
+            Kira has your business details — the sending system doesn&apos;t yet.
+          </p>
+          <p className="mt-1 text-base text-stone-700">
+            Until it does, she can draft emails for you but not send them. Nothing is lost; this
+            usually clears on its own.
+          </p>
+          <Link
+            href="/settings#business"
+            className="mt-3 inline-block min-h-[44px] rounded-full bg-stone-900 px-5 py-3 text-base font-semibold text-white"
+          >
+            Try again
+          </Link>
+        </div>
+      )}
+
       {val && val.gap > 0 && (
         <GapDashboard valuation={val} money={money} talkHref={talkHref} isWelcome={isWelcome} firstName={user?.first_name as string | undefined} />
       )}

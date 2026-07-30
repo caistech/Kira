@@ -58,3 +58,8 @@ naive-tester-reports/**/screenshots/
 # unagreed compensation, and it only takes one `git add -A` to publish it to
 # everyone with clone access.
 docs/collaborator-terms/
+
+# Git worktrees another session creates while working on a branch. This is a FULL SECOND CHECKOUT
+# of this repo — committing it would nest a copy of the repo inside itself. vitest already excludes
+# it from test discovery for the same reason.
+.claude/worktrees/
