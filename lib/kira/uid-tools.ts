@@ -7,6 +7,7 @@
 
 import { createServiceClient } from '@/lib/supabase/server';
 import { mnemoAdd } from '@/lib/kira/mnemo';
+import { readTaskLedger } from '@/lib/kira/swarm/open-tasks';
 
 const uidFrom = (req: Request) => new URL(req.url).searchParams.get('uid') || '';
 const json = (status: number, body: unknown) =>
@@ -75,10 +76,25 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
   return json(200, { success: true });
 }
 
-/** get_conversation_context — return the welcome-back context for the baked uid's owner. */
+/**
+ * get_conversation_context — the welcome-back context for the baked uid's owner.
+ *
+ * It also carries anything OUTSTANDING, because the moment she needs it is the greeting, not later.
+ * Three tasks — including a drafted $60,000 quote — waited two days while she opened every call with
+ * "what are we picking up?", holding no idea that she already owed him something. Recall told her what
+ * they had TALKED about and nothing told her what she had been ASKED for.
+ */
 export async function handleKiraContext(req: Request): Promise<Response> {
   const uid = uidFrom(req);
   if (!uid) return json(200, { has_history: false });
+  // Read the ledger regardless of whether there is conversation history: a first-session owner can
+  // still have an open task, and the early-return below would otherwise hide it.
+  const ledger = await readTaskLedger(uid);
+  const openTasks = {
+    open_count: ledger.openCount,
+    open: ledger.open,
+    outstanding: ledger.spoken,
+  };
 
   const supabase = createServiceClient();
   // Find the user's genuinely most-recent conversation ACROSS all their agents (a user can have more
@@ -92,12 +108,12 @@ export async function handleKiraContext(req: Request): Promise<Response> {
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (!lastConv?.kira_agent_id) return json(200, { has_history: false });
+  if (!lastConv?.kira_agent_id) return json(200, { has_history: false, ...openTasks });
 
   const { data: ctx } = await supabase.rpc('get_conversation_context', {
     p_agent_id: lastConv.kira_agent_id,
     p_user_id: uid,
     p_message_limit: 10,
   });
-  return json(200, ctx || { has_history: false });
+  return json(200, { ...(ctx || { has_history: false }), ...openTasks });
 }

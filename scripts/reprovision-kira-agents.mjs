@@ -36,6 +36,7 @@ import {
   kiraDispatchToolDef,
   kiraApproveToolDef,
   kiraFinancialsToolDef,
+  kiraCheckTasksToolDef,
 } from '../lib/kira/swarm/doing-tools-def.mjs';
 
 const {
@@ -108,14 +109,19 @@ function buildToolsForUser(userId, journeyType) {
     ...createConversationTools(APP_URL, '/api/kira/webhooks', { platformIdentity: true }),
     kiraKnowledgeToolDef(APP_URL),
     ...(journeyType === 'business'
-      ? [kiraDispatchToolDef(APP_URL), kiraApproveToolDef(APP_URL), kiraFinancialsToolDef(APP_URL)]
+      ? [
+          kiraDispatchToolDef(APP_URL),
+          kiraApproveToolDef(APP_URL),
+          kiraFinancialsToolDef(APP_URL),
+          kiraCheckTasksToolDef(APP_URL),
+        ]
       : []),
   ];
   for (const t of tools) {
     if (!t.webhook) continue;
     if (
       userId &&
-      /\/(recall_memory|search_knowledge|save_memory|start_conversation|dispatch_task|approve_task|look_up_financials)$/.test(
+      /\/(recall_memory|search_knowledge|save_memory|start_conversation|dispatch_task|approve_task|look_up_financials|check_tasks)$/.test(
         t.webhook.url,
       )
     ) {

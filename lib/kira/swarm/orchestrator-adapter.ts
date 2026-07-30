@@ -16,6 +16,7 @@
 // the middle of a conversation.
 
 import { createServiceClient } from '@/lib/supabase/server';
+import { asTaskState } from './coordinator';
 import type {
   SwarmCoordinator,
   DispatchedIntent,
@@ -34,7 +35,11 @@ const TIMEOUT_MS = 12_000;
 interface WireResponse {
   version?: string;
   taskGroupId?: string;
-  status?: TaskState;
+  /**
+   * DELIBERATELY `unknown`. It is whatever the other side sent, and typing it `TaskState` was the
+   * fiction that let an object through as a status — read it only via `state()` below.
+   */
+  status?: unknown;
   draft?: { kind: string; summary: string; preview: string; artifact?: Record<string, unknown> };
   message?: string;
   needsRecipient?: boolean;
@@ -76,6 +81,23 @@ export class OrchestratorAdapter implements SwarmCoordinator {
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  /**
+   * Read a status off the wire, or say so and fall back.
+   *
+   * The fallback differs by call site — an unreadable dispatch is still queued somewhere, an
+   * unreadable poll is not something to claim as progress — so it is passed in rather than assumed.
+   * Logged loudly either way: a status we could not parse means the two sides disagree about the
+   * contract, and that is worth knowing before it becomes three invisible rows again.
+   */
+  private state(raw: unknown, fallback: TaskState, where: string): TaskState {
+    const parsed = asTaskState(raw);
+    if (parsed) return parsed;
+    console.error(
+      `[orchestrator] ${where}: unusable status ${JSON.stringify(raw)?.slice(0, 200)} — using '${fallback}'.`,
+    );
+    return fallback;
   }
 
   /**
@@ -127,7 +149,7 @@ export class OrchestratorAdapter implements SwarmCoordinator {
 
     return {
       taskGroupId: wire.taskGroupId,
-      status: (wire.status as TaskState) ?? 'queued',
+      status: this.state(wire.status, 'queued', 'dispatch'),
       draft: wire.draft
         ? {
             kind: wire.draft.kind,
@@ -153,7 +175,7 @@ export class OrchestratorAdapter implements SwarmCoordinator {
       const wire = (await res.json()) as WireResponse;
       return {
         taskGroupId,
-        status: (wire.status as TaskState) ?? 'failed',
+        status: this.state(wire.status, 'failed', `tasks/${taskGroupId}`),
         draft: wire.draft ? { ...wire.draft, artifact: wire.draft.artifact ?? {} } : undefined,
         message: wire.message,
       };
@@ -190,7 +212,7 @@ export class OrchestratorAdapter implements SwarmCoordinator {
 
     return {
       taskGroupId,
-      status: (wire.status as TaskState) ?? 'queued',
+      status: this.state(wire.status, 'queued', 'approve'),
       message: wire.message ?? (approve ? 'Sent through.' : 'Discarded — nothing sent.'),
     };
   }

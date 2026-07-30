@@ -69,19 +69,32 @@ const finMatch = promptsSrc.match(/export const financialsSection = `([\s\S]*?)`
 if (!finMatch) throw new Error('Could not read financialsSection from lib/kira/prompts.ts');
 const financials = finMatch[1].trim();
 
-/** Does this agent hold the look_up_financials tool? tool_ids are ids, so they must be resolved. */
-async function hasFinancialsTool(prompt) {
+// The task-ledger section is gated the same way, on check_tasks. Told she can account for open work
+// without the tool to read it, she would answer "let me check" and then have nothing to check with.
+const TASK_MARKER = '## ACCOUNTING FOR WHAT THEY ASKED FOR';
+const taskMatch = promptsSrc.match(/export const taskLedgerSection = `([\s\S]*?)`;/);
+if (!taskMatch) throw new Error('Could not read taskLedgerSection from lib/kira/prompts.ts');
+const taskLedger = taskMatch[1].trim();
+
+/**
+ * Which tools does this agent actually hold? `tool_ids` are ids, so each has to be resolved by name.
+ *
+ * Returns a Set rather than answering one question, because there are now two gated sections and
+ * resolving the same tool list twice per agent is a second round of API calls for the same answer.
+ */
+async function toolNames(prompt) {
+  const names = new Set();
   for (const toolId of prompt?.tool_ids ?? []) {
     try {
       const t = await (
         await fetch(`https://api.elevenlabs.io/v1/convai/tools/${toolId}`, { headers: { 'xi-api-key': apiKey } })
       ).json();
-      if (t?.tool_config?.name === 'look_up_financials') return true;
+      if (t?.tool_config?.name) names.add(t.tool_config.name);
     } catch {
       // A tool we cannot read is a tool we cannot count on — treat it as absent rather than assume.
     }
   }
-  return false;
+  return names;
 }
 
 async function sb(pathname, init = {}) {
@@ -127,19 +140,17 @@ for (const a of agents) {
     // frozen the first version onto the fleet forever — which is the very failure this script
     // exists to undo, one level up.
     // Cut at whichever of our sections appears first — both are always appended last, in order.
-    const cuts = [current.indexOf(MARKER), current.indexOf(FIN_MARKER)].filter((i) => i >= 0);
+    const cuts = [current.indexOf(MARKER), current.indexOf(FIN_MARKER), current.indexOf(TASK_MARKER)].filter(
+      (i) => i >= 0,
+    );
     const base = cuts.length ? current.slice(0, Math.min(...cuts)).trimEnd() : current;
     const updating = cuts.length > 0;
-    const canRead = await hasFinancialsTool(live?.conversation_config?.agent?.prompt);
-    const next = canRead
-      ? `${base}
-
-${boundary}
-
-${financials}`
-      : `${base}
-
-${boundary}`;
+    const held = await toolNames(live?.conversation_config?.agent?.prompt);
+    // Each section is included only if its tool is attached, so the prompt never claims more than the
+    // agent can invoke — and appears by itself on the next run after the tool lands.
+    const next = [base, boundary, held.has('look_up_financials') ? financials : null, held.has('check_tasks') ? taskLedger : null]
+      .filter(Boolean)
+      .join('\n\n');
 
     if (next === current) {
       already += 1;

@@ -25,6 +25,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { rejectUnauthorisedCron } from '@/lib/cron-auth';
 import { getSwarmCoordinator } from '@/lib/kira/swarm';
+import { asTaskState } from '@/lib/kira/swarm/coordinator';
 import { createServiceClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Database error' }, { status: 500 });
   }
 
-  const results = { checked: stale?.length ?? 0, updated: 0, unchanged: 0, unreachable: 0 };
+  const results = { checked: stale?.length ?? 0, updated: 0, unchanged: 0, unreachable: 0, unreadable: 0 };
   const coordinator = getSwarmCoordinator();
 
   for (const task of stale ?? []) {
@@ -79,18 +80,32 @@ export async function GET(request: NextRequest) {
 
     try {
       const live = await coordinator.getTaskState(taskGroupId, task.user_id as string);
-      if (!live || live === task.status) {
+      // getTaskState returns a TaskStatus OBJECT. Reading the STATE off it is the whole job here, and
+      // writing the object instead is what corrupted three tasks — one of them a client-ready quote —
+      // into rows that answered to none of the six status names, on no page, for two days. The
+      // comparison hid it: an object is never equal to a status string, so every row looked changed
+      // and every run rewrote the same damage.
+      const state = asTaskState(live?.status);
+      if (!state) {
+        // Authoritative-but-unreadable is not news about the task. Leave the row exactly as it is.
+        results.unreadable += 1;
+        console.error(
+          `[cron/reconcile-tasks] ${taskGroupId}: unusable status ${JSON.stringify(live?.status)} — row left alone.`,
+        );
+        continue;
+      }
+      if (state === task.status) {
         results.unchanged += 1;
         continue;
       }
       const { error: writeError } = await supabase
         .from('kira_tasks')
-        .update({ status: live, updated_at: new Date().toISOString() })
+        .update({ status: state, updated_at: new Date().toISOString() })
         .eq('id', task.id);
       if (writeError) throw new Error(writeError.message);
 
       results.updated += 1;
-      console.log(`[cron/reconcile-tasks] ${taskGroupId}: ${task.status} → ${live}`);
+      console.log(`[cron/reconcile-tasks] ${taskGroupId}: ${task.status} → ${state}`);
     } catch (pollError) {
       // One unreachable task must not stop the rest of the batch, and must not be written as
       // anything — an unreachable orchestrator tells us nothing about the task, and guessing here

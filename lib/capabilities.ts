@@ -58,6 +58,11 @@ export const CAN: Capability[] = [
       'She reads it straight out of your accounting system and tells you — how much is outstanding, how much of it is overdue, and who the oldest ones are. She reads only; she cannot move a cent.',
   },
   {
+    ask: '“Did that quote ever go out?” · “Anything waiting on me?”',
+    answer:
+      'She tells you what she has drafted, what is waiting on your go-ahead, what has already gone, and how long each has been sitting. Keeping that list is her job, not yours.',
+  },
+  {
     ask: '“What did we agree with the surveyor back in March?”',
     answer:
       'She remembers what you have told her and searches the documents you have given her, and tells you where the answer came from.',

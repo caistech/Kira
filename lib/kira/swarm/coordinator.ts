@@ -32,6 +32,33 @@ export type TaskState =
   | 'failed'
   | 'unsupported';       // no owned handler + no swarm yet — captured, not silently dropped
 
+/** The six states, at runtime. The type alone cannot check a value that arrived over HTTP. */
+export const TASK_STATES = [
+  'queued',
+  'awaiting_approval',
+  'scheduled',
+  'done',
+  'failed',
+  'unsupported',
+] as const satisfies readonly TaskState[];
+
+/**
+ * The only sanctioned way to turn something that crossed the wire into a TaskState.
+ *
+ * `x as TaskState` asserts and validates NOTHING, which is how an entire TaskStatus OBJECT was
+ * accepted as a status, serialised into `kira_tasks.status` and left there: three tasks — including a
+ * client-ready quote — matched no query on any surface for two days, because a row whose status is a
+ * JSON blob answers to none of the six names every reader asks for.
+ *
+ * Returns null rather than a fallback so each call site decides what an unknown status means there.
+ * A cast is not a check.
+ */
+export function asTaskState(value: unknown): TaskState | null {
+  return typeof value === 'string' && (TASK_STATES as readonly string[]).includes(value)
+    ? (value as TaskState)
+    : null;
+}
+
 /** A drafted outbound artifact the owner approves before anything leaves the building. */
 export interface TaskDraft {
   kind: 'quote' | 'email' | 'reminder' | string;

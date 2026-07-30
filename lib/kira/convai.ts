@@ -31,6 +31,7 @@ import {
   kiraDispatchToolDef,
   kiraApproveToolDef,
   kiraFinancialsToolDef,
+  kiraCheckTasksToolDef,
 } from '@/lib/kira/swarm/doing-tools-def.mjs';
 
 // Kira's real tables mapped onto the canonical TableNames contract. The reconcile
@@ -273,6 +274,10 @@ export function kiraDoingTools(baseUrl: string): ConvAITool[] {
     // The READ half. It changes nothing, so it needs no approval step — but it reads a business's
     // financial position, so it takes the same server-baked identity as the rest.
     kiraFinancialsToolDef(baseUrl, headers) as ConvAITool,
+    // The ACCOUNTING half. Without it she can start work and not say what became of it — which is how
+    // three requests, one of them a $60,000 quote, went two days without anyone able to answer for
+    // them. Read-only over her own mirror of the task store.
+    kiraCheckTasksToolDef(baseUrl, headers) as ConvAITool,
   ];
 }
 
@@ -292,7 +297,7 @@ export function kiraAllTools(baseUrl: string, userId?: string): ConvAITool[] {
   const tools = [...kiraMemoryTools(baseUrl), kiraKnowledgeTool(baseUrl), ...kiraDoingTools(baseUrl)];
   for (const t of tools) {
     if (!t.webhook) continue;
-    const isUidTool = /\/(recall_memory|search_knowledge|save_memory|start_conversation|dispatch_task|approve_task|look_up_financials)$/.test(t.webhook.url);
+    const isUidTool = /\/(recall_memory|search_knowledge|save_memory|start_conversation|dispatch_task|approve_task|look_up_financials|check_tasks)$/.test(t.webhook.url);
     if (userId && isUidTool) {
       t.webhook.url = `${t.webhook.url}?uid=${encodeURIComponent(userId)}`;
     }

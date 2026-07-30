@@ -9,6 +9,14 @@
 
 import { sendUnansweredRequestAlert } from '@/lib/email/unanswered-request';
 import { getSwarmCoordinator } from '@/lib/kira/swarm';
+import { readTaskLedger } from '@/lib/kira/swarm/open-tasks';
+import {
+  isUnusableRecipient,
+  recipientConcern,
+  recipientFrom,
+  recipientPrompt,
+  type RecipientBearingArtifact,
+} from '@/lib/kira/swarm/recipient';
 import { createServiceClient } from '@/lib/supabase/server';
 
 /** True when dispatch is going to the orchestrator rather than Kira's own local stub. */
@@ -141,7 +149,15 @@ export async function handleDispatchTask(req: Request): Promise<Response> {
 
     const art = (result.draft?.artifact ?? {}) as Record<string, unknown>;
     const isSend = result.draft?.kind === 'email' || result.draft?.kind === 'quote';
-    const needsRecipientEmail = isSend && !art.recipient_email;
+    // Read the recipient out of EITHER shape — the stub writes `recipient_email`, the orchestrator
+    // writes `recipients: [address]`. Checking only the first meant an orchestrator draft that had a
+    // good address still asked the owner for one.
+    const recipient = isSend ? recipientFrom(art as RecipientBearingArtifact) : null;
+    const concern = isSend ? recipientConcern(recipient) : null;
+    // A spelled-out or malformed address is treated as no address at all: ask again rather than draft
+    // against something that cannot be delivered. A plausible-looking one still gets read back —
+    // "mcdennis@gmail.com" was one letter off and passes every check a machine can make.
+    const needsRecipientEmail = isSend && concern !== null;
     return json(200, {
       success: true,
       task_id: result.taskGroupId,
@@ -149,9 +165,16 @@ export async function handleDispatchTask(req: Request): Promise<Response> {
       // What the agent reads back to the owner before asking to send.
       summary: result.draft?.summary ?? result.message ?? '',
       preview: result.draft?.preview ?? '',
-      message: result.message ?? '',
+      // The address question is appended to what she was going to say anyway, so it works with the
+      // agents as currently provisioned rather than waiting on a tool-description change.
+      message: [result.message ?? '', isSend ? recipientPrompt(recipient, concern) : '']
+        .filter(Boolean)
+        .join(' '),
       needs_approval: result.status === 'awaiting_approval',
       needs_recipient_email: needsRecipientEmail,
+      recipient_email: recipient,
+      // Every send, not only the suspicious ones. The near-miss is the case that actually bites.
+      confirm_recipient: isSend,
       recipient_name: (art.recipient_name as string) ?? null,
     });
   } catch (e) {
@@ -179,6 +202,23 @@ export async function handleApproveTask(req: Request): Promise<Response> {
   // Recipient email the owner gave at approval (the classifier can't invent one) — lets a send finish.
   const recipientEmail = typeof body.recipient_email === 'string' ? body.recipient_email : undefined;
 
+  // Refuse an address that cannot be an address, BEFORE approving. This is the last gate in front of
+  // a send, and the owner spelling his address aloud produced `m-c-m-d-e-n-n-i-s@gmail.com` — which
+  // would have been approved, marked sent, and delivered nowhere. Not a failure: a question.
+  if (approve && recipientEmail && isUnusableRecipient(recipientEmail)) {
+    return json(200, {
+      success: true,
+      task_id: taskId,
+      status: 'awaiting_approval',
+      message: recipientPrompt(recipientEmail, recipientConcern(recipientEmail)),
+      needs_recipient_email: true,
+      confirm_recipient: true,
+      done: false,
+      sent: false,
+      failed: false,
+    });
+  }
+
   try {
     const result = await getSwarmCoordinator().resolveApproval(taskId, userId, approve, { recipientEmail });
     return json(200, {
@@ -197,6 +237,28 @@ export async function handleApproveTask(req: Request): Promise<Response> {
     console.error('[swarm] approve_task failed:', e);
     return json(200, { success: false, error: 'Could not complete that just now.' });
   }
+}
+
+/**
+ * check_tasks: what has this owner asked for that has not landed, and what closed recently.
+ *
+ * The missing third verb. She could ask her team to do something and tell them it was drafted, and
+ * then had no way to answer "did that quote ever go out?" — so the answer came from the owner's own
+ * memory, which is the thing he was delegating. Read-only: it accounts for work, it never moves it.
+ */
+export async function handleCheckTasks(req: Request): Promise<Response> {
+  const userId = uidFrom(req);
+  if (!userId) return json(200, { success: false, error: 'No user identity on this request' });
+
+  const ledger = await readTaskLedger(userId);
+  return json(200, {
+    success: true,
+    open_count: ledger.openCount,
+    open: ledger.open,
+    recently_done: ledger.recentlyDone,
+    // Ready to say. If it is empty there is genuinely nothing outstanding — say that, don't pad it.
+    summary: ledger.spoken || 'Nothing of yours is outstanding — everything you asked for has landed.',
+  });
 }
 
 // Small stable non-crypto hash for the idempotency fallback key.
