@@ -6,7 +6,7 @@ import { getBusinessIdentity } from '@/lib/business-identity/store';
 import { createServiceClient } from '@/lib/supabase/server';
 import { formatMoney } from '@/lib/valuation/currency';
 
-export const metadata = { title: 'My Kiras · Kira' };
+export const metadata = { title: 'Overview · Kira' };
 export const dynamic = 'force-dynamic';
 
 interface Valuation {
@@ -97,23 +97,31 @@ export default async function DashboardPage({
         <GapDashboard valuation={val} money={money} talkHref={talkHref} isWelcome={isWelcome} firstName={user?.first_name as string | undefined} />
       )}
 
+      {/* ONE KIRA, NOT A LIST.
+          "My Kiras · start a new Kira for a different goal" contradicted the entire pitch — one exec
+          who learns YOUR business over months — in the first screen after paying. An owner does not
+          want a fleet of assistants; he wants the one that knows him, and being offered another
+          quietly says the first one is disposable. */}
       <header className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">My Kiras</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Kira</h1>
         <p className="mt-1 text-base text-gray-600">
-          Your Kiras. Each one remembers your context and picks up where you left off.
-          Open one to talk, or start a new Kira for a different goal.
+          {list.length === 0
+            ? 'Have a short conversation and Kira starts learning how the business runs.'
+            : 'She remembers your business and picks up where you left off.'}
         </p>
       </header>
 
       {list.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center">
-          <p className="text-base text-gray-600">You don&apos;t have a Kira yet.</p>
-          <p className="mt-1 text-sm text-gray-500">Have a short conversation and Kira builds one around your goal.</p>
+          <p className="text-base text-gray-600">You haven&apos;t met Kira yet.</p>
+          <p className="mt-1 text-sm text-gray-500">
+            A short conversation is all it takes — she asks about the business and starts from there.
+          </p>
           <Link
             href="/start"
             className="mt-4 inline-block rounded-lg bg-teal-600 px-5 py-3 text-base font-semibold text-white hover:bg-teal-700"
           >
-            Create your Kira
+            Start talking to Kira
           </Link>
         </div>
       ) : (
@@ -136,12 +144,6 @@ export default async function DashboardPage({
               </p>
             </Link>
           ))}
-          <Link
-            href="/start"
-            className="flex items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white p-5 text-base font-medium text-teal-700 hover:border-teal-300"
-          >
-            + New Kira
-          </Link>
         </div>
       )}
 

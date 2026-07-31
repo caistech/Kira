@@ -121,6 +121,15 @@ export default function ChatPage() {
   // Overflow menu — the daily surface is the mic; the extras tuck behind "More".
   const [showMenu, setShowMenu] = useState(false);
 
+  /**
+   * What she last worked on with him, if anything.
+   *
+   * Gated on has_history rather than on last_topic alone: a topic string left over from a session
+   * with no messages would have the screen claim a conversation that never happened, which is worse
+   * than a plain greeting.
+   */
+  const lastTopic = context?.has_history ? context.last_topic?.trim() || null : null;
+
   /* ---------------- Load agent + context ---------------- */
 
   useEffect(() => {
@@ -217,9 +226,6 @@ export default function ChatPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-orange-50">
-      {/* ============ CORPORATE AI SOLUTIONS TOP BANNER ============ */}
-      <CorporateAIBanner />
-
       <div className="relative flex flex-col min-h-[calc(100vh-52px)] max-w-2xl mx-auto">
         {/* Slim header — the widget below is the focus (it shows the avatar + mic). */}
         <header className="px-4 pt-5 pb-1 text-center">
@@ -236,9 +242,18 @@ export default function ChatPage() {
             its own avatar, transcript, and mic/mute/end controls (no bespoke voice UI). */}
         <main className="flex-1 px-4 pb-6">
           <div className="text-center pt-2 pb-4">
-            <h2 className="text-2xl font-bold text-gray-800 mb-1">Hey there! 👋</h2>
+            {/* "Hey there! 👋" addressed nobody, in emoji, on the first screen after a landing page
+                that had named his exact situation. This is the tone break both testers hit. The
+                greeting now references what SHE last worked on with him — the data is already there
+                (conversations.last_topic, which the connect-time recall reads) — and falls back to
+                something plain rather than something jaunty. */}
+            <h2 className="text-2xl font-bold text-gray-800 mb-1">
+              {lastTopic ? 'Picking up where you left off' : 'Ready when you are'}
+            </h2>
             <p className="text-gray-500 text-sm">
-              Tap the mic below to talk with Kira — she picks up where you left off.
+              {lastTopic
+                ? `Last time you talked about ${lastTopic}. Tap the mic to carry on.`
+                : 'Tap the mic below to talk with Kira.'}
             </p>
           </div>
 
@@ -981,113 +996,6 @@ function CompleteProjectModal({
           </>
         )}
       </div>
-    </div>
-  );
-}
-
-/* ================================================================
-   CORPORATE AI SOLUTIONS TOP BANNER
-   ================================================================ */
-
-function CorporateAIBanner() {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  return (
-    <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white">
-      {/* Main Banner - Always Visible */}
-      <div className="max-w-4xl mx-auto px-4 py-3">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 flex-1">
-            <span className="text-amber-400 text-xl">⚡</span>
-            <div className="flex-1">
-              <p className="text-sm sm:text-base font-medium">
-                <span className="text-amber-400">Tired of generic AI?</span>
-                {' '}Kira is just one of our specialized Voice AI agents.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <a
-              href="https://corporate-ai-solutions.vercel.app/marketplace"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden sm:inline-flex bg-amber-500 hover:bg-amber-400 text-slate-900 px-4 py-1.5 rounded-full text-sm font-bold transition-colors whitespace-nowrap"
-            >
-              Explore All Agents →
-            </a>
-            <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="p-1.5 hover:bg-white/10 rounded-full transition-colors"
-              aria-label={isExpanded ? 'Collapse' : 'Expand'}
-            >
-              <svg
-                className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Expanded Panel */}
-      {isExpanded && (
-        <div className="border-t border-slate-700 bg-slate-900/50">
-          <div className="max-w-4xl mx-auto px-4 py-6">
-            {/* Problem/Solution Cards */}
-            <div className="grid sm:grid-cols-3 gap-4 mb-6">
-              <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-                <div className="text-2xl mb-2">🎯</div>
-                <h4 className="font-semibold text-amber-400 mb-1">Sales AI Agents</h4>
-                <p className="text-slate-400 text-sm">Convert more leads with AI that qualifies, nurtures, and books meetings 24/7</p>
-              </div>
-              <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-                <div className="text-2xl mb-2">🛎️</div>
-                <h4 className="font-semibold text-amber-400 mb-1">Customer Service AI</h4>
-                <p className="text-slate-400 text-sm">Handle support tickets instantly. No hold times. No frustrated customers.</p>
-              </div>
-              <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-                <div className="text-2xl mb-2">📋</div>
-                <h4 className="font-semibold text-amber-400 mb-1">Operations AI</h4>
-                <p className="text-slate-400 text-sm">Automate scheduling, intake, and workflows. Free your team for high-value work.</p>
-              </div>
-            </div>
-
-            {/* CTA Section */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-700">
-              <div>
-                <p className="text-slate-300 text-sm">
-                  <span className="font-semibold text-white">Corporate AI Solutions</span> —
-                  Voice AI that actually works for your business
-                </p>
-                <p className="text-slate-500 text-xs mt-1">Created by Dennis McMahin · Longtail AI Ventures</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <a
-                  href="https://corporate-ai-solutions.vercel.app/marketplace"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-amber-500 hover:bg-amber-400 text-slate-900 px-5 py-2 rounded-full text-sm font-bold transition-colors"
-                >
-                  Browse AI Marketplace →
-                </a>
-                <a
-                  href="https://corporate-ai-solutions.vercel.app/studio/thesis"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-slate-400 hover:text-amber-400 text-sm transition-colors"
-                >
-                  Learn More
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
