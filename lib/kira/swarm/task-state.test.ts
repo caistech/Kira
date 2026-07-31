@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { asTaskState, TASK_STATES } from './coordinator';
 import { days, spokenLine, type OpenTaskSummary } from './open-tasks';
-import { recipientConcern, recipientFrom, spellForSpeech } from './recipient';
+import { recipientConcern, recipientFrom, recipientPrompt, spellForSpeech } from './recipient';
 
 describe('asTaskState', () => {
   it('accepts every state Kira defines', () => {
@@ -144,5 +144,25 @@ describe('spellForSpeech', () => {
 
   it('leaves a non-address alone rather than mangling it', () => {
     expect(spellForSpeech('nonsense')).toBe('nonsense');
+  });
+});
+
+describe('recipientPrompt — where the address came from', () => {
+  it('says so when the address was looked up rather than spoken', () => {
+    // He never said this address out loud. Reading it back without saying where it came from is a
+    // question he does not know he is being asked.
+    const said = recipientPrompt('roger@quantumsurveys.com.au', null, 'contacts');
+    expect(said).toContain('in your contacts');
+    expect(said).toContain('r o g e r, at quantumsurveys.com.au');
+  });
+
+  it('reads back a spoken address the way it always did', () => {
+    const said = recipientPrompt('dave@example.com', null, null);
+    expect(said).not.toContain('contacts');
+    expect(said).toContain('let me check the address');
+  });
+
+  it('still asks outright when there is no address, lookup or not', () => {
+    expect(recipientPrompt(null, 'missing', 'contacts')).toContain("don't have an email address");
   });
 });

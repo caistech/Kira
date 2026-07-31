@@ -206,6 +206,28 @@ export default async function SettingsPage() {
               )}
               {google.gmail ? ' · Gmail: connected' : null}
             </p>
+            {/* Only stated when the seam actually told us. An older orchestrator returns nothing
+                here, and rendering that silence as "not granted" would send him to reconnect a
+                connection that is working perfectly. */}
+            {google.contacts ? (
+              <p className="mt-1 text-base text-gray-600">
+                Contacts:{' '}
+                {google.contacts.contacts || google.contacts.otherContacts ? (
+                  <>
+                    can look up an address by name
+                    {google.contacts.contacts && google.contacts.otherContacts
+                      ? ' (saved and auto-saved contacts)'
+                      : google.contacts.otherContacts
+                        ? ' (auto-saved contacts only)'
+                        : ' (saved contacts only)'}
+                  </>
+                ) : (
+                  <span className="font-medium text-amber-700">
+                    not granted — Kira will ask you for an address every time you name someone
+                  </span>
+                )}
+              </p>
+            ) : null}
             {google.lastError ? (
               <p className="mt-2 text-base text-rose-600">{google.lastError}</p>
             ) : null}

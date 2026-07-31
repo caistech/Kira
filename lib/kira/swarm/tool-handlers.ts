@@ -175,7 +175,10 @@ export async function handleDispatchTask(req: Request): Promise<Response> {
       preview: result.draft?.preview ?? '',
       // The address question is appended to what she was going to say anyway, so it works with the
       // agents as currently provisioned rather than waiting on a tool-description change.
-      message: [result.message ?? '', isSend ? recipientPrompt(recipient, concern) : '']
+      message: [
+        result.message ?? '',
+        isSend ? recipientPrompt(recipient, concern, result.recipientSource ?? null) : '',
+      ]
         .filter(Boolean)
         .join(' '),
       needs_approval: result.status === 'awaiting_approval',

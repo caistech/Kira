@@ -77,6 +77,11 @@ export interface DispatchResult {
   draft?: TaskDraft;
   /** Human-facing note ("Drafted — say the word and I'll send it."). */
   message?: string;
+  /**
+   * Where the recipient address came from. 'contacts' means it was resolved from the owner's own
+   * contact book and he never said it aloud, which changes how it must be read back to him.
+   */
+  recipientSource?: 'contacts' | null;
 }
 
 export interface TaskStatus {

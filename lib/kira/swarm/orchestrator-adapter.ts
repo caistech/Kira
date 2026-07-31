@@ -44,6 +44,8 @@ interface WireResponse {
   draft?: { kind: string; summary: string; preview: string; artifact?: Record<string, unknown> };
   message?: string;
   needsRecipient?: boolean;
+  /** 'contacts' when the address was looked up in the owner's contact book rather than spoken. */
+  recipientSource?: 'contacts';
   error?: string;
 }
 
@@ -160,6 +162,7 @@ export class OrchestratorAdapter implements SwarmCoordinator {
           }
         : undefined,
       message: wire.message,
+      recipientSource: wire.recipientSource ?? null,
     };
   }
 

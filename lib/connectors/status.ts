@@ -18,6 +18,14 @@ export interface ConnectionStatus {
   account: string | null;
   driveAccess: DriveAccessLevel | null;
   gmail: boolean;
+  /**
+   * The two contact books, separately. Null when the seam did not say (an older orchestrator).
+   *
+   * Shown rather than assumed because declining it is invisible in use: every send addressed by
+   * name simply stops and asks for an address, which reads as Kira being forgetful rather than as a
+   * permission that was never granted — and the fix is a reconnect he has no reason to think of.
+   */
+  contacts: { contacts: boolean; otherContacts: boolean } | null;
   connectedAt: string | null;
   revoked: boolean;
   lastError: string | null;

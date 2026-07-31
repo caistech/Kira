@@ -79,7 +79,12 @@ export function isUnusableRecipient(email: string | null | undefined): boolean {
  * read aloud — including the address spaced out, since "read it back" only works if she says it in a
  * form he can check.
  */
-export function recipientPrompt(email: string | null, concern: RecipientConcern | null): string {
+export function recipientPrompt(
+  email: string | null,
+  concern: RecipientConcern | null,
+  /** Where the address came from. 'contacts' means we looked it up; he never said it aloud. */
+  source?: 'contacts' | null,
+): string {
   switch (concern) {
     case 'missing':
       return "I don't have an email address for that one — what should I use?";
@@ -87,7 +92,12 @@ export function recipientPrompt(email: string | null, concern: RecipientConcern 
     case 'malformed':
       return `The address I have is "${email}", which doesn't look like a real one — can you give it to me again?`;
     default:
-      return `Before I send it, let me check the address: ${spellForSpeech(email ?? '')}. Is that right?`;
+      // An address he never spoke has to be introduced as one, or the read-back is a question he
+      // does not know he is being asked — he hears his own words repeated and says yes to a lookup
+      // he was never told about. Saying where it came from is what makes the yes worth anything.
+      return source === 'contacts'
+        ? `I found that address in your contacts: ${spellForSpeech(email ?? '')}. Is that the right one?`
+        : `Before I send it, let me check the address: ${spellForSpeech(email ?? '')}. Is that right?`;
   }
 }
 
