@@ -188,7 +188,11 @@ for (const a of agents) {
     // below has to assert the same condition — an assertion that re-derives the rule can disagree
     // with the write it is meant to be checking.
     const withFiles =
-      !isDiscovery && (held.has('search_drive') || held.has('read_document') || held.has('lookup_contact'));
+      !isDiscovery &&
+      (held.has('search_drive') ||
+        held.has('read_document') ||
+        held.has('keep_document') ||
+        held.has('lookup_contact'));
     // Each section is included only if its tool is attached, so the prompt never claims more than the
     // agent can invoke — and appears by itself on the next run after the tool lands.
     const next = [

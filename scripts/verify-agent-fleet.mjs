@@ -51,6 +51,7 @@ const BUSINESS_ONLY = [
   'check_tasks',
   'search_drive',
   'read_document',
+  'keep_document',
   'lookup_contact',
 ];
 
@@ -65,7 +66,7 @@ const SECTIONS = [
   {
     label: 'files and contacts',
     marker: '## THEIR FILES AND THEIR CONTACTS',
-    gate: ['search_drive', 'read_document', 'lookup_contact'],
+    gate: ['search_drive', 'read_document', 'keep_document', 'lookup_contact'],
   },
   { label: 'tool honesty', marker: '## NEVER SAY YOU CHECKED SOMETHING YOU DID NOT', gate: null },
   { label: 'typed input', marker: '## WHEN HE TYPES INSTEAD OF SPEAKING', gate: null },

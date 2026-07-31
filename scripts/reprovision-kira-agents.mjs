@@ -35,6 +35,7 @@ import { kiraKnowledgeToolDef } from '../lib/kira/knowledge-tool-def.mjs';
 import {
   kiraSearchDriveToolDef,
   kiraReadDocumentToolDef,
+  kiraKeepDocumentToolDef,
   kiraLookupContactToolDef,
 } from '../lib/kira/lookup-tools-def.mjs';
 import { isUidToolUrl } from '../lib/kira/uid-tools.mjs';
@@ -122,6 +123,7 @@ function buildToolsForUser(userId, journeyType) {
           kiraCheckTasksToolDef(APP_URL),
           kiraSearchDriveToolDef(APP_URL),
           kiraReadDocumentToolDef(APP_URL),
+          kiraKeepDocumentToolDef(APP_URL),
           kiraLookupContactToolDef(APP_URL),
         ]
       : []),

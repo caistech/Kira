@@ -37,6 +37,7 @@ import {
 import {
   kiraSearchDriveToolDef,
   kiraReadDocumentToolDef,
+  kiraKeepDocumentToolDef,
   kiraLookupContactToolDef,
 } from '@/lib/kira/lookup-tools-def.mjs';
 import { isUidToolUrl } from '@/lib/kira/uid-tools.mjs';
@@ -311,6 +312,9 @@ export function kiraDoingTools(baseUrl: string): ConvAITool[] {
     // Finding a document and being unable to say what is in it is barely half an answer — he hit
     // that within a minute of the search going live.
     kiraReadDocumentToolDef(baseUrl, headers) as ConvAITool,
+    // The yes half of an offer she makes herself: reading is a question, keeping is a decision
+    // about what belongs in the owner's business record.
+    kiraKeepDocumentToolDef(baseUrl, headers) as ConvAITool,
     kiraLookupContactToolDef(baseUrl, headers) as ConvAITool,
   ];
 }

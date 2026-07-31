@@ -145,9 +145,30 @@ export async function ingestKnowledgeDocument(knowledgeId: string): Promise<Inge
   }
 
   const text = await extractText(doc.elevenlabs_document_id);
+  return indexKnowledgeText(knowledgeId, text);
+}
+
+/**
+ * Chunk, embed and store text against an existing kira_knowledge row.
+ *
+ * Split out of ingestKnowledgeDocument so a source that ALREADY has its text — a Google Doc, which
+ * the Drive connector exports as plain text — can be indexed without a pointless round trip through
+ * a third-party parser. Extraction is the only reason that vendor is in this path at all; a document
+ * that arrives as text should never leave our infrastructure to come back as the same text.
+ */
+export async function indexKnowledgeText(knowledgeId: string, text: string): Promise<IngestResult> {
+  const supabase = createServiceClient();
+
+  const { data: doc, error } = await supabase
+    .from('kira_knowledge')
+    .select('id, user_id, kira_agent_id')
+    .eq('id', knowledgeId)
+    .single();
+  if (error || !doc) throw new Error(`knowledge row not found: ${knowledgeId}`);
+
   if (!text || text.length < 20) {
     await supabase.from('kira_knowledge').update({ status: 'empty', raw_content: text || null }).eq('id', knowledgeId);
-    return { knowledgeId, chunks: 0, chars: text.length, skipped: 'no extractable text' };
+    return { knowledgeId, chunks: 0, chars: text?.length ?? 0, skipped: 'no extractable text' };
   }
 
   const pieces = chunkText(text);
