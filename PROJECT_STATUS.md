@@ -55,46 +55,18 @@ layer of that was a separate defect and each is now closed except the mirror.
   neither party) fixed in `33c3682`.
 
 ## What's Next
-<!-- Prioritised. Every item below was confirmed still open at this update. -->
 
-- [ ] **The mirror loses tasks — the owner's dashboard undercounts.** Measured just now: the
-      orchestrator holds **4 tasks `awaiting_approval`** for his tenant; `kira_tasks` mirrors **1**.
-      Two parts, and doing only the first leaves the lost ones lost forever:
-      1. `lib/kira/swarm/tool-handlers.ts:141` is still `void mirrorTask(...)` — a floating promise
-         in a serverless handler, which is why the loss is intermittent rather than a clean
-         before/after. `await` it; it already try/catches internally, so it cannot break the voice
-         path. (`2d3b2de` made the mirror cover *every* dispatch but left it un-awaited.)
-      2. **Discovery/backfill.** `/api/cron/reconcile-tasks` only repairs rows Kira already has;
-         nothing ever finds a task Kira never mirrored. Needs `GET /v1/tasks?tenantId=` on the
-         orchestrator plus a reconcile pass that INSERTs unknown ones.
-      Currently unmirrored and therefore on no screen: *"Following up on the Wavecrest quote"*
-      (28 Jul 00:07), *"Reminder to grant me access to Drive"* (28 Jul 12:15), *"Reminder to plan a
-      new connector for S2K Checkpoint"* (30 Jul 03:37).
-- [ ] **One effect is stuck on a missing recipient, correctly.** Task `562ccf05` — *"Request for
-      quote: contour surveys and set-out, Lot 109 Wavecrest"*, addressed to Roger — has
-      `request.to = null`. The drain refuses it rather than inventing an address. It needs Roger's
-      email from the owner; there is no code fix here.
-- [ ] **Naive-tester finding 1 — the valuation still forgets you** (`docs/NEXT_BUILD_SCOPE.md` §1).
-      `app/business-valuation/page.tsx` still parks progress in `sessionStorage` while the page
-      promises *"kept on this device… so you can stop and come back."* Recommendation on file is
-      option A: `localStorage` + explicit expiry + a visible clear control. Knock-on:
-      `/plan` dead-ends without it, which orphans `/what-she-does`.
-- [ ] **Naive-tester finding 3 — the product changes character at sign-in** (§3). `components/
-      UserShell.tsx:12,17` and `app/dashboard/page.tsx:9,101,143` still say **"My Kiras" / "+ New
-      Kira"** — plural, contradicting the one-Kira pitch, and it is the first thing an owner sees
-      after paying.
-- [ ] **Naive-tester finding 2 — `/my-genome` reads like someone else's notes** (§2). *Partly
-      done:* `none`-classified chit-chat is excluded (`lib/genome/derive.ts:152`). *Still open:* the
-      distil writes in the **third person** by instruction (`lib/kira/memory-extract.ts:20`) under a
-      heading that says "You said this on" — fix at write time plus a backfill script, not at
-      render; and classification is still lazy at 25 rows per page visit, so a new owner's Genome
-      fills in over several visits.
-- [ ] **Re-run both naive-tester personas and record the PASS.** The share gate is CLOSED — the
-      production URL must not be shared until `gate-check.mjs record kira naive-tester pass` has a
-      live deployment id behind it.
-- [ ] Migration hygiene: `supabase migration list --linked` shows `20260731090000` (and five
-      07-27/07-28 entries) as local-only, yet `business_identity` exists in prod — applied by a path
-      that did not record itself. Reconcile the ledger before the next `db push`.
+**The full, current list is `docs/OPEN_ITEMS.md`** — written 2026-07-31 and kept there so it is not
+buried in a status file. The headline items:
+
+- [ ] **Verify a Factory2Key sending domain in Resend** (a DNS change on a *subdomain*, not website
+      access) and resolve `from` per tenant — F2K mail currently shows a corporateaisolutions.com
+      From address under a Factory2Key footer.
+- [ ] **Re-run naive-tester and record the pass.** The production URL stays share-blocked until then.
+- [ ] **Operator decisions:** the one refused Genome rewrite, three unplaceable memories, the four
+      tasks awaiting approval (approving sends under F2K's ABN), and Roger's email address.
+- [ ] **Prove live:** contact lookup by voice, the genome-classify sweep, a valuation carrying into
+      an account across a closed tab, one full doing-loop round trip.
 
 ## Blockers
 - **Owner decision, not code:** Roger's email address for the Lot 109 contour-survey quote.
@@ -134,3 +106,4 @@ layer of that was a separate defect and each is now closed except the mirror.
 | 2026-07-30 | — | Status-blob bug fixed (validator + CHECK constraint + "Still open" panel); first real client emails sent incl. the $60k Trinh quote |
 | 2026-07-31 | — | Business identity collected + synced across the seam; Drive connect both sides; Settings → Connected accounts; drain unpinned from SEED_TENANT; **session closed unexpectedly after `8e226ae`** |
 | 2026-07-31 | — | Status reconstruction: tests 139/139, both prods verified on `main`, mirror gap re-measured (4 awaiting vs 1 mirrored) |
+| 2026-07-31 | — | Mirror gap CLOSED (await + discovery pass; 3 lost tasks recovered live). Contact lookup built both sides. Valuation persistence. Sign-in chrome: one Kira, business-named, cross-sell removed. Genome register + entity split (52 AI-business memories parked, 44 rewritten). Migration ledger reconciled 39/39 |
