@@ -288,16 +288,18 @@ export default function ChatPage() {
               avatarUrl="/female_avatar.jpeg"
               coachName="Kira"
               transcript
-              // TYPING IS A FIRST-CLASS WAY IN, not a consolation prize.
+              // TEXT INPUT IS OFF UNTIL IT GOES SOMEWHERE.
               //
-              // Two findings, one prop. A tester with no microphone got Mute/End rendered as though a
-              // call were live plus a bare red "Not supported" — no explanation, no remedy, and no
-              // other way to reach her. On a product whose entire interface is voice, a broken mic
-              // was the end of the product. Separately the owner has said repeatedly that he cannot
-              // paste a URL or a message because there is no text input, so he could only upload.
+              // It was turned on as a one-prop fix for "no microphone means no product". Reading the
+              // widget afterwards, `submitText` sends to the live session when connected and
+              // otherwise calls `props.onTextFallbackSubmit?.(value)` — an optional call on a prop
+              // this page never passed. With no mic there is no session, so typing cleared the box
+              // and did nothing: no message, no reply, no error, no console output. Worse than the
+              // honest "Not supported" it replaced, and sitting on the one action the product exists
+              // for.
               //
-              // The canonical widget has supported this since 0.4.2 and we simply never turned it on.
-              textInput
+              // Turned off rather than left swallowing input. It comes back the moment
+              // /api/kira/chat/text exists to receive it — see onTextFallbackSubmit below.
               title={
                 context?.has_history
                   ? 'Welcome back — Kira remembers where you left off. Tap the mic to continue.'
