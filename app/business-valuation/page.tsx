@@ -45,7 +45,13 @@ import {
 import { SECTOR_MULTIPLES } from '@/lib/valuation/sde-multiples';
 import { formatMoney, getCurrency, CURRENCIES, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { synonymSector } from '@/lib/valuation/industry-synonyms';
-import { storeValuation } from '@/lib/valuation/share';
+import { storeValuation, VALUATION_HANDOFF_KEY } from '@/lib/valuation/share';
+import {
+  clearValuationLocal,
+  loadValuationLocal,
+  saveValuationLocal,
+  VALUATION_TTL_DAYS,
+} from '@/lib/valuation/persist';
 
 type Answers = Partial<ValuationInputs>;
 
@@ -221,15 +227,19 @@ export default function BusinessValuationPage() {
   // people most likely to be interrupted mid-flow are exactly the target — an owner answering on a
   // phone between jobs (naive-tester, 2026-07-27: "progress isn't durable").
   //
-  // sessionStorage, matching the handoff in lib/valuation/share.ts and for the same reason: these
-  // answers include turnover and profit, and localStorage would leave them on a shared machine with
-  // nothing to clear them. Per-tab is the right lifetime for a figure this sensitive.
+  // Kept locally with a 7-day expiry, matching the handoff in lib/valuation/share.ts. It was
+  // per-tab, on the reasoning that turnover and profit should die with the tab — but the sentence
+  // below the Start button promises he can "stop and come back", and per-tab made that untrue. The
+  // risk is now bounded (it expires) and disclosed (he is told, and can erase it) rather than
+  // avoided. See lib/valuation/persist.ts for the full reasoning, including why this matters to the
+  // BASELINE and not just to convenience.
   const [restored, setRestored] = useState(false);
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem(PROGRESS_KEY);
-      if (raw) {
-        const saved = JSON.parse(raw) as { stepIndex?: number; answers?: Answers; industryQuery?: string };
+      const saved = loadValuationLocal<{ stepIndex?: number; answers?: Answers; industryQuery?: string }>(
+        PROGRESS_KEY,
+      );
+      if (saved) {
         if (saved.answers) setAnswers(saved.answers);
         if (typeof saved.industryQuery === 'string') setIndustryQuery(saved.industryQuery);
         // Never restore straight onto the result — recompute by stepping, so a stale partial answer
@@ -247,11 +257,26 @@ export default function BusinessValuationPage() {
   useEffect(() => {
     if (!restored) return; // don't overwrite saved progress with the initial empty state
     try {
-      sessionStorage.setItem(PROGRESS_KEY, JSON.stringify({ stepIndex, answers, industryQuery }));
+      saveValuationLocal(PROGRESS_KEY, { stepIndex, answers, industryQuery });
     } catch {
       /* nothing to do; the visitor simply loses resume */
     }
   }, [restored, stepIndex, answers, industryQuery]);
+
+  /**
+   * Erase everything kept on this device and start over.
+   *
+   * Clears the finished-valuation handoff as well as the answers in progress. Wiping the questions
+   * while leaving a completed valuation — with the same turnover and profit in it — parked for
+   * /plan would make "clear my answers" a false statement, which is worse than not offering it.
+   */
+  const clearAnswers = useCallback(() => {
+    if (!window.confirm('Erase the answers saved on this device and start again?')) return;
+    clearValuationLocal(PROGRESS_KEY, VALUATION_HANDOFF_KEY);
+    setAnswers({});
+    setIndustryQuery('');
+    setStepIndex(-1);
+  }, []);
 
   const total = STEPS.length;
   const isIntro = stepIndex === -1;
@@ -430,7 +455,8 @@ export default function BusinessValuationPage() {
             </button>
             <p className="text-base text-stone-500 mt-4">
               Indicative estimate for guidance only — not a formal business valuation. Your answers are kept
-              on this device as you go, so you can stop and come back.
+              on this device as you go, so you can stop and come back — for {VALUATION_TTL_DAYS} days, on this
+              device only. Nothing is sent anywhere until you decide to sign up.
             </p>
           </div>
         )}
@@ -441,6 +467,16 @@ export default function BusinessValuationPage() {
             <div className="flex items-center gap-3 mb-1 text-stone-400 text-sm font-medium">
               <span className="grad-genome text-white w-9 h-9 rounded-xl flex items-center justify-center">{step.icon}</span>
               Question {stepIndex + 1} of {total}
+              {/* The other half of keeping his figures on the machine. Telling him his answers are
+                  saved obliges us to give him a way to unsave them — and it belongs here, where he
+                  is actually typing turnover and profit, not buried in a footer. */}
+              <button
+                type="button"
+                onClick={clearAnswers}
+                className="ml-auto min-h-[44px] px-3 text-sm font-medium text-stone-400 underline underline-offset-4 hover:text-stone-600"
+              >
+                Clear my answers
+              </button>
             </div>
             <h2 className="font-display text-xl sm:text-2xl font-bold text-stone-800 mt-4 mb-2">{step.title}</h2>
             <p className="text-stone-500 text-sm sm:text-base mb-7 leading-relaxed">{step.help}</p>
