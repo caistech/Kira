@@ -75,6 +75,18 @@ const TASK_MARKER = '## ACCOUNTING FOR WHAT THEY ASKED FOR';
 const taskMatch = promptsSrc.match(/export const taskLedgerSection = `([\s\S]*?)`;/);
 if (!taskMatch) throw new Error('Could not read taskLedgerSection from lib/kira/prompts.ts');
 
+// The files-and-contacts section is gated on search_drive, for the same reason again. It is the one
+// section that also CONTRADICTS the capability boundary above it ("you cannot reach another
+// system"), deliberately and in as many words — so an agent that received it without holding the
+// tools would be left holding two opposite instructions about the same thing.
+const FILES_MARKER = '## THEIR FILES AND THEIR CONTACTS';
+const filesMatch = promptsSrc.match(/export const filesAndContactsSection = `([\s\S]*?)`;/);
+if (!filesMatch) throw new Error('Could not read filesAndContactsSection from lib/kira/prompts.ts');
+const filesAndContacts = filesMatch[1].trim();
+if (!filesAndContacts.includes(FILES_MARKER)) {
+  throw new Error(`filesAndContactsSection is missing its marker ${FILES_MARKER}`);
+}
+
 // These two are UNGATED — unlike the sections above, they describe no tool.
 //
 // Tool honesty is a rule about every tool she does not hold, so an agent with fewer tools needs it
@@ -160,15 +172,33 @@ for (const a of agents) {
     // frozen the first version onto the fleet forever — which is the very failure this script
     // exists to undo, one level up.
     // Cut at whichever of our sections appears first — both are always appended last, in order.
-    const cuts = [current.indexOf(MARKER), current.indexOf(FIN_MARKER), current.indexOf(TASK_MARKER), current.indexOf(HONESTY_MARKER), current.indexOf(TYPED_MARKER)].filter(
-      (i) => i >= 0,
-    );
+    const cuts = [
+      current.indexOf(MARKER),
+      current.indexOf(FIN_MARKER),
+      current.indexOf(TASK_MARKER),
+      current.indexOf(FILES_MARKER),
+      current.indexOf(HONESTY_MARKER),
+      current.indexOf(TYPED_MARKER),
+    ].filter((i) => i >= 0);
     const base = cuts.length ? current.slice(0, Math.min(...cuts)).trimEnd() : current;
     const updating = cuts.length > 0;
     const held = await toolNames(live?.conversation_config?.agent?.prompt);
+    // Gated on the lookups: the section describes both, and reprovision attaches them together, so
+    // either one is sufficient evidence the pair landed. Held as a variable because the read-back
+    // below has to assert the same condition — an assertion that re-derives the rule can disagree
+    // with the write it is meant to be checking.
+    const withFiles = !isDiscovery && (held.has('search_drive') || held.has('lookup_contact'));
     // Each section is included only if its tool is attached, so the prompt never claims more than the
     // agent can invoke — and appears by itself on the next run after the tool lands.
-    const next = [base, isDiscovery ? null : boundary, !isDiscovery && held.has('look_up_financials') ? financials : null, !isDiscovery && held.has('check_tasks') ? taskLedger : null, honesty, typed]
+    const next = [
+      base,
+      isDiscovery ? null : boundary,
+      !isDiscovery && held.has('look_up_financials') ? financials : null,
+      !isDiscovery && held.has('check_tasks') ? taskLedger : null,
+      withFiles ? filesAndContacts : null,
+      honesty,
+      typed,
+    ]
       .filter(Boolean)
       .join('\n\n');
 
@@ -217,9 +247,19 @@ for (const a of agents) {
     // Every section we just sent must be present exactly once on read-back. Checking only the
     // boundary would let one be silently dropped, which is the same shape as the write that
     // emptied the tool list: a 200 that did less than it claimed.
-    for (const [label, marker] of [['tool honesty', HONESTY_MARKER], ['typed input', TYPED_MARKER]]) {
+    const expected = [
+      ['tool honesty', HONESTY_MARKER, 1],
+      ['typed input', TYPED_MARKER, 1],
+      // Conditional, so the expected count is 0 when the tools are absent — and asserting the ZERO
+      // matters as much as asserting the one. A stale copy left on an agent that no longer holds
+      // the lookups is the same broken promise as never having sent it, only harder to notice.
+      ['files and contacts', FILES_MARKER, withFiles ? 1 : 0],
+    ];
+    for (const [label, marker, want] of expected) {
       const copies = afterPrompt.split(marker).length - 1;
-      if (copies !== 1) throw new Error(`expected exactly 1 copy of the ${label} section, found ${copies}`);
+      if (copies !== want) {
+        throw new Error(`expected exactly ${want} copy of the ${label} section, found ${copies}`);
+      }
     }
 
     patched += 1;

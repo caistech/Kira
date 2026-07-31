@@ -61,8 +61,9 @@ Four sit in the queue. Under this account's identity, approving one sends it **u
 ABN**. The AI-related ones were tests — discard rather than approve.
 
 ### 2.4 Roger's email for the Lot 109 contour survey
-Task `562ccf05` has `request.to = null` and the drain correctly refuses it. Contacts lookup is now
-live, so re-asking may resolve it — otherwise it needs the address from you.
+Task `562ccf05` has `request.to = null` and the drain correctly refuses it. Kira can now search
+contacts herself (`lookup_contact`), so re-asking may resolve it — otherwise it needs the address
+from you.
 
 ---
 
@@ -70,7 +71,7 @@ live, so re-asking may resolve it — otherwise it needs the address from you.
 
 | Item | State |
 |---|---|
-| **Contact lookup end-to-end** | Scopes granted and verified in the connection record; no live voice test has resolved a name yet. "Roger at Quantum Surveys" is the natural first test. |
+| **Drive + contact lookup end-to-end** | Both halves now exist: the orchestrator endpoint, and Kira's `search_drive` / `lookup_contact` tools. Scopes are granted and verified in the connection record. No live voice call has resolved a file or a name yet — "find my Lot 91 files" and "Roger at Quantum Surveys" are the two first tests, and only the operator can run them (headless has no mic). |
 | **`genome-classify` cron** | New, runs at :30 past the hour. Write-time classification is wired into the post-call path; the straggler sweep has not been observed running. |
 | **Valuation carrying into an account** | Persistence is fixed and `/api/valuation/claim` exists (first-valuation-wins). The full path — run valuation, close tab, sign up next day, see the baseline — has not been walked since the change. |
 | **One full doing-loop round trip** | Long-standing. Dispatch → approve → send → callback → mirror has never been walked end to end in one sitting by voice. |

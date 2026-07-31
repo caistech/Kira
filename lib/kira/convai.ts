@@ -34,6 +34,8 @@ import {
   kiraFinancialsToolDef,
   kiraCheckTasksToolDef,
 } from '@/lib/kira/swarm/doing-tools-def.mjs';
+import { kiraSearchDriveToolDef, kiraLookupContactToolDef } from '@/lib/kira/lookup-tools-def.mjs';
+import { isUidToolUrl } from '@/lib/kira/uid-tools.mjs';
 
 // Kira's real tables mapped onto the canonical TableNames contract. The reconcile
 // migration adds the columns the handlers need (agent_id, anon_session_id, processed_at)
@@ -298,6 +300,11 @@ export function kiraDoingTools(baseUrl: string): ConvAITool[] {
     // three requests, one of them a $60,000 quote, went two days without anyone able to answer for
     // them. Read-only over her own mirror of the task store.
     kiraCheckTasksToolDef(baseUrl, headers) as ConvAITool,
+    // The REACH half. The owner connected Drive and Contacts and she still could not open either,
+    // so she was asked for his Lot 91 files and for an address and answered from nothing — once by
+    // declining, once by claiming a search that never ran. Reads only, so no approval step.
+    kiraSearchDriveToolDef(baseUrl, headers) as ConvAITool,
+    kiraLookupContactToolDef(baseUrl, headers) as ConvAITool,
   ];
 }
 
@@ -317,7 +324,8 @@ export function kiraAllTools(baseUrl: string, userId?: string): ConvAITool[] {
   const tools = [...kiraMemoryTools(baseUrl), kiraKnowledgeTool(baseUrl), ...kiraDoingTools(baseUrl)];
   for (const t of tools) {
     if (!t.webhook) continue;
-    const isUidTool = /\/(recall_memory|search_knowledge|save_memory|start_conversation|dispatch_task|approve_task|look_up_financials|check_tasks)$/.test(t.webhook.url);
+    // Single-sourced with the re-provision script — see lib/kira/uid-tools.mjs for why.
+    const isUidTool = isUidToolUrl(t.webhook.url);
     if (userId && isUidTool) {
       t.webhook.url = `${t.webhook.url}?uid=${encodeURIComponent(userId)}`;
     }

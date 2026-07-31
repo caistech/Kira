@@ -32,6 +32,8 @@ import {
   updateAgent,
 } from '@caistech/elevenlabs-convai';
 import { kiraKnowledgeToolDef } from '../lib/kira/knowledge-tool-def.mjs';
+import { kiraSearchDriveToolDef, kiraLookupContactToolDef } from '../lib/kira/lookup-tools-def.mjs';
+import { isUidToolUrl } from '../lib/kira/uid-tools.mjs';
 import {
   kiraDispatchToolDef,
   kiraApproveToolDef,
@@ -114,17 +116,16 @@ function buildToolsForUser(userId, journeyType) {
           kiraApproveToolDef(APP_URL),
           kiraFinancialsToolDef(APP_URL),
           kiraCheckTasksToolDef(APP_URL),
+          kiraSearchDriveToolDef(APP_URL),
+          kiraLookupContactToolDef(APP_URL),
         ]
       : []),
   ];
   for (const t of tools) {
     if (!t.webhook) continue;
-    if (
-      userId &&
-      /\/(recall_memory|search_knowledge|save_memory|start_conversation|dispatch_task|approve_task|look_up_financials|check_tasks)$/.test(
-        t.webhook.url,
-      )
-    ) {
+    // The uid list is single-sourced (lib/kira/uid-tools.mjs) precisely because this file and
+    // kiraAllTools used to carry two hand-maintained copies of it.
+    if (userId && isUidToolUrl(t.webhook.url)) {
       t.webhook.url = `${t.webhook.url}?uid=${encodeURIComponent(userId)}`;
     }
     t.webhook.headers = { ...(t.webhook.headers ?? {}), [CONVAI_TOOL_SECRET_HEADER]: secret };
