@@ -121,6 +121,12 @@ export default function ChatPage() {
   // Overflow menu — the daily surface is the mic; the extras tuck behind "More".
   const [showMenu, setShowMenu] = useState(false);
 
+  // The typed conversation. Kept here rather than inside the widget because it survives the widget
+  // unmounting, and because the transcript is the thing he came back to read.
+  const [typed, setTyped] = useState<{ role: 'user' | 'assistant'; text: string }[]>([]);
+  const [typedConversationId, setTypedConversationId] = useState<string | null>(null);
+  const [typing, setTyping] = useState(false);
+
   /**
    * What she last worked on with him — only if it is sayable.
    *
@@ -210,6 +216,66 @@ export default function ChatPage() {
     context,
   );
 
+  /**
+   * What happens when he types instead of speaking.
+   *
+   * This is the prop whose absence made the text box swallow input: the widget calls
+   * onTextFallbackSubmit when there is no live session, and with nothing wired it cleared the field
+   * and did nothing. Now it reaches /api/kira/chat/text, which answers as the SAME Kira (her prompt
+   * is read from the deployed agent) and writes both turns into the same memory the voice path uses.
+   *
+   * His message goes on screen before the request, so he can see it landed even if the reply is slow
+   * — the silence was the whole complaint. An error is SHOWN, never swallowed.
+   */
+  const handleTypedMessage = useCallback(
+    async (text: string) => {
+      const value = text.trim();
+      if (!value || !agentInfo?.elevenlabs_agent_id) return;
+      setTyped((prev) => [...prev, { role: 'user', text: value }]);
+      setTyping(true);
+      try {
+        const res = await fetch('/api/kira/chat/text', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            agentId: agentInfo.elevenlabs_agent_id,
+            message: value,
+            conversationId: typedConversationId,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setTyped((prev) => [...prev, { role: 'assistant', text: data.error || "That didn't get through — try again?" }]);
+          return;
+        }
+        if (data.conversationId) setTypedConversationId(data.conversationId as string);
+        setTyped((prev) => [...prev, { role: 'assistant', text: String(data.reply ?? '') }]);
+      } catch {
+        setTyped((prev) => [...prev, { role: 'assistant', text: "That didn't get through — try again?" }]);
+      } finally {
+        setTyping(false);
+      }
+    },
+    [agentInfo, typedConversationId],
+  );
+
+  // Distil the typed session when he leaves, which is the text equivalent of the post-call webhook.
+  // Without it, everything he typed stays a transcript and never becomes Genome.
+  useEffect(() => {
+    if (!typedConversationId || !agentInfo?.elevenlabs_agent_id) return;
+    const end = () => {
+      navigator.sendBeacon?.(
+        '/api/kira/chat/text',
+        new Blob(
+          [JSON.stringify({ agentId: agentInfo.elevenlabs_agent_id, conversationId: typedConversationId, end: true })],
+          { type: 'application/json' },
+        ),
+      );
+    };
+    window.addEventListener('pagehide', end);
+    return () => window.removeEventListener('pagehide', end);
+  }, [typedConversationId, agentInfo]);
+
   /* ---------------- UI ---------------- */
 
   if (loading) {
@@ -281,6 +347,32 @@ export default function ChatPage() {
             </p>
           </div>
 
+          {/* THE TYPED EXCHANGE.
+              The widget owns the input box; it does not own the transcript, and a reply held in
+              state that nothing renders is the same silence he complained about. Shown above the
+              widget so the newest turn sits nearest the box he is typing into. */}
+          {typed.length > 0 && (
+            <div className="mb-4 space-y-3 max-w-xl mx-auto">
+              {typed.map((m, i) => (
+                <div
+                  key={i}
+                  className={
+                    m.role === 'user'
+                      ? 'ml-auto max-w-[85%] rounded-2xl bg-stone-800 text-white px-4 py-3 text-base'
+                      : 'mr-auto max-w-[85%] rounded-2xl bg-white border border-amber-200 px-4 py-3 text-base text-stone-800'
+                  }
+                >
+                  {m.text}
+                </div>
+              ))}
+              {typing && (
+                <div className="mr-auto rounded-2xl bg-white border border-amber-200 px-4 py-3 text-base text-stone-400">
+                  Kira is typing…
+                </div>
+              )}
+            </div>
+          )}
+
           {agentInfo && (
             <VoiceWidget
               placement="inline"
@@ -298,8 +390,12 @@ export default function ChatPage() {
               // honest "Not supported" it replaced, and sitting on the one action the product exists
               // for.
               //
-              // Turned off rather than left swallowing input. It comes back the moment
-              // /api/kira/chat/text exists to receive it — see onTextFallbackSubmit below.
+              // BOTH ARE ON NOW, because both go somewhere. `textInput` types into a live call;
+              // `textFallback` is the no-voice path, and onTextFallbackSubmit is the handler whose
+              // absence made the box swallow input in the first place.
+              textInput
+              textFallback
+              onTextFallbackSubmit={handleTypedMessage}
               title={
                 context?.has_history
                   ? 'Welcome back — Kira remembers where you left off. Tap the mic to continue.'
