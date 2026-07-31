@@ -74,6 +74,24 @@ const financials = finMatch[1].trim();
 const TASK_MARKER = '## ACCOUNTING FOR WHAT THEY ASKED FOR';
 const taskMatch = promptsSrc.match(/export const taskLedgerSection = `([\s\S]*?)`;/);
 if (!taskMatch) throw new Error('Could not read taskLedgerSection from lib/kira/prompts.ts');
+
+// These two are UNGATED — unlike the sections above, they describe no tool.
+//
+// Tool honesty is a rule about every tool she does not hold, so an agent with fewer tools needs it
+// MORE, not less. And typed input arrives on every agent whether or not anyone told it so: on 31
+// July a typed email address reached the transcript as a user turn and she denied twice that she
+// could see it, because her prompt never mentioned the possibility.
+const HONESTY_MARKER = '## NEVER SAY YOU CHECKED SOMETHING YOU DID NOT';
+const honestyMatch = promptsSrc.match(/export const toolHonestySection = `([\s\S]*?)`;/);
+if (!honestyMatch) throw new Error('Could not read toolHonestySection from lib/kira/prompts.ts');
+const honesty = honestyMatch[1].trim();
+if (!honesty.includes(HONESTY_MARKER)) throw new Error(`toolHonestySection is missing ${HONESTY_MARKER}`);
+
+const TYPED_MARKER = '## WHEN HE TYPES INSTEAD OF SPEAKING';
+const typedMatch = promptsSrc.match(/export const typedInputSection = `([\s\S]*?)`;/);
+if (!typedMatch) throw new Error('Could not read typedInputSection from lib/kira/prompts.ts');
+const typed = typedMatch[1].trim();
+if (!typed.includes(TYPED_MARKER)) throw new Error(`typedInputSection is missing ${TYPED_MARKER}`);
 const taskLedger = taskMatch[1].trim();
 
 /**
@@ -124,10 +142,12 @@ const discoveryId = process.env.DISCOVERY_AGENT_ID;
 for (const a of agents) {
   const id = a.elevenlabs_agent_id;
   if (!id) continue;
-  if (a.agent_name === 'Kira Discovery' || (discoveryId && id === discoveryId)) {
-    console.log(`  - ${id} ${a.agent_name ?? ''} — skipped (discovery agent, no doing tools)`);
-    continue;
-  }
+  // Discovery gets the UNGATED sections only. It runs the intake interview and holds none of the
+  // doing-slice tools, so the capability boundary would be a plain falsehood on it — but it is the
+  // FIRST agent a new owner ever speaks to, which makes 'never claim you checked something' and
+  // 'he can type to you' matter more here than anywhere, not less. Skipping it wholesale left the
+  // first impression as the only one still able to fabricate.
+  const isDiscovery = a.agent_name === 'Kira Discovery' || (discoveryId && id === discoveryId);
   try {
     const live = await (
       await fetch(`https://api.elevenlabs.io/v1/convai/agents/${id}`, { headers: { 'xi-api-key': apiKey } })
@@ -140,7 +160,7 @@ for (const a of agents) {
     // frozen the first version onto the fleet forever — which is the very failure this script
     // exists to undo, one level up.
     // Cut at whichever of our sections appears first — both are always appended last, in order.
-    const cuts = [current.indexOf(MARKER), current.indexOf(FIN_MARKER), current.indexOf(TASK_MARKER)].filter(
+    const cuts = [current.indexOf(MARKER), current.indexOf(FIN_MARKER), current.indexOf(TASK_MARKER), current.indexOf(HONESTY_MARKER), current.indexOf(TYPED_MARKER)].filter(
       (i) => i >= 0,
     );
     const base = cuts.length ? current.slice(0, Math.min(...cuts)).trimEnd() : current;
@@ -148,7 +168,7 @@ for (const a of agents) {
     const held = await toolNames(live?.conversation_config?.agent?.prompt);
     // Each section is included only if its tool is attached, so the prompt never claims more than the
     // agent can invoke — and appears by itself on the next run after the tool lands.
-    const next = [base, boundary, held.has('look_up_financials') ? financials : null, held.has('check_tasks') ? taskLedger : null]
+    const next = [base, isDiscovery ? null : boundary, !isDiscovery && held.has('look_up_financials') ? financials : null, !isDiscovery && held.has('check_tasks') ? taskLedger : null, honesty, typed]
       .filter(Boolean)
       .join('\n\n');
 
@@ -186,13 +206,20 @@ for (const a of agents) {
     const afterPrompt = after?.conversation_config?.agent?.prompt?.prompt || '';
     const markerCount = afterPrompt.split(MARKER).length - 1;
     const toolCount = (after?.conversation_config?.agent?.prompt?.tool_ids || []).length;
-    if (markerCount === 0) throw new Error('patch returned 200 but the marker is absent on read-back');
+    if (!isDiscovery && markerCount === 0) throw new Error('patch returned 200 but the marker is absent on read-back');
     // Assert exactly ONE. An earlier version of this script sent `current + boundary` while the
     // dedupe logic sat unused a few lines above, so every run stacked another copy of the section
     // onto the same prompt — four deep before anyone counted. A read-back that only checks the text
     // is PRESENT cannot see that failure, because it is present four times.
     if (markerCount > 1) {
       throw new Error(`patch left ${markerCount} copies of the section on this agent — dedupe failed`);
+    }
+    // Every section we just sent must be present exactly once on read-back. Checking only the
+    // boundary would let one be silently dropped, which is the same shape as the write that
+    // emptied the tool list: a 200 that did less than it claimed.
+    for (const [label, marker] of [['tool honesty', HONESTY_MARKER], ['typed input', TYPED_MARKER]]) {
+      const copies = afterPrompt.split(marker).length - 1;
+      if (copies !== 1) throw new Error(`expected exactly 1 copy of the ${label} section, found ${copies}`);
     }
 
     patched += 1;
