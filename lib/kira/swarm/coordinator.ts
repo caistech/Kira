@@ -107,4 +107,27 @@ export interface SwarmCoordinator {
     approve: boolean,
     patch?: { recipientEmail?: string },
   ): Promise<DispatchResult>;
+  /**
+   * Every task the coordinator holds for a tenant — the DISCOVERY leg.
+   *
+   * OPTIONAL, and it is the local stub that makes it so: the stub's tasks ARE `kira_tasks` rows, so
+   * there is nothing to discover and implementing it would only invite the mirror to copy a row onto
+   * itself. A remote brain is a different situation entirely — it owns the task, Kira owns a copy,
+   * and a copy that was never written is invisible to every repair path that starts from the copies.
+   *
+   * `getTaskState` cannot fill this role: it needs the id of a task, which is precisely what is
+   * missing when a mirror write is lost.
+   */
+  listTasks?(tenantId: TenantId, opts?: { statuses?: TaskState[]; limit?: number }): Promise<TaskSummary[]>;
+}
+
+/** One remote task, reduced to what it takes to rebuild a missing mirror row and nothing more. */
+export interface TaskSummary {
+  taskGroupId: string;
+  status: TaskState;
+  /** null when the remote end genuinely does not know — never a filler value. */
+  kind: string | null;
+  utterance: string | null;
+  summary: string | null;
+  createdAt: string;
 }

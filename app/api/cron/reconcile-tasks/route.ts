@@ -25,6 +25,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { rejectUnauthorisedCron } from '@/lib/cron-auth';
 import { getSwarmCoordinator } from '@/lib/kira/swarm';
+import { backfillMissingTasks, type MirrorRow } from '@/lib/kira/swarm/backfill';
 import { asTaskState } from '@/lib/kira/swarm/coordinator';
 import { createServiceClient } from '@/lib/supabase/server';
 
@@ -45,6 +46,17 @@ const GRACE_MINUTES = 15;
 
 /** How many to reconcile per run. A backlog drains across runs; one run never stalls on it. */
 const BATCH = 25;
+
+/**
+ * How many tenants the discovery pass sweeps per run, and how deep into each one it looks.
+ *
+ * Every Kira user is a tenant, so the sweep is over `users` rather than over tenants Kira already
+ * has tasks for — which sounds like the cheaper query and is exactly the bug. A user whose very
+ * first dispatch was the one that failed to mirror has no rows at all, so a sweep seeded from
+ * existing rows would never look at the person worst affected.
+ */
+const TENANT_SWEEP = 200;
+const PER_TENANT = 50;
 
 export async function GET(request: NextRequest) {
   const unauthorised = rejectUnauthorisedCron(request);
@@ -115,6 +127,55 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  console.log('[cron/reconcile-tasks]', results);
-  return NextResponse.json(results);
+  // ── Discovery ──────────────────────────────────────────────────────────────────────────────
+  // Everything above REPAIRS rows Kira already has, which cannot reach a task Kira never recorded.
+  // Those exist: the mirror ran as a floating promise on a serverless runtime for a while, so some
+  // dispatches were simply never written, and three of the owner's requests sat waiting on his
+  // approval while his dashboard showed one. Nothing in the system could find them, because every
+  // query started from the rows that were missing.
+  const { data: tenants, error: tenantError } = await supabase
+    .from('users')
+    .select('id')
+    .order('created_at', { ascending: true })
+    .limit(TENANT_SWEEP);
+
+  if (tenantError) {
+    // Reported, not fatal: the repair pass above already succeeded and its result is worth returning.
+    console.error('[cron/reconcile-tasks] could not list tenants for discovery:', tenantError);
+  }
+
+  const tenantIds = (tenants ?? []).map((t) => t.id as string);
+  if (tenantIds.length === TENANT_SWEEP) {
+    console.warn(`[cron/reconcile-tasks] tenant sweep hit its cap (${TENANT_SWEEP}) — some were not checked.`);
+  }
+
+  const discovered = await backfillMissingTasks(
+    coordinator,
+    {
+      async knownIntentIds(userId: string) {
+        const { data, error: knownError } = await supabase
+          .from('kira_tasks')
+          .select('intent_id')
+          .eq('user_id', userId);
+        // Throwing is deliberate. An empty list on a failed read would look like "this tenant has
+        // nothing", and the caller INSERTS the difference — turning a transient error into duplicate
+        // rows for every task he has. Better to skip this tenant and try again in twenty minutes.
+        if (knownError) throw new Error(knownError.message);
+        return (data ?? []).map((r) => r.intent_id as string);
+      },
+      async insert(rows: MirrorRow[]) {
+        // Upsert on the same key the live mirror and the completion callback both use, so a task
+        // that lands here at the same moment a callback arrives ends as one row, not two.
+        const { error: insertError } = await supabase
+          .from('kira_tasks')
+          .upsert(rows, { onConflict: 'user_id,intent_id' });
+        if (insertError) throw new Error(insertError.message);
+      },
+    },
+    tenantIds,
+    { limit: PER_TENANT },
+  );
+
+  console.log('[cron/reconcile-tasks]', { ...results, discovered });
+  return NextResponse.json({ ...results, discovered });
 }

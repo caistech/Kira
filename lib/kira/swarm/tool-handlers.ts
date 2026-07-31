@@ -138,7 +138,15 @@ export async function handleDispatchTask(req: Request): Promise<Response> {
 
     // Mirror EVERY dispatch, not only the ones that ended badly — awaiting_approval above all,
     // since that is the state the owner's dashboard is built around.
-    void mirrorTask({
+    //
+    // AWAITED, not fire-and-forget. This was `void mirrorTask(...)`, and on a serverless runtime a
+    // floating promise means "maybe": the response returns, the lambda freezes or terminates, and
+    // the write may simply never run. That is why the loss was INTERMITTENT rather than a clean
+    // before-and-after — in one conversation 12:08, 12:09, 12:11 and 12:17 mirrored while 12:13,
+    // 12:15 and 12:16 did not. Six of ten tasks ended up on no screen, three of them waiting on the
+    // owner's approval. It costs one round trip and cannot break the voice path: mirrorTask catches
+    // its own failures. Fire-and-forget is a browser idiom; here it is a data-loss bug.
+    await mirrorTask({
       userId,
       taskGroupId: result.taskGroupId,
       utterance,

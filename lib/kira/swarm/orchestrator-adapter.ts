@@ -22,6 +22,7 @@ import type {
   DispatchedIntent,
   DispatchResult,
   TaskStatus,
+  TaskSummary,
   TenantId,
   TaskState,
 } from './coordinator';
@@ -181,6 +182,69 @@ export class OrchestratorAdapter implements SwarmCoordinator {
       };
     } catch {
       return { taskGroupId, status: 'failed', message: 'Could not check that just now.' };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /**
+   * Everything the orchestrator holds for one tenant — the discovery leg behind the mirror repair.
+   *
+   * Returns [] on ANY failure, and the distinction matters: the caller INSERTS what it finds, so a
+   * network blip that returned a partial list must read as "found nothing this run" and be retried,
+   * never as "the tenant has these three and no others". Nothing is ever deleted from a short answer.
+   *
+   * An unreadable status skips that row rather than defaulting. This whole repair exists because an
+   * unvalidated status was written into a status column; inventing one here to fill a NOT NULL
+   * column would be the same mistake wearing a different hat.
+   */
+  async listTasks(
+    tenantId: TenantId,
+    opts: { statuses?: TaskState[]; limit?: number } = {},
+  ): Promise<TaskSummary[]> {
+    if (!this.configured()) return [];
+    const params = new URLSearchParams({ tenantId });
+    if (opts.statuses?.length) params.set('status', opts.statuses.join(','));
+    if (opts.limit) params.set('limit', String(opts.limit));
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    try {
+      const res = await fetch(`${this.baseUrl}/api/v1/tasks?${params}`, {
+        headers: { [AUTH_HEADER]: this.secret },
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        console.error(`[orchestrator] list tasks → ${res.status}`);
+        return [];
+      }
+      const wire = (await res.json()) as { tasks?: unknown[]; truncated?: boolean };
+      if (wire.truncated) {
+        // Loud on purpose. A truncated page means the repair is incomplete this run, and the failure
+        // being repaired is precisely a screen that looked complete.
+        console.warn(`[orchestrator] task list for ${tenantId} was truncated — more remain.`);
+      }
+      return (wire.tasks ?? []).flatMap((raw) => {
+        const t = raw as Record<string, unknown>;
+        const status = asTaskState(t.status);
+        if (!status || typeof t.taskGroupId !== 'string' || !t.taskGroupId) {
+          console.error(`[orchestrator] skipping an unusable task row: ${JSON.stringify(raw)?.slice(0, 200)}`);
+          return [];
+        }
+        return [
+          {
+            taskGroupId: t.taskGroupId,
+            status,
+            kind: typeof t.kind === 'string' ? t.kind : null,
+            utterance: typeof t.utterance === 'string' ? t.utterance : null,
+            summary: typeof t.summary === 'string' ? t.summary : null,
+            createdAt: typeof t.createdAt === 'string' ? t.createdAt : new Date().toISOString(),
+          },
+        ];
+      });
+    } catch (e) {
+      console.error('[orchestrator] list tasks failed:', e);
+      return [];
     } finally {
       clearTimeout(timer);
     }
