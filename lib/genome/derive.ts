@@ -85,15 +85,19 @@ owner will read it there and conclude we did not understand him.
 `.trim();
 
 /**
- * Classify any unclassified memories for this owner, then read the Genome back.
+ * File any unclassified memories for one owner.
  *
- * Batched and capped: an owner with hundreds of memories gets the most important ones filed first
- * rather than a slow page. The rest fill in on later visits.
+ * CALLED AT WRITE TIME (after the post-call distil) and swept hourly for stragglers — NOT on a page
+ * visit, which is where it used to live. Classifying 25 per visit meant a new owner's Genome filled
+ * in over several sessions: he opens his own manual, sees a fraction of what he said, comes back and
+ * finds more. The product reads as forgetting things, which is the exact fear it exists to answer.
+ *
+ * Bounded per call so a long history cannot stall the caller; the sweep finishes what a burst leaves.
  */
-export async function deriveOwnerGenome(userId: string, opts: { classifyLimit?: number } = {}): Promise<OwnerGenome> {
+export async function classifyPendingMemories(userId: string, limit = 50): Promise<{ classified: number; deferred: number }> {
   const supabase = createServiceClient();
-  const classifyLimit = opts.classifyLimit ?? 25;
   const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return { classified: 0, deferred: 0 };
 
   const { data: pending } = await supabase
     .from('kira_memory')
@@ -102,19 +106,41 @@ export async function deriveOwnerGenome(userId: string, opts: { classifyLimit?: 
     .is('genome_section', null)
     .neq('active', false)
     .order('importance', { ascending: false, nullsFirst: false })
-    .limit(classifyLimit);
+    .limit(limit);
 
-  if (apiKey && pending?.length) {
-    await Promise.all(
-      pending.map(async (m) => {
-        const section = await classifyOne(apiKey, String(m.content ?? ''));
-        await supabase
-          .from('kira_memory')
-          .update({ genome_section: section, genome_classified_at: new Date().toISOString() })
-          .eq('id', m.id);
-      }),
-    );
-  }
+  if (!pending?.length) return { classified: 0, deferred: 0 };
+
+  let classified = 0;
+  let deferred = 0;
+  await Promise.all(
+    pending.map(async (m) => {
+      const section = await classifyOne(apiKey, String(m.content ?? ''));
+      // null means WE COULD NOT TELL, and the row is left NULL so the next sweep retries it. Writing
+      // a guess here is not a cosmetic mistake: 'none' is filtered out of the Genome entirely and is
+      // never revisited, so one transient model failure used to delete a fact from the owner's
+      // handover manual permanently — silently, and with a comment claiming it did the opposite.
+      if (section === null) {
+        deferred += 1;
+        return;
+      }
+      await supabase
+        .from('kira_memory')
+        .update({ genome_section: section, genome_classified_at: new Date().toISOString() })
+        .eq('id', m.id);
+      classified += 1;
+    }),
+  );
+  return { classified, deferred };
+}
+
+/**
+ * Read the owner's Genome.
+ *
+ * READ-ONLY. Classification happens at write time (above), so opening this page never changes what
+ * it is about to show you.
+ */
+export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
+  const supabase = createServiceClient();
 
   const { data: rows } = await supabase
     .from('kira_memory')
@@ -185,8 +211,17 @@ export async function deriveOwnerGenome(userId: string, opts: { classifyLimit?: 
   };
 }
 
-async function classifyOne(apiKey: string, content: string): Promise<string> {
-  if (!content.trim()) return 'none';
+/**
+ * Which section a fact belongs in — or null when we could not establish it.
+ *
+ * The null is the point. This used to return 'none' on every failure path, under a comment saying it
+ * would "leave it unclassified rather than guessing". It did the opposite: 'none' is a decision, it
+ * is filtered out of the Genome, and the row is never reconsidered because it is no longer NULL. A
+ * rate limit or a dropped connection therefore erased a real fact from the owner's manual for good.
+ * Degrade-don't-fake means declining to answer, not answering "nothing".
+ */
+async function classifyOne(apiKey: string, content: string): Promise<string | null> {
+  if (!content.trim()) return 'none'; // genuinely nothing to file — a real verdict, not a failure
   try {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -201,12 +236,14 @@ async function classifyOne(apiKey: string, content: string): Promise<string> {
         ],
       }),
     });
-    if (!res.ok) return 'none';
+    if (!res.ok) return null; // transient — retry on the next sweep rather than file it as nothing
     const json = await res.json();
     const answer = String(json?.choices?.[0]?.message?.content ?? '').trim().toLowerCase();
-    return SECTION_KEYS.includes(answer) || answer === 'none' ? answer : 'none';
+    if (SECTION_KEYS.includes(answer) || answer === 'none') return answer;
+    // An answer outside the vocabulary is a model problem, not a verdict about the fact.
+    console.warn(`[genome] unrecognised section "${answer.slice(0, 40)}" — leaving unclassified.`);
+    return null;
   } catch {
-    // Leave it unclassified rather than guessing — the UI shows unsorted, which is true.
-    return 'none';
+    return null;
   }
 }

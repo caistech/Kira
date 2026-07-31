@@ -39,7 +39,7 @@ export async function GET(request: Request) {
     .maybeSingle();
   if (!appUser) return NextResponse.json({ error: 'No account record' }, { status: 404 });
 
-  const g = await deriveOwnerGenome(appUser.id, { classifyLimit: 0 });
+  const g = await deriveOwnerGenome(appUser.id);
   const format = new URL(request.url).searchParams.get('format') === 'json' ? 'json' : 'md';
   const stamp = new Date().toISOString().slice(0, 10);
   const owner = [appUser.first_name, appUser.last_name].filter(Boolean).join(' ') || 'the owner';

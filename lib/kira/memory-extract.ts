@@ -17,8 +17,24 @@ establishes.
 
 Return ONLY JSON of the form:
 {"memories":[{"content": string, "memoryType": one of ${TYPES.join(' | ')}, "importance": integer 1-10, "tags": string[]}]}
-0 to 8 items. "content" is one concise sentence in the third person ("Prefers…", "Wants…",
-"Decided…", "Is working on…"). Higher importance = more load-bearing for future help.`;
+0 to 8 items. Higher importance = more load-bearing for future help.
+
+REGISTER — how "content" must be written. These memories are read back in two places: by the
+assistant, and by the owner himself, in a document that is his business's handover manual. Write
+each one as A STATEMENT OF THE BUSINESS, not as a report about a person:
+
+  YES  "Commercial jobs are priced at cost plus 18%."
+  NO   "Dennis says he prices commercial jobs at cost plus 18%."
+  YES  "Wavecrest is the largest client; the relationship runs through Dave."
+  NO   "He mentioned that Wavecrest is his biggest client."
+
+A manual that refers to its own owner in the third person does not read as his manual — it reads as
+a file someone is keeping ON him, which for an owner who has told nobody he is selling is precisely
+the wrong feeling. Drop "he said", "he mentioned", "the user wants"; state the fact itself.
+
+THE ONE EXCEPTION is a fact genuinely about the person rather than the business — how he prefers to
+work, be contacted, or be spoken to (memoryType "preference"). Write those as "The owner prefers…",
+which is honest about what they are. Never use his name in either case.`;
 
 export function createMemoryExtractor(apiKey: string): MemoryExtractor {
   return async (turns) => {

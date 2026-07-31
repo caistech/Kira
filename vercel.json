@@ -19,6 +19,10 @@
     {
       "path": "/api/cron/reconcile-tasks",
       "schedule": "*/20 * * * *"
+    },
+    {
+      "path": "/api/cron/genome-classify",
+      "schedule": "30 * * * *"
     }
   ]
 }

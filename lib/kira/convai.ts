@@ -24,6 +24,7 @@ import {
   type ConvAITool,
 } from '@caistech/elevenlabs-convai';
 import { accrueVoiceCost } from '@/lib/billing';
+import { classifyPendingMemories } from '@/lib/genome/derive';
 import { createServiceClient } from '@/lib/supabase/server';
 import { createMemoryExtractor } from '@/lib/kira/memory-extract';
 import { kiraKnowledgeToolDef } from '@/lib/kira/knowledge-tool-def.mjs';
@@ -103,6 +104,25 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
       });
       if (memory.errors.length) {
         console.error('[kira/convai] memory pipeline reported:', memory.errors.join('; '));
+      }
+
+      // File the new facts into the Genome NOW, while the call that produced them just ended.
+      //
+      // This used to happen 25-at-a-time when the owner opened /my-genome, which meant his manual
+      // filled in over several visits — he would look at it, see a fraction of what he had said, and
+      // come back later to find more. A product whose entire promise is "it remembers what is in your
+      // head" cannot read as though it is still catching up.
+      //
+      // Fail-soft and after the memory write: a classification problem must never cost a fact.
+      if (userId) {
+        try {
+          const filed = await classifyPendingMemories(userId);
+          if (filed.deferred) {
+            console.warn(`[kira/convai] ${filed.deferred} memories left unclassified — the sweep will retry.`);
+          }
+        } catch (error) {
+          console.error('[kira/convai] genome classification failed (memories are safe):', error);
+        }
       }
 
       // Accrue this call's estimated cost against the free month's fair-use budget. Records only —
