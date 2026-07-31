@@ -122,13 +122,37 @@ export default function ChatPage() {
   const [showMenu, setShowMenu] = useState(false);
 
   /**
-   * What she last worked on with him, if anything.
+   * What she last worked on with him — only if it is sayable.
    *
-   * Gated on has_history rather than on last_topic alone: a topic string left over from a session
-   * with no messages would have the screen claim a conversation that never happened, which is worse
-   * than a plain greeting.
+   * `last_topic` is NOT a topic. It is whatever the summariser wrote, in the third person, at
+   * whatever length it felt like, and dropping it into a greeting produced this on the first screen
+   * after signing in:
+   *
+   *   "Last time you talked about The user reiterated the need for a streamlined onboarding
+   *    wizard... The goal is to map all user ac."
+   *
+   * Spliced, about "the user", and cut mid-word. So the value is now VALIDATED rather than trusted:
+   * short enough to be a topic, not a sentence about somebody in the third person, and not
+   * truncated. Anything failing that is dropped and he gets the plain greeting, which is a good
+   * greeting — the fallback is not a degraded experience, it is simply a different true one.
    */
-  const lastTopic = context?.has_history ? context.last_topic?.trim() || null : null;
+  const lastTopic = (() => {
+    if (!context?.has_history) return null;
+    const raw = (context.last_topic ?? '').trim();
+    if (!raw) return null;
+    // A topic is a few words. A paragraph is a summary someone forgot to summarise.
+    if (raw.length > 60) return null;
+    // Third-person report about him, not a subject he would recognise as his own.
+    if (/^(the user|the business|the owner|dennis|he |she )/i.test(raw)) return null;
+    // Cut mid-word by an upstream truncation. Tested on the LAST WORD, not the last characters:
+    // "soil testing" ends in two lowercase letters and is a perfectly good topic, while
+    // "map all user ac" is not. Checking the characters alone rejects almost everything, which
+    // turns a guard into an off switch.
+    if (/[.]{3}$/.test(raw) || raw.endsWith('…')) return null;
+    const lastWord = raw.split(/\s+/).pop() ?? '';
+    if (lastWord.length <= 2 && /^[a-z]+$/.test(lastWord)) return null;
+    return raw;
+  })();
 
   /* ---------------- Load agent + context ---------------- */
 
@@ -264,6 +288,16 @@ export default function ChatPage() {
               avatarUrl="/female_avatar.jpeg"
               coachName="Kira"
               transcript
+              // TYPING IS A FIRST-CLASS WAY IN, not a consolation prize.
+              //
+              // Two findings, one prop. A tester with no microphone got Mute/End rendered as though a
+              // call were live plus a bare red "Not supported" — no explanation, no remedy, and no
+              // other way to reach her. On a product whose entire interface is voice, a broken mic
+              // was the end of the product. Separately the owner has said repeatedly that he cannot
+              // paste a URL or a message because there is no text input, so he could only upload.
+              //
+              // The canonical widget has supported this since 0.4.2 and we simply never turned it on.
+              textInput
               title={
                 context?.has_history
                   ? 'Welcome back — Kira remembers where you left off. Tap the mic to continue.'

@@ -133,7 +133,12 @@ export default async function DashboardPage({
               className="rounded-2xl border border-gray-200 bg-white p-5 hover:border-teal-300 hover:shadow-sm"
             >
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900">{String(a.agent_name ?? 'Kira')}</h2>
+                {/* WAS the raw internal agent name — "Kira_Trinh_DevelopingThe_7f1c". That is a
+                    provisioning identifier: it carries another person's first name and a slice of a
+                    user id, and it was printed twice on the account dashboard of a product whose
+                    promise to advisors is that nothing crosses between clients. No access leaked;
+                    it did not have to. Seeing it is enough. */}
+                <h2 className="text-lg font-semibold text-gray-900">Kira</h2>
                 <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium capitalize text-gray-600">
                   {String(a.journey_type ?? '')}
                 </span>

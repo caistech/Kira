@@ -106,11 +106,12 @@ export default function KiraLandingPage() {
               </div>
               <span className="font-display font-bold text-2xl bg-gradient-to-r from-amber-500 via-pink-500 to-violet-500 bg-clip-text text-transparent">Kira</span>
             </a>
-            <a href="https://corporate-ai-solutions.vercel.app/marketplace" target="_blank" rel="noopener noreferrer"
-              className="hidden md:flex items-center gap-2 cas-badge text-white px-3 py-1.5 rounded-full text-sm font-body">
+            {/* Attribution stays — it is true and it is trust-building. The LINK out to a
+                marketplace of other agents does not. */}
+            <span className="hidden md:flex items-center gap-2 cas-badge text-white px-3 py-1.5 rounded-full text-sm font-body">
               <span className="opacity-80">by</span>
               <span className="font-semibold">Corporate AI Solutions</span>
-            </a>
+            </span>
           </div>
           <div className="flex items-center gap-3 sm:gap-6">
             <a href="#how-it-works" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">How it works</a>
@@ -161,12 +162,13 @@ export default function KiraLandingPage() {
         <div className="max-w-5xl mx-auto px-6 py-20 relative z-10">
           <div className="text-center">
             <div className={`mb-6 ${isVisible ? 'fade-up' : 'opacity-0'}`}>
-              <a href="https://corporate-ai-solutions.vercel.app/marketplace" target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-stone-800/90 text-white px-4 py-2 rounded-full text-sm font-body hover:bg-stone-700 transition-colors">
-                <span className="text-amber-400">⚡</span>
-                <span>Part of the <span className="font-semibold text-amber-300">Corporate AI Solutions</span> Voice AI Suite</span>
-                <span className="text-sm opacity-60">→</span>
-              </a>
+              {/* Was a link to a marketplace of other AI agents — the first thing on the page, on a
+                  product whose entire pitch is ONE assistant that learns YOUR business. It told a
+                  cautious owner he was browsing a catalogue before he had read a word about himself. */}
+              <span className="inline-flex items-center gap-2 bg-stone-800/90 text-white px-4 py-2 rounded-full text-sm font-body">
+                <span className="text-amber-400">&#9679;</span>
+                <span>For owners whose business still runs on them</span>
+              </span>
             </div>
 
             <div className={`mb-8 ${isVisible ? 'fade-up' : 'opacity-0'}`}>
@@ -470,13 +472,17 @@ export default function KiraLandingPage() {
         <div className="max-w-4xl mx-auto px-6 text-center">
           <p className="font-body text-stone-400 text-sm uppercase tracking-wider mb-4">Brought to you by</p>
           <h3 className="font-display text-3xl font-bold text-white mb-4">Corporate AI Solutions</h3>
+          {/* "Kira is part of a suite… Explore the Marketplace" sat here. Sending someone shopping
+              at the point they are deciding to trust ONE assistant with thirty-five years of
+              undocumented knowledge works against the sale it is placed next to. */}
           <p className="font-body text-stone-300 text-lg mb-8 max-w-2xl mx-auto">
-            Kira is part of a suite of specialized AI Voice Agents. Each one built for a specific purpose. Each one designed to think WITH you.
+            One assistant. She learns how your business actually runs, and turns it into something a
+            buyer can read.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a href="https://corporate-ai-solutions.vercel.app/marketplace" target="_blank" rel="noopener noreferrer"
+            <a href="/business-valuation"
               className="font-display bg-amber-500 hover:bg-amber-400 text-stone-900 px-6 py-3 rounded-full font-bold transition-colors inline-flex items-center gap-2">
-              Explore the Marketplace →
+              See what your business is worth &#8594;
             </a>
             <a href="/about" className="font-display text-white hover:text-amber-400 px-6 py-3 font-medium transition-colors inline-flex items-center gap-2">Learn Our Story</a>
           </div>
@@ -491,7 +497,7 @@ export default function KiraLandingPage() {
               <div className="avatar-ring"><div className="w-8 h-8 rounded-full overflow-hidden bg-white"><img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" /></div></div>
               <span className="font-display font-bold text-white">Kira</span>
               <span className="text-stone-500">|</span>
-              <a href="https://corporate-ai-solutions.vercel.app/marketplace" target="_blank" rel="noopener noreferrer" className="font-body text-sm text-stone-400 hover:text-amber-400 transition-colors">A Corporate AI Solutions Product</a>
+              <span className="font-body text-sm text-stone-400">A Corporate AI Solutions Product</span>
             </div>
             {/* 44px minimum tap target (PRODUCT_STANDARDS §1). These were 18-20px high — legible,
                 but on a phone the gap between "Privacy" and "Terms" is smaller than a fingertip,

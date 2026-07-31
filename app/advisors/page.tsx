@@ -67,10 +67,16 @@ export default function AdvisorsPage() {
             <Link href="/" className="text-sm font-medium text-stone-600 hover:text-pink-500">
               Home
             </Link>
-            <Link href="/genome" className="hidden text-sm font-medium text-stone-600 hover:text-pink-500 sm:block">
-              What your client gets
+            {/* These were `hidden … sm:block`, so at 375px the header held the logo and nothing
+                else — no items, no hamburger, no way to reach "what your client gets" from the one
+                page written for the person who would refer a client. Shortened rather than hidden:
+                three short labels fit a phone header, and a broker skimming on a phone is the
+                normal case, not the edge one. */}
+            <Link href="/genome" className="text-sm font-medium text-stone-600 hover:text-pink-500">
+              <span className="sm:hidden">Example</span>
+              <span className="hidden sm:inline">What your client gets</span>
             </Link>
-            <Link href="/#pricing" className="hidden text-sm font-medium text-stone-600 hover:text-pink-500 sm:block">
+            <Link href="/#pricing" className="text-sm font-medium text-stone-600 hover:text-pink-500">
               Pricing
             </Link>
             <a

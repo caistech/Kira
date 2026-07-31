@@ -744,10 +744,19 @@ function ResultView({ result, currency, planHref }: { result: ReturnType<typeof 
         <>
           {/* Three numbers */}
           <div className="grid gap-4 sm:grid-cols-3">
+            {/* THE HEADLINE AND ITS OWN CAPTION USED TO DISAGREE.
+                The number was book value and the line underneath said a quick auction returns
+                40–60c in the dollar — so the figure an owner reads as his floor overstated it by
+                roughly double, contradicted by our own footnote six words later. For a man deciding
+                whether he can afford to walk, that is the worst number on the page to get wrong.
+
+                Now the headline IS the realisable range and book value is stated beneath it. Derived
+                here rather than in the model on purpose: `walkAway` stays book value, so no
+                valuation already shown to anyone is re-priced and MODEL_VERSION is untouched. */}
             <NumberCard
               label="Walk away"
-              value={money(result.walkAway)}
-              sub="Book value of the gear — a quick auction typically returns 40–60c in the dollar"
+              value={`${money(Math.round(result.walkAway * 0.4))} – ${money(Math.round(result.walkAway * 0.6))}`}
+              sub={`What a quick auction on ${money(result.walkAway)} of gear typically returns (40–60c in the dollar)`}
               tone="floor"
             />
             <NumberCard

@@ -95,9 +95,14 @@ export const CANNOT: Limit[] = [
     // could not tell whether she was in the books or not. Xero is now named on both sides, and the
     // bank/bookkeeping distinction is drawn rather than implied — an owner deciding whether to
     // connect his accounts needs to know exactly which door he is opening.
+    // UPDATED 2026-07-31 after a tester read this page against the live Settings screen and found
+    // it wrong in both directions: it claimed Xero was the ONLY connection while Google Drive was
+    // connected with READ AND WRITE and this page never mentioned it. A capability page that
+    // understates access is worse than one that overstates it — the owner consented to something he
+    // was told did not exist.
     thing: 'Touch your bank, your calendar or your job software',
     detail:
-      'Xero is the only system she connects to, and only to read it. She has no link to your bank itself, cannot see your diary, cannot book anything and cannot move a job.',
+      'She connects to Xero and, if you let her, your Google Drive and contacts — you choose which, and you can see and revoke each one in Settings. She has no link to your bank itself, cannot see your diary, cannot book anything and cannot move a job.',
   },
   {
     thing: 'Order materials or make bookings',

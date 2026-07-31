@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { SayFixWidget } from "@caistech/sayfix-embed";
 import { Inter } from 'next/font/google';
 import './globals.css';
-import { CorporateHeader } from '@/components/corporate/CorporateHeader';
+import { SiteHeader } from '@/components/corporate/SiteHeader';
 import { CorporateFooter } from '@/components/corporate/CorporateFooter';
 import { AgentJsonLd } from '@caistech/webmcp-kit/react';
 import { agentConfig } from '@/agent-readiness.config';
@@ -41,7 +41,7 @@ export default function RootLayout({
         <RegisterSW />
         <AgentJsonLd config={agentConfig} />
         <div className="min-h-screen flex flex-col">
-          <CorporateHeader productName="Kira" productAcronym="K" />
+          <SiteHeader />
           {/* No `position` — the widget auto-places, avoiding controls it would otherwise cover.
               It USED to be pinned bottom-left to dodge the bottom-right CTAs (naive-tester
               2026-07-20), but a hardcoded position is handed to the engine as a *preference* and

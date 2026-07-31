@@ -113,9 +113,33 @@ export default async function MyGenome() {
           <div className="mt-6 space-y-3">
             {g.sections.map((s) => (
               <article key={s.key} className="rounded-2xl border border-amber-200 bg-white overflow-hidden">
-                <div className="px-5 py-4 border-b border-amber-100">
-                  <p className="font-display font-bold text-lg">{s.title}</p>
-                  <p className="text-sm text-stone-500">{s.question}</p>
+                <div className="px-5 py-4 border-b border-amber-100 flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-display font-bold text-lg">{s.title}</p>
+                    <p className="text-sm text-stone-500">{s.question}</p>
+                  </div>
+                  {/* A BAND, not a percentage. Nobody knows how many facts a pricing section
+                      "should" contain, so a percentage would put a precise-looking number on a
+                      guess — in a document meant to be handed to a buyer. */}
+                  <span
+                    className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
+                      s.coverage === 'covered'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : s.coverage === 'building'
+                          ? 'bg-amber-100 text-amber-800'
+                          : s.coverage === 'thin'
+                            ? 'bg-orange-100 text-orange-800'
+                            : 'bg-stone-100 text-stone-500'
+                    }`}
+                  >
+                    {s.coverage === 'covered'
+                      ? 'Covered'
+                      : s.coverage === 'building'
+                        ? 'Building'
+                        : s.coverage === 'thin'
+                          ? 'Only a start'
+                          : 'Not captured'}
+                  </span>
                 </div>
                 <div className="px-5 py-4">
                   {s.entries.length === 0 ? (
@@ -126,7 +150,15 @@ export default async function MyGenome() {
                     <ul className="space-y-3">
                       {s.entries.map((e) => (
                         <li key={e.id}>
-                          <p className="text-stone-800 leading-relaxed">{e.content}</p>
+                          {/* The headline is what makes this read like a manual rather than a
+                              transcript. The detail stays underneath it, unchanged — a buyer's
+                              advisor skims the leads and reads the ones that matter. */}
+                          {e.headline ? (
+                            <p className="font-display font-semibold text-stone-900">{e.headline}</p>
+                          ) : null}
+                          <p className={`text-stone-800 leading-relaxed${e.headline ? ' text-sm text-stone-600' : ''}`}>
+                            {e.content}
+                          </p>
                           {/* Sourced to the conversation he said it in — the thing that makes this
                               evidence rather than an assertion when a buyer's accountant reads it. */}
                           <p className="text-xs text-stone-400 mt-1">
@@ -142,6 +174,28 @@ export default async function MyGenome() {
               </article>
             ))}
           </div>
+
+          {g.stillInYourHead.length > 0 && (
+            /* THE MOST VALUABLE THING ON THE PAGE, and the reason the public example is persuasive:
+               it names what has NOT been captured. A manual that only shows what it holds lets an
+               owner believe he is finished. Naming the gaps turns the Genome from a record into a
+               to-do list, and it is the honest answer to "what still walks out the door with you?". */
+            <section className="mt-6 rounded-2xl border-2 border-dashed border-stone-300 bg-stone-50 p-5">
+              <p className="font-display font-bold text-lg">Still only in your head</p>
+              <p className="text-sm text-stone-600 mt-1">
+                Kira has not captured anything for these yet. Each one is a question a buyer&apos;s
+                advisor will ask, and today only you can answer it.
+              </p>
+              <ul className="mt-3 space-y-2">
+                {g.stillInYourHead.map((sec) => (
+                  <li key={sec.key} className="text-stone-700">
+                    <span className="font-semibold">{sec.title}</span>
+                    <span className="text-stone-500"> — {sec.question}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           {g.unsorted.length > 0 && (
             /* Shown, never hidden. A memory the owner gave us that appears nowhere is exactly the
