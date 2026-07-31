@@ -43,6 +43,15 @@ const valueOf = (flag) => {
 
 const APPLY = has('--apply');
 const REVERT = has('--revert');
+/**
+ * Re-process rows that were already rewritten.
+ *
+ * Always from content_original, never from the current text — rewriting a rewrite compounds drift,
+ * and the original is the only wording we know came from the conversation. Needed because the first
+ * pass left the owner's name in three entries where he was the OBJECT of the sentence rather than
+ * its subject, which the prompt had not covered.
+ */
+const REDO = has('--redo');
 const USER = valueOf('--user');
 const LIMIT = Number(valueOf('--limit')) || 500;
 const MODEL = process.env.KIRA_EXTRACTION_MODEL || 'gpt-4.1-mini';
@@ -62,7 +71,17 @@ fact itself.
   OUT: "Wavecrest is the largest client; the relationship runs through Dave."
 
 If the fact is genuinely about the person rather than the business — what they prefer, believe,
-want, or how they like to work — write "The owner prefers/believes/wants…". Never use their name.
+want, or how they like to work — write "The owner prefers/believes/wants…".
+
+NEVER USE THEIR NAME, IN ANY POSITION. Not as the subject, and not as the object or possessive
+either — "ask Dennis to confirm" and "access to Dennis's emails" are the same mistake as "Dennis
+says". Write "the owner" where the person is genuinely required, and prefer a form that does not
+need them at all.
+
+  IN:  "When unclear, Dennis should be asked to specify which project."
+  OUT: "When the project is unclear, ask the owner which one is meant."
+  IN:  "The assistant does not have access to Dennis's emails."
+  OUT: "The assistant does not have access to the owner's emails." 
 
 Do not open every sentence with "The business". A manual states things directly: "Quotes are priced
 at cost plus 18%", not "The business prices quotes at cost plus 18%". Where a multi-sentence entry is
@@ -188,7 +207,9 @@ async function main() {
   // Rows already rewritten are skipped, which is what makes a second run harmless. 'none' rows are
   // skipped too: they are filtered out of the Genome, so rewriting them spends money on text the
   // owner will never read.
-  const candidates = (rows ?? []).filter((r) => !r.content_original && r.genome_section !== 'none');
+  const candidates = (rows ?? []).filter(
+    (r) => (REDO ? true : !r.content_original) && r.genome_section !== 'none',
+  );
   console.log(
     `${candidates.length} of ${rows?.length ?? 0} rows to consider.${APPLY ? '' : '  DRY RUN — nothing will be written. Pass --apply.'}\n`,
   );
@@ -201,7 +222,9 @@ async function main() {
 
   for (const row of candidates) {
     if (!namesByUser.has(row.user_id)) namesByUser.set(row.user_id, await ownerNamesFor(row.user_id));
-    const before = String(row.content ?? '').trim();
+    // On a redo, the ORIGINAL is the input. The current text is already one model pass away from
+    // what he actually said, and feeding it back in would compound that rather than correct it.
+    const before = String((REDO && row.content_original) || row.content || '').trim();
     if (!before) continue;
 
     let after;
@@ -235,7 +258,9 @@ async function main() {
     if (APPLY) {
       const { error: writeError } = await sb
         .from('kira_memory')
-        .update({ content: after, content_original: before })
+        // content_original is only set the FIRST time, so a redo never overwrites the true original
+        // with an intermediate rewrite.
+        .update({ content: after, content_original: row.content_original ?? before })
         .eq('id', row.id);
       if (writeError) {
         stats.rewritten -= 1;
