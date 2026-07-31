@@ -16,6 +16,7 @@ interface Valuation {
   readiness: number | null;
   currency: string;
   industry: string | null;
+  created_at: string;
 }
 
 export default async function DashboardPage({
@@ -53,7 +54,11 @@ export default async function DashboardPage({
   const list = agents ?? [];
 
   const { data: valuation } = user
-    ? await svc.from('business_valuations').select('gap, worth_today, worth_potential, readiness, currency, industry').eq('user_id', user.id).maybeSingle()
+    ? await svc
+        .from('business_valuations')
+        .select('gap, worth_today, worth_potential, readiness, currency, industry, created_at')
+        .eq('user_id', user.id)
+        .maybeSingle()
     : { data: null as Valuation | null };
 
   const { data: profile } = user
@@ -217,6 +222,31 @@ function GapDashboard({
         <div className="mt-4 inline-flex items-center gap-2 text-sm bg-white/15 rounded-full px-4 py-1.5">
           Transferability today: {readinessPct}/100 — we grow this every week
         </div>
+
+        {/* WHERE THIS NUMBER CAME FROM, AND HOW TO REPLACE IT.
+            Reported twice by testers as "the valuation doesn't carry into the account". The plumbing
+            was never the problem: /api/valuation/claim attaches a pre-signup valuation and FIRST ONE
+            WINS, deliberately, so the baseline every later movement is measured from cannot be
+            silently reset. But the rule was invisible. An owner who ran the numbers again saw three
+            different figures here, with no date, no industry and no way to re-run — and "it ignored
+            what I just did" is indistinguishable from broken.
+
+            Naming the date and the sector turns an invisible rule into a stated one, and the link
+            gives him the way back that he did not have. */}
+        <p className="mt-4 text-sm text-white/75">
+          Your baseline, taken{' '}
+          {new Date(valuation.created_at).toLocaleDateString('en-AU', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          })}
+          {valuation.industry ? ` · ${valuation.industry}` : ''}. It stays fixed so progress is
+          measured from one starting point.{' '}
+          <Link href="/business-valuation" className="underline underline-offset-2 hover:text-white">
+            Run the numbers again
+          </Link>
+          .
+        </p>
       </div>
 
       {/* How the process works */}
