@@ -8,56 +8,45 @@
 <!-- One of: ACTIVE_DEVELOPMENT | MAINTENANCE | BLOCKED | PAUSED | SHIPPED -->
 **Status**: ACTIVE_DEVELOPMENT
 
-## Verified as of this update
+## Verified as of this update (2026-07-31, end of session)
 
 | Check | Result |
 |---|---|
-| Working tree / branch | `main`, clean, nothing unpushed, no stashes |
-| Tests | **139/139 pass** (11 files, `npx vitest run`) |
-| Kira production | `dpl_C6Ztif6J4BLnfSw3a8Fg4FVeqkyn` **READY**, commit `8e226ae` = `origin/main` |
-| Orchestrator production | `dpl_95r25ezSU9MrusPWQ3pzUKNtYLLw` **READY**, commit `a4650f9` = `origin/main` |
-| `business_identity` in prod DB | **exists and populated** for the owner, `synced_to_orchestrator_at` stamped |
+| Working trees | kira / orchestrator / cais-shared-services all clean, all pushed |
+| Tests | **168 pass** (14 files) |
+| Kira production | READY on `e880614` |
+| Orchestrator production | READY on `382c2a9` |
+| Live agent fleet | **11/11** carry the tool-honesty + typed-input prompt sections, verified independently |
+| Voice | ✅ **operator-verified working** — reads naturally, recalls context, handles interruption |
+| Text transport | ✅ **verified end to end** against production (auth, continuity, persistence, refusals, distil) |
+| Share gate | ⛔ **CLOSED** — Ray failed round 4 |
 
-⚠️ Both repos ARE deployed. Older notes (incl. memory) said "neither repo is deployed yet" — that
-was true when written and is not true now.
+## What was done this session
 
-## What Was Just Done
-
-The 29–31 July arc is one thread: **the owner asked Kira for things and nothing was sent.** Each
-layer of that was a separate defect and each is now closed except the mirror.
-
-- **2026-07-31 — Whose name is on the email (`f57bc82`, Kira) + `PUT /v1/tenants/:id/identity`
-  (`f7a4775`, orchestrator).** `drainEmailOutbox` refuses to send without a tenant sender identity
-  (Spam Act footer, REGULATORY_INCLUSIONS I6) and **nothing had ever collected one** — dispatch
-  auto-provisions a tenant from an id and a name, so this was NULL for every future customer, not
-  just the owner. `/setup/business` now gates the dashboard, writes `business_identity`, and pushes
-  across the seam; `synced_to_orchestrator_at` is stamped only on a confirmed 200. Owner's row is
-  now filled: *The Trustee for Factory2Key Unit Trust*, ABN 51700805298, reply
-  `dennis@factory2key.com.au`.
-- **2026-07-31 — Drive connect (`31b6e6e` Kira / `a824c55` orchestrator) and Settings → Connected
-  accounts (`8e226ae` / `a4650f9`).** Tokens live in the orchestrator alongside the Xero ones —
-  neither product holds the other's service-role key — so only the *fact* of a connection crosses
-  the seam, never a credential. The status endpoint reports **granted** scope, not requested, and
-  `null` renders as "we could not find out" rather than "not connected".
-- **2026-07-31 — Drain unpinned + address guard (`ea5eb75`, orchestrator).** `/api/cron/drain` was
-  hardcoded to `SEED_TENANT`, so no real customer's mail was ever drained; 13 `done` rows were seed
-  traffic and made the system look healthy. Now drains every tenant, each in its own try/catch.
-  `usableRecipient` refuses the spelled-aloud shape (`m-c-m-d-e-n-n-i-s@gmail.com`).
-- **2026-07-30 — The status blob (`5611585`).** `/api/cron/reconcile-tasks` wrote the whole
-  `TaskStatus` object into `kira_tasks.status`; its guard compared an object to a string so it
-  rewrote the same damage every 20 min. Fixed with `live.status`, an `asTaskState()` runtime
-  validator replacing three bare casts, a CHECK constraint applied to prod, and a "Still open"
-  section on `/admin/asked-for` (which read only `unsupported`+`failed` — the reason the rows were
-  invisible even after their status was correct).
-- **2026-07-30 — First real client email went out**, incl. the $60,000 + GST quote for Trinh, with
-  Resend provider ids and the completion callback landing `done`. Its formatting defects (run-on
-  body, subject printed inside it, **no Reply-To** so client replies went to a mailbox belonging to
-  neither party) fixed in `33c3682`.
+- Task mirror gap closed (`await` + a discovery pass); 3 lost tasks recovered live.
+- Contact lookup built in the orchestrator; Drive + Contacts connected and granted.
+- Valuation persistence, provenance, and the builder industry-matcher fix.
+- Sign-in chrome: one Kira, business-named, marketing header and cross-sell removed.
+- Genome: entity split (52 AI-business memories parked), register rewrite, headlines, coverage
+  bands, "Still only in your head".
+- Typing to Kira built and proven; the spoken welcome-back fixed.
+- Two prompt sections applied to all 11 agents: never claim a check you did not make, and typed
+  messages arrive as ordinary turns.
+- Docs: `CONNECTOR_POLICY.md`, `CAPTURED_ASKS.md`, `OPEN_ITEMS.md`.
 
 ## What's Next
 
-**The full, current list is `docs/OPEN_ITEMS.md`** — written 2026-07-31 and kept there so it is not
-buried in a status file. The headline items:
+**START HERE: `docs/OPEN_ITEMS.md`** for everything outstanding, and `docs/CONNECTOR_POLICY.md` for
+how to decide what gets built next.
+
+**The immediate task — half-built, deliberately, at a clean line.** The orchestrator endpoint
+`GET /v1/tenants/:tenantId/lookup?kind=drive|contacts&q=` is built and deployed (`382c2a9`); Kira has
+nothing calling it. Remaining: tool webhook routes under `app/api/kira/webhooks/`, tool definitions
+following `lib/kira/swarm/doing-tools-def.mjs`, a **gated** prompt section, wiring that section into
+`scripts/patch-agent-capabilities.mjs`, then **deploy → reprovision → patch** in that order, then
+verify against the live fleet rather than trusting the 200.
+
+The other headline items:
 
 - [ ] **Verify a Factory2Key sending domain in Resend** (a DNS change on a *subdomain*, not website
       access) and resolve `from` per tenant — F2K mail currently shows a corporateaisolutions.com
