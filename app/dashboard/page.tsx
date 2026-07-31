@@ -138,12 +138,16 @@ export default async function DashboardPage({
               className="rounded-2xl border border-gray-200 bg-white p-5 hover:border-teal-300 hover:shadow-sm"
             >
               <div className="flex items-center justify-between">
-                {/* WAS the raw internal agent name — "Kira_Trinh_DevelopingThe_7f1c". That is a
-                    provisioning identifier: it carries another person's first name and a slice of a
-                    user id, and it was printed twice on the account dashboard of a product whose
-                    promise to advisors is that nothing crosses between clients. No access leaked;
-                    it did not have to. Seeing it is enough. */}
-                <h2 className="text-lg font-semibold text-gray-900">Kira</h2>
+                {/* TWO WRONGS, ONE LINE.
+                    It printed the raw provisioning identifier — "Kira_Trinh_DevelopingThe_7f1c" —
+                    which carries another person's first name and a slice of a user id, on the
+                    dashboard of a product that promises advisors nothing crosses between clients.
+                    Replacing it with the constant "Kira" then left six cards with identical titles
+                    and nothing to tell them apart, which is its own kind of useless.
+                    The journey is what actually distinguishes them, and it is already on the row. */}
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {journeyLabel(String(a.journey_type ?? ''))}
+                </h2>
                 <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium capitalize text-gray-600">
                   {String(a.journey_type ?? '')}
                 </span>
@@ -187,6 +191,22 @@ export default async function DashboardPage({
 }
 
 // The Business Value Gap Dashboard: the gap, how the 4-week process works, and the always-on entry.
+/**
+ * What to call a Kira on the dashboard.
+ *
+ * `journey_type` is the only thing on the row that differs between them, and it is already rendered
+ * as a pill beside the title — so the title said "Kira" six times while the distinguishing fact sat
+ * next to it in grey. Promoted rather than added: no new data, no new query.
+ */
+function journeyLabel(journey: string): string {
+  const map: Record<string, string> = {
+    business: 'Your business exec',
+    personal: 'Your thinking partner',
+    coach: 'Your coach',
+  };
+  return map[journey] ?? (journey ? `Kira — ${journey}` : 'Kira');
+}
+
 function GapDashboard({
   valuation,
   money,

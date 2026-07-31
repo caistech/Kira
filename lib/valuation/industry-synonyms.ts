@@ -32,9 +32,17 @@ export const INDUSTRY_SYNONYMS: Record<string, string> = {
   'air conditioning': 'HVAC',
   airconditioning: 'HVAC',
   refrigeration: 'HVAC',
-  builder: 'Heavy Construction',
-  building: 'Heavy Construction',
-  construction: 'Heavy Construction',
+  // BUILDERS DELIBERATELY RESOLVE TO NO SECTOR — see SYNONYM_GROUPS below.
+  //
+  // "builder" used to return Heavy Construction, which is civil work: roads, earthworks,
+  // infrastructure. A residential builder is not that, and it is the highest multiple in the
+  // Construction group (2.98), so the core ICP was handed the wrong number at question one — the
+  // very failure this table exists to prevent, in the one trade the product is built around.
+  //
+  // The honest answer is that the BizBuySell data has no residential/general building sector, and
+  // inventing a multiple for one would corrupt a sourced dataset with a guess. So a builder now
+  // sees the whole Construction group and picks, and if he picks nothing he gets the stated market
+  // average rather than a civil-infrastructure multiple wearing his name.
   carpenter: 'Painting & Trade Contracting',
   carpentry: 'Painting & Trade Contracting',
   chippy: 'Painting & Trade Contracting',
@@ -209,6 +217,52 @@ const normalise = (s: string) =>
  * Longest key first, so a more specific phrase beats a word contained inside it — "auto electrician"
  * must not be answered by "electrician".
  */
+/**
+ * Words that identify a GROUP but not a sector — show the group and let him choose.
+ *
+ * Some trades have no single right answer in the data. A residential builder is not Heavy
+ * Construction (civil), not Painting & Trade Contracting (subcontract trades) and not Concrete; the
+ * dataset simply has no bucket for him. Guessing one changes his headline number; saying "no match"
+ * and moving on leaves him on the market average without ever seeing that seven construction sectors
+ * exist.
+ *
+ * So these surface the whole group in the suggestion list. He is one tap from the right sector, and
+ * whatever he picks is a real sourced multiple rather than our approximation of him.
+ */
+export const SYNONYM_GROUPS: Record<string, string> = {
+  builder: 'Construction',
+  builders: 'Construction',
+  building: 'Construction',
+  'home builder': 'Construction',
+  'home building': 'Construction',
+  'house builder': 'Construction',
+  'residential builder': 'Construction',
+  'residential building': 'Construction',
+  'new homes': 'Construction',
+  'home renovation': 'Construction',
+  renovations: 'Construction',
+  renovator: 'Construction',
+  construction: 'Construction',
+  'construction company': 'Construction',
+  'general contractor': 'Construction',
+  contracting: 'Construction',
+  'shop fitting': 'Construction',
+  shopfitting: 'Construction',
+  extensions: 'Construction',
+};
+
+/** The group a typed phrase points at, when it points at a group rather than one sector. */
+export function synonymGroup(industry: string): string | null {
+  const q = (industry || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!q) return null;
+  if (SYNONYM_GROUPS[q]) return SYNONYM_GROUPS[q];
+  // Longest matching key wins, same rule as the sector table.
+  const hit = Object.keys(SYNONYM_GROUPS)
+    .filter((k) => q.includes(k))
+    .sort((a, b) => b.length - a.length)[0];
+  return hit ? SYNONYM_GROUPS[hit] : null;
+}
+
 export function synonymSector(industry: string): string | null {
   const q = normalise(industry);
   if (!q) return null;

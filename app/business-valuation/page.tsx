@@ -44,7 +44,7 @@ import {
 } from '@/lib/valuation/model';
 import { SECTOR_MULTIPLES } from '@/lib/valuation/sde-multiples';
 import { formatMoney, getCurrency, CURRENCIES, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
-import { synonymSector } from '@/lib/valuation/industry-synonyms';
+import { synonymGroup, synonymSector } from '@/lib/valuation/industry-synonyms';
 import { storeValuation, VALUATION_HANDOFF_KEY } from '@/lib/valuation/share';
 import {
   clearValuationLocal,
@@ -491,15 +491,27 @@ export default function BusinessValuationPage() {
               // The number was right and the message was lying, which is harder to trust than
               // being wrong consistently. So the synonym layer feeds the visible list too.
               const synonymHit = q ? synonymSector(q) : null;
+              // A word can point at a GROUP rather than one sector — "builder" is the case that
+              // matters, because the data has no residential-building bucket and the old table
+              // answered "Heavy Construction", i.e. roads and earthworks, at the highest multiple in
+              // the group. Showing him the seven construction sectors puts a real sourced multiple
+              // one tap away instead of our guess about which one he is.
+              const groupHit = q ? synonymGroup(q) : null;
               const matches = (q
                 ? SECTOR_MULTIPLES.filter(
                     (s) =>
                       s.name.toLowerCase().includes(q) ||
                       s.group.toLowerCase().includes(q) ||
                       (synonymHit ? s.name === synonymHit : false),
-                  )
+                    )
                 : SECTOR_MULTIPLES
-              ).slice(0, 8);
+              ).concat(
+                q && groupHit
+                  ? SECTOR_MULTIPLES.filter((s) => s.group === groupHit)
+                  : [],
+              );
+              const seenNames = new Set<string>();
+              const shown = matches.filter((s) => !seenNames.has(s.name) && seenNames.add(s.name)).slice(0, 8);
               const exact = SECTOR_MULTIPLES.some((s) => s.name.toLowerCase() === q);
               return (
                 <div>
@@ -529,7 +541,7 @@ export default function BusinessValuationPage() {
                       // On blur rather than per keystroke — a model call on the first field an
                       // owner touches would add latency and cost to every visitor.
                       const q = industryQuery.trim();
-                      if (!q || exact || matches.length > 0 || llmSector || llmTried === q) return;
+                      if (!q || exact || shown.length > 0 || llmSector || llmTried === q) return;
                       // Fire early so the answer is usually on screen before Next is pressed; next()
                       // awaits the same call as a backstop when it isn't.
                       void resolveIndustry(q);
@@ -539,9 +551,9 @@ export default function BusinessValuationPage() {
                     autoFocus
                     autoComplete="off"
                   />
-                  {industryQuery && !exact && matches.length > 0 && (
+                  {industryQuery && !exact && shown.length > 0 && (
                     <div className="mt-2 rounded-2xl border border-amber-200 bg-white overflow-hidden max-h-64 overflow-y-auto shadow-sm">
-                      {matches.map((s) => (
+                      {shown.map((s) => (
                         <button
                           key={s.name}
                           type="button"
