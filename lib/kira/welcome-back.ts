@@ -45,7 +45,10 @@ function toSpokenTopic(rawTopic: string): string {
   // First sentence only — the boundary can sit after a closing quote ("Executor AI." The agent…).
   const m = t.match(/[.!?]["”’']?\s+[A-Z]/);
   if (m && (m.index ?? 0) > 25) t = t.slice(0, (m.index ?? 0) + 1);
-  if (t.length > 140) t = t.slice(0, 140);
+  // Cut on a WORD boundary. At 140 characters this was severing mid-word, and she said it out loud:
+  // "…emphasizing a detailed, conversational approach ak." A machine reading a log is recoverable;
+  // a machine reading half a word is not.
+  if (t.length > 140) t = t.slice(0, t.lastIndexOf(' ', 140) > 40 ? t.lastIndexOf(' ', 140) : 140);
 
   // Rewrite the "The conversation began with X {verb}…" narration into second person.
   t = t.replace(/^the conversation (began|started|opened|kicked off) with /i, '');
@@ -53,15 +56,29 @@ function toSpokenTopic(rawTopic: string): string {
   t = t.replace(/^the user asking (the (agent|assistant) )?/i, 'you asked ');
   t = t.replace(/^the user (telling|informing) the (agent|assistant)( that)? /i, 'you told me ');
   t = t.replace(/^the user (requesting|wanting) /i, 'you wanted ');
-  t = t.replace(/^the user /i, 'you were ');
+  // "The user reiterated the need for…" was becoming "you WERE reiterated the need for…" — the
+  // rewrite assumed a gerund and these narrations are overwhelmingly past tense. Spoken aloud as the
+  // FIRST THING SHE SAYS, it is the sentence that decides whether she sounds like a person.
+  t = t.replace(/^the user /i, 'you ');
   t = t.replace(/^the (agent|assistant) (recalling|confirming|reviewing|discussing|summari[sz]ing) /i, 'we went over ');
   t = t.replace(/^the (agent|assistant) /i, 'we were ');
   t = t.replace(/\bthe user's\b/gi, 'your').replace(/\bthe user\b/gi, 'you');
+  // She is the agent. Left as "the agent" she talks about herself in the third person in the first
+  // sentence of the call, which sounds like a machine reading its own log.
+  t = t.replace(/\bthe (agent|assistant)\b/gi, 'me');
 
   // Drop a dangling opening quote whose partner was cut off with the rest of the sentence.
   if (((t.match(/["“”]/g) || []).length) % 2 === 1) t = t.replace(/\s*["“”][^"“”]*$/, '');
 
   t = t.replace(/[\s,;:.]+$/, '');
+
+  // LAST GATE, and it exists because every rule above is a heuristic over text nobody controls.
+  // A trailing one- or two-letter word is a truncation the cleanup did not catch; a remaining
+  // "the user"/"the agent" is a narration the rewrites missed. Either way she is about to SAY it, so
+  // returning nothing is better — the caller has an honest fallback for exactly this case.
+  const lastWord = t.split(/\s+/).pop() ?? '';
+  if (lastWord.length <= 2 && /^[a-z]+$/i.test(lastWord)) return '';
+  if (/\bthe (user|agent|assistant)\b/i.test(t)) return '';
   return t;
 }
 
@@ -76,7 +93,22 @@ export function buildWelcomeBackFirstMessage(
   if (!context?.has_history) return null;
 
   const name = firstName?.trim() || 'there';
-  const topic = context.last_topic ? toSpokenTopic(context.last_topic) : '';
+  const cleaned = context.last_topic ? toSpokenTopic(context.last_topic) : '';
+
+  // LAST GATE BEFORE SHE SAYS IT OUT LOUD.
+  //
+  // Everything toSpokenTopic does is a heuristic over text nobody controls — an LLM narration of a
+  // call, in whatever shape it came out. Two failures survive it and both were audible on 31 July:
+  // a truncation that severed a word ("…conversational approach ak") and a narration the rewrites
+  // did not reach, which leaves her talking about "the user" to the user.
+  //
+  // Checked HERE, at the point of use, rather than inside the cleanup: the cleanup returns a string
+  // and the caller decides whether it is speakable. An unspeakable topic is not a degraded greeting,
+  // it is a different and honest one — the fallback below already exists for exactly this.
+  const lastWord = cleaned.split(/\s+/).pop() ?? '';
+  const truncated = lastWord.length > 0 && lastWord.length <= 2 && /^[a-z]+$/i.test(lastWord);
+  const narration = /\bthe user\b/i.test(cleaned);
+  const topic = truncated || narration ? '' : cleaned;
 
   // Degrade, don't fake: history exists but no usable topic summary → acknowledge the return
   // honestly and ask, rather than inventing a subject.
