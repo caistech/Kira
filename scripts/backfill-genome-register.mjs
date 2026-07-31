@@ -61,8 +61,12 @@ fact itself.
   IN:  "He mentioned that Wavecrest is his biggest client and Dave is the contact."
   OUT: "Wavecrest is the largest client; the relationship runs through Dave."
 
-If the fact is genuinely about the person rather than the business — how they prefer to work, be
-contacted, or be spoken to — write "The owner prefers…" instead. Never use their name.
+If the fact is genuinely about the person rather than the business — what they prefer, believe,
+want, or how they like to work — write "The owner prefers/believes/wants…". Never use their name.
+
+Do not open every sentence with "The business". A manual states things directly: "Quotes are priced
+at cost plus 18%", not "The business prices quotes at cost plus 18%". Where a multi-sentence entry is
+all about the same subject, say it once and let the rest follow.
 
 EVERY figure, client name, product name, date and proper noun in the input must appear unchanged in
 the output. Do not add, infer, soften, summarise or explain anything. If the sentence already reads
@@ -89,22 +93,66 @@ async function rewrite(content) {
 }
 
 /**
+ * Every capitalised word that is capitalised only because a sentence started there.
+ *
+ * "This wizard should…" and "Believes the agent should…" are not proper nouns, and a rewrite that
+ * re-flows the sentences will legitimately lose them. The first version of this checked only whether
+ * the WHOLE string started with the word, which caught the first sentence and none of the rest — so
+ * four of the first five refusals were noise. A guard that cries wolf gets switched off, which is
+ * exactly how the thing it was protecting stops being protected.
+ */
+function sentenceInitial(text) {
+  return new Set((text.match(/(?:^|[.!?]\s+|\n\s*)([A-Z][a-zA-Z]{2,})/g) ?? []).map((m) => m.trim().replace(/^[.!?]\s*/, '')));
+}
+
+/**
  * Did the rewrite keep every fact?
  *
- * Numbers and capitalised words are the load-bearing parts of a manual entry — a price, a
- * percentage, a client, a suburb. A rewrite that drops one has changed the meaning, whatever it
- * looks like. Personal names are the deliberate exception: removing those is the entire point.
+ * Numbers and proper nouns are the load-bearing parts of a manual entry — a price, a percentage, a
+ * client, a suburb. A rewrite that drops one has changed the meaning, whatever it reads like.
+ *
+ * TWO DELIBERATE EXCEPTIONS, and both were claimed by the comment here before they were implemented.
+ * Sentence-initial words are not proper nouns. And the OWNER'S OWN NAME is the thing this rewrite
+ * exists to remove — refusing a rewrite for dropping "Dennis" would refuse every rewrite that
+ * worked. Names are passed in rather than guessed, because guessing which capitalised word is the
+ * owner is how a client's name gets treated as disposable.
  */
-function factsSurvived(before, after) {
+function factsSurvived(before, after, ownerNames = []) {
   const numbers = (s) => (s.match(/\d[\d,.]*/g) ?? []).map((n) => n.replace(/[,.]$/, ''));
   const missingNumbers = numbers(before).filter((n) => !after.includes(n));
 
-  const proper = (s) => [...new Set((s.match(/\b[A-Z][a-zA-Z]{2,}\b/g) ?? []))];
-  // Sentence-initial words and the owner's own name are expected to move or vanish.
-  const beforeProper = proper(before).filter((w) => !before.startsWith(w));
+  const initial = sentenceInitial(before);
+  const owner = new Set(ownerNames.map((n) => n.toLowerCase()));
+  const beforeProper = [...new Set((before.match(/\b[A-Z][a-zA-Z]{2,}\b/g) ?? []))].filter(
+    (w) => !initial.has(w) && !owner.has(w.toLowerCase()),
+  );
   const missingProper = beforeProper.filter((w) => !after.includes(w));
 
   return { ok: missingNumbers.length === 0 && missingProper.length === 0, missingNumbers, missingProper };
+}
+
+/**
+ * The owner's own name(s), so the guard does not defend them.
+ *
+ * Read from what he told us rather than inferred: the sign-off name he confirmed at setup, and his
+ * account first/last name. Anything else capitalised is somebody else's — a client, a site, a
+ * supplier — and stays protected.
+ */
+async function ownerNamesFor(userId) {
+  const names = new Set();
+  const add = (value) => {
+    for (const part of String(value ?? '').split(/\s+/)) if (part.length > 2) names.add(part);
+  };
+  const { data: identity } = await sb
+    .from('business_identity')
+    .select('sign_off_name')
+    .eq('user_id', userId)
+    .maybeSingle();
+  add(identity?.sign_off_name);
+  const { data: user } = await sb.from('users').select('first_name, name').eq('id', userId).maybeSingle();
+  add(user?.first_name);
+  add(user?.name);
+  return [...names];
 }
 
 async function main() {
@@ -147,7 +195,12 @@ async function main() {
 
   const stats = { unchanged: 0, rewritten: 0, refused: 0, failed: 0 };
 
+  // Looked up once per owner rather than per row — same answer every time, and this runs over
+  // hundreds of rows.
+  const namesByUser = new Map();
+
   for (const row of candidates) {
+    if (!namesByUser.has(row.user_id)) namesByUser.set(row.user_id, await ownerNamesFor(row.user_id));
     const before = String(row.content ?? '').trim();
     if (!before) continue;
 
@@ -165,7 +218,7 @@ async function main() {
       continue;
     }
 
-    const check = factsSurvived(before, after);
+    const check = factsSurvived(before, after, namesByUser.get(row.user_id) ?? []);
     if (!check.ok) {
       // Reported loudly and left alone. A dropped figure or client name in a document meant for a
       // buyer is the one outcome worth failing the whole backfill over.
