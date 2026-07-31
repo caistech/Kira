@@ -34,7 +34,11 @@ import {
   kiraFinancialsToolDef,
   kiraCheckTasksToolDef,
 } from '@/lib/kira/swarm/doing-tools-def.mjs';
-import { kiraSearchDriveToolDef, kiraLookupContactToolDef } from '@/lib/kira/lookup-tools-def.mjs';
+import {
+  kiraSearchDriveToolDef,
+  kiraReadDocumentToolDef,
+  kiraLookupContactToolDef,
+} from '@/lib/kira/lookup-tools-def.mjs';
 import { isUidToolUrl } from '@/lib/kira/uid-tools.mjs';
 
 // Kira's real tables mapped onto the canonical TableNames contract. The reconcile
@@ -304,6 +308,9 @@ export function kiraDoingTools(baseUrl: string): ConvAITool[] {
     // so she was asked for his Lot 91 files and for an address and answered from nothing — once by
     // declining, once by claiming a search that never ran. Reads only, so no approval step.
     kiraSearchDriveToolDef(baseUrl, headers) as ConvAITool,
+    // Finding a document and being unable to say what is in it is barely half an answer — he hit
+    // that within a minute of the search going live.
+    kiraReadDocumentToolDef(baseUrl, headers) as ConvAITool,
     kiraLookupContactToolDef(baseUrl, headers) as ConvAITool,
   ];
 }

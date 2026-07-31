@@ -36,6 +36,8 @@ export type LookupKind = 'drive' | 'contacts';
 
 export interface DriveHit {
   name: string;
+  /** Drive's own file id. The agent passes it to read_document to open the file. */
+  id: string;
   link: string | null;
   modifiedAt: string | null;
 }

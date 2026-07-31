@@ -32,7 +32,11 @@ import {
   updateAgent,
 } from '@caistech/elevenlabs-convai';
 import { kiraKnowledgeToolDef } from '../lib/kira/knowledge-tool-def.mjs';
-import { kiraSearchDriveToolDef, kiraLookupContactToolDef } from '../lib/kira/lookup-tools-def.mjs';
+import {
+  kiraSearchDriveToolDef,
+  kiraReadDocumentToolDef,
+  kiraLookupContactToolDef,
+} from '../lib/kira/lookup-tools-def.mjs';
 import { isUidToolUrl } from '../lib/kira/uid-tools.mjs';
 import {
   kiraDispatchToolDef,
@@ -117,6 +121,7 @@ function buildToolsForUser(userId, journeyType) {
           kiraFinancialsToolDef(APP_URL),
           kiraCheckTasksToolDef(APP_URL),
           kiraSearchDriveToolDef(APP_URL),
+          kiraReadDocumentToolDef(APP_URL),
           kiraLookupContactToolDef(APP_URL),
         ]
       : []),
