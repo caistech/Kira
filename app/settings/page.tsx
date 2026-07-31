@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getAuthUser, getCurrentAppUser } from '@/lib/auth';
 import { composePostalAddress, displayName, formatAbn } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
+import { fetchConnections, DRIVE_ACCESS_LABEL } from '@/lib/connectors/status';
 import { retryIdentitySync } from '@/app/setup/business/actions';
 import { getBetaGate, VOICE_ACTION, VOICE_COST_CAP_USD } from '@/lib/billing';
 import { denyReason, derivePlanState } from '@/lib/billing/plan-state';
@@ -27,6 +28,11 @@ export default async function SettingsPage() {
   } catch (error) {
     console.error('[settings] business identity unavailable:', error);
   }
+
+  // null means "we could not find out", which is NOT the same as "nothing is connected" — telling
+  // an owner his Drive is disconnected when it is working would send him to reconnect it for nothing.
+  const connections = appUser?.id ? await fetchConnections(appUser.id as string) : null;
+  const google = connections?.find((c) => c.provider === 'google' && !c.revoked) ?? null;
 
   // Read the free-month meter server-side. Degrade, don't fake: if the gate can't be read we omit
   // the panel rather than render a reassuring but fictional 0%.
@@ -167,6 +173,59 @@ export default async function SettingsPage() {
           >
             Add your business details
           </Link>
+        )}
+      </section>
+
+      {/*
+        Connected accounts. Shows the GRANTED access, not what was asked for — those differ whenever
+        a permission is unticked at consent, and a page reading "connected" over a Drive that returns
+        nothing is the failure this section exists to prevent.
+      */}
+      <section id="connections" className="mb-6 rounded-2xl border border-gray-200 bg-white p-6">
+        <h2 className="text-lg font-semibold text-gray-900">Connected accounts</h2>
+        <p className="mt-1 text-base text-gray-600">
+          Where Kira reads your existing work from, so she writes in your format instead of inventing
+          one.
+        </p>
+
+        {connections === null ? (
+          <p className="mt-4 text-base text-gray-600">
+            Can&apos;t check your connections right now. Nothing has changed — try again shortly.
+          </p>
+        ) : google ? (
+          <div className="mt-4">
+            <p className="text-base text-gray-900">
+              <span className="font-medium">Google</span> — connected as {google.account}
+            </p>
+            <p className="mt-1 text-base text-gray-600">
+              Drive:{' '}
+              {google.driveAccess ? (
+                DRIVE_ACCESS_LABEL[google.driveAccess]
+              ) : (
+                <span className="font-medium text-amber-700">not granted</span>
+              )}
+              {google.gmail ? ' · Gmail: connected' : null}
+            </p>
+            {google.lastError ? (
+              <p className="mt-2 text-base text-rose-600">{google.lastError}</p>
+            ) : null}
+            <Link
+              href="/setup/drive"
+              className="mt-4 inline-block min-h-[44px] rounded-lg border border-gray-300 px-4 py-2.5 text-base font-semibold text-gray-800"
+            >
+              Change access or reconnect
+            </Link>
+          </div>
+        ) : (
+          <>
+            <p className="mt-4 text-base text-gray-600">Nothing connected yet.</p>
+            <Link
+              href="/setup/drive"
+              className="mt-4 inline-block min-h-[44px] rounded-lg bg-teal-600 px-4 py-2.5 text-base font-semibold text-white"
+            >
+              Connect Google Drive
+            </Link>
+          </>
         )}
       </section>
 
