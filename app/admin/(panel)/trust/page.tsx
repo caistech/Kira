@@ -60,8 +60,24 @@ type Refusal = {
   asked: string;
   reason: string | null;
   created_at: string;
+  declined_because: string | null;
   users: { email: string | null } | null;
   agent: { agent_name: string | null } | null;
+};
+
+/**
+ * The four kinds of refusal, in the owner's language rather than the enum's.
+ *
+ * Shown per row because the classification is what keeps this log worth reading: a refusal that
+ * cannot say WHICH kind it is is usually a tool failure wearing a refusal's clothes, which is the
+ * one thing that erodes the record. Rows written before 2026-08-01 carry no classification and are
+ * labelled as such rather than quietly rendered as though they had one.
+ */
+const DECLINED_LABEL: Record<string, string> = {
+  no_approval: 'not approved',
+  not_asked_to_keep: 'not asked to keep it',
+  unverified: 'not verified',
+  outside_scope: 'not something she does',
 };
 
 /**
@@ -147,7 +163,9 @@ export default async function TrustPage() {
       .limit(25),
     svc
       .from('kira_refusals')
-      .select('id, source, asked, reason, created_at, users:user_id (email), agent:kira_agent_id (agent_name)')
+      .select(
+        'id, source, asked, reason, created_at, declined_because, users:user_id (email), agent:kira_agent_id (agent_name)',
+      )
       .order('created_at', { ascending: false })
       .limit(50),
   ]);
@@ -385,6 +403,18 @@ export default async function TrustPage() {
                     {isSyntheticIdentity(r) && (
                       <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-semibold text-violet-800">
                         red team
+                      </span>
+                    )}
+                    {r.declined_because ? (
+                      <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-800">
+                        {DECLINED_LABEL[r.declined_because] ?? r.declined_because}
+                      </span>
+                    ) : (
+                      /* Not decoration. An unclassified row predates the guard, and the reason the
+                         guard exists is that some of them are tool failures rather than refusals —
+                         so they are marked, not blended in. */
+                      <span className="rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-medium text-stone-500">
+                        unclassified
                       </span>
                     )}
                     <span className="text-xs text-gray-400">{age(r.created_at)}</span>

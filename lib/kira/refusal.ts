@@ -18,6 +18,22 @@ function json(status: number, body: unknown): Response {
 /** Longest text kept per field. A refusal is a sentence; a paragraph here is a model rambling. */
 const MAX_FIELD = 600;
 
+/**
+ * The only kinds of refusal there are. A tool failure has no honest value here, which is the point:
+ * the classification is required, so a failure cannot be logged as a refusal without the model
+ * asserting one of these four is true — and the DB CHECK rejects anything invented.
+ *
+ * This replaced a prose prohibition that failed in production 24 minutes after shipping. See
+ * lib/kira/refusal-tool-def.mjs for the full account.
+ */
+const DECLINED_BECAUSE = ['no_approval', 'not_asked_to_keep', 'unverified', 'outside_scope'] as const;
+type DeclinedBecause = (typeof DECLINED_BECAUSE)[number];
+
+function parseDeclinedBecause(value: unknown): DeclinedBecause | null {
+  const v = String(value ?? '').trim();
+  return (DECLINED_BECAUSE as readonly string[]).includes(v) ? (v as DeclinedBecause) : null;
+}
+
 export async function handleRecordRefusal(req: Request): Promise<Response> {
   let body: Record<string, unknown>;
   try {
@@ -34,6 +50,25 @@ export async function handleRecordRefusal(req: Request): Promise<Response> {
   // No `asked`, no record. A row that cannot say what was refused is not evidence of anything, and
   // one of those in the log is enough to make a buyer distrust the rest of it.
   if (!asked) return json(200, { success: true, recorded: false });
+
+  // THE GUARD. An unclassified or invented value is not recorded, because the overwhelmingly likely
+  // cause is a tool failure being logged as a refusal — the exact contamination this log cannot
+  // survive. Logged loudly server-side rather than silently dropped: if this fires often it means
+  // the prompt is still teaching the confusion, and that is worth seeing.
+  //
+  // Still a 200 with success:true. She has already told the owner she would not do the thing; the
+  // only effect of surfacing a logging problem to her here is that she interrupts a refusal to talk
+  // about our database.
+  const declinedBecause = parseDeclinedBecause(body.declined_because);
+  if (!declinedBecause) {
+    console.warn(
+      '[refusal] refused to record an unclassified refusal — likely a tool failure. asked=%s reason=%s declined_because=%o',
+      asked.slice(0, 120),
+      (reason ?? '').slice(0, 120),
+      body.declined_because,
+    );
+    return json(200, { success: true, recorded: false, reason: 'no_classification' });
+  }
 
   try {
     const supabase = createServiceClient();
@@ -64,6 +99,7 @@ export async function handleRecordRefusal(req: Request): Promise<Response> {
       source: 'agent',
       asked,
       reason,
+      declined_because: declinedBecause,
     });
     if (error) throw error;
     return json(200, { success: true, recorded: true });

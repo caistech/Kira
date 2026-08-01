@@ -211,6 +211,12 @@ async function recordRefusal(args: {
   asked: string;
   reason: string | null;
   taskId?: string | null;
+  /**
+   * Which kind of refusal. Defaults to `no_approval` because that is what this path OBSERVES with
+   * certainty — approve_task reached without an explicit yes. Unlike the conversational tool, there
+   * is nothing to classify and nothing to get wrong: the server saw the missing approval itself.
+   */
+  declinedBecause?: 'no_approval' | 'not_asked_to_keep' | 'unverified' | 'outside_scope';
 }): Promise<void> {
   try {
     const supabase = createServiceClient();
@@ -227,6 +233,7 @@ async function recordRefusal(args: {
       asked: args.asked,
       reason: args.reason,
       task_id: args.taskId ?? null,
+      declined_because: args.declinedBecause ?? 'no_approval',
     });
   } catch (error) {
     console.error('[swarm] could not record a refusal (ignored):', error);
