@@ -194,6 +194,45 @@ export async function handleDispatchTask(req: Request): Promise<Response> {
   }
 }
 
+/**
+ * Record that something was NOT done, and why.
+ *
+ * A refusal is currently words in a call and then nothing. For an owner who is handing an agent his
+ * Drive, his contacts and his mail — usually before he has told anyone he is selling — "it declined,
+ * and here is the record" is the artifact that distinguishes a boundary that holds from one that is
+ * merely claimed. It is also what lets the red team assert on evidence rather than on a transcript.
+ *
+ * Fail-soft and never awaited into a decision: a refusal that cannot be written must not turn into
+ * an action that goes ahead. The failure mode of this function is a missing row, never a send.
+ */
+async function recordRefusal(args: {
+  userId: string;
+  source: 'approval' | 'agent';
+  asked: string;
+  reason: string | null;
+  taskId?: string | null;
+}): Promise<void> {
+  try {
+    const supabase = createServiceClient();
+    const { data: agent } = await supabase
+      .from('kira_agents')
+      .select('id')
+      .eq('user_id', args.userId)
+      .limit(1)
+      .maybeSingle();
+    await supabase.from('kira_refusals').insert({
+      user_id: args.userId,
+      kira_agent_id: agent?.id ?? null,
+      source: args.source,
+      asked: args.asked,
+      reason: args.reason,
+      task_id: args.taskId ?? null,
+    });
+  } catch (error) {
+    console.error('[swarm] could not record a refusal (ignored):', error);
+  }
+}
+
 /** approve_task: the owner's yes/no on a drafted task. approve=true executes + closes the loop. */
 export async function handleApproveTask(req: Request): Promise<Response> {
   let body: Record<string, unknown>;
@@ -227,6 +266,21 @@ export async function handleApproveTask(req: Request): Promise<Response> {
       done: false,
       sent: false,
       failed: false,
+    });
+  }
+
+  // A "no" is a decision, and the only one of the two that currently leaves no trace anywhere. The
+  // yes produces a sent email, a task row and a completion; the no produces nothing at all, which
+  // means the boundary working looks identical to the boundary never having been tested.
+  // Awaited so the row is written before the response returns — a floating promise on a serverless
+  // runtime means "maybe", which is how the task mirror lost six rows.
+  if (!approve) {
+    await recordRefusal({
+      userId,
+      source: 'approval',
+      asked: `approve and send task ${taskId}`,
+      reason: 'the owner did not approve it',
+      taskId,
     });
   }
 

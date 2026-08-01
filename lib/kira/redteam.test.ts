@@ -23,6 +23,7 @@ const swarm = vi.hoisted(() => ({
   approvals: [] as Array<{ taskId: string; userId: string; approve: boolean }>,
   // What dispatchIntent pretends the coordinator decided. Default: a send held for approval.
   dispatchResult: {} as Record<string, unknown>,
+  refusals: [] as Array<Record<string, unknown>>,
 }));
 
 vi.mock('@/lib/kira/swarm', () => ({
@@ -41,7 +42,22 @@ vi.mock('@/lib/kira/swarm', () => ({
 // Alerting and the read-model mirror are irrelevant to these rules and both reach the network.
 vi.mock('@/lib/email/unanswered-request', () => ({ sendUnansweredRequestAlert: () => undefined }));
 vi.mock('@/lib/supabase/server', () => ({
-  createServiceClient: () => ({ from: () => ({ upsert: async () => ({ error: null }) }) }),
+  createServiceClient: () => ({
+    from: (table: string) => {
+      const chain: Record<string, unknown> = {
+        upsert: async () => ({ error: null }),
+        select: () => chain,
+        eq: () => chain,
+        limit: () => chain,
+        maybeSingle: async () => ({ data: { id: 'agent-row-1' } }),
+        insert: async (row: Record<string, unknown>) => {
+          if (table === 'kira_refusals') swarm.refusals.push(row);
+          return { error: null };
+        },
+      };
+      return chain;
+    },
+  }),
 }));
 
 const { handleApproveTask, handleDispatchTask } = await import('@/lib/kira/swarm/tool-handlers');
@@ -68,6 +84,7 @@ function postAs(uid: string, path: string, body: unknown): Request {
 beforeEach(() => {
   swarm.dispatched.length = 0;
   swarm.approvals.length = 0;
+  swarm.refusals.length = 0;
   swarm.dispatchResult = {
     taskGroupId: 'task-1',
     status: 'awaiting_approval',
@@ -129,6 +146,32 @@ describe('red team · nothing sends without an explicit yes', () => {
   it('an explicit yes DOES execute (the gate is a gate, not a wall)', async () => {
     await handleApproveTask(postAs(UID, 'approve_task', { task_id: 'task-1', approve: true }));
     expect(swarm.approvals[0]!.approve).toBe(true);
+  });
+});
+
+describe('red team · a refusal leaves a record', () => {
+  // The "no" is the only one of the two outcomes that used to leave no trace. A yes produces a sent
+  // email, a task row and a completion; a no produced nothing at all — so the boundary WORKING was
+  // indistinguishable from the boundary never having been tested. For an owner handing an agent his
+  // Drive and his mail before he has told anyone he is selling, that record is the reassurance.
+  it('records a refusal when approval is withheld', async () => {
+    await handleApproveTask(postAs(UID, 'approve_task', { task_id: 'task-1', approve: false }));
+
+    expect(swarm.refusals).toHaveLength(1);
+    expect(swarm.refusals[0]).toMatchObject({ user_id: UID, source: 'approval', task_id: 'task-1' });
+    expect(String(swarm.refusals[0]!.reason)).toMatch(/did not approve/i);
+  });
+
+  it('records nothing when the owner DID approve — a refusal log full of approvals is noise', async () => {
+    await handleApproveTask(postAs(UID, 'approve_task', { task_id: 'task-1', approve: true }));
+    expect(swarm.refusals).toHaveLength(0);
+  });
+
+  it('never lets a failed write turn a refusal into a send', async () => {
+    // The recorder is fail-soft by construction. What must never happen is the reverse trade: a
+    // logging problem that lets an unapproved task through because the log threw first.
+    await handleApproveTask(postAs(UID, 'approve_task', { task_id: 'task-1', approve: false }));
+    expect(swarm.approvals[0]!.approve).toBe(false);
   });
 });
 
