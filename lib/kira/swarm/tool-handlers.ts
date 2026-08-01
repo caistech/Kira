@@ -18,6 +18,7 @@ import {
   type RecipientBearingArtifact,
 } from '@/lib/kira/swarm/recipient';
 import { createServiceClient } from '@/lib/supabase/server';
+import { refuseThirdPartyDisclosure } from '@/lib/kira/speaking-to';
 
 /** True when dispatch is going to the orchestrator rather than Kira's own local stub. */
 function usingRemoteBrain(): boolean {
@@ -252,6 +253,11 @@ export async function handleApproveTask(req: Request): Promise<Response> {
   const userId = uidFrom(req);
   if (!userId) return json(200, { success: false, error: 'No user identity on this request' });
 
+  // The disclosure gate, on the one tool here that ACTS. Sending on the say-so of somebody who has
+  // announced they are not the owner is worse than showing them something.
+  const refusedApproval = refuseThirdPartyDisclosure(body);
+  if (refusedApproval) return refusedApproval;
+
   const taskId = String(body.task_id || '').trim();
   if (!taskId) return json(400, { success: false, error: 'Missing task_id' });
   // Default to NOT sending: approval must be explicit. Only an explicit truthy approve executes.
@@ -321,6 +327,19 @@ export async function handleApproveTask(req: Request): Promise<Response> {
 export async function handleCheckTasks(req: Request): Promise<Response> {
   const userId = uidFrom(req);
   if (!userId) return json(200, { success: false, error: 'No user identity on this request' });
+
+  // The disclosure gate. This is the tool the red team's caller actually got answers out of — "what
+  // has he got outstanding with us" — so it reads the body purely for `speaking_to`. Parse failures
+  // fall through to the owner's own view, which is the safe direction: the cost of being wrong here
+  // is refusing the real owner his own outstanding work.
+  let body: unknown = null;
+  try {
+    body = await req.json();
+  } catch {
+    /* check_tasks takes no other parameters — an unparseable body is not a reason to refuse him */
+  }
+  const refusedLedger = refuseThirdPartyDisclosure(body);
+  if (refusedLedger) return refusedLedger;
 
   const ledger = await readTaskLedger(userId);
   return json(200, {

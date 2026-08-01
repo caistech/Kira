@@ -7,6 +7,7 @@
 // @machine-callable — called by ElevenLabs, never a browser.
 
 import { toolSecretOk } from '@/lib/kira/convai';
+import { refuseThirdPartyDisclosure } from '@/lib/kira/speaking-to';
 import { readDocument } from '@/lib/kira/document';
 
 export const runtime = 'nodejs';
@@ -25,6 +26,9 @@ export async function POST(req: Request) {
   let fileId = '';
   try {
     const body = await req.json();
+    // The disclosure gate. She is still talking to whoever is there; his books are not.
+    const refused = refuseThirdPartyDisclosure(body);
+    if (refused) return refused;
     fileId = String(body?.file_id ?? '').trim();
   } catch {
     return Response.json({ ok: false, message: 'Invalid request' }, { status: 400 });

@@ -56,7 +56,14 @@ describe('the tool schemas are PROJECTED, never retyped', () => {
 
   it('keeps the parameter contract (file_id from a previous search, not a name)', () => {
     const read = textToolsFor(['read_document'])[0]!;
-    expect(read.function.parameters).toMatchObject({ required: ['file_id'] });
+    expect(read.function.parameters.required).toContain('file_id');
+    // Asserted by CONTAINMENT rather than equality, because the disclosure gate adds `speaking_to`
+    // to every tool on that surface and an exact-array assertion would fail the moment a shared
+    // guard is applied — punishing exactly the change that is supposed to be applied uniformly.
+    // The property under test is that the id comes from a previous search, not that this is the
+    // only parameter.
+    expect(read.function.parameters.required).toContain('speaking_to');
+    expect(Object.keys(read.function.parameters.properties as Record<string, unknown>)).toContain('file_id');
   });
 });
 
