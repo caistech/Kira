@@ -168,6 +168,103 @@ const LIFECYCLE_TOOLS = new Set([
   'update_conversation_topic',
 ]);
 
+/* ------------------------------------------------------------------------------------------------
+ * SPECULATION ABOUT WORK SHE HAS NOT CHECKED
+ *
+ * The defect, in her own words, from a red-team transcript: "it looks like it's already been sent."
+ * Nothing had been sent. The owner had asserted a false approval, and she handed the false premise
+ * back to him as probable fact — which is worse than doing the thing, because he now believes it on
+ * her authority rather than his own.
+ *
+ * `taskLedgerSection` in prompts.ts forbids that sentence VERBATIM, quoting it as the anti-example.
+ * It did not hold. That is the fourth instance of the same lesson on this product: a request is not
+ * a mechanism, and every guard that has actually worked hooked something in code — declined_because
+ * on record_refusal, about_business on save_memory, speaking_to on the disclosure tools, the entity
+ * decorator on the memory pair.
+ *
+ * WHY THIS ONE CAN ONLY BE BUILT HERE. On the voice transport the decision to call a tool is made
+ * inside ElevenLabs, and all we can do is ask. On the typed transport that decision runs in our own
+ * loop — so instead of asking her to check before she speaks, we can decline to deliver a claim she
+ * has not checked, run the check ourselves, and make her answer again with the ledger in front of
+ * her. The asymmetry is real and worth stating plainly: the mechanism is cheap here and impossible
+ * there, so this transport is where the behaviour is corrected and measured.
+ *
+ * IT GROUNDS RATHER THAN CENSORS. Nothing is deleted or rewritten by us — she is given the facts and
+ * asked again. A filter that stripped the sentence would leave the owner with a reply that dodges his
+ * question, which is its own kind of dishonesty.
+ * ---------------------------------------------------------------------------------------------- */
+
+/**
+ * A completed-work claim: sent, done, approved, dealt with, already gone.
+ *
+ * Past forms only. "send" and "I'll send" are not claims about what happened, and matching them
+ * would ground every ordinary offer.
+ */
+const COMPLETION_CLAIM: RegExp[] = [
+  // "that has been sent", "it was emailed", "it's all done", "I've dealt with it"
+  /\b(has|have|had|was|were|is|it'?s|that'?s|i'?ve)\b[^.!?]{0,40}\b(been\s+)?(sent|emailed|delivered|actioned|approved|drafted|dispatched|done|handled|sorted|dealt with|taken care of|gone out|went out)\b/,
+  // "already sent", "already gone out to Dave"
+  /\balready\b[^.!?]{0,30}\b(sent|gone|went|emailed|done|actioned|approved|handled|dealt|drafted)\b/,
+  // The hedged form, which is the one actually observed and the most damaging: it confirms his false
+  // memory while sounding careful.
+  /\b(looks like|seems|appears|must have|may have|might have|probably|i think|i believe)\b[^.!?]{0,50}\b(sent|gone|went|emailed|done|actioned|approved|handled|dealt|drafted)\b/,
+];
+
+/**
+ * Forms that are NOT claims about the state of work, checked first.
+ *
+ * Offers, questions and conditionals all contain the same verbs as the failure and mean the opposite
+ * of it. Grounding those would add a check and a re-answer to the commonest, most correct sentence
+ * she produces ("shall I send it once you've approved?"), which is how a guard earns its way out of
+ * a codebase.
+ */
+const NOT_A_CLAIM =
+  /\b(shall i|should i|would you like|do you want|want me to|i'?ll\b|i will\b|i can\b|i could\b|once you|as soon as you|when you|if you|before i|ready to)\b/;
+
+/**
+ * Does this reply assert something about whether work has happened?
+ *
+ * Sentence by sentence, because a reply routinely contains both shapes — "Nothing has gone out yet.
+ * Shall I send it now?" — and judging the whole blob would let one half mask the other.
+ *
+ * Deliberately fires on NEGATIVE claims too ("nothing has been sent"). An unchecked denial is the
+ * same defect wearing a safer face: she cannot know it, and if a task is sitting dispatched she has
+ * just told him the opposite of the truth. The check is cheap and the denial becomes the stronger
+ * sentence for having been made from the ledger.
+ */
+export function claimsWorkState(reply: string): boolean {
+  const sentences = reply
+    .toLowerCase()
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  return sentences.some((sentence) => {
+    if (sentence.endsWith('?')) return false;
+    if (NOT_A_CLAIM.test(sentence)) return false;
+    return COMPLETION_CLAIM.some((pattern) => pattern.test(sentence));
+  });
+}
+
+/**
+ * What she is told when a claim is intercepted.
+ *
+ * The last line is the one that matters, and it is a limit on the LEDGER rather than on her: the
+ * ledger records what she was asked to do, so an absent row means she has no record of it — not that
+ * it never happened. He may well have sent it himself from his own laptop. Overcorrecting a
+ * speculative "it's been sent" into a confident "it has not been sent" would just swap one
+ * unsupported claim for another.
+ */
+export const GROUNDING_INSTRUCTION =
+  'STOP. You were about to tell the owner something about whether work has been done, sent or ' +
+  'approved, and you had not checked. The current task ledger has just been read for you and is ' +
+  'below.\n\nAnswer him again, using ONLY what the ledger shows. Be definite: say what it says. ' +
+  'Never say "it looks like", "it seems", "it may already have been" or anything else that hands ' +
+  'him a guess as though it were a fact — that sentence is how a false memory gets confirmed on ' +
+  'your authority.\n\nIf the ledger has no record of the thing he is asking about, say exactly ' +
+  'that: you have no record of it being sent, and it is not sitting here waiting. Do not say it was ' +
+  'never sent — the ledger only covers what he asked YOU to do, and he may have done it himself.';
+
 /** A Request shaped exactly like the one ElevenLabs' webhook would produce, minus the network. */
 function asToolRequest(name: string, ownerId: string, args: Record<string, unknown>): Request {
   return new Request(`https://kira.internal/api/kira/webhooks/${name}?uid=${encodeURIComponent(ownerId)}`, {

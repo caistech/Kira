@@ -33,7 +33,7 @@ import { getCurrentAppUser, isCurrentUserAdmin } from '@/lib/auth';
 import { haltState } from '@/lib/kill-switch';
 import { KIRA_CONVAI_TABLES } from '@/lib/kira/convai';
 import { createMemoryExtractor } from '@/lib/kira/memory-extract';
-import { runTextTool, textToolsFor } from '@/lib/kira/text-tools';
+import { claimsWorkState, GROUNDING_INSTRUCTION, runTextTool, textToolsFor } from '@/lib/kira/text-tools';
 import { createServiceClient } from '@/lib/supabase/server';
 import { sweepConversationForRefusals } from '@/lib/kira/refusal-sweep';
 import { parkedOtherBusinesses } from '@/lib/kira/other-businesses';
@@ -361,7 +361,7 @@ export async function POST(req: NextRequest) {
     .order('created_at', { ascending: true })
     .limit(HISTORY_TURNS);
 
-  const facts = await recalledFacts(supabase, agent.user_id as string);
+  const facts = await recalledFacts(supabase, agent.user_id as string);
 
   const messages = [
     { role: 'system' as const, content: `${systemPrompt}${facts}\n\nThe owner is TYPING to you rather than speaking. Reply in the same voice you would use aloud, but write it — no stage directions, no "*smiles*", and keep it short enough to read on a phone.` },
@@ -431,6 +431,56 @@ export async function POST(req: NextRequest) {
         toolsUsed.push(name);
 
         working.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(result) });
+      }
+    }
+
+    /* -------------------------------------------------------------- */
+    /* A claim about work she never checked — grounded, not delivered. */
+    /* -------------------------------------------------------------- */
+    //
+    // She speculates. "It looks like it's already been sent" is the observed sentence, it is the
+    // most damaging thing she does — it confirms a false approval on her own authority — and the
+    // prompt forbids it verbatim without effect. Here the tool-call decision is OUR code, so the
+    // claim is intercepted, check_tasks is run, and she answers again with the ledger in front of
+    // her. See lib/kira/text-tools.ts for why this cannot be built on the voice transport.
+    if (
+      reply &&
+      !toolsUsed.includes('check_tasks') &&
+      tools.some((t) => t.function.name === 'check_tasks') &&
+      claimsWorkState(reply)
+    ) {
+      const ledger = await runTextTool('check_tasks', {}, agent.user_id as string);
+      toolsUsed.push('check_tasks(forced)');
+
+      const groundedRes = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        // No tools on the re-ask: she has the facts and owes him a sentence, and another round of
+        // calls is how a bounded correction becomes a loop.
+        body: JSON.stringify({
+          model,
+          max_tokens: 600,
+          messages: [
+            ...messages,
+            { role: 'assistant', content: reply },
+            { role: 'system', content: `${GROUNDING_INSTRUCTION}\n\nTASK LEDGER:\n${JSON.stringify(ledger)}` },
+          ],
+        }),
+      });
+
+      const groundedReply = groundedRes.ok
+        ? String((await groundedRes.json())?.choices?.[0]?.message?.content ?? '').trim()
+        : '';
+
+      if (groundedReply) {
+        reply = groundedReply;
+        console.warn('[chat/text] grounded a claim about work state — check_tasks had not been called');
+      } else {
+        // Falls back to what she said. Deliberate, and the weaker half of this guard: with the
+        // grounding call down there is no better sentence available, and withholding her answer
+        // would cost the owner his reply to fix a wording problem. Logged at error level because a
+        // guard that quietly stops correcting is the failure this whole file exists to notice.
+        console.error('[chat/text] could not ground a work-state claim — delivering it unchecked');
       }
     }
   } catch (error) {

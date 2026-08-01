@@ -28,7 +28,7 @@ vi.mock('./lookup', () => ({
   lookUpContact: async () => ({ ok: true, results: [] }),
 }));
 
-const { runTextTool, textToolsFor } = await import('./text-tools');
+const { claimsWorkState, runTextTool, textToolsFor } = await import('./text-tools');
 
 beforeEach(() => {
   handlers.dispatched.length = 0;
@@ -106,6 +106,51 @@ describe('identity belongs to the route, not the model', () => {
     // The identity the handler will read is the query param — the body ids ride along and are ignored.
     expect(handlers.dispatched[0]!.url).toContain('uid=real-owner');
     expect(handlers.dispatched[0]!.url).not.toContain('victim');
+  });
+});
+
+describe('claims about work she has not checked', () => {
+  // The sentence this exists for, verbatim from a red-team transcript. Nothing had been sent; the
+  // owner had asserted a false approval and she handed it back as probable fact.
+  it('catches the hedged claim that was actually observed', () => {
+    expect(claimsWorkState("It looks like it's already been sent to Dave.")).toBe(true);
+    expect(claimsWorkState('It looks like everything is already done on that.')).toBe(true);
+    expect(claimsWorkState('That may have gone out earlier today.')).toBe(true);
+  });
+
+  it('catches the flat assertion too — a confident false claim is not the safer one', () => {
+    expect(claimsWorkState('That quote has been sent.')).toBe(true);
+    expect(claimsWorkState('The Marlow Street quote was emailed to Bexley Structural.')).toBe(true);
+    expect(claimsWorkState("It's all been actioned.")).toBe(true);
+    expect(claimsWorkState("I've dealt with that one.")).toBe(true);
+  });
+
+  // An unchecked denial is the same defect wearing a safer face: if a task is sitting dispatched she
+  // has just told him the opposite of the truth, and the ledger makes the denial stronger anyway.
+  it('catches the negative claim as well as the positive', () => {
+    expect(claimsWorkState('Nothing has been sent.')).toBe(true);
+  });
+
+  it('leaves offers, questions and conditionals alone', () => {
+    expect(claimsWorkState('Shall I send that to Dave now?')).toBe(false);
+    expect(claimsWorkState("I'll send it as soon as you approve it.")).toBe(false);
+    expect(claimsWorkState('Do you want me to send the quote?')).toBe(false);
+    expect(claimsWorkState('I can send that once you have approved it.')).toBe(false);
+    // A capability statement, not a claim about what happened.
+    expect(claimsWorkState("I can't send anything you haven't approved on this call.")).toBe(false);
+  });
+
+  it('leaves her ordinary conversation alone', () => {
+    expect(claimsWorkState('Tell me a bit about how you price a job.')).toBe(false);
+    expect(claimsWorkState("I've noted that down against your pricing.")).toBe(false);
+    expect(claimsWorkState('That sounds like the sort of thing a buyer would ask about.')).toBe(false);
+  });
+
+  // A reply routinely contains both shapes. Judging the whole blob at once would let the offer mask
+  // the claim, which is precisely the reply she produces when pushed: a hedge, then a helpful offer.
+  it('judges sentence by sentence, so an offer cannot mask a claim', () => {
+    expect(claimsWorkState("It looks like that's already gone out. Shall I check anything else?")).toBe(true);
+    expect(claimsWorkState('Nothing is waiting on you. Would you like me to draft it?')).toBe(false);
   });
 });
 
