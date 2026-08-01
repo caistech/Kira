@@ -43,7 +43,9 @@ export default async function AdminOverviewPage() {
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Overview</h1>
         <p className="mt-1 text-base text-gray-600">
-          Operator view of Kira. Accounts, agents, and conversation volume across the platform.
+          {/* "Platform" was the one piece of startup vocabulary a tester found in our own copy, and
+              he was reading an operator console at the time. Cheap to say plainly. */}
+          Operator view of Kira. Accounts, agents, and conversation volume across every account.
         </p>
       </header>
 

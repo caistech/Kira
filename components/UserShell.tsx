@@ -101,7 +101,12 @@ export async function UserShell({
           shell rather than in each signup flow, because the condition is "is signed in", not
           "arrived via checkout" — which is how the free-signup path lost it entirely. */}
       <ClaimStoredValuation />
-      {children}
+      {/* ROOM FOR THE FAB. It is fixed bottom-right, so whatever is last on the page sits under it —
+          a tester found it covering the "Run the numbers again" link at the foot of the valuation
+          card on a phone. Reserving the space in the shell fixes every page at once, rather than
+          each page remembering to leave a gap for a button it does not render. Sized past the
+          button's 56px plus its 20px offset. */}
+      <div className="pb-28">{children}</div>
       {/* Always-there one-tap mic — Siri-simple access from anywhere in the portal. */}
       <TalkFab />
     </PortalShell>

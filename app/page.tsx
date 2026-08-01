@@ -299,7 +299,12 @@ export default function KiraLandingPage() {
             <div className="bg-gradient-to-br from-amber-50 to-yellow-100 rounded-3xl p-8 border-2 border-amber-300">
               <div className="flex items-center gap-3 mb-4">
                 <span className="text-3xl">✨</span>
-                <h3 className="font-display text-xl font-bold text-stone-800">Your Kira — your fractional exec</h3>
+                {/* "Fractional exec" means nothing to the man this page is written for. His words:
+                    "my accountant would say 'part-time GM' and I'd know instantly." The phrase is
+                    KEPT on /plan, where he has read three paragraphs of context and a tester said it
+                    "earns itself" — but the landing page is where a suspicious sixty-something
+                    decides whether we speak his language, and jargon there reads as evasion. */}
+                <h3 className="font-display text-xl font-bold text-stone-800">Your Kira — like a part-time GM</h3>
               </div>
               <ul className="font-body text-stone-700 space-y-3">
                 <li className="flex items-start gap-2"><span className="text-amber-500">•</span> <strong>Built around YOUR business</strong></li>

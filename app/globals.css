@@ -7,6 +7,22 @@
 }
 
 /* ---------------------------------------------------------------------------
+ * Jumping to an anchor put the heading UNDER the sticky header.
+ *
+ * A naive tester: "the sticky header clips section headings when jumping to an anchor." The browser
+ * scrolls the target to the very top of the viewport, which is precisely where the fixed header is,
+ * so the reader arrives at a section whose title is hidden and has to scroll back up to find out
+ * where he landed. Links like /settings#business land exactly there.
+ *
+ * scroll-padding-top on the scroll container is the one-line fix and it covers every anchor in the
+ * product — including ones added later, which a per-heading scroll-margin would not. Sized a little
+ * beyond the header so the title clears it rather than touching it.
+ * ------------------------------------------------------------------------- */
+html {
+  scroll-padding-top: 6rem;
+}
+
+/* ---------------------------------------------------------------------------
  * Workaround for a defect in @caistech/elevenlabs-convai's /react widget.
  *
  * Its stylesheet carries `@media (max-width: 640px) { .convai-panel { width:
