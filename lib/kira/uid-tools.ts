@@ -143,7 +143,43 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
   // which knows nothing about this parameter, and a fact silently discarded because a path forgot to
   // classify it would be a far worse failure than the one being fixed.
   const aboutBusiness = String(body.about_business || '').trim();
-  const belongsElsewhere = aboutBusiness === 'another_business';
+  let belongsElsewhere = aboutBusiness === 'another_business';
+  // Lower-cased once: this is both what gets stored and what later contents are matched against, and
+  // two different normalisations would mean facts that never match the name that parked them.
+  const namedOtherBusiness = String(body.other_business_name || '').trim().toLowerCase().slice(0, 200);
+
+  // SHE NAMES THE OTHER COMPANY ONCE, AND EVERY LATER FACT ABOUT IT IS PARKED WITH IT.
+  //
+  // Measured, in the logs, twice in a row: she calls save_memory TWICE for the same company and
+  // classifies only the first.
+  //
+  //   "Corvid Holdings is a separate company with its own ABN"  -> another_business, parked
+  //   "Corvid Holdings is raising a $2m fund"                   -> this_business, ACTIVE
+  //
+  // Both are that company's. Neither the duplicate guard nor the containment matcher can relate
+  // them, because they are genuinely different facts — the only thing they share is the name.
+  //
+  // ⚠️ ACCEPTED FALSE POSITIVE. A fact genuinely about THIS business that merely mentions the other
+  // one — "the yard is sublet from Corvid Holdings" — is parked too, because the server cannot tell
+  // a fact's subject from its object. That trade is the point rather than a compromise: a
+  // wrongly-parked fact is one `--restore` away, and a wrongly-filed one is a false statement about
+  // the business inside the document a buyer's accountant reads, which nobody goes looking for.
+  if (!belongsElsewhere) {
+    const { data: known } = await supabase
+      .from('kira_memory')
+      .select('parked_entity')
+      .eq('user_id', uid)
+      .not('parked_entity', 'is', null)
+      .limit(200);
+    const haystack = content.toLowerCase();
+    const match = (known ?? [])
+      .map((row) => String(row.parked_entity ?? ''))
+      .find((name) => name.length >= 3 && haystack.includes(name));
+    if (match) {
+      belongsElsewhere = true;
+      console.warn(`[save_memory] parked a fact naming a known other business: ${match}`);
+    }
+  }
 
   // AND THE FIRST CLASSIFICATION STANDS WHEN HE PUSHES.
   //
@@ -188,7 +224,16 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
     content,
     importance,
     source_conversation_id: sourceConversationId,
-    ...(belongsElsewhere ? { active: false, parked_reason: 'entity:other' } : {}),
+    ...(belongsElsewhere
+      ? {
+          active: false,
+          parked_reason: 'entity:other',
+          // Recorded only when she actually names it. A parked row with no name still stays out of
+          // the Genome; it just cannot teach the server to recognise the next fact about that
+          // company, which is exactly the gap this column exists to close.
+          ...(namedOtherBusiness ? { parked_entity: namedOtherBusiness } : {}),
+        }
+      : {}),
   });
   if (error) return json(200, { success: false, error: 'Failed to save memory' });
 

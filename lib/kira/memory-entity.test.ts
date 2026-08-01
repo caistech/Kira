@@ -61,6 +61,8 @@ const inserted: Record<string, unknown>[] = [];
 const mnemoWrites: string[][] = [];
 /** Rows the parked-fact lookup finds. Set per test. */
 let parkedRows: { content: string }[] = [];
+/** Other-business names already recorded for this owner. Set per test. */
+let knownEntities: { parked_entity: string }[] = [];
 
 // A fluent chain that returns itself, so the mock does not have to mirror the exact order of
 // .eq()/.neq()/.limit() calls — a mock that encodes call order breaks on a refactor that changes
@@ -78,6 +80,10 @@ vi.mock('@/lib/supabase/server', () => ({
           if (col === 'parked_reason') chain.__parkedQuery = true;
           return chain;
         },
+        not: (col: string) => {
+          if (col === 'parked_entity') chain.__entityQuery = true;
+          return chain;
+        },
         neq: () => chain,
         order: () => chain,
         maybeSingle: async () => ({ data: table === 'kira_agents' ? { id: 'agent-1' } : null }),
@@ -85,7 +91,9 @@ vi.mock('@/lib/supabase/server', () => ({
         // await .limit(500) directly. A thenable chain serves both without encoding which is which.
         limit: () => chain,
         then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
-          Promise.resolve({ data: chain.__parkedQuery ? parkedRows : [] }).then(resolve, reject),
+          Promise.resolve({
+            data: chain.__entityQuery ? knownEntities : chain.__parkedQuery ? parkedRows : [],
+          }).then(resolve, reject),
         insert: async (row: Record<string, unknown>) => {
           if (table === 'kira_memory') inserted.push(row);
           return { error: null };
@@ -115,6 +123,66 @@ beforeEach(() => {
   inserted.length = 0;
   mnemoWrites.length = 0;
   parkedRows = [];
+  knownEntities = [];
+});
+
+describe('she names the other company once', () => {
+  // MEASURED IN THE LOGS, twice in a row: two save_memory calls for the same company, six seconds
+  // apart, and only the first classified. Both facts are that company's; the only thing they share
+  // is the name. Neither the duplicate guard nor the containment matcher can relate them, because
+  // they are genuinely different facts — which is why the name has to be recorded.
+  it('records the name when she classifies a fact as another business', async () => {
+    await save({
+      memory: 'Corvid Holdings is a separate company with its own ABN',
+      about_business: 'another_business',
+      other_business_name: 'Corvid Holdings',
+    });
+    expect(inserted[0]).toMatchObject({ parked_reason: 'entity:other', parked_entity: 'corvid holdings' });
+  });
+
+  it('parks a LATER fact naming that company, even when she says this business', async () => {
+    // The exact failure: "Corvid Holdings is raising a $2m fund" classified this_business.
+    knownEntities = [{ parked_entity: 'corvid holdings' }];
+    const body = await (
+      await save({ memory: 'Corvid Holdings is raising a $2m fund', about_business: 'this_business' })
+    ).json();
+    expect(body).toMatchObject({ success: false, parked: true });
+    expect(inserted[0]).toMatchObject({ active: false, parked_reason: 'entity:other' });
+    expect(mnemoWrites).toHaveLength(0);
+  });
+
+  it('matches the name however she capitalises it', async () => {
+    knownEntities = [{ parked_entity: 'corvid holdings' }];
+    const body = await (
+      await save({ memory: 'CORVID HOLDINGS bought a second yard.', about_business: 'this_business' })
+    ).json();
+    expect(body).toMatchObject({ parked: true });
+  });
+
+  it('leaves this business alone when no known name appears', async () => {
+    knownEntities = [{ parked_entity: 'corvid holdings' }];
+    const body = await (
+      await save({ memory: 'Marlow Street settles in March', about_business: 'this_business' })
+    ).json();
+    expect(body).toEqual({ success: true });
+    expect(inserted[0].active).toBeUndefined();
+  });
+
+  it('ignores a stored name too short to be distinctive', async () => {
+    // A two-character name would match half the Genome. Better to miss a fact than to park the lot.
+    knownEntities = [{ parked_entity: 'co' }];
+    const body = await (
+      await save({ memory: 'Concrete is poured on Tuesdays', about_business: 'this_business' })
+    ).json();
+    expect(body).toEqual({ success: true });
+  });
+
+  it('still parks when she classifies but does not name it', async () => {
+    // No name means the server cannot recognise the NEXT fact — but this one still stays out.
+    await save({ memory: 'Some other company is raising a fund', about_business: 'another_business' });
+    expect(inserted[0]).toMatchObject({ active: false, parked_reason: 'entity:other' });
+    expect(inserted[0].parked_entity).toBeUndefined();
+  });
 });
 
 describe('another company does not reach the Genome', () => {
