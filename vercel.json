@@ -23,6 +23,10 @@
     {
       "path": "/api/cron/genome-classify",
       "schedule": "30 * * * *"
+    },
+    {
+      "path": "/api/cron/red-team-drift",
+      "schedule": "0 8 * * *"
     }
   ]
 }
