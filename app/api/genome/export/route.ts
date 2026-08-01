@@ -23,6 +23,8 @@ import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
+import { displayName } from '@/lib/business-identity';
+import { getBusinessIdentity } from '@/lib/business-identity/store';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -44,6 +46,24 @@ export async function GET(request: Request) {
   const stamp = new Date().toISOString().slice(0, 10);
   const owner = [appUser.first_name, appUser.last_name].filter(Boolean).join(' ') || 'the owner';
 
+  // THE DOCUMENT IS ABOUT THE BUSINESS, SO IT IS TITLED TO THE BUSINESS.
+  //
+  // It read "Business Genome — Ray Whitfield". The whole argument of this product is that the value
+  // should stop being attached to the person, and the artifact meant to prove it was named after
+  // him — the one document destined for a buyer's accountant, asserting the opposite of the thing
+  // being sold. The owner is still recorded, one line down, because who stated these facts is what
+  // makes them evidence.
+  //
+  // Falls back to the person's name only when no business identity has been set, which is the one
+  // case where naming the entity would mean inventing it.
+  let identity = null;
+  try {
+    identity = await getBusinessIdentity(appUser.id);
+  } catch (error) {
+    console.error('[genome-export] business identity unavailable:', error);
+  }
+  const subject = identity ? displayName(identity) : owner;
+
   if (format === 'json') {
     return new NextResponse(JSON.stringify({ exportedAt: new Date().toISOString(), owner, ...g }, null, 2), {
       headers: {
@@ -54,9 +74,10 @@ export async function GET(request: Request) {
   }
 
   const lines: string[] = [
-    `# Business Genome — ${owner}`,
+    `# Business Genome — ${subject}`,
     '',
-    `Exported ${new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}.`,
+    identity?.abn ? `${identity.legal_name} · ABN ${identity.abn}` : '',
+    `Recorded by ${owner}. Exported ${new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}.`,
     '',
     'This document records how this business actually runs, organised by the questions a buyer&rsquo;s'.replace('&rsquo;', "'") +
       ' advisor asks in due diligence. It was built from ordinary conversations with the owner.',

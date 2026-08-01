@@ -154,7 +154,12 @@ export default async function DashboardPage({
               </div>
               <p className="mt-2 text-sm text-gray-500">
                 {Number(a.total_conversations ?? 0)} conversation{Number(a.total_conversations ?? 0) === 1 ? '' : 's'}
-                {a.last_conversation_at ? ` · last ${new Date(String(a.last_conversation_at)).toLocaleDateString()}` : ''}
+                {/* en-AU explicitly. A bare toLocaleDateString() takes the SERVER's locale in a
+                    server component, which on Vercel is en-US — so an Australian owner was shown
+                    03/08/2026 as 8/3/2026 on his own dashboard. */}
+                {a.last_conversation_at
+                  ? ` · last ${new Date(String(a.last_conversation_at)).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                  : ''}
               </p>
             </Link>
           ))}
