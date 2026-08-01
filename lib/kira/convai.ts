@@ -43,6 +43,7 @@ import {
 } from '@/lib/kira/lookup-tools-def.mjs';
 import { kiraRecordRefusalToolDef } from '@/lib/kira/refusal-tool-def.mjs';
 import { isUidToolUrl } from '@/lib/kira/uid-tools.mjs';
+import { parkedOtherBusinesses } from '@/lib/kira/other-businesses';
 
 // Kira's real tables mapped onto the canonical TableNames contract. The reconcile
 // migration adds the columns the handlers need (agent_id, anon_session_id, processed_at)
@@ -103,11 +104,29 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
         durationSeconds = Number(crow?.duration_seconds ?? 0);
       } catch { /* non-fatal */ }
 
+      // THE EXTRACTOR IS BUILT HERE, NOT AT MODULE SCOPE, so it can carry this owner's exclusions.
+      //
+      // The routes object is cached for the life of the process, so the extractor it was created
+      // with cannot know whose conversation it is about to read — and the package's MemoryExtractor
+      // signature takes only the turns. That left the voice path re-filing exactly what save_memory
+      // had parked: the guard held during the call and lost at the post-call distil.
+      //
+      // The userId is resolved a few lines above, so the only thing that was actually missing was
+      // building the extractor after it rather than before. A stateful "current user" on the shared
+      // extractor would have been the other way to do it, and would race the moment two calls ended
+      // at once — which on a serverless runtime is not an edge case.
+      //
+      // The query itself lives in lib/kira/other-businesses.ts, shared with the typed transport —
+      // it was two hand-written copies for an hour, and the ordering defect was fixed in only one.
+      const otherBusinesses = await parkedOtherBusinesses(sb, userId, KIRA_CONVAI_TABLES.memory);
+
       const memory = await completeConversationMemory(sb, {
         conversationId: conv.id,
         elevenlabsConversationId: conv.elevenlabsConversationId,
         userId,
-        extract: memoryExtractor,
+        extract: otherBusinesses.length
+          ? createMemoryExtractor(process.env.OPENAI_API_KEY || '', { otherBusinesses })
+          : memoryExtractor,
         tables: KIRA_CONVAI_TABLES,
         semantic: { scopePrefix: 'kira-user-' },
       });

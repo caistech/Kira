@@ -36,6 +36,7 @@ import { createMemoryExtractor } from '@/lib/kira/memory-extract';
 import { runTextTool, textToolsFor } from '@/lib/kira/text-tools';
 import { createServiceClient } from '@/lib/supabase/server';
 import { sweepConversationForRefusals } from '@/lib/kira/refusal-sweep';
+import { parkedOtherBusinesses } from '@/lib/kira/other-businesses';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -231,23 +232,13 @@ export async function POST(req: NextRequest) {
         // distil re-files exactly what save_memory just parked — measured 6/6 then 0/6 the moment
         // sessions started ending, which is the ordinary case and not an edge one.
         extract: createMemoryExtractor(process.env.OPENAI_API_KEY || '', {
-          // NEWEST FIRST, and the ordering is load-bearing rather than tidy.
-          //
-          // This ran unordered with a limit, and once the owner had more parked facts than the
-          // limit, which ones came back was arbitrary — including, in the measured case, dropping
-          // the row created SIX SECONDS EARLIER in the very conversation being distilled. The
-          // exclusion list was full and the only entry that mattered was missing from it, so the
-          // distil re-filed the fact the guard had just parked and the whole thing looked like the
-          // exclusion prompt not working.
-          otherBusinesses: (
-            await supabase
-              .from(KIRA_CONVAI_TABLES.memory)
-              .select('content')
-              .eq('user_id', agent.user_id as string)
-              .eq('parked_reason', 'entity:other')
-              .order('created_at', { ascending: false })
-              .limit(40)
-          ).data?.map((m) => String(m.content ?? '')) ?? [],
+          // Shared with the voice post-call path — see lib/kira/other-businesses.ts for why the
+          // ordering in that query is load-bearing rather than tidy.
+          otherBusinesses: await parkedOtherBusinesses(
+            supabase,
+            agent.user_id as string,
+            KIRA_CONVAI_TABLES.memory,
+          ),
         }),
         tables: KIRA_CONVAI_TABLES,
         semantic: { scopePrefix: 'kira-user-' },
