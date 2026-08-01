@@ -2,6 +2,7 @@ import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { formatMoney, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
+import { RedactEntry } from '@/components/RedactEntry';
 
 export const dynamic = 'force-dynamic';
 
@@ -99,15 +100,35 @@ export default async function MyGenome() {
           <p className="text-base text-stone-500 mt-6">
             {g.totalCaptured} {g.totalCaptured === 1 ? 'thing' : 'things'} captured
             {g.documents > 0 ? `, plus ${g.documents} document${g.documents === 1 ? '' : 's'} you have shared` : ''}.
+            {/* THE COUNT HAS TO ACCOUNT FOR THE UNDATED ONES, or it reads as a contradiction.
+                This said "5 of them are dated to the conversation you said them in — that is what a
+                buyer's accountant will want to see", and a tester then scrolled to two entries both
+                marked "conversation not recorded". Nothing was untrue; the header simply bragged
+                about provenance while the first things he could see denied having any. Naming the
+                remainder in the same sentence means finding one is confirmation rather than a catch. */}
             {g.sourced > 0 && (
               <>
                 {' '}
                 <span className="text-stone-600">
                   {g.sourced} of them are dated to the conversation you said them in — that is what a
                   buyer&apos;s accountant will want to see.
+                  {g.totalCaptured > g.sourced
+                    ? ` The other ${g.totalCaptured - g.sourced} are marked where they appear.`
+                    : ''}
                 </span>
               </>
             )}
+          </p>
+
+          {/* WHO ELSE READS THIS — at the top, where he is looking at the sentence that worries him.
+              A tester found "the owner is considering selling the business and has not told anyone"
+              sitting on this page and called it the most impressive and most frightening thing he
+              saw. His note: an assurance about who can see it "belongs at the top, in the
+              explanatory header, not buried in an FAQ on the landing page." */}
+          <p className="mt-3 text-base text-stone-600">
+            Only you can see this page. Nobody at Corporate AI Solutions reads it, and it is not
+            shared with anyone you have referred or been referred by. Anything here can be taken back
+            — use <span className="font-semibold">Remove</span> on the entry itself.
           </p>
 
           <div className="mt-6 space-y-3">
@@ -166,6 +187,11 @@ export default async function MyGenome() {
                               ? `You said this on ${new Date(e.source.spokenOn).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}`
                               : `Captured ${new Date(e.capturedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })} — conversation not recorded`}
                           </p>
+                          {/* On the FILED entries too, not only the unsorted ones. The sentence the
+                              tester wanted to take back — "considering selling, has not told anyone"
+                              — was a filed entry, so a Remove that only reached the loose notes
+                              would have missed the exact case it exists for. */}
+                          <RedactEntry id={e.id} />
                         </li>
                       ))}
                     </ul>
@@ -207,7 +233,10 @@ export default async function MyGenome() {
               </p>
               <ul className="mt-3 space-y-2">
                 {g.unsorted.slice(0, 10).map((e) => (
-                  <li key={e.id} className="text-stone-700">· {e.content}</li>
+                  <li key={e.id} className="text-stone-700">
+                    · {e.content}
+                    <RedactEntry id={e.id} />
+                  </li>
                 ))}
               </ul>
             </section>
