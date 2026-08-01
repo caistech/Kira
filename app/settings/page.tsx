@@ -6,6 +6,7 @@ import { fetchConnections, DRIVE_ACCESS_LABEL } from '@/lib/connectors/status';
 import { retryIdentitySync } from '@/app/setup/business/actions';
 import { getBetaGate, VOICE_ACTION, VOICE_COST_CAP_USD } from '@/lib/billing';
 import { denyReason, derivePlanState } from '@/lib/billing/plan-state';
+import { getSubscriptionPrice } from '@/lib/billing/subscription-price';
 import { PasswordChange } from '@/components/PasswordChange';
 import { DeleteAccount } from '@/components/DeleteAccount';
 import { CancelPlanButton } from '@/components/CancelPlanButton';
@@ -59,6 +60,12 @@ export default async function SettingsPage() {
     hasCard: Boolean(appUser?.stripe_customer_id),
     subscriptionStatus: appUser?.subscription_status ?? null,
   });
+
+  // What he is actually charged, from Stripe. Settings showed no figure at all, so an owner
+  // wondering what he pays had to leave for the billing portal to find out — and the GST qualifier,
+  // mandatory on every displayed price, had nowhere to render on an authenticated surface. Null
+  // when it cannot be read honestly; the block below simply does not appear.
+  const price = await getSubscriptionPrice(appUser?.stripe_subscription_id);
 
   return (
     <div className="max-w-2xl">
@@ -253,6 +260,17 @@ export default async function SettingsPage() {
 
       <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-6">
         <h2 className="text-lg font-semibold text-gray-900">Plan &amp; usage</h2>
+
+        {/* The figure first, because it is the question this section is opened to answer. Shown
+            only when Stripe confirmed it — an owner who sees no number here still has the portal,
+            whereas one who sees the wrong number has been told something false about his money. */}
+        {price && (
+          <p className="mt-2 text-3xl font-bold text-gray-900">
+            {price.formatted}
+            <span className="text-base font-medium text-gray-500"> /month</span>
+          </p>
+        )}
+
         {/* One sentence, true of exactly this account's state — never the card claim by default. */}
         <p className="mt-1 text-base text-gray-500">{plan.billingSentence}</p>
 

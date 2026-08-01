@@ -59,6 +59,18 @@ export function getCurrency(code: string): Currency {
 }
 
 /**
+ * Whether we know what the consumption tax is CALLED in this currency's jurisdiction.
+ *
+ * Matters because getCurrency falls back to AUD, which silently labels an unknown currency "+ GST".
+ * Harmless on the valuation (a fallback locale only changes formatting) and wrong on a PRICE, where
+ * it names the wrong tax regime to a real buyer. A caller showing a price should check this and show
+ * nothing rather than a confident mislabel.
+ */
+export function isSupportedCurrency(code: string): boolean {
+  return BY_CODE.has(code);
+}
+
+/**
  * Best-effort currency from the browser locale. SSR-safe (returns the default when navigator is
  * absent). Falls back to USD when the region isn't one we support.
  */

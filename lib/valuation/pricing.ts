@@ -12,9 +12,22 @@
 // $3-10k/month of a real person's time. The earlier $99 entry band priced Kira like a note-taking
 // app and undersold the thing it is being compared to.
 //
-// This module is the ONLY place a price exists. Nothing quotes a number before the valuation has
-// run - there is no pricing page and no "from $X" on the landing page, because a price stated
-// without the gap it is a fraction of is just a number to flinch at.
+// This module is the ONLY place a price exists - every surface derives its figure from the bands
+// below rather than typing one.
+//
+// THE LANDING PAGE SHOWS A FLOOR, AND THAT IS A REVERSAL. This file used to say there was no
+// "from $X" anywhere, on the reasoning that a price without the gap it is a fraction of is just a
+// number to flinch at. That reasoning is sound and it lost to a stronger one: a naive-tester pass
+// as the 66-year-old owner found a nav item labelled "Pricing" leading to a section containing no
+// price, which reads as evasion to exactly the buyer we care about most. A cautious owner will not
+// spend three minutes on a valuation to discover the order of magnitude, and the ones who flinch at
+// $499 were never going to pay $999.
+//
+// So the landing quotes PRICE_TIERS[0] as a floor and nothing else. The gap-first sequence survives
+// intact: the personalised number still appears only after the valuation, still framed as a fraction
+// of what the owner stands to unlock. Do not add a full band table to a public page - the point of
+// the floor is to answer "roughly what does this cost", not to invite band-shopping before there is
+// a gap to size the band against. (Decided 2026-08-01.)
 
 export interface PriceTier {
   /** Lower bound of the gap band (inclusive). */

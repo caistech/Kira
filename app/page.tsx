@@ -3,14 +3,24 @@
 import React, { useState, useEffect } from 'react';
 import { OWNER_FAQ } from '@/lib/faq';
 import { LandingDemo } from '@/components/LandingDemo';
+import { PRICE_TIERS } from '@/lib/valuation/pricing';
+import { formatPrice, detectCurrency, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 
 export default function KiraLandingPage() {
   const [isVisible, setIsVisible] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Starts at the AU default so the server and the first client render agree; the visitor's own
+  // currency lands a beat later. A mismatch here is a hydration error, not a cosmetic one.
+  const [currency, setCurrency] = useState(DEFAULT_CURRENCY);
 
   useEffect(() => {
     setIsVisible(true);
+    setCurrency(detectCurrency());
   }, []);
+
+  // The cheapest band, with its tax qualifier. Derived from PRICE_TIERS rather than typed, so a
+  // change to the bands cannot leave a stale number sitting on the landing page.
+  const floorPrice = formatPrice(PRICE_TIERS[0].monthly, currency);
 
   return (
     <div className="min-h-screen bg-amber-50 text-stone-800 font-sans overflow-x-hidden">
@@ -406,41 +416,43 @@ export default function KiraLandingPage() {
         </div>
       </section>
 
-      {/* Real Examples */}
-      <section className="bg-gradient-to-b from-amber-50 to-pink-50 py-24">
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="font-display text-4xl lg:text-5xl font-bold text-stone-800 mb-4">Real things. <span className="bg-gradient-to-r from-violet-500 to-pink-500 bg-clip-text text-transparent">Not party tricks.</span></h2>
-          </div>
-          <div className="grid md:grid-cols-2 gap-6">
-            {[
-              { quote: "My whole business was in my head. Kira got it out — the pricing, the process, who does what. First time I could picture actually selling it.", emoji: "🧰", type: "Business" },
-              { quote: "I was stuck on a pricing decision. Kira asked what my actual goal was — turns out I was solving the wrong problem.", emoji: "💰", type: "Business" },
-              { quote: "She drafted the follow-up to a client while I was still on site, ready for me to check. That was the moment I got it.", emoji: "✅", type: "Business" },
-              { quote: "The BAS used to eat my Sunday. Kira flagged a cleaner way to keep it ready — one less thing I dread.", emoji: "📋", type: "Business" }
-            ].map((item, index) => (
-              <div key={index} className="bg-white rounded-2xl p-6 hover-pop shadow-sm border border-amber-100">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-3xl">{item.emoji}</span>
-                  <span className={`text-sm font-body px-3 py-1 rounded-full ${item.type === 'Personal' ? 'bg-violet-100 text-violet-600' : 'bg-amber-100 text-amber-600'}`}>{item.type}</span>
-                </div>
-                <p className="font-body text-stone-700 leading-relaxed">"{item.quote}"</p>
-              </div>
-            ))}
-          </div>
-          <p className="text-center font-body text-stone-500 mt-8 text-lg">Every one of these came from a Kira built around that owner's business. 💬</p>
-        </div>
-      </section>
+      {/* REMOVED 2026-08-01: four unattributed customer testimonials, closing with "Every one of
+          these came from a Kira built around that owner's business."
 
-      {/* The Offer — see the number first, then a plan priced to it */}
+          They did not. No owner had completed an engagement when they were written, so the page was
+          asserting social proof that did not exist — which is misleading conduct under Australian
+          Consumer Law, not a copy nitpick, and it would have been on screen at the first broker demo.
+
+          Nothing replaces them until a real owner says something real and agrees to be quoted, with
+          attribution. An invented quote is worth less than an empty space: the space costs a
+          scroll, the quote costs the trust the entire product is selling. */}
+
+      {/* The Offer — the floor price, then the personalised number after the valuation */}
       <section id="pricing" className="bg-white py-24">
         <div className="max-w-3xl mx-auto px-6 text-center">
           <div className="fun-border rounded-3xl p-10 lg:p-14 bg-gradient-to-br from-amber-50 to-pink-50">
-            <span className="text-6xl mb-6 block">💷</span>
+            {/* Was 💷 — a pound sign on an Australian product. */}
+            <span className="text-6xl mb-6 block">💰</span>
             <h2 className="font-display text-4xl lg:text-5xl font-bold text-stone-800 mb-6">See the number. <span className="bg-gradient-to-r from-amber-500 to-pink-500 bg-clip-text text-transparent">Then decide.</span></h2>
+
+            {/* The floor, stated plainly. A nav item called "Pricing" that showed no price read as
+                evasion to the cautious owner this page is written for — and he will not spend three
+                minutes on a valuation to find out the order of magnitude. Only the floor: the
+                personalised figure still comes after the gap, where it can be framed as a fraction
+                of it. Tax qualifier is mandatory on every displayed price and follows the visitor's
+                currency, never a hardcoded "GST". */}
+            <p className="font-body text-stone-500 text-lg mb-2">Plans start at</p>
+            <p className="font-display text-5xl font-bold text-stone-800 mb-2">
+              {floorPrice}
+              <span className="font-body text-2xl font-medium text-stone-500"> /month</span>
+            </p>
+            <p className="font-body text-stone-500 text-base mb-8">
+              Your own number depends on the size of your gap — you&apos;ll see it after the valuation.
+            </p>
+
             <div className="font-body text-xl text-stone-600 leading-relaxed space-y-4 mb-10">
               <p>The valuation is free — no sign-up, no card. It shows you the gap in about 3 minutes.</p>
-              <p>If you want Kira to close it, her fee is set to <span className="font-semibold text-stone-800">a small fraction of what you stand to unlock</span> — so you see your gap before you ever see a price. You&apos;re <span className="font-bold text-stone-800">never invoiced for the month you&apos;re in</span> — each month is billed once it has finished, and if you cancel, that month is on us.</p>
+              <p>Kira&apos;s fee is set to <span className="font-semibold text-stone-800">a small fraction of what you stand to unlock</span>, so the number you see is sized to your business. You&apos;re <span className="font-bold text-stone-800">never invoiced for the month you&apos;re in</span> — each month is billed once it has finished, and if you cancel, that month is on us.</p>
               <p>No gap, no pressure. The number is yours to keep either way.</p>
             </div>
             <a href="/business-valuation" className="font-display gradient-coral text-white px-10 py-5 rounded-full text-xl font-bold hover-pop shadow-xl shadow-pink-200 inline-block">What&apos;s my business worth? →</a>
