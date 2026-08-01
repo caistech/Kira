@@ -369,10 +369,18 @@ export default function ChatPage() {
             <h2 className="text-2xl font-bold text-gray-800 mb-1">
               {lastTopic ? 'Picking up where you left off' : 'Ready when you are'}
             </h2>
-            <p className="text-gray-500 text-sm">
+            {/* BOTH WAYS IN, NAMED. This said "Tap the mic below to talk with Kira" and nothing
+                else, so typing existed but was invisible until you clicked the mic — and on a
+                machine with no microphone that click produced a bare red "Not supported" and no way
+                forward.
+                That is the wrong way round for this owner. He is often in an office where he cannot
+                say "I'm selling" out loud, and the commonest cause of "no mic" is not a missing
+                device, it is him clicking Block on the permission prompt. Typing is the PRIVATE
+                option, not the fallback, and it should not be behind the one door he just shut. */}
+            <p className="text-base text-gray-600">
               {lastTopic
-                ? `Last time you talked about ${lastTopic}. Tap the mic to carry on.`
-                : 'Tap the mic below to talk with Kira.'}
+                ? `Last time you talked about ${lastTopic}. Pick it up by voice or by typing.`
+                : 'Talk to Kira, or type to her — whichever suits where you are.'}
             </p>
           </div>
 
@@ -400,6 +408,46 @@ export default function ChatPage() {
                 </div>
               )}
             </div>
+          )}
+
+          {/* THE TYPING BOX, ALWAYS THERE.
+              The widget has a text input and it is reachable only after connecting a call, which is
+              precisely the step an owner who blocked the microphone cannot complete — he met a red
+              "Not supported" and nothing else. So the box lives on the page, above the widget,
+              visible on arrival and working whether or not a mic exists. It calls the SAME handler
+              the widget's fallback calls, so there is one typed path and not two.
+              44px targets and 16px text on purpose: he is 66 and often on a phone. */}
+          {agentInfo && (
+            <form
+              className="mx-auto mb-5 flex max-w-xl gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const input = e.currentTarget.elements.namedItem('typed') as HTMLInputElement | null;
+                if (!input?.value.trim()) return;
+                void handleTypedMessage(input.value);
+                input.value = '';
+              }}
+            >
+              <label htmlFor="typed-message" className="sr-only">
+                Type a message to Kira
+              </label>
+              <input
+                id="typed-message"
+                name="typed"
+                type="text"
+                autoComplete="off"
+                placeholder="Or type to Kira here…"
+                disabled={typing}
+                className="min-h-[44px] flex-1 rounded-full border border-amber-300 bg-white px-4 text-base text-stone-800 placeholder:text-stone-400 focus:border-amber-500 focus:outline-none disabled:opacity-60"
+              />
+              <button
+                type="submit"
+                disabled={typing}
+                className="min-h-[44px] min-w-[44px] rounded-full bg-stone-800 px-5 text-base font-semibold text-white disabled:opacity-60"
+              >
+                Send
+              </button>
+            </form>
           )}
 
           {agentInfo && (

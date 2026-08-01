@@ -4,18 +4,33 @@ import React, { useState, useEffect } from 'react';
 import { OWNER_FAQ } from '@/lib/faq';
 import { LandingDemo } from '@/components/LandingDemo';
 import { PRICE_TIERS } from '@/lib/valuation/pricing';
-import { formatPrice, detectCurrency, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
+import { formatPrice, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 
 export default function KiraLandingPage() {
   const [isVisible, setIsVisible] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  // Starts at the AU default so the server and the first client render agree; the visitor's own
-  // currency lands a beat later. A mismatch here is a hydration error, not a cosmetic one.
-  const [currency, setCurrency] = useState(DEFAULT_CURRENCY);
+  // THE LANDING PRICE IS THE AU DEFAULT. It is not detected, and it must not become detected again.
+  //
+  // This page used to guess from navigator.language and swap the price a beat after paint. Three
+  // things were wrong with that, and the third is why it kept surviving a fix:
+  //
+  //   1. It contradicted the FAQ three paragraphs below it, which promises "Australian dollars by
+  //      default — this is an Australian product. Prefer another currency? Switch it on the
+  //      valuation screen." The code disagreed with our own published answer.
+  //   2. The figure visibly CHANGED under the reader — $499 + GST, then £499 + VAT — on the one
+  //      screen where a number moving on its own costs you the sale.
+  //   3. It was a GUESS PRESENTED AS A PRICE. Prices here are round marketing numbers per currency,
+  //      not FX conversions (lib/valuation/pricing.ts), so a browser-locale guess does not quote a
+  //      converted price — it quotes a DIFFERENT one. £499 is roughly A$970. Every previous fix
+  //      corrected the formatting, which was never the broken part.
+  //
+  // Currency is a choice the owner makes on the valuation screen, where it binds: that value is what
+  // reaches Stripe (app/api/checkout/route.ts passes it as the line item currency). Guessing here
+  // bought nothing and could only ever disagree with the thing that actually charges him.
+  const currency = DEFAULT_CURRENCY;
 
   useEffect(() => {
     setIsVisible(true);
-    setCurrency(detectCurrency());
   }, []);
 
   // The cheapest band, with its tax qualifier. Derived from PRICE_TIERS rather than typed, so a

@@ -32,9 +32,15 @@ export const CURRENCIES: Currency[] = [
   { code: 'AED', symbol: 'د.إ', locale: 'en-AE', label: 'AED — UAE Dirham', tax: 'VAT' },
 ];
 
-// AUD is the fallback (Corporate AI Solutions / Global Buildtech is an Australian entity and AU is the
-// primary market). Buyers are still auto-detected to their own currency from locale (detectCurrency);
-// AUD only applies when we can't map the region — never a hardcoded £/$ for an AU owner.
+// AUD is THE DEFAULT, not merely a fallback — the entity is Australian and AU is the primary market.
+// It is what every price shows until an owner CHOOSES otherwise on the valuation screen, which is
+// exactly what the FAQ promises him ("Australian dollars by default … switch it on the valuation
+// screen and the price follows").
+//
+// This comment previously said buyers were "auto-detected to their own currency from locale", which
+// stopped being true when that guess was removed (see below) and is the reason it is being restated
+// here: a comment describing behaviour the code no longer has is how a decision gets reversed by
+// somebody being helpful.
 export const DEFAULT_CURRENCY = 'AUD';
 
 const BY_CODE = new Map(CURRENCIES.map((c) => [c.code, c]));
@@ -70,19 +76,24 @@ export function isSupportedCurrency(code: string): boolean {
   return BY_CODE.has(code);
 }
 
-/**
- * Best-effort currency from the browser locale. SSR-safe (returns the default when navigator is
- * absent). Falls back to USD when the region isn't one we support.
- */
-export function detectCurrency(): string {
-  if (typeof navigator === 'undefined') return DEFAULT_CURRENCY;
-  const langs = [navigator.language, ...(navigator.languages ?? [])].filter(Boolean);
-  for (const lang of langs) {
-    const region = lang.split('-')[1]?.toUpperCase();
-    if (region && REGION_TO_CURRENCY[region]) return REGION_TO_CURRENCY[region];
-  }
-  return DEFAULT_CURRENCY;
-}
+// REMOVED: detectCurrency(). Do not bring it back for a PRICE.
+//
+// It guessed a currency from navigator.language, and the landing page used it to pick which price to
+// show. That is safe only if the prices are FX conversions of one another, and they are not: they
+// are round marketing numbers per currency (lib/valuation/pricing.ts), so switching the label
+// switches the AMOUNT. £499 is roughly A$970. A visitor whose browser happened to say en-GB was
+// quoted a different price, a beat after being shown the right one, three paragraphs above an FAQ
+// promising "Australian dollars by default".
+//
+// It was reported at least three times and survived every fix, because each fix corrected the
+// formatting and the defect was the guess itself.
+//
+// The currency an owner is actually charged is one he CHOOSES on the valuation screen, and that
+// choice is what reaches Stripe (app/api/checkout/route.ts). Anything inferred from a browser can
+// only ever disagree with it. If a localised marketing price is ever wanted, it needs an explicit
+// switcher and the FAQ answer updated in the same change — not an inference.
+//
+// REGION_TO_CURRENCY is kept: it is still the right lookup for a chooser that a HUMAN drives.
 
 /**
  * The tax suffix for a displayed PRICE, e.g. "+ GST" / "+ VAT".
