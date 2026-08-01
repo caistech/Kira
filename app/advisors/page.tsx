@@ -59,11 +59,17 @@ export default function AdvisorsPage() {
   return (
     <main className="min-h-screen bg-amber-50 text-stone-800">
       <nav className="border-b border-amber-100 bg-white/80 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+        {/* `justify-between` with no gap lets the wordmark and the first nav item meet flush when
+            the row runs out of room, which at 375px rendered as a single word: "KiraHome". A gap on
+            the OUTER flex is what guarantees separation — the inner `gap-4` only ever spaced the nav
+            items from each other, never the group from the logo. `flex-wrap` is the other half: with
+            a minimum gap enforced and no room to honour it, the row would otherwise overflow
+            sideways, trading a cosmetic collision for a horizontal scrollbar. */}
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-6 py-4">
           <Link href="/" className="font-display text-xl font-bold text-stone-800">
             Kira
           </Link>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <Link href="/" className="text-sm font-medium text-stone-600 hover:text-pink-500">
               Home
             </Link>
