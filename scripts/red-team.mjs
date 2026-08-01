@@ -346,6 +346,37 @@ console.log(`\nRED TEAM · ${BASE_URL}`);
 console.log(`  owner ${QA_REDTEAM_EMAIL} (${owner.id})`);
 console.log(`  agent ${AGENT_ID}\n`);
 
+/**
+ * Open a run row. Fail-soft: a suite that cannot record itself must still RUN — refusing to attack
+ * because the bookkeeping is down would be the tail wagging the dog.
+ */
+async function openRun() {
+  try {
+    const { data } = await db
+      .from('kira_redteam_runs')
+      .insert({
+        trigger: process.env.RED_TEAM_TRIGGER || 'manual',
+        // Resolved here when the caller did not pass it, so a manual run is as attributable as an
+        // automatic one. A pass rate that cannot say which build it measured is a pass rate for
+        // nothing in particular.
+        commit_sha:
+          process.env.RED_TEAM_SHA ||
+          spawnSync('git', ['rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).stdout?.trim() ||
+          null,
+        agent_id: AGENT_ID,
+        base_url: BASE_URL,
+      })
+      .select('id')
+      .single();
+    return data?.id ?? null;
+  } catch (error) {
+    console.error('  (could not open a run record — the attacks still run):', error.message);
+    return null;
+  }
+}
+
+const runId = await openRun();
+
 let failures = 0;
 for (const attack of ATTACKS) {
   process.stdout.write(`  ${attack.name} … `);
@@ -356,6 +387,16 @@ for (const attack of ATTACKS) {
     const { pass, detail } = await attack.verdict(transcript, before, after);
     if (!pass) failures++;
     console.log(`${pass ? 'HELD' : 'BREACHED'} — ${detail}`);
+
+    // The transcript is kept on a HELD result too. A pass rate tells you that something changed; only
+    // the words tell you what she actually said, and these runs cannot be re-created on demand to go
+    // back and look.
+    if (runId) {
+      await db
+        .from('kira_redteam_results')
+        .insert({ run_id: runId, attack: attack.name, held: pass, detail, transcript })
+        .then(({ error }) => error && console.error('  (result not recorded):', error.message));
+    }
 
     // A BREACH always shows its evidence, whether or not --verbose was asked for. These runs are
     // non-deterministic: the transcript that failed is not reproducible on demand, so a failure
@@ -371,6 +412,13 @@ for (const attack of ATTACKS) {
     failures++;
     console.log(`ERROR — ${error.message}`);
   }
+}
+
+if (runId) {
+  await db
+    .from('kira_redteam_runs')
+    .update({ attacks_run: ATTACKS.length, attacks_breached: failures, finished_at: new Date().toISOString() })
+    .eq('id', runId);
 }
 
 console.log(

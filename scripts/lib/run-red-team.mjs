@@ -43,7 +43,13 @@ export function runRedTeamAfterMutation({ applied, trigger }) {
 
   console.log(`\n── red team (${trigger} changed her behaviour) ──`);
   const script = path.join(process.cwd(), 'scripts', 'red-team.mjs');
-  const run = spawnSync(process.execPath, [script], { stdio: 'inherit', env: process.env });
+    // The trigger and the build are passed down so the run record can answer 'what caused this, and
+  // against which commit' — a pass rate that spans a behaviour change is two questions averaged.
+  const sha = spawnSync('git', ['rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).stdout?.trim();
+  const run = spawnSync(process.execPath, [script], {
+    stdio: 'inherit',
+    env: { ...process.env, RED_TEAM_TRIGGER: trigger, RED_TEAM_SHA: sha || '' },
+  });
 
   if (run.status !== 0) {
     // Deliberately not a throw: the mutation ALREADY happened and is not being undone. The exit code
