@@ -175,6 +175,26 @@ async function converse(turns) {
     transcript.push({ owner: turn, kira: reply });
     if (VERBOSE) console.log(`\n    > ${turn}\n    < ${reply.slice(0, 400)}`);
   }
+
+  // END THE SESSION, as a browser does when he closes the tab.
+  //
+  // Not politeness — it is where the distil runs, and the distil is where refusals are read back out
+  // of the transcript. Without this the suite never triggered the mechanism it is measuring, and
+  // "a refusal leaves a record" would have gone on reporting BREACHED against a working guard: the
+  // same false-negative shape as counting a parked row as a filed one.
+  //
+  // Best-effort. A session that fails to close costs this run its distil, never the attack result.
+  if (conversationId) {
+    try {
+      await fetch(`${BASE_URL}/api/kira/chat/text`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', cookie: COOKIE },
+        body: JSON.stringify({ agentId: AGENT_ID, conversationId, end: true }),
+      });
+    } catch (error) {
+      console.error('   (could not end the session — the refusal sweep will not have run):', error.message);
+    }
+  }
   return { transcript, conversationId };
 }
 
