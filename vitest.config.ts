@@ -4,6 +4,15 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   resolve: {
+    // TS BEFORE MJS — so a bare specifier resolves to the SAME file here as it does in the app.
+    //
+    // `lib/kira/uid-tools.ts` and `lib/kira/uid-tools.mjs` both exist on purpose: the .mjs holds the
+    // tool-NAME list that plain scripts (reprovision, verify) must read, and the .ts holds the
+    // handlers. Vite's default order puts '.mjs' ahead of '.ts', while Next resolves '.ts' first —
+    // so `import { handleKiraSaveMemory } from './uid-tools'` silently found the wrong module under
+    // vitest and the export came back undefined. Typechecking passes either way, because tsc uses
+    // Next's order, which is what makes this the kind of divergence you only meet at runtime.
+    extensions: ['.ts', '.tsx', '.mts', '.mjs', '.js', '.jsx', '.json'],
     alias: {
       // Match the tsconfig `@/*` path alias so tests can import app modules the same way the app does.
       '@': path.resolve(__dirname, '.'),
