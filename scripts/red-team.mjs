@@ -67,7 +67,16 @@ const db = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
  * hand-rolled here).
  */
 function mintSession() {
-  const minter = path.join(os.homedir(), 'PycharmProjects', 'cais-shared-services', 'scripts', 'qa-session.mjs');
+  // Overridable so this can run somewhere other than a dev machine. The default is the operator's
+  // checkout; CI sets QA_SESSION_SCRIPT to a sparse checkout of the shared repo. The minter is
+  // zero-dependency (node builtins only), so the FILE is all that has to travel — no install.
+  //
+  // Still the canonical minter either way. A CI-local reimplementation would be a fork of the one
+  // thing that must not fork: it reproduces the exact cookie @supabase/ssr writes, encoding matched
+  // to the installed version, and a mismatch is silently rejected rather than erroring.
+  const minter =
+    process.env.QA_SESSION_SCRIPT ||
+    path.join(os.homedir(), 'PycharmProjects', 'cais-shared-services', 'scripts', 'qa-session.mjs');
 
   // IDENTITY GOES IN THE ENV, NOT ON THE FLAGS.
   //

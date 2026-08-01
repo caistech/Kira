@@ -1,0 +1,93 @@
+# Red team — the unattended run.
+#
+# The suite already fires after a re-provision and after a capability patch, which are the two things
+# that change her behaviour. That covers regressions WE cause. It does not cover the case this
+# workflow exists for: nobody pushes anything for a fortnight, the model behind her agents shifts,
+# and a boundary that held all month quietly stops holding. Nothing would run, and nothing would say
+# so — a suite that stopped being exercised looks identical, on every dashboard, to one that keeps
+# passing.
+#
+# Weekly, deliberately. These attacks drive a real conversation against production and cost real
+# tokens per run, and the failure being watched for is drift over weeks, not minutes. Daily would buy
+# nothing and bill for it.
+#
+# ATTACKS A SYNTHETIC OWNER, ALWAYS. red-team.mjs asserts the minted session belongs to the red-team
+# identity before it sends a single turn, and refuses to run otherwise. That check is the whole safety
+# guarantee — it exists because the first-ever run pointed at the LIVE owner's Genome and was saved
+# only by an unrelated 403.
+#
+# Two ways a breach reaches a person: this job fails (GitHub mails on a failed scheduled run on the
+# default branch), and the daily drift watcher (/api/cron/red-team-drift) reads the recorded history
+# and mails on a CHANGE. Neither depends on anyone opening /admin/trust.
+
+name: red-team
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # Mondays, before the working week
+  workflow_dispatch:
+
+jobs:
+  red-team:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      QA_REDTEAM_EMAIL: ${{ secrets.QA_REDTEAM_EMAIL }}
+      QA_REDTEAM_PASSWORD: ${{ secrets.QA_REDTEAM_PASSWORD }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      RED_TEAM_BASE_URL: ${{ vars.RED_TEAM_BASE_URL || 'https://kira-rho.vercel.app' }}
+      RED_TEAM_TRIGGER: weekly-cron
+    steps:
+      - uses: actions/checkout@v4
+
+      # The canonical session minter, and ONLY that file. It is zero-dependency (node builtins), so
+      # nothing needs installing — and a CI-local reimplementation would fork the one thing that must
+      # not fork: it reproduces the exact cookie @supabase/ssr writes, with the encoding matched to
+      # the installed version, and a mismatch is silently REJECTED rather than erroring.
+      - name: Fetch the canonical QA session minter
+        uses: actions/checkout@v4
+        with:
+          repository: caistech/cais-shared-services
+          path: shared
+          token: ${{ secrets.CAISTECH_PACKAGES_TOKEN }}
+          sparse-checkout: scripts/qa-session.mjs
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      # Needed for @supabase/supabase-js, and because the minter reads the installed @supabase/ssr
+      # version out of node_modules to pick the cookie encoding.
+      - name: Install dependencies
+        run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.CAISTECH_PACKAGES_TOKEN }}
+
+      # FAILS RATHER THAN SKIPS. A run that quietly does nothing is indistinguishable from a run
+      # where every attack held, which is the exact confusion this whole exercise exists to end.
+      - name: Guard — required config present
+        run: |
+          missing=""
+          for v in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY \
+                   QA_REDTEAM_EMAIL QA_REDTEAM_PASSWORD OPENAI_API_KEY; do
+            [ -z "${!v}" ] && missing="$missing $v"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing secrets:$missing — the red team CANNOT run, so her behaviour is NOT verified."
+            exit 1
+          fi
+          if [ ! -f shared/scripts/qa-session.mjs ]; then
+            echo "::error::The canonical session minter was not checked out. CAISTECH_PACKAGES_TOKEN may lack read access to caistech/cais-shared-services."
+            exit 1
+          fi
+          echo "target: $RED_TEAM_BASE_URL"
+
+      - name: Run the red team
+        env:
+          QA_SESSION_SCRIPT: ${{ github.workspace }}/shared/scripts/qa-session.mjs
+          RED_TEAM_SHA: ${{ github.sha }}
+        run: node scripts/red-team.mjs --verbose
