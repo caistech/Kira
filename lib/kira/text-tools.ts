@@ -47,6 +47,8 @@ import {
   kiraSearchDriveToolDef,
 } from './lookup-tools-def.mjs';
 import { lookUpContact, searchDrive } from './lookup';
+import { kiraRecordRefusalToolDef } from './refusal-tool-def.mjs';
+import { handleRecordRefusal } from './refusal';
 import {
   kiraApproveToolDef,
   kiraCheckTasksToolDef,
@@ -99,6 +101,7 @@ const BUILDERS: Record<string, Builder> = {
   read_document: kiraReadDocumentToolDef as Builder,
   keep_document: kiraKeepDocumentToolDef as Builder,
   lookup_contact: kiraLookupContactToolDef as Builder,
+  record_refusal: kiraRecordRefusalToolDef as Builder,
 };
 
 const UNUSED_BASE_URL = 'https://in-process.invalid';
@@ -192,6 +195,8 @@ export async function runTextTool(
         return await (await handleApproveTask(asToolRequest(name, ownerId, args))).json();
       case 'check_tasks':
         return await (await handleCheckTasks(asToolRequest(name, ownerId, args))).json();
+      case 'record_refusal':
+        return await (await handleRecordRefusal(asToolRequest(name, ownerId, args))).json();
       case 'search_knowledge':
         return await (await handleSearchKnowledge(asToolRequest(name, ownerId, args))).json();
       // Both take the owner from `?uid` exactly as the voice path does. save_memory is the same

@@ -28,6 +28,7 @@ import {
   kiraDispatchToolDef,
   kiraFinancialsToolDef,
 } from '../../lib/kira/swarm/doing-tools-def.mjs';
+import { kiraRecordRefusalToolDef } from '../../lib/kira/refusal-tool-def.mjs';
 import { isUidToolUrl } from '../../lib/kira/uid-tools.mjs';
 
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app').replace(/\/$/, '');
@@ -66,6 +67,7 @@ export function buildToolsForUser(userId, journeyType) {
           kiraReadDocumentToolDef(APP_URL),
           kiraKeepDocumentToolDef(APP_URL),
           kiraLookupContactToolDef(APP_URL),
+          kiraRecordRefusalToolDef(APP_URL),
         ]
       : []),
   ];

@@ -40,6 +40,7 @@ import {
   kiraKeepDocumentToolDef,
   kiraLookupContactToolDef,
 } from '@/lib/kira/lookup-tools-def.mjs';
+import { kiraRecordRefusalToolDef } from '@/lib/kira/refusal-tool-def.mjs';
 import { isUidToolUrl } from '@/lib/kira/uid-tools.mjs';
 
 // Kira's real tables mapped onto the canonical TableNames contract. The reconcile
@@ -298,6 +299,11 @@ export function kiraDoingTools(baseUrl: string): ConvAITool[] {
   return [
     kiraDispatchToolDef(baseUrl, headers) as ConvAITool,
     kiraApproveToolDef(baseUrl, headers) as ConvAITool,
+    // The REFUSAL half. approve_task already records a withheld approval on its own, but that is the
+    // narrow slice the server can see; the refusals that matter to the owner happen in words, and
+    // until this existed they left the conversation and were gone. Writes only — it can never cause
+    // or prevent an action, which is why it needs no approval step of its own.
+    kiraRecordRefusalToolDef(baseUrl, headers) as ConvAITool,
     // The READ half. It changes nothing, so it needs no approval step — but it reads a business's
     // financial position, so it takes the same server-baked identity as the rest.
     kiraFinancialsToolDef(baseUrl, headers) as ConvAITool,

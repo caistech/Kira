@@ -53,6 +53,7 @@ const BUSINESS_ONLY = [
   'read_document',
   'keep_document',
   'lookup_contact',
+  'record_refusal',
 ];
 
 /**
