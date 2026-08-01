@@ -43,7 +43,8 @@ import {
   type ValuationInputs,
 } from '@/lib/valuation/model';
 import { SECTOR_MULTIPLES } from '@/lib/valuation/sde-multiples';
-import { formatMoney, formatMoneyApprox, getCurrency, CURRENCIES, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
+import { priceForGap } from '@/lib/valuation/pricing';
+import { formatMoney, formatMoneyApprox, formatPrice, getCurrency, CURRENCIES, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { synonymGroup, synonymSector } from '@/lib/valuation/industry-synonyms';
 import { storeValuation, VALUATION_HANDOFF_KEY } from '@/lib/valuation/share';
 import {
@@ -876,6 +877,23 @@ function ResultView({
             />
           </div>
 
+          {/* WHY ONE OF THESE IS A RANGE AND TWO ARE NOT.
+              "You're more uncertain about the value of my second-hand gear than about the value of
+              my entire business. That's backwards and it's the kind of thing a buyer's accountant
+              will pick at."
+              It looks backwards and it is not, and the honest fix is to say so rather than to invent
+              symmetry. The gear range is real: 40–60c in the dollar is a documented auction-recovery
+              band, so we can state it. Our sector table carries a single MEDIAN multiple and no
+              within-sector dispersion, so any ± around the business figures would be a number we
+              made up — on the one screen that earned its credibility by disclosing exactly where its
+              inputs come from. Both figures are rounded instead, which is the precision they have. */}
+          <p className="text-base text-stone-500 leading-relaxed">
+            The gear figure is a range because auction recovery genuinely is one — 40 to 60 cents in
+            the dollar is well documented. The two business figures are single numbers because our
+            sector data gives one median multiple and no spread around it; putting a ± on them would
+            be inventing a precision we do not have. Both are rounded for the same reason.
+          </p>
+
           {/* The gap headline */}
           <div className="grad-genome rounded-3xl p-7 sm:p-9 text-white shadow-lg">
             <p className="text-white/80 font-medium mb-1">The value locked inside your head right now</p>
@@ -948,6 +966,27 @@ function ResultView({
           Kira interviews you the way a smart buyer would — capturing the operating knowledge in your head into a
           living Business Genome. It's how you close the gap: a business worth more, and one you can actually hand over.
         </p>
+
+        {/* HIS PRICE, HERE, where he was told it would be.
+            The landing page says the fee depends on his gap and "you'll see it after the valuation."
+            He finished the valuation and there was no price on the results page at all — he had to
+            click a third CTA to find it, which for a buyer already braced for a bait-and-switch is
+            the worst possible place to withhold a number.
+            Nothing was blocking it: priceForGap() is pure, the gap is already computed on this
+            screen, and /plan calls the same function. It is framed as a fraction of the gap because
+            that is the honest justification and it only works while the gap is still on screen. */}
+        {!noEarnings && (
+          <p className="text-stone-700 max-w-xl mx-auto mb-7 text-lg">
+            For your business that comes to{' '}
+            <span className="font-bold text-stone-900">
+              {formatPrice(priceForGap(result.gap).monthly, currency)} a month
+            </span>
+            {priceForGap(result.gap).fractionWorthQuoting
+              ? ` — about ${priceForGap(result.gap).fractionOfGapPct} a year of what you stand to unlock.`
+              : '.'}{' '}
+            You are never invoiced for the month you are in.
+          </p>
+        )}
         <a
           href={planHref}
           className="grad-coral text-white font-display font-bold px-8 py-4 rounded-full text-lg inline-flex items-center gap-2 min-h-[52px] shadow-lg shadow-pink-200 hover:opacity-95"
