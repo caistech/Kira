@@ -65,6 +65,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid valuation inputs' }, { status: 400 });
   }
 
+  // HE HAS TO SAY IT IS HIS.
+  //
+  // The handoff persists on the DEVICE for seven days, not per-tab (lib/valuation/persist.ts) — a
+  // deliberate trade so a closed tab does not cost him the baseline. The consequence is that on a
+  // shared machine the next person to sign in would inherit someone else's turnover, profit and sale
+  // plans as their own permanent starting point. A naive tester walked exactly that and called it
+  // out; his bookkeeper sits eight feet from his desk.
+  //
+  // Enforced here as well as in the UI, so a cached or stale client cannot go on claiming silently
+  // after this shipped. Not an error — the client asks, then calls back with the answer.
+  if ((body as { confirmed?: unknown }).confirmed !== true) {
+    return NextResponse.json({ claimed: false, reason: 'needs_confirmation' });
+  }
+
   // DEFAULT_CURRENCY, not a seventh hand-written 'USD'. The default was spelled out in six separate
   // places and this was the seventh; that duplication is exactly why "the currency is wrong" was
   // raised three times and fixed three times without ever being fixed.

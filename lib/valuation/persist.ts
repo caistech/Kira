@@ -22,8 +22,32 @@
 //
 // Nothing is sent anywhere. This is still local-only until he signs up and claim runs.
 
-/** How long a valuation is kept. Long enough for "I'll think about it overnight", not indefinite. */
+/**
+ * How long IN-PROGRESS ANSWERS are kept. Long enough for "I'll think about it overnight".
+ *
+ * This is the number the valuation page states on screen, next to a button that erases them, so it
+ * is a promise rather than an implementation detail.
+ */
 export const VALUATION_TTL_DAYS = 7;
+
+/**
+ * How long the FINISHED valuation waits to be attached to an account.
+ *
+ * Deliberately shorter, and the difference is the point. Two stores shared this file and therefore
+ * shared one lifetime, which was never a decision — the handoff simply inherited the resume window.
+ *
+ * They are not the same risk. Half-answered questions are his own notes. The finished valuation is
+ * his turnover, his profit and the fact that he is thinking of selling, sitting on the machine and
+ * waiting to become some account's permanent baseline. A naive tester walked exactly that: he ran it
+ * anonymously, signed in, and it attached itself with no confirmation. His bookkeeper sits eight
+ * feet from his desk and uses that computer.
+ *
+ * It now has to survive result → signup, which is minutes in the ordinary case. Two days covers
+ * "I'll do it tomorrow" and stops covering "someone else used this machine last week". The claim
+ * also asks him outright now (components/ClaimStoredValuation.tsx) — this shortens the window; the
+ * confirmation removes the silent inheritance. Neither alone was enough.
+ */
+export const VALUATION_HANDOFF_TTL_DAYS = 2;
 
 const TTL_MS = VALUATION_TTL_DAYS * 24 * 60 * 60 * 1000;
 
@@ -40,10 +64,11 @@ interface Envelope<T> {
  * such job on a static page: a browser that never returns is a browser that never runs one. Written
  * this way, a value is dead the moment it is next read, even if that is a year later.
  */
-export function saveValuationLocal<T>(key: string, data: T): void {
+export function saveValuationLocal<T>(key: string, data: T, ttlDays: number = VALUATION_TTL_DAYS): void {
   if (typeof window === 'undefined') return;
   try {
-    const envelope: Envelope<T> = { savedAt: Date.now(), expiresAt: Date.now() + TTL_MS, data };
+    const ttl = Number.isFinite(ttlDays) && ttlDays > 0 ? ttlDays * 24 * 60 * 60 * 1000 : TTL_MS;
+    const envelope: Envelope<T> = { savedAt: Date.now(), expiresAt: Date.now() + ttl, data };
     window.localStorage.setItem(key, JSON.stringify(envelope));
   } catch {
     /* private browsing or a full quota — the visitor simply loses resume, which is survivable */

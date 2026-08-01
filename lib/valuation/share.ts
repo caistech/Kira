@@ -18,14 +18,22 @@
 // the signup does not cost a page of typing — it costs the origin every later movement is measured
 // from, or replaces it with a re-run that quietly reads as his starting point.
 //
-// So it now persists locally with a 7-day expiry and a visible way to erase it (lib/valuation/
-// persist.ts). The disclosure risk is bounded and disclosed rather than avoided, which is the trade
-// the copy on screen was already describing.
+// So it now persists locally with an expiry and a visible way to erase it (lib/valuation/persist.ts).
+// The disclosure risk is bounded and disclosed rather than avoided, which is the trade the copy on
+// screen was already describing.
+//
+// ⚠️ ITS OWN, SHORTER EXPIRY — VALUATION_HANDOFF_TTL_DAYS, not the 7-day resume window. Those two
+// stores shared one lifetime because they share this file, which was never a decision. They are not
+// the same risk: half-answered questions are his own notes, while THIS is his turnover, his profit
+// and the fact he is thinking of selling, waiting to become some account's permanent baseline. A
+// naive tester ran the valuation anonymously, signed in, and it attached itself with no
+// confirmation — on a machine his bookkeeper uses. The claim now asks him outright
+// (components/ClaimStoredValuation.tsx); this shortens the window it can be asked about at all.
 //
 // `decodeValuationParam` is KEPT — links already sent still work — but nothing generates them now.
 
 import type { ValuationInputs } from './model';
-import { clearValuationLocal, loadValuationLocal, saveValuationLocal } from './persist';
+import { clearValuationLocal, loadValuationLocal, saveValuationLocal, VALUATION_HANDOFF_TTL_DAYS } from './persist';
 
 export interface ValuationPayload {
   inputs: ValuationInputs;
@@ -54,7 +62,10 @@ const STORAGE_KEY = VALUATION_HANDOFF_KEY;
 
 /** Park the valuation for the next page. No-op (and never throws) outside a browser. */
 export function storeValuation(payload: ValuationPayload): void {
-  saveValuationLocal(STORAGE_KEY, payload);
+  // Its OWN, shorter lifetime — not the resume window. See VALUATION_HANDOFF_TTL_DAYS: this is his
+  // turnover, his profit and the fact he is thinking of selling, waiting on the device to become
+  // some account's permanent baseline. It only has to survive result → signup.
+  saveValuationLocal(STORAGE_KEY, payload, VALUATION_HANDOFF_TTL_DAYS);
 }
 
 /**
