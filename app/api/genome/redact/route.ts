@@ -22,13 +22,20 @@
 // or clicks the wrong one. Same mechanism the entity guard uses. Deleting outright would be the only
 // irreversible action in the product reachable in one click.
 //
-// ⚠️ Mnemo is NOT reached by this. A fact dual-written to the semantic lane stays there, so a
-// redaction here is not yet a complete erasure — see the note below. Recorded rather than glossed.
+// MNEMO IS REACHED BY THIS. It was not, at first, and the gap is worth keeping written down: a fact
+// is dual-written to the semantic lane, so parking the Postgres row removed it from the Genome, his
+// recall and his export — everywhere he could look — and left it reachable by semantic recall. He
+// would have taken the line back from everything he could see and been wrong, which for the one
+// feature whose entire purpose is that he controls what is kept is worse than not offering it.
+//
+// The removal is exact-matched rather than top-hit, and reported honestly when it does not happen —
+// see the semantic-forget block below.
 
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getCurrentAppUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
+import { mnemoForget } from '@/lib/kira/mnemo';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -61,13 +68,38 @@ export async function POST(request: NextRequest) {
     )
     .eq('id', id)
     .eq('user_id', user.id)
-    .select('id');
+    .select('id, content');
 
   if (error) {
     console.error('[genome/redact] failed:', error.message);
     return NextResponse.json({ error: 'Could not update that entry' }, { status: 500 });
   }
+  // THE OTHER COPY. save_memory dual-writes — the fact goes into kira_memory AND into Mnemo, the
+  // semantic recall lane — so parking the row alone left it reachable. He would have taken it back
+  // from everything he can see and been wrong.
+  //
+  // Gated on an exact normalised match rather than the top hit, because Mnemo search is SEMANTIC and
+  // the nearest neighbour of a fact about his business is another fact about his business (see
+  // lib/kira/mnemo.ts). And reported honestly: `semanticRemoved` is only true when a copy was found
+  // AND removed. Not-found and would-not-go are different from done, and both are returned as
+  // false rather than dressed up.
+  let semanticRemoved = false;
+  const row = (data ?? [])[0] as { content?: string } | undefined;
+  if (row?.content && body.restore !== true) {
+    try {
+      const { matched, forgotten } = await mnemoForget(user.id, String(row.content));
+      semanticRemoved = matched > 0 && forgotten === matched;
+      if (matched > forgotten) {
+        console.warn(`[genome/redact] ${matched - forgotten} semantic copy(ies) survived for ${id}`);
+      }
+    } catch (error) {
+      // Never fails the redaction. The Genome copy IS parked by this point, which is the part he can
+      // see; losing the semantic delete is a smaller harm than telling him the whole thing failed.
+      console.error('[genome/redact] semantic forget threw (row is parked):', error);
+    }
+  }
+
   // No rows means it was not his. Answered the same way as a success, deliberately: telling a
   // caller "that id exists but is not yours" is a membership oracle over other people's Genomes.
-  return NextResponse.json({ ok: true, changed: (data ?? []).length });
+  return NextResponse.json({ ok: true, changed: (data ?? []).length, semanticRemoved });
 }

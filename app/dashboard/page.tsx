@@ -20,6 +20,28 @@ interface Valuation {
   created_at: string;
 }
 
+/**
+ * Has the send path been unconfirmed long enough to be worth telling him about?
+ *
+ * NOT THE INSTANT HE ARRIVES. The sync is usually seconds behind the save, so gating purely on "not
+ * synced yet" put a fault banner at the top of the paid home screen for every owner who had just
+ * finished setup — his first impression of the product being that it is broken.
+ *
+ * Ray's rule, and it is the right one: if it is genuinely transient, don't show it until it has
+ * actually failed. Ten minutes is long enough that a normal sync is never mentioned to him, and
+ * short enough that a real outage still reaches him on the same visit.
+ *
+ * Outside the component because it reads the clock, and calling an impure function during render is
+ * both a lint error and — once this page is ever memoised — a real staleness bug.
+ */
+const UNSYNCED_GRACE_MS = 10 * 60 * 1000;
+
+function sendingLooksStuck(identity: { synced_to_orchestrator_at?: string | null; updated_at?: string | null } | null): boolean {
+  if (!identity || identity.synced_to_orchestrator_at) return false;
+  if (!identity.updated_at) return true; // no timestamp to wait on — an unsynced row IS the signal
+  return Date.now() - new Date(identity.updated_at).getTime() > UNSYNCED_GRACE_MS;
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -40,19 +62,9 @@ export default async function DashboardPage({
   if (user?.id && !canSend(identity)) redirect('/setup/business');
 
   // Saved here, not held by the system that sends. A real state, and one he must be able to see —
-  // he is not trapped in setup over our outage, but he is not told it worked either.
-  // NOT THE INSTANT HE ARRIVES. The sync is usually seconds behind the save, so gating purely on
-  // "not synced yet" put a fault banner at the top of the paid home screen for every owner who had
-  // just finished setup — his first impression of the product being that it is broken.
-  //
-  // Ray's rule, and it is the right one: if it is genuinely transient, don't show it until it has
-  // actually failed. Ten minutes is long enough that a normal sync is never mentioned to him, and
-  // short enough that a real outage still reaches him on the same visit.
-  const UNSYNCED_GRACE_MS = 10 * 60 * 1000;
-  const identityAge = identity?.updated_at ? Date.now() - new Date(identity.updated_at).getTime() : Infinity;
-  const identityUnsynced = Boolean(
-    identity && !identity.synced_to_orchestrator_at && identityAge > UNSYNCED_GRACE_MS,
-  );
+  // he is not trapped in setup over our outage, but he is not told it worked either. The grace
+  // period that stops this firing the instant he arrives lives in sendingLooksStuck above.
+  const identityUnsynced = sendingLooksStuck(identity);
 
   const { data: agents } = user
     ? await svc

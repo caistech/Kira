@@ -23,7 +23,7 @@
 // Fail-soft is inherited from the client: no MNEMO_API_KEY → add no-ops, search returns [], and
 // recall degrades to kira_memory alone. Nothing here throws.
 
-import { createMnemoClient } from '@caistech/mnemo';
+import { createMnemoClient, normaliseFact } from '@caistech/mnemo';
 import { voiceMemoryScope } from '@caistech/elevenlabs-convai';
 
 /** Frozen — see the warning above. */
@@ -45,4 +45,42 @@ export async function mnemoAdd(userId: string, contents: string[]): Promise<numb
 export async function mnemoSearch(userId: string, query: string, limit = 6): Promise<string[]> {
   if (!userId) return [];
   return client.search(voiceMemoryScope(SCOPE_PREFIX, userId), query, limit);
+}
+
+/**
+ * Forget one fact from a user's semantic memory — the other half of redacting it.
+ *
+ * WHY IT IS NEEDED. `save_memory` dual-writes: the fact goes into `kira_memory` AND into Mnemo. The
+ * owner's Remove button parked the Postgres row, which took it out of the Genome, out of recall and
+ * out of the export — and left the semantic copy, so she could still bring it up in a later
+ * conversation. He would have taken it back from everything he could see and been wrong.
+ *
+ * ⚠️ GATED ON AN EXACT NORMALISED MATCH, NOT THE TOP HIT. Mnemo search is SEMANTIC: asking it for
+ * "the yard is sublet from Corvid Holdings" cheerfully returns the nearest neighbours, and the
+ * nearest neighbour of a fact about his business is another fact about his business. Deleting the
+ * top hit would mean a redaction that sometimes removes the wrong line — silently, permanently from
+ * his point of view, and in the one feature whose entire purpose is that he controls what is kept.
+ *
+ * So the candidates are compared on the same normalised form the save path already dedupes with,
+ * and only exact matches are forgotten. A near-miss is left alone and reported as not-found.
+ *
+ * @returns `forgotten` — how many were removed; and `matched`, so the caller can tell "there was
+ *   nothing there" apart from "there was something and it would not go". Reporting a clean removal
+ *   in either of those cases would be the same lie in different clothes.
+ */
+export async function mnemoForget(userId: string, content: string): Promise<{ matched: number; forgotten: number }> {
+  const wanted = normaliseFact(String(content ?? ''));
+  if (!userId || !wanted) return { matched: 0, forgotten: 0 };
+
+  // A wider net than a redaction needs, deliberately: the same fact may be stored more than once
+  // (worded identically), and the exact-match filter below is what makes over-fetching safe.
+  const candidates = await client.find(voiceMemoryScope(SCOPE_PREFIX, userId), content, 20);
+  const exact = candidates.filter((m) => normaliseFact(m.content) === wanted);
+  if (exact.length === 0) return { matched: 0, forgotten: 0 };
+
+  let forgotten = 0;
+  for (const memory of exact) {
+    if (await client.forget(memory.id)) forgotten += 1;
+  }
+  return { matched: exact.length, forgotten };
 }
