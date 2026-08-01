@@ -4,9 +4,18 @@
 // Tiered bands keep it simple to show and easy to justify - the monthly ask is always a small
 // fraction of a percent of what they stand to gain. Numbers are tunable here in one place.
 //
-// The amount is charged in the owner's chosen display currency (round marketing numbers, not FX-
-// converted): a GBP user pays £999/mo, a USD user $999/mo. The band is chosen by gap MAGNITUDE,
-// which is currency-agnostic (a £2M gap and a $2M gap hit the same band).
+// AUD, and only AUD. Every figure is Australian dollars excluding GST, matching the FAQ and the
+// landing page.
+//
+// This comment used to describe a multi-currency product — "a GBP user pays £999/mo, a USD user
+// $999/mo", round marketing numbers rather than FX conversions. That was the intent once, and the
+// display currency selector it depended on has since been archived (app/business-valuation), because
+// changing it relabelled the same scalar instead of converting it: an Australian owner's gap could
+// render as £752,919.
+//
+// Three places disagreed about this at once — this comment, the archived selector, and an FAQ still
+// promising a switch — which is how the landing page ended up flipping between $499 + GST and
+// £499 + VAT in front of a buyer. The band is chosen by gap MAGNITUDE, and the magnitude is in AUD.
 //
 // The bands are anchored on what they replace: a fractional exec or chief of staff, which is
 // $3-10k/month of a real person's time. The earlier $99 entry band priced Kira like a note-taking

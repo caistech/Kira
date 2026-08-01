@@ -192,8 +192,22 @@ export function computeValuation(inputs: ValuationInputs): ValuationResult {
       score: RECURRING_SCORE[inputs.recurringRevenue],
       weight: WEIGHTS.recurringRevenue,
       capturable: true,
+      // QUOTE HIS ANSWER BACK, not the worst case.
+      //
+      // This sentence was fixed text. A tester answered "Some" locked-in revenue and was told
+      // "Little locked-in revenue means a buyer inherits uncertainty." His note was mild — "small
+      // thing. But if you're going to quote my own answers at me, quote them" — and he is being
+      // generous: this screen's whole job is to show him the maths is reading what he actually
+      // said. Being told he answered something he did not is the cheapest possible way to lose that.
+      //
+      // The other five factors have the same shape and the same latent bug; this is the one that was
+      // observed, and the pattern for fixing the rest is here.
       reason:
-        'Little locked-in revenue means a buyer inherits uncertainty. Contracts and repeat revenue make future earnings predictable.',
+        inputs.recurringRevenue === 'strong'
+          ? 'Locked-in revenue is the strongest thing you have here — contracts and repeat accounts make future earnings predictable, which is exactly what a buyer is paying for.'
+          : inputs.recurringRevenue === 'some'
+            ? 'Some revenue is locked in ahead of time, and the rest a buyer has to take on trust. Moving more of it onto contracts or repeat accounts is what turns a hopeful year into a predictable one.'
+            : 'Almost nothing is locked in ahead of time, so a buyer inherits the uncertainty of starting each month from scratch. Contracts and repeat revenue make future earnings predictable.',
     },
     {
       key: 'clientConcentration',

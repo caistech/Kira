@@ -74,7 +74,20 @@ export const OWNER_FAQ: FaqItem[] = [
   },
   {
     q: 'What currency am I charged in?',
-    a: 'Australian dollars by default — this is an Australian product. Prefer another currency? Switch it on the valuation screen and the price follows; Stripe then bills you in that currency.',
+    // IT PROMISED A CONTROL THAT DOES NOT EXIST. "Your FAQ promises a currency switch that isn't
+    // there. There is no currency control anywhere on the valuation screen or the result. I looked
+    // twice."
+    //
+    // He is right, and the selector's absence is deliberate rather than an oversight: it is archived
+    // in app/business-valuation/page.tsx because it CONVERTED NOTHING — changing it relabelled the
+    // same number, so an Australian owner's gap could read as £752,919. A wrong number is worse than
+    // a missing feature.
+    //
+    // So the answer describes what we actually do. This matters more than a copy nit: the landing
+    // page now shows AUD unconditionally, and the justification written into that change was this
+    // FAQ's promise that he could switch it later. A fix resting on a sentence that is not true is
+    // not a fix.
+    a: 'Australian dollars. This is an Australian product, built for Australian owner-operators, and every figure you see — the valuation and the fee — is in AUD, quoted excluding GST. We do not convert to other currencies, because a converted headline figure that moves with an exchange rate would be a worse number, not a friendlier one.',
   },
   {
     q: 'Will my business information be used to train AI models?',
