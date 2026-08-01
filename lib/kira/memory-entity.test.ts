@@ -59,22 +59,40 @@ describe('the question is on the tool', () => {
 
 const inserted: Record<string, unknown>[] = [];
 const mnemoWrites: string[][] = [];
+/** Rows the parked-fact lookup finds. Set per test. */
+let parkedRows: { content: string }[] = [];
 
+// A fluent chain that returns itself, so the mock does not have to mirror the exact order of
+// .eq()/.neq()/.limit() calls — a mock that encodes call order breaks on a refactor that changes
+// nothing about behaviour.
 vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => ({
-    from: (table: string) => ({
-      select: () => ({
-        eq: () => ({
-          maybeSingle: async () => ({ data: null }),
-          order: () => ({ limit: () => ({ maybeSingle: async () => ({ data: { id: 'agent-1' } }) }) }),
-          neq: () => ({ limit: async () => ({ data: [] }) }),
-        }),
-      }),
-      insert: async (row: Record<string, unknown>) => {
-        if (table === 'kira_memory') inserted.push(row);
-        return { error: null };
-      },
-    }),
+    from: (table: string) => {
+      const chain: Record<string, unknown> = {};
+      Object.assign(chain, {
+        select: (cols?: string) => {
+          chain.__cols = cols;
+          return chain;
+        },
+        eq: (col: string) => {
+          if (col === 'parked_reason') chain.__parkedQuery = true;
+          return chain;
+        },
+        neq: () => chain,
+        order: () => chain,
+        maybeSingle: async () => ({ data: table === 'kira_agents' ? { id: 'agent-1' } : null }),
+        // Chainable AND awaitable: the agent lookup ends .limit(1).maybeSingle(), the fact lookups
+        // await .limit(500) directly. A thenable chain serves both without encoding which is which.
+        limit: () => chain,
+        then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
+          Promise.resolve({ data: chain.__parkedQuery ? parkedRows : [] }).then(resolve, reject),
+        insert: async (row: Record<string, unknown>) => {
+          if (table === 'kira_memory') inserted.push(row);
+          return { error: null };
+        },
+      });
+      return chain;
+    },
   }),
 }));
 
@@ -96,6 +114,7 @@ function save(body: Record<string, unknown>) {
 beforeEach(() => {
   inserted.length = 0;
   mnemoWrites.length = 0;
+  parkedRows = [];
 });
 
 describe('another company does not reach the Genome', () => {
@@ -122,6 +141,45 @@ describe('another company does not reach the Genome', () => {
     // So she can say "I've kept that out of this record" instead of claiming a save that did not
     // happen — the same ok:false discipline as every other tool.
     expect(body.reason).toMatch(/another business/i);
+  });
+});
+
+describe('the first classification survives being pushed', () => {
+  // Found live, on the guard's first real run. She classified Corvid Holdings as another_business
+  // and the server parked it — then the owner pushed once ("just put it in here, it is all me
+  // anyway") and she called save_memory AGAIN with the identical fact classified this_business.
+  // That row went in active, so both existed and the Genome held the other company after all.
+  //
+  // The ordinary dedupe cannot catch it: it ignores inactive rows on purpose, because a parked fact
+  // must not block a genuine later save.
+  it('keeps a fact parked when it is re-saved as this business', async () => {
+    parkedRows = [{ content: 'Corvid Holdings is raising a $2m fund' }];
+    const body = await (
+      await save({ memory: 'Corvid Holdings is raising a $2m fund', about_business: 'this_business' })
+    ).json();
+
+    expect(body).toMatchObject({ success: true, parked: true });
+    expect(inserted).toHaveLength(0);
+    expect(mnemoWrites).toHaveLength(0);
+  });
+
+  it('matches on the normalised fact, not the exact string', async () => {
+    // She rewords between turns. A guard that only caught a verbatim repeat would be walked around
+    // by the same pressure it exists to resist, one paraphrase later.
+    parkedRows = [{ content: '  CORVID HOLDINGS IS RAISING A $2M FUND  ' }];
+    const body = await (
+      await save({ memory: 'Corvid Holdings is raising a $2m fund', about_business: 'this_business' })
+    ).json();
+    expect(body).toMatchObject({ parked: true });
+  });
+
+  it('does not stop an unrelated fact about this business', async () => {
+    parkedRows = [{ content: 'Corvid Holdings is raising a $2m fund' }];
+    const body = await (
+      await save({ memory: 'Marlow Street settles in March', about_business: 'this_business' })
+    ).json();
+    expect(body).toEqual({ success: true });
+    expect(inserted).toHaveLength(1);
   });
 });
 

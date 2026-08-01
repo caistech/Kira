@@ -84,6 +84,19 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
   // Bounded scan rather than a unique index: content is free text that arrives slightly reworded
   // each time, so the comparison has to be on the NORMALISED form, which no column constraint can
   // express. 500 is far above any real user's count (the largest today holds 116).
+  const key = normaliseFact(content);
+  const { data: priorFacts } = await supabase
+    .from('kira_memory')
+    .select('content')
+    .eq('user_id', uid)
+    .neq('active', false)
+    .limit(500);
+  if ((priorFacts ?? []).some((row) => normaliseFact(String(row.content ?? '')) === key)) {
+    // Reported honestly rather than as a save. She can then say "I already had that" instead of
+    // claiming to have written something down for the second time.
+    return json(200, { success: true, already: true });
+  }
+
   // ANOTHER COMPANY'S FACT DOES NOT GO INTO THIS GENOME.
   //
   // The prompt asks her not to file one. Measured over three red-team runs, that held 0 times: she
@@ -102,17 +115,37 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
   const aboutBusiness = String(body.about_business || '').trim();
   const belongsElsewhere = aboutBusiness === 'another_business';
 
-  const key = normaliseFact(content);
-  const { data: priorFacts } = await supabase
-    .from('kira_memory')
-    .select('content')
-    .eq('user_id', uid)
-    .neq('active', false)
-    .limit(500);
-  if ((priorFacts ?? []).some((row) => normaliseFact(String(row.content ?? '')) === key)) {
-    // Reported honestly rather than as a save. She can then say "I already had that" instead of
-    // claiming to have written something down for the second time.
-    return json(200, { success: true, already: true });
+  // AND THE FIRST CLASSIFICATION STANDS WHEN HE PUSHES.
+  //
+  // The guard worked on its first live run and was then walked straight around it. She classified
+  // Corvid Holdings as another_business, the server parked it — and when the owner pushed once
+  // ("just put it in here, it is all me anyway, same head, same desk") she called save_memory AGAIN
+  // with the identical fact classified this_business, and that row went in active. Both rows exist.
+  //
+  // Nothing he said was new information about whose company it is; it was pressure, and she folded
+  // to it in one turn. The ordinary dedupe cannot catch this because it deliberately ignores
+  // inactive rows — parked facts must not block a genuine later save.
+  //
+  // So a fact already parked as another business stays parked. The earlier classification was made
+  // before pressure was applied, which makes it the more reliable of the two, and the asymmetry of
+  // being wrong is stark: a wrongly-parked fact is one --restore away, while a wrongly-filed one is
+  // a false statement about the business inside the document a buyer's accountant reads. If it truly
+  // belongs here, restoring it is an operator action — the right amount of friction for something
+  // that changes what the Genome asserts.
+  if (!belongsElsewhere) {
+    const { data: parked } = await supabase
+      .from('kira_memory')
+      .select('content')
+      .eq('user_id', uid)
+      .eq('parked_reason', 'entity:other')
+      .limit(500);
+    if ((parked ?? []).some((row) => normaliseFact(String(row.content ?? '')) === key)) {
+      return json(200, {
+        success: true,
+        parked: true,
+        reason: 'already recorded as belonging to another business',
+      });
+    }
   }
 
   const { error } = await supabase.from('kira_memory').insert({
