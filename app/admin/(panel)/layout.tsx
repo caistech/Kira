@@ -12,6 +12,7 @@ const ADMIN_NAV: NavItem[] = [
   { href: '/admin/introducers', label: 'Introducers' },
   { href: '/admin/loi', label: 'LOIs' },
   { href: '/admin/asked-for', label: 'Asked for' },
+  { href: '/admin/trust', label: 'Trust' },
 ];
 
 export default async function AdminPanelLayout({ children }: { children: React.ReactNode }) {
