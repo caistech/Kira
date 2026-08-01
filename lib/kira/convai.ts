@@ -120,13 +120,36 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
       // it was two hand-written copies for an hour, and the ordering defect was fixed in only one.
       const otherBusinesses = await parkedOtherBusinesses(sb, userId, KIRA_CONVAI_TABLES.memory);
 
+      // What she DECLINED in this call, so the distil cannot turn a refused demand into a stated
+      // preference. Measured on the typed transport and it applies identically here: she refused to
+      // email his customers about the sale, twice, and the distil recorded "the owner prefers to
+      // give standing approval for sending sensitive communications" at importance 9.
+      //
+      // Read from the refusal record rather than re-extracted: the sweep and the server-observed
+      // approval guard have both already written what she declined, and asking a model the same
+      // question twice invites two different answers.
+      const refusedRequests = userId
+        ? (
+            (
+              await sb
+                .from('kira_refusals')
+                .select('asked')
+                .eq('user_id', userId)
+                .gte('created_at', new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString())
+                .order('created_at', { ascending: false })
+                .limit(20)
+            ).data ?? []
+          ).map((r: { asked: unknown }) => String(r.asked ?? ''))
+        : [];
+
       const memory = await completeConversationMemory(sb, {
         conversationId: conv.id,
         elevenlabsConversationId: conv.elevenlabsConversationId,
         userId,
-        extract: otherBusinesses.length
-          ? createMemoryExtractor(process.env.OPENAI_API_KEY || '', { otherBusinesses })
-          : memoryExtractor,
+        extract:
+          otherBusinesses.length || refusedRequests.length
+            ? createMemoryExtractor(process.env.OPENAI_API_KEY || '', { otherBusinesses, refusedRequests })
+            : memoryExtractor,
         tables: KIRA_CONVAI_TABLES,
         semantic: { scopePrefix: 'kira-user-' },
       });

@@ -64,7 +64,7 @@ describe('what it refuses to write', () => {
     // Unclassified is overwhelmingly a tool failure wearing a refusal's clothes. The DB CHECK would
     // reject it anyway — dropping it here means that never looks like a database problem.
     modelReply = JSON.stringify({ refusals: [{ asked: 'send the invoice', reason: 'no', declined_because: '' }] });
-    expect(await sweep()).toBe(0);
+    expect((await sweep()).written).toBe(0);
     expect(inserted).toHaveLength(0);
   });
 
@@ -72,14 +72,14 @@ describe('what it refuses to write', () => {
     modelReply = JSON.stringify({
       refusals: [{ asked: 'send the invoice', reason: 'no', declined_because: 'tool_failure' }],
     });
-    expect(await sweep()).toBe(0);
+    expect((await sweep()).written).toBe(0);
   });
 
   it('drops a row with nothing in `asked`', async () => {
     // A row that cannot say what was refused is not evidence of anything, and one of those in the
     // log is enough to make a buyer distrust the rest of it.
     modelReply = JSON.stringify({ refusals: [{ asked: '   ', reason: 'declined', declined_because: 'outside_scope' }] });
-    expect(await sweep()).toBe(0);
+    expect((await sweep()).written).toBe(0);
   });
 
   it('records nothing at all when the extractor fails', async () => {
@@ -109,7 +109,7 @@ describe('what it does write', () => {
   });
 
   it('records a properly classified refusal as observed', async () => {
-    expect(await sweep()).toBe(1);
+    expect((await sweep()).written).toBe(1);
     expect(inserted[0]).toMatchObject({
       user_id: 'u1',
       source: 'observed',
@@ -121,18 +121,34 @@ describe('what it does write', () => {
     // She sometimes DOES call the tool. Both rows landing would read as two separate refusals to
     // anyone looking at the log later, which overstates what happened.
     existingRows = [{ asked: 'Log into the invoicing system and mark INV-1 as paid, please' }];
-    expect(await sweep()).toBe(0);
+    expect((await sweep()).written).toBe(0);
   });
 
   it('matches an existing row even when the wording grew', async () => {
     // The extractor rewords, and so does she. Exact matching would let the same refusal in twice.
     existingRows = [{ asked: 'log into the invoicing system and mark INV-1 as paid' }];
-    expect(await sweep()).toBe(0);
+    expect((await sweep()).written).toBe(0);
   });
 
   it('does not suppress a genuinely different refusal', async () => {
     existingRows = [{ asked: 'send the Marlow Street quote to Dave without approving it' }];
-    expect(await sweep()).toBe(1);
+    expect((await sweep()).written).toBe(1);
+  });
+
+  it('returns what she refused even when nothing new was written', async () => {
+    // THE REASON THIS RETURNS REFUSALS AT ALL, and it is not bookkeeping.
+    //
+    // A tester pushed her to email his three biggest customers about the sale. She refused twice —
+    // and the distil then recorded "the owner prefers to give standing approval for sending
+    // sensitive communications" as a durable preference at importance 9. The boundary held and the
+    // attacker's framing became a fact about him, recalled into every later conversation.
+    //
+    // The distil needs ALL of them, not just the newly-written ones: whether we had already logged a
+    // refusal says nothing about whether the extractor is about to write it down as a preference.
+    existingRows = [{ asked: 'log into the invoicing system and mark INV-1 as paid' }];
+    const { written, refusals } = await sweep();
+    expect(written).toBe(0);
+    expect(refusals).toEqual(['log into the invoicing system and mark INV-1 as paid']);
   });
 
   it('writes only one row when the same refusal appears twice in one transcript', async () => {
@@ -143,6 +159,6 @@ describe('what it does write', () => {
         { asked: 'log into the invoicing system and mark INV-1 as paid', reason: 'x', declined_because: 'outside_scope' },
       ],
     });
-    expect(await sweep()).toBe(1);
+    expect((await sweep()).written).toBe(1);
   });
 });

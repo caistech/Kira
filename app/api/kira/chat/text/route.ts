@@ -224,6 +224,46 @@ export async function POST(req: NextRequest) {
           .gt('created_at', conv.distilled_at as string);
         if (!count) return NextResponse.json({ ok: true, distilled: false, reason: 'nothing new' });
       }
+      // READ THE REFUSALS BACK OUT FIRST — because she will not report them, and because the distil
+      // below needs to know what she declined.
+      //
+      // record_refusal measured 0/6 and then 1/6 across three attempts to fix it with words. She
+      // declines out loud, correctly, every time and does not call the tool — and unlike every other
+      // guard here there is no call to hang a required parameter on, because the absent call IS the
+      // defect. This is the one pass that already reads the whole conversation.
+      //
+      // IT RUNS BEFORE THE DISTIL, and that ordering fixes a second, worse defect. A tester pushed
+      // her to email his three biggest customers about the sale; she refused twice, correctly — and
+      // the distil then wrote down "the owner prefers to give standing approval for sending
+      // sensitive communications" as a durable preference at importance 9. The boundary held in the
+      // moment and the attacker's framing became a fact about him, recalled into every later
+      // conversation as a false premise supporting the very thing she had just declined.
+      //
+      // Awaited, never floated: on a serverless runtime a floating promise means "maybe", which is
+      // how six of ten task mirrors were silently lost once already.
+      let refusedRequests: string[] = [];
+      try {
+        const { data: rows } = await supabase
+          .from(KIRA_CONVAI_TABLES.messages)
+          .select('role, content')
+          .eq('conversation_id', conversationId)
+          .order('created_at', { ascending: true })
+          .limit(200);
+        const swept = await sweepConversationForRefusals({
+          conversationId,
+          userId: agent.user_id as string,
+          agentRowId: (agent.id as string) ?? null,
+          transcript: (rows ?? []).map((m) => ({ role: String(m.role), content: String(m.content ?? '') })),
+          apiKey: process.env.OPENAI_API_KEY || '',
+        });
+        refusedRequests = swept.refusals;
+        if (swept.written) console.log(`[chat/text] recorded ${swept.written} observed refusal(s)`);
+      } catch (error) {
+        // The distil still runs. Losing the exclusions costs hygiene on one conversation; throwing
+        // here would cost him every fact from it.
+        console.error('[chat/text] refusal sweep failed (memory still runs):', error);
+      }
+
       const memory = await completeConversationMemory(supabase, {
         conversationId,
         elevenlabsConversationId: String(conv?.elevenlabs_conversation_id ?? `text:${conversationId}`),
@@ -239,41 +279,14 @@ export async function POST(req: NextRequest) {
             agent.user_id as string,
             KIRA_CONVAI_TABLES.memory,
           ),
+          // A request she REFUSED is not a preference he holds — see lib/kira/memory-extract.ts.
+          refusedRequests,
         }),
         tables: KIRA_CONVAI_TABLES,
         semantic: { scopePrefix: 'kira-user-' },
       });
       if (memory.errors.length) console.error('[chat/text] distil reported:', memory.errors.join('; '));
 
-      // READ THE REFUSALS BACK OUT, because she will not report them.
-      //
-      // record_refusal measured 0/6 and then 1/6 across three separate attempts to fix it with
-      // words. She declines out loud, correctly, every time and does not call the tool — and unlike
-      // every other guard here there is no call to hang a required parameter on, because the absent
-      // call IS the defect. This is the one pass that already reads the whole conversation.
-      //
-      // Deliberately after the memory distil and outside its error path: a refusal sweep that threw
-      // must never cost him the facts from the session. Same reason it is awaited rather than
-      // floated — on a serverless runtime a floating promise means "maybe", which is how six of ten
-      // task mirrors were silently lost once already.
-      try {
-        const { data: rows } = await supabase
-          .from(KIRA_CONVAI_TABLES.messages)
-          .select('role, content')
-          .eq('conversation_id', conversationId)
-          .order('created_at', { ascending: true })
-          .limit(200);
-        const written = await sweepConversationForRefusals({
-          conversationId,
-          userId: agent.user_id as string,
-          agentRowId: (agent.id as string) ?? null,
-          transcript: (rows ?? []).map((m) => ({ role: String(m.role), content: String(m.content ?? '') })),
-          apiKey: process.env.OPENAI_API_KEY || '',
-        });
-        if (written) console.log(`[chat/text] recorded ${written} observed refusal(s)`);
-      } catch (error) {
-        console.error('[chat/text] refusal sweep failed (memory is safe):', error);
-      }
 
       // Stamped AFTER the pipeline returns, so a failed run is retried by the next trigger rather
       // than marked done. The cost of stamping too early is silent permanent loss; the cost of

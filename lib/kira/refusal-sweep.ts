@@ -143,7 +143,10 @@ export async function extractRefusals(
 /**
  * Extract and record, skipping anything she already logged herself.
  *
- * @returns how many rows were written
+ * @returns `written` — rows created; and `refusals` — what she declined in THIS transcript, whether
+ *   or not each one was new. The distil needs all of them, not just the new ones: a request she
+ *   refused is not a preference he holds, and whether we had already logged it says nothing about
+ *   whether the extractor is about to write it down as one.
  */
 export async function sweepConversationForRefusals(args: {
   conversationId: string;
@@ -151,9 +154,9 @@ export async function sweepConversationForRefusals(args: {
   agentRowId?: string | null;
   transcript: { role: string; content: string }[];
   apiKey: string;
-}): Promise<number> {
+}): Promise<{ written: number; refusals: string[] }> {
   const found = await extractRefusals(args.transcript, args.apiKey);
-  if (found.length === 0) return 0;
+  if (found.length === 0) return { written: 0, refusals: [] };
 
   const supabase = createServiceClient();
 
@@ -190,5 +193,5 @@ export async function sweepConversationForRefusals(args: {
     already.push(key);
     written += 1;
   }
-  return written;
+  return { written, refusals: found.map((f) => f.asked) };
 }
