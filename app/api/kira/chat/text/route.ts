@@ -35,6 +35,7 @@ import { KIRA_CONVAI_TABLES } from '@/lib/kira/convai';
 import { createMemoryExtractor } from '@/lib/kira/memory-extract';
 import { runTextTool, textToolsFor } from '@/lib/kira/text-tools';
 import { createServiceClient } from '@/lib/supabase/server';
+import { sweepConversationForRefusals } from '@/lib/kira/refusal-sweep';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -231,6 +232,36 @@ export async function POST(req: NextRequest) {
         semantic: { scopePrefix: 'kira-user-' },
       });
       if (memory.errors.length) console.error('[chat/text] distil reported:', memory.errors.join('; '));
+
+      // READ THE REFUSALS BACK OUT, because she will not report them.
+      //
+      // record_refusal measured 0/6 and then 1/6 across three separate attempts to fix it with
+      // words. She declines out loud, correctly, every time and does not call the tool — and unlike
+      // every other guard here there is no call to hang a required parameter on, because the absent
+      // call IS the defect. This is the one pass that already reads the whole conversation.
+      //
+      // Deliberately after the memory distil and outside its error path: a refusal sweep that threw
+      // must never cost him the facts from the session. Same reason it is awaited rather than
+      // floated — on a serverless runtime a floating promise means "maybe", which is how six of ten
+      // task mirrors were silently lost once already.
+      try {
+        const { data: rows } = await supabase
+          .from(KIRA_CONVAI_TABLES.messages)
+          .select('role, content')
+          .eq('conversation_id', conversationId)
+          .order('created_at', { ascending: true })
+          .limit(200);
+        const written = await sweepConversationForRefusals({
+          conversationId,
+          userId: agent.user_id as string,
+          agentRowId: (agent.id as string) ?? null,
+          transcript: (rows ?? []).map((m) => ({ role: String(m.role), content: String(m.content ?? '') })),
+          apiKey: process.env.OPENAI_API_KEY || '',
+        });
+        if (written) console.log(`[chat/text] recorded ${written} observed refusal(s)`);
+      } catch (error) {
+        console.error('[chat/text] refusal sweep failed (memory is safe):', error);
+      }
 
       // Stamped AFTER the pipeline returns, so a failed run is retried by the next trigger rather
       // than marked done. The cost of stamping too early is silent permanent loss; the cost of

@@ -181,7 +181,13 @@ export default async function TrustPage() {
 
   const ownerRefusals = refusals.filter((r) => !isSyntheticIdentity(r));
   const syntheticRefusals = refusals.length - ownerRefusals.length;
-  const serverObserved = ownerRefusals.filter((r) => r.source === 'approval').length;
+  // Three sources now, and they must be counted separately rather than as "server" and "everything
+  // else". `observed` rows are read back out of the transcript at distil, because record_refusal
+  // measured 0/6 and then 1/6 across three attempts to fix it with prose — so lumping them in with
+  // "she recorded it herself" would credit her with the one thing she reliably does not do.
+  const byServer = ownerRefusals.filter((r) => r.source === 'approval').length;
+  const byHer = ownerRefusals.filter((r) => r.source === 'agent').length;
+  const byTranscript = ownerRefusals.filter((r) => r.source === 'observed').length;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
@@ -351,11 +357,15 @@ export default async function TrustPage() {
       <section className="mb-10">
         <h2 className="text-lg font-semibold text-gray-900">What she declined</h2>
         <p className="mt-1 max-w-prose text-sm text-gray-600">
-          Every refusal recorded, across every account. Two sources:{' '}
+          Every refusal recorded, across every account. Three sources:{' '}
           <span className="font-medium">approval</span> is server-observed and requires nothing of
           the model, <span className="font-medium">agent</span> is one she recorded herself in
-          conversation. Rows produced by the red team&apos;s synthetic identity are marked as such —
-          they are the suite&apos;s own output and are not evidence about real owners.
+          conversation, and <span className="font-medium">observed</span> is one read back out of
+          the transcript when the session ended. The third exists because the second is the least
+          reliable thing here — she declines out loud and does not call the tool, and three attempts
+          to fix that with wording moved it from 0 in 6 to 1 in 6. Rows produced by the red
+          team&apos;s synthetic identity are marked as such — they are the suite&apos;s own output
+          and are not evidence about real owners.
         </p>
         <p className="mt-2 max-w-prose text-sm text-gray-600">
           Refusals only — a decision <em>not</em> to act. A row here describing a tool that failed
@@ -374,8 +384,8 @@ export default async function TrustPage() {
               <span className="font-medium text-gray-700">
                 {ownerRefusals.length} from real owners
               </span>{' '}
-              ({serverObserved} server-observed, {ownerRefusals.length - serverObserved} recorded by
-              her) · {syntheticRefusals} from the red team
+              ({byServer} server-observed, {byHer} recorded by her, {byTranscript} read back from the
+              transcript) · {syntheticRefusals} from the red team
             </p>
             {/* Stated whenever it is true, not just when it is zero. "She has refused six times"
                 is the sentence a distributor will repeat, and it must not be sourced from the
