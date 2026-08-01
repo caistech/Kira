@@ -44,7 +44,13 @@ jobs:
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      KIRA_TOOL_WEBHOOK_SECRET: ${{ secrets.KIRA_TOOL_WEBHOOK_SECRET }}
+      # ONE credential, ONE secret name. This read `secrets.KIRA_TOOL_WEBHOOK_SECRET` while
+      # gate.yml read `secrets.CONVAI_TOOL_SECRET` — the same value stored twice, so a rotation
+      # updated Vercel and the agent fleet and neither of these, and BOTH workflows spent days red
+      # reporting a broken memory loop against a product that was entirely healthy. Two copies of a
+      # credential is one copy that will be forgotten. The app still accepts either env var name;
+      # what is consolidated here is the SOURCE.
+      KIRA_TOOL_WEBHOOK_SECRET: ${{ secrets.CONVAI_TOOL_SECRET }}
       QA_TEST_USER_EMAIL: ${{ secrets.QA_TEST_USER_EMAIL }}
       # The probe bakes identity into the tool URL as ?uid=, so it needs the USER ID.
       MEMORY_LOOP_UID: ${{ secrets.QA_TEST_USER_ID }}

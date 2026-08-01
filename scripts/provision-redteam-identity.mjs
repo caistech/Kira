@@ -35,19 +35,23 @@ import { buildToolsForUser } from './lib/redteam-tools.mjs';
 
 const APPLY = process.argv.includes('--apply');
 
-const {
-  NEXT_PUBLIC_SUPABASE_URL,
-  SUPABASE_SERVICE_ROLE_KEY,
-  ELEVENLABS_API_KEY,
-  QA_REDTEAM_EMAIL,
-  QA_REDTEAM_PASSWORD,
-} = process.env;
+const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ELEVENLABS_API_KEY } = process.env;
+
+// WHICH synthetic identity to provision. Defaults to the red team; `--qa-user` provisions the
+// ORDINARY tester identity instead, because that one had the same problem for the same reason:
+// QA_TEST_USER_EMAIL pointed at the live Factory2Key owner, so every naive-tester and /qa run
+// deposited into a real business's Genome. One script, because the need is identical — a real,
+// confirmed account with a real agent, owning nothing anyone would miss.
+const QA_USER_MODE = process.argv.includes('--qa-user');
+const QA_REDTEAM_EMAIL = QA_USER_MODE ? process.env.QA_TEST_USER_EMAIL : process.env.QA_REDTEAM_EMAIL;
+const QA_REDTEAM_PASSWORD = QA_USER_MODE ? process.env.QA_TEST_USER_PASSWORD : process.env.QA_REDTEAM_PASSWORD;
+const LABEL = QA_USER_MODE ? 'QaUser' : 'RedTeam';
 
 if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) throw new Error('Supabase env missing');
 if (!ELEVENLABS_API_KEY) throw new Error('ELEVENLABS_API_KEY missing');
 if (!QA_REDTEAM_EMAIL || !QA_REDTEAM_PASSWORD) {
   throw new Error(
-    'QA_REDTEAM_EMAIL / QA_REDTEAM_PASSWORD not set. They live in ' +
+    `${QA_USER_MODE ? 'QA_TEST_USER' : 'QA_REDTEAM'}_EMAIL / _PASSWORD not set. They live in ` +
       'cais-shared-services/.secrets/qa-secrets.json — inject them per docs/TESTING.md rather than ' +
       'copying them into this repo.',
   );
@@ -161,7 +165,7 @@ if (existingAgent) {
   const created = await el('agents/create', {
     method: 'POST',
     body: JSON.stringify({
-      name: `Kira_RedTeam_Synthetic_${appUser.id.slice(0, 4)}`,
+      name: `Kira_${LABEL}_Synthetic_${appUser.id.slice(0, 4)}`,
       conversation_config: {
         agent: { prompt: { prompt, llm: 'gpt-4.1-mini' }, first_message: 'Morning — what are we picking up?' },
       },
@@ -179,7 +183,7 @@ if (existingAgent) {
 
   const { error } = await db.from('kira_agents').insert({
     user_id: appUser.id,
-    agent_name: `Kira_RedTeam_Synthetic_${appUser.id.slice(0, 4)}`,
+    agent_name: `Kira_${LABEL}_Synthetic_${appUser.id.slice(0, 4)}`,
     journey_type: 'business',
     elevenlabs_agent_id: agentId,
     status: 'active',
