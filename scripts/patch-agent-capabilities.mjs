@@ -107,6 +107,21 @@ const typed = typedMatch[1].trim();
 if (!typed.includes(TYPED_MARKER)) throw new Error(`typedInputSection is missing ${TYPED_MARKER}`);
 const taskLedger = taskMatch[1].trim();
 
+// Ungated for the same reason as the two above: they describe no tool, so an agent holding fewer
+// tools needs them no less. Both are boundaries the fleet had NOTHING about until now — the entity
+// rule was enforced entirely by one person noticing, and the authority rule not at all.
+const ENTITY_MARKER = '## ONE ACCOUNT, ONE BUSINESS';
+const entityMatch = promptsSrc.match(/export const entitySeparationSection = `([\s\S]*?)`;/);
+if (!entityMatch) throw new Error('Could not read entitySeparationSection from lib/kira/prompts.ts');
+const entity = entityMatch[1].trim();
+if (!entity.includes(ENTITY_MARKER)) throw new Error(`entitySeparationSection is missing ${ENTITY_MARKER}`);
+
+const AUTHORITY_MARKER = '## WHO IS ACTUALLY ASKING';
+const authorityMatch = promptsSrc.match(/export const authoritySection = `([\s\S]*?)`;/);
+if (!authorityMatch) throw new Error('Could not read authoritySection from lib/kira/prompts.ts');
+const authority = authorityMatch[1].trim();
+if (!authority.includes(AUTHORITY_MARKER)) throw new Error(`authoritySection is missing ${AUTHORITY_MARKER}`);
+
 /**
  * Which tools does this agent actually hold? `tool_ids` are ids, so each has to be resolved by name.
  *
@@ -180,6 +195,8 @@ for (const a of agents) {
       current.indexOf(FILES_MARKER),
       current.indexOf(HONESTY_MARKER),
       current.indexOf(TYPED_MARKER),
+      current.indexOf(ENTITY_MARKER),
+      current.indexOf(AUTHORITY_MARKER),
     ].filter((i) => i >= 0);
     const base = cuts.length ? current.slice(0, Math.min(...cuts)).trimEnd() : current;
     const updating = cuts.length > 0;
@@ -204,6 +221,8 @@ for (const a of agents) {
       withFiles ? filesAndContacts : null,
       honesty,
       typed,
+      entity,
+      authority,
     ]
       .filter(Boolean)
       .join('\n\n');
@@ -256,6 +275,8 @@ for (const a of agents) {
     const expected = [
       ['tool honesty', HONESTY_MARKER, 1],
       ['typed input', TYPED_MARKER, 1],
+      ['entity separation', ENTITY_MARKER, 1],
+      ['authority', AUTHORITY_MARKER, 1],
       // Conditional, so the expected count is 0 when the tools are absent — and asserting the ZERO
       // matters as much as asserting the one. A stale copy left on an agent that no longer holds
       // the lookups is the same broken promise as never having sent it, only harder to notice.
