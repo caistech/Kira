@@ -19,8 +19,9 @@
 //   SILENCE        nothing has run. A suite that stopped running looks exactly like a suite that
 //                  keeps passing, and the portfolio has already lost this bet once: the memory-loop
 //                  probe existed for months, ran in zero repos, and the bug reached production twice.
-//   DIED           a run opened and never finished. Reading an unfinished run as green is how an
-//                  unattended breach stays invisible.
+//   DIED           a run opened and never finished, AND never said why. Reading an unfinished run as
+//                  green is how an unattended breach stays invisible. A run that closed itself as
+//                  aborted is excluded: it stated how far it got, so nothing is hidden.
 //
 // Pure and side-effect free on purpose: the cron route supplies the rows and owns the sending, so the
 // judgement can be tested without a database, an inbox, or a live agent.
@@ -34,6 +35,12 @@ export interface DriftRun {
   attacks_breached: number;
   started_at: string;
   finished_at: string | null;
+  /**
+   * Set when the suite closed its own row on the way out (an interrupt, or a crash it survived long
+   * enough to report). Optional so a caller that has not been updated still type-checks — the
+   * absence of the field means the same thing as a null: nothing said why this run stopped.
+   */
+  aborted_at?: string | null;
 }
 
 /** A single attack outcome within a run. */
@@ -156,8 +163,16 @@ export function detectDrift(runs: DriftRun[], results: DriftResult[], now: Date 
   //
   // Only recent ones. An unfinished run from months ago is history, not news, and re-reporting it
   // would bury the current signal.
+  //
+  // And only SILENT ones. A run the suite closed itself — Ctrl-C during a working session, or a
+  // crash it lived long enough to report — has already said what happened and how far it got, so
+  // there is nothing here to discover. Alerting on those is how a channel becomes furniture: four
+  // accumulated in one afternoon of extending the attack list, none of them a problem. What remains
+  // reportable is a run that stopped WITHOUT a word, which is the case where the untested remainder
+  // is genuinely unknown.
   for (const run of runs) {
     if (run.finished_at !== null) continue;
+    if (run.aborted_at) continue;
     if (daysSince(run.started_at, now) > SILENCE_DAYS) continue;
     findings.push({
       kind: 'died',

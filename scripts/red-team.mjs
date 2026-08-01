@@ -711,12 +711,74 @@ async function openRun() {
 
 const runId = await openRun();
 
+/**
+ * CLOSING THE ROW ON THE WAY OUT.
+ *
+ * A run that stops without saying so leaves a row with no finish time, and the drift detector reads
+ * that as DIED — correctly, because a suite that vanished partway must never be counted as green.
+ * The trouble is that the commonest cause by far is a person pressing Ctrl-C during a working
+ * session, and four such rows accumulated in a single day of extending the attack list. Mailing the
+ * operator about those trains him to ignore the channel, which is the one thing the drift alerting
+ * was shaped to avoid.
+ *
+ * So the suite now states what happened instead of leaving it to be inferred: an interrupt records
+ * `aborted_at` plus how far it actually got. A row with NEITHER finish nor abort still means the
+ * process disappeared without a word, and that remains worth an email.
+ *
+ * Deliberately not a catch-all "close it however we exited": the results already written stand on
+ * their own, and the partial counts come from the attacks this process genuinely completed.
+ */
+let completed = 0;
+let failures = 0;
+let closed = false;
+
+async function abortRun(why) {
+  if (!runId || closed) return;
+  closed = true;
+  try {
+    await db
+      .from('kira_redteam_runs')
+      .update({
+        aborted_at: new Date().toISOString(),
+        aborted_reason: why,
+        attacks_run: completed,
+        attacks_breached: failures,
+      })
+      .eq('id', runId);
+    console.log(`\n  (run closed as aborted after ${completed} of ${ATTACKS.length}: ${why})`);
+  } catch (error) {
+    // Nothing else to do — the row stays open and tomorrow's drift check reports it as died, which
+    // is the honest outcome when we could not record why we stopped.
+    console.error('  (could not close the run record):', error.message);
+  }
+}
+
+for (const [signal, code] of [
+  ['SIGINT', 130],
+  ['SIGTERM', 143],
+]) {
+  process.on(signal, () => {
+    abortRun(`interrupted (${signal})`).finally(() => process.exit(code));
+  });
+}
+
+// A crash is NOT an abort in the harmless sense — but it is still a reason, and a recorded reason
+// beats a silent gap. The message is kept because "why did it stop" is the question the row exists
+// to answer.
+process.on('uncaughtException', (error) => {
+  abortRun(`crashed: ${error?.message ?? 'unknown error'}`).finally(() => process.exit(1));
+});
+process.on('unhandledRejection', (reason) => {
+  abortRun(`crashed: ${reason instanceof Error ? reason.message : String(reason)}`).finally(() =>
+    process.exit(1),
+  );
+});
+
 // Before any attack, so "a refusal leaves a record" measures HER behaviour rather than the 1-hour
 // duplicate guard. See clearSyntheticRefusals — synthetic identity only, verified by re-reading the
 // row the delete is keyed on.
 await clearSyntheticRefusals();
 
-let failures = 0;
 for (const attack of ATTACKS) {
   process.stdout.write(`  ${attack.name} … `);
   try {
@@ -751,9 +813,13 @@ for (const attack of ATTACKS) {
     failures++;
     console.log(`ERROR — ${error.message}`);
   }
+  // Counted here rather than inside the try: an attack that threw still RAN, and a partial count
+  // that silently omitted the errors would understate how far an interrupted run actually got.
+  completed++;
 }
 
 if (runId) {
+  closed = true;
   await db
     .from('kira_redteam_runs')
     .update({ attacks_run: ATTACKS.length, attacks_breached: failures, finished_at: new Date().toISOString() })

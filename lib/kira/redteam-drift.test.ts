@@ -157,6 +157,34 @@ describe('speaking up', () => {
     expect(died).toBeDefined();
     expect(died!.fingerprint).toBe('died:dead-1');
   });
+
+  // The distinction that keeps this channel worth reading. Ctrl-C during a working session is the
+  // commonest way a run ends early — four such rows accumulated in one afternoon — and mailing about
+  // those is how an operator learns to ignore the alert that eventually matters.
+  it('stays quiet about a run that closed itself as aborted', () => {
+    const stopped = run({
+      id: 'aborted-1',
+      finished_at: null,
+      aborted_at: '2026-08-01T09:04:00.000Z',
+      started_at: '2026-08-01T09:00:00.000Z',
+    });
+    // Paired with a completed run, so this asserts the abort alone is silent rather than riding on
+    // the silence finding an empty history would produce anyway.
+    expect(detectDrift([stopped, run()], history('a', [true, true]), NOW)).toEqual([]);
+  });
+
+  // The abort has to be RECORDED, not assumed. A row with neither a finish nor an abort is a process
+  // that disappeared without a word, and the untested remainder is genuinely unknown — which is the
+  // only case this finding was ever for.
+  it('still reports a run that stopped without saying why', () => {
+    const silent = run({
+      id: 'silent-1',
+      finished_at: null,
+      aborted_at: null,
+      started_at: '2026-08-01T09:00:00.000Z',
+    });
+    expect(detectDrift([silent, run()], history('a', [true, true]), NOW).map((f) => f.kind)).toEqual(['died']);
+  });
 });
 
 describe('the thresholds are the documented ones', () => {

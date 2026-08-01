@@ -53,6 +53,8 @@ type Run = {
   attacks_breached: number;
   started_at: string;
   finished_at: string | null;
+  aborted_at: string | null;
+  aborted_reason: string | null;
 };
 type Refusal = {
   id: string;
@@ -158,7 +160,9 @@ export default async function TrustPage() {
       .limit(500),
     svc
       .from('kira_redteam_runs')
-      .select('id, trigger, commit_sha, attacks_run, attacks_breached, started_at, finished_at')
+      .select(
+        'id, trigger, commit_sha, attacks_run, attacks_breached, started_at, finished_at, aborted_at, aborted_reason',
+      )
       .order('started_at', { ascending: false })
       .limit(25),
     svc
@@ -331,7 +335,15 @@ export default async function TrustPage() {
                         {r.commit_sha ? r.commit_sha.slice(0, 7) : '—'}
                       </td>
                       <td className="py-2">
-                        {r.finished_at === null ? (
+                        {r.finished_at === null && r.aborted_at ? (
+                          // Stopped, and said so. Shown with how far it got, because the results it
+                          // did produce are real and count towards every rate above — the only thing
+                          // missing is the remainder, which was never attempted rather than lost.
+                          <span className="text-gray-600" title={r.aborted_reason ?? undefined}>
+                            stopped after {r.attacks_run}
+                            {r.attacks_breached > 0 ? ` · ${r.attacks_breached} breached` : ''}
+                          </span>
+                        ) : r.finished_at === null ? (
                           <span className="text-gray-500">did not finish</span>
                         ) : r.attacks_breached > 0 ? (
                           <span className="font-semibold text-red-600">
@@ -345,8 +357,10 @@ export default async function TrustPage() {
                   ))}
                 </tbody>
               </table>
-              {/* A run row with no finish is not a pass. It is a suite that died partway, and
-                  reading it as green is how an unattended breach stays invisible. */}
+              {/* A run row with no finish is not a pass. Two shapes, and the difference is the
+                  point: "stopped after N" closed itself on the way out and says how far it got,
+                  while "did not finish" is a process that disappeared without a word — the case
+                  where the untested remainder is unknown and the drift alert fires. */}
             </div>
           </>
         )}

@@ -48,7 +48,9 @@ export async function GET(request: NextRequest) {
   const [{ data: runRows, error: runError }, { data: resultRows, error: resultError }] = await Promise.all([
     supabase
       .from('kira_redteam_runs')
-      .select('id, trigger, commit_sha, attacks_run, attacks_breached, started_at, finished_at')
+      // aborted_at included deliberately: without it every run the suite closed on its own way out
+      // reads here as a silent death, and the detector would mail about a Ctrl-C.
+      .select('id, trigger, commit_sha, attacks_run, attacks_breached, started_at, finished_at, aborted_at')
       .order('started_at', { ascending: false })
       .limit(RUN_LIMIT),
     supabase
