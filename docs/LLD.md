@@ -148,16 +148,22 @@ Mounted under `/api/kira/webhooks/*`:
    `x-kira-tool-secret` is **not accepted**; it was removed once the audit showed zero callers on it
    (13/13 agents re-provisioned, all 41 Kira workspace tools migrated).
 
-   ⚠️ **Read this before changing it.** `toolSecretOk()` is **fail-OPEN when
-   `KIRA_TOOL_WEBHOOK_SECRET` is unset** — it returns `true`. That was deliberate for rollout: the
-   guard had to be deployable before every agent had been re-provisioned to send the header, and
-   the alternative was 401ing live agents mid-call. It is **active in production** (the CI probe
-   asserts a wrong secret is rejected with 401, and it passes), but the *code* does not enforce
-   it. An environment that loses the variable loses the guard silently.
+   ✅ **Fail-CLOSED** (corrected 2026-08-01 — this section previously said the opposite). An unset
+   `KIRA_TOOL_WEBHOOK_SECRET` / `CONVAI_TOOL_SECRET` makes `requireToolSecret()` **throw**, so the
+   route answers **500** and serves nothing; a caller presenting the wrong secret gets **401**. The
+   two are deliberately different answers: a 401 tells an attacker they guessed wrong, a 500 tells
+   the operator to fix their environment.
 
-   This is interim. `@caistech/elevenlabs-convai` ≥0.6.0 now offers `toolSecret` natively, so the
-   durable fix is to move onto it and make the check fail-closed. Until then, treat "the secret is
-   set in every environment" as an operational requirement, not a code guarantee.
+   The rollout-era fail-open behaviour (returning `true` when the secret was unset, so the guard
+   could ship before every agent sent the header) is **gone**. It was the worst shape a security
+   control can have — an environment that lost the variable lost the guard while every route kept
+   answering 200, indistinguishable from the outside from one that was working. The doc outlived
+   the fix by long enough to be the more dangerous artifact of the two: code that is safe and a
+   document that says it isn't will eventually be reconciled in the wrong direction.
+
+   `KIRA_TOOL_WEBHOOK_SECRET_PREVIOUS` accepts the outgoing value during a rotation and **must be
+   deleted afterwards** — a "previous" that outlives its rotation is a second live credential
+   nobody is tracking.
 2. **The post-call webhook verifies its HMAC.** Unsigned → 401.
 3. **Identity is server-derived on every path.** `start_conversation` resolves from the agent
    binding; `save`/`recall` derive from the conversation row. **No path may accept a

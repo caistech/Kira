@@ -259,11 +259,27 @@ export default function ChatPage() {
     [agentInfo, typedConversationId],
   );
 
-  // Distil the typed session when he leaves, which is the text equivalent of the post-call webhook.
-  // Without it, everything he typed stays a transcript and never becomes Genome.
+  // Distil the typed session, which is the text equivalent of the post-call webhook. Without it,
+  // everything he typed stays a transcript and never becomes Genome.
+  //
+  // THREE TRIGGERS, because each one misses a different way a session actually ends:
+  //
+  //   `visibilitychange` → hidden   the one that fires on a PHONE. A mobile browser backgrounding a
+  //                                 tab and later killing it frequently never fires `pagehide`, and
+  //                                 backgrounding is how a phone session normally ends — so on the
+  //                                 device an owner is most likely to type from, the original
+  //                                 trigger was the least likely to run.
+  //   `pagehide`                    desktop close/navigate, kept as-is.
+  //   every 3 minutes               neither of the above survives a crash, an OS kill, or a laptop
+  //                                 that sleeps and never wakes the tab. Bounded loss instead of
+  //                                 total loss.
+  //
+  // Firing this often is only reasonable because the server skips when no message is newer than
+  // `conversations.distilled_at` — so the extra beacons cost one cheap query, not one LLM pass.
   useEffect(() => {
     if (!typedConversationId || !agentInfo?.elevenlabs_agent_id) return;
-    const end = () => {
+
+    const distil = () => {
       navigator.sendBeacon?.(
         '/api/kira/chat/text',
         new Blob(
@@ -272,8 +288,21 @@ export default function ChatPage() {
         ),
       );
     };
-    window.addEventListener('pagehide', end);
-    return () => window.removeEventListener('pagehide', end);
+    // sendBeacon is used even for the periodic case: it is the one send that survives the document
+    // being torn down mid-flight, which is precisely the moment worth protecting against.
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') distil();
+    };
+
+    document.addEventListener('visibilitychange', onHide);
+    window.addEventListener('pagehide', distil);
+    const timer = window.setInterval(distil, 3 * 60 * 1000);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onHide);
+      window.removeEventListener('pagehide', distil);
+      window.clearInterval(timer);
+    };
   }, [typedConversationId, agentInfo]);
 
   /* ---------------- UI ---------------- */

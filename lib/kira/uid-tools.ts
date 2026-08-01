@@ -5,6 +5,8 @@
 // rather than a conversation binding the agent can't supply. This makes the agent's OWN mid-call
 // context-fetch and fact-saving work, not just the page-rendered welcome-back opener.
 
+import { normaliseFact } from '@caistech/mnemo';
+
 import { createServiceClient } from '@/lib/supabase/server';
 import { mnemoAdd } from '@/lib/kira/mnemo';
 import { readTaskLedger } from '@/lib/kira/swarm/open-tasks';
@@ -59,6 +61,33 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
+
+  // DON'T STORE THE SAME FACT TWICE.
+  //
+  // The Mnemo lane has always deduped (`normaliseFact` + a prior-key filter inside
+  // @caistech/elevenlabs-convai). This table did not: a plain insert, so the same fact said in two
+  // conversations — or saved mid-call and then distilled again at the end — became two rows.
+  //
+  // The harm is not storage, it is RETRIEVAL. Recall is a FIXED window (the typed transport injects
+  // the top 30 by importance), so duplicates do not add depth, they evict distinct facts from it.
+  // And a fact returned twice reads as two independent sources agreeing — the same reasoning that
+  // made keep_document idempotent, which was applied to documents and never to memories.
+  //
+  // Bounded scan rather than a unique index: content is free text that arrives slightly reworded
+  // each time, so the comparison has to be on the NORMALISED form, which no column constraint can
+  // express. 500 is far above any real user's count (the largest today holds 116).
+  const key = normaliseFact(content);
+  const { data: priorFacts } = await supabase
+    .from('kira_memory')
+    .select('content')
+    .eq('user_id', uid)
+    .neq('active', false)
+    .limit(500);
+  if ((priorFacts ?? []).some((row) => normaliseFact(String(row.content ?? '')) === key)) {
+    // Reported honestly rather than as a save. She can then say "I already had that" instead of
+    // claiming to have written something down for the second time.
+    return json(200, { success: true, already: true });
+  }
 
   const { error } = await supabase.from('kira_memory').insert({
     user_id: uid,

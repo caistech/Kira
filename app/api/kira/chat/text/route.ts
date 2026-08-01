@@ -33,6 +33,7 @@ import { getCurrentAppUser, isCurrentUserAdmin } from '@/lib/auth';
 import { haltState } from '@/lib/kill-switch';
 import { KIRA_CONVAI_TABLES } from '@/lib/kira/convai';
 import { createMemoryExtractor } from '@/lib/kira/memory-extract';
+import { runTextTool, textToolsFor } from '@/lib/kira/text-tools';
 import { createServiceClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -43,6 +44,25 @@ const HISTORY_TURNS = 20;
 
 /** Longest single message accepted. A paste of a whole document belongs in the upload path. */
 const MAX_MESSAGE = 4000;
+
+/**
+ * How many times the model may call tools before it must answer.
+ *
+ * Bounded because a loop here is billed per round AND runs while the owner watches a blank window.
+ * Four is enough for the deepest real chain (search_drive → read_document → dispatch_task →
+ * approve_task) with nothing left over for a model that has started calling in circles.
+ */
+const MAX_TOOL_ROUNDS = 4;
+
+/**
+ * Her tool list, cached per agent.
+ *
+ * Resolving it costs one request per tool (ElevenLabs returns ids, not names), which is fine once
+ * and absurd on every keystroke-to-send. The list only changes when the fleet is re-provisioned, so
+ * a short TTL costs one slow turn after a deploy and nothing after that.
+ */
+const toolNameCache = new Map<string, { names: string[]; at: number }>();
+const TOOL_CACHE_MS = 10 * 60 * 1000;
 
 /**
  * Her prompt, taken from the agent that is actually deployed.
@@ -70,6 +90,54 @@ async function livePromptFor(elevenlabsAgentId: string): Promise<string | null> 
   } catch (error) {
     console.error('[chat/text] agent prompt fetch failed:', error);
     return null;
+  }
+}
+
+/**
+ * WHICH TOOLS SHE HOLDS — read from the deployed agent, exactly as her prompt is.
+ *
+ * The same reasoning that made the prompt authoritative applies to the tool list: a set maintained
+ * here would be a second opinion about what she can do, and would drift the first time the fleet
+ * moved. Reading it means a tool added by a re-provision reaches the typed transport by itself.
+ *
+ * Returns [] on any failure, which degrades to a conversation with no tools rather than refusing
+ * the turn — she can still talk, and saying nothing at all would be the worse trade.
+ */
+async function liveToolNamesFor(elevenlabsAgentId: string): Promise<string[]> {
+  const cached = toolNameCache.get(elevenlabsAgentId);
+  if (cached && Date.now() - cached.at < TOOL_CACHE_MS) return cached.names;
+
+  const key = process.env.ELEVENLABS_API_KEY;
+  if (!key) return [];
+  try {
+    const headers = { 'xi-api-key': key };
+    const agentRes = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${elevenlabsAgentId}`, { headers });
+    if (!agentRes.ok) return [];
+    const agent = (await agentRes.json()) as {
+      conversation_config?: { agent?: { prompt?: { tool_ids?: string[] } } };
+    };
+    const toolIds = agent.conversation_config?.agent?.prompt?.tool_ids ?? [];
+
+    const names = (
+      await Promise.all(
+        toolIds.map(async (id) => {
+          try {
+            const res = await fetch(`https://api.elevenlabs.io/v1/convai/tools/${id}`, { headers });
+            if (!res.ok) return null;
+            const tool = (await res.json()) as { tool_config?: { name?: string } };
+            return tool.tool_config?.name ?? null;
+          } catch {
+            return null;
+          }
+        }),
+      )
+    ).filter((n): n is string => Boolean(n));
+
+    toolNameCache.set(elevenlabsAgentId, { names, at: Date.now() });
+    return names;
+  } catch (error) {
+    console.error('[chat/text] could not resolve the agent tool list:', error);
+    return [];
   }
 }
 
@@ -136,9 +204,24 @@ export async function POST(req: NextRequest) {
       // sessions have no ElevenLabs conversation, so they carry a `text:` id of our own.
       const { data: conv } = await supabase
         .from(KIRA_CONVAI_TABLES.conversations)
-        .select('elevenlabs_conversation_id')
+        .select('elevenlabs_conversation_id, distilled_at')
         .eq('id', conversationId)
         .maybeSingle();
+
+      // NOTHING NEW SINCE LAST TIME → do no work.
+      //
+      // This is what lets the leave-the-page trigger fire freely. `visibilitychange` fires on every
+      // tab switch, and each unguarded run would re-extract the entire transcript with an LLM:
+      // billed every time, and a fresh chance for the extractor to reword a fact it already saved
+      // into something the downstream literal-repeat collapse will not recognise as a repeat.
+      if (conv?.distilled_at) {
+        const { count } = await supabase
+          .from(KIRA_CONVAI_TABLES.messages)
+          .select('id', { count: 'exact', head: true })
+          .eq('conversation_id', conversationId)
+          .gt('created_at', conv.distilled_at as string);
+        if (!count) return NextResponse.json({ ok: true, distilled: false, reason: 'nothing new' });
+      }
       const memory = await completeConversationMemory(supabase, {
         conversationId,
         elevenlabsConversationId: String(conv?.elevenlabs_conversation_id ?? `text:${conversationId}`),
@@ -148,6 +231,15 @@ export async function POST(req: NextRequest) {
         semantic: { scopePrefix: 'kira-user-' },
       });
       if (memory.errors.length) console.error('[chat/text] distil reported:', memory.errors.join('; '));
+
+      // Stamped AFTER the pipeline returns, so a failed run is retried by the next trigger rather
+      // than marked done. The cost of stamping too early is silent permanent loss; the cost of
+      // stamping late is one repeated extraction.
+      await supabase
+        .from(KIRA_CONVAI_TABLES.conversations)
+        .update({ distilled_at: new Date().toISOString() })
+        .eq('id', conversationId);
+
       return NextResponse.json({ ok: true, distilled: true });
     } catch (error) {
       // Never fatal to the owner. He has finished typing; the worst outcome is that this turn's
@@ -224,22 +316,67 @@ export async function POST(req: NextRequest) {
     { role: 'user' as const, content: message },
   ];
 
+  // Her hands, read from the same deployed agent her words come from. An empty list is survivable:
+  // she talks, exactly as this route behaved before tools existed.
+  const tools = textToolsFor(await liveToolNamesFor(agentId));
+
   let reply: string;
+  const toolsUsed: string[] = [];
   try {
     const baseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
-    const res = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: process.env.KIRA_TEXT_MODEL || process.env.KIRA_EXTRACTION_MODEL || 'gpt-4.1-mini',
-        messages,
-        max_tokens: 600,
-      }),
-    });
-    if (!res.ok) throw new Error(`model returned ${res.status}`);
-    const json = await res.json();
-    reply = String(json?.choices?.[0]?.message?.content ?? '').trim();
-    if (!reply) throw new Error('empty reply');
+    const model = process.env.KIRA_TEXT_MODEL || process.env.KIRA_EXTRACTION_MODEL || 'gpt-4.1-mini';
+    // Widened as the loop runs: assistant tool-call turns and their results have to be replayed or
+    // the model answers the same question again instead of reading what came back.
+    const working: unknown[] = [...messages];
+
+    for (let round = 0; ; round++) {
+      const res = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          messages: working,
+          max_tokens: 600,
+          ...(tools.length && round < MAX_TOOL_ROUNDS ? { tools, tool_choice: 'auto' } : {}),
+        }),
+      });
+      if (!res.ok) throw new Error(`model returned ${res.status}`);
+      const json = await res.json();
+      const choice = json?.choices?.[0]?.message as
+        | { content?: string; tool_calls?: Array<{ id: string; function?: { name?: string; arguments?: string } }> }
+        | undefined;
+
+      const calls = choice?.tool_calls ?? [];
+      if (!calls.length) {
+        reply = String(choice?.content ?? '').trim();
+        if (!reply) throw new Error('empty reply');
+        break;
+      }
+
+      // The assistant's tool-call turn goes back verbatim — OpenAI rejects tool results that do not
+      // answer a call it can see.
+      working.push(choice);
+
+      for (const call of calls) {
+        const name = call.function?.name ?? '';
+        let args: Record<string, unknown> = {};
+        try {
+          args = JSON.parse(call.function?.arguments || '{}');
+        } catch {
+          // A malformed argument blob is the model's error, not the owner's. Run nothing and hand
+          // back something it can recover from.
+          args = {};
+        }
+
+        // IDENTITY IS THE ROUTE'S, NOT THE MODEL'S. agent.user_id came from the authenticated
+        // session and the ownership check above; anything the model put in `args` is ignored by
+        // every handler. This is the line that keeps a typed session inside its own business.
+        const result = await runTextTool(name, args, agent.user_id as string);
+        toolsUsed.push(name);
+
+        working.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(result) });
+      }
+    }
   } catch (error) {
     console.error('[chat/text] model call failed:', error);
     // His message is NOT persisted on failure. A turn stored with no answer would resurface in the
@@ -249,6 +386,10 @@ export async function POST(req: NextRequest) {
       { status: 502 },
     );
   }
+
+  // What she actually DID this turn, for the red team and for anyone reading the logs after a
+  // surprise. Not returned to the browser: the owner is owed her answer, not her mechanism.
+  if (toolsUsed.length) console.info(`[chat/text] tools used: ${toolsUsed.join(', ')}`);
 
   // Both turns, in order, into the same tables the voice path writes to. Awaited, not fired and
   // forgotten: on a serverless runtime a floating promise means "maybe", which is how the task
