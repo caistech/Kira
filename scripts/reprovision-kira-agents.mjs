@@ -40,6 +40,7 @@ import {
 } from '../lib/kira/lookup-tools-def.mjs';
 import { isUidToolUrl } from '../lib/kira/uid-tools.mjs';
 import { buildToolsForUser } from './lib/redteam-tools.mjs';
+import { runRedTeamAfterMutation } from './lib/run-red-team.mjs';
 import {
   kiraDispatchToolDef,
   kiraApproveToolDef,
@@ -172,3 +173,4 @@ for (const a of agents) {
 
 console.log(`\nDone. ${ok} re-provisioned, ${failed} failed.`);
 if (failed > 0) process.exitCode = 1;
+runRedTeamAfterMutation({ applied: !DRY_RUN && ok > 0, trigger: 're-provisioning' });

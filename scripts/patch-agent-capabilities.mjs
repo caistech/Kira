@@ -27,6 +27,7 @@
 //   node scripts/patch-agent-capabilities.mjs --apply
 
 import fs from 'node:fs';
+import { runRedTeamAfterMutation } from './lib/run-red-team.mjs';
 import path from 'node:path';
 
 const envPath = path.join(process.cwd(), '.env.local');
@@ -277,4 +278,5 @@ for (const a of agents) {
 
 console.log(`[capabilities] appended ${patched} · already had it ${already} · failed ${failed}`);
 if (!APPLY) console.log('[capabilities] dry run — re-run with --apply');
-process.exit(failed ? 1 : 0);
+runRedTeamAfterMutation({ applied: APPLY && patched > 0, trigger: 'the capability patch' });
+process.exit(failed ? 1 : process.exitCode ?? 0);
