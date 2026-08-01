@@ -227,7 +227,19 @@ export async function POST(req: NextRequest) {
         conversationId,
         elevenlabsConversationId: String(conv?.elevenlabs_conversation_id ?? `text:${conversationId}`),
         userId: agent.user_id as string,
-        extract: createMemoryExtractor(process.env.OPENAI_API_KEY || ''),
+        // What has already been ruled out of this record as another company's. Without this the
+        // distil re-files exactly what save_memory just parked — measured 6/6 then 0/6 the moment
+        // sessions started ending, which is the ordinary case and not an edge one.
+        extract: createMemoryExtractor(process.env.OPENAI_API_KEY || '', {
+          otherBusinesses: (
+            await supabase
+              .from(KIRA_CONVAI_TABLES.memory)
+              .select('content')
+              .eq('user_id', agent.user_id as string)
+              .eq('parked_reason', 'entity:other')
+              .limit(40)
+          ).data?.map((m) => String(m.content ?? '')) ?? [],
+        }),
         tables: KIRA_CONVAI_TABLES,
         semantic: { scopePrefix: 'kira-user-' },
       });

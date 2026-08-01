@@ -36,7 +36,37 @@ THE ONE EXCEPTION is a fact genuinely about the person rather than the business 
 work, be contacted, or be spoken to (memoryType "preference"). Write those as "The owner prefers…",
 which is honest about what they are. Never use his name in either case.`;
 
-export function createMemoryExtractor(apiKey: string): MemoryExtractor {
+/**
+ * @param otherBusinesses facts already parked as belonging to a DIFFERENT company (see
+ *   lib/kira/memory-entity-def.mjs). Passing them stops the distil re-filing what the live guard
+ *   just kept out.
+ *
+ *   THIS IS NOT BELT-AND-BRACES, IT IS THE HOLE THE GUARD HAD. save_memory parks another company's
+ *   fact mid-call, correctly — and then the end-of-session distil ran through the CANONICAL handler,
+ *   which knows nothing about `about_business`, and wrote it straight back as active. The red team
+ *   measured the whole thing at 6/6 and then 0/6 the moment the harness started ending its sessions,
+ *   which is what a session ending is: the ordinary case.
+ *
+ *   It has to be stopped HERE rather than matched afterwards, because the distil rewords. The parked
+ *   row said "Corvid Holdings is a separate company with its own ABN"; the distil produced "The owner
+ *   is the sole director of Corvid Holdings." No string comparison relates those two, and the only
+ *   thing that reliably does is the model that is already reading the transcript.
+ */
+export function createMemoryExtractor(
+  apiKey: string,
+  options?: { otherBusinesses?: string[] },
+): MemoryExtractor {
+  const excluded = (options?.otherBusinesses ?? []).map((s) => s.trim()).filter(Boolean).slice(0, 40);
+  const system = excluded.length
+    ? `${SYSTEM}\n\nEXCLUDE ANOTHER COMPANY'S FACTS. This account is ONE business, and everything you \
+return is read as a claim about THAT business. The owner also has other companies, and the facts \
+below have already been ruled out of this record as belonging to one of them:\n${excluded
+        .map((f) => `- ${f}`)
+        .join('\n')}\nReturn NOTHING about those companies — not the same fact reworded, not a \
+related fact, not a fact that merely names one of them. If the transcript is mostly about one of \
+them, return fewer memories or none.`
+    : SYSTEM;
+
   return async (turns) => {
     if (!apiKey || turns.length === 0) return [];
     const transcript = turns
@@ -56,7 +86,7 @@ export function createMemoryExtractor(apiKey: string): MemoryExtractor {
         body: JSON.stringify({
           model: process.env.KIRA_EXTRACTION_MODEL || 'gpt-4.1-mini',
           messages: [
-            { role: 'system', content: SYSTEM },
+            { role: 'system', content: system },
             { role: 'user', content: transcript },
           ],
           response_format: { type: 'json_object' },
