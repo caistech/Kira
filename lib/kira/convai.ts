@@ -28,6 +28,7 @@ import { classifyPendingMemories } from '@/lib/genome/derive';
 import { createServiceClient } from '@/lib/supabase/server';
 import { createMemoryExtractor } from '@/lib/kira/memory-extract';
 import { kiraKnowledgeToolDef } from '@/lib/kira/knowledge-tool-def.mjs';
+import { withEntityClassification } from '@/lib/kira/memory-entity-def.mjs';
 import {
   kiraDispatchToolDef,
   kiraApproveToolDef,
@@ -264,7 +265,13 @@ export function kiraMemoryTools(baseUrl: string): ConvAITool[] {
   // Kira is one-agent-per-user and keeps ?uid identity for the memory tools (see kiraAllTools) —
   // these are not alternatives. uid answers "whose memory", the platform-filled conversation id
   // answers "which conversation", and save_message needs the second one.
-  const tools = createConversationTools(baseUrl, KIRA_WEBHOOK_BASE_PATH, { platformIdentity: true });
+  // Decorated with the entity question before anything else touches them — see
+  // lib/kira/memory-entity-def.mjs. Both provisioning paths (this one for new agents, buildToolsForUser
+  // for the fleet script) must apply it, or a new owner's agent ships with an unguarded save_memory
+  // that looks identical to a guarded one.
+  const tools = withEntityClassification(
+    createConversationTools(baseUrl, KIRA_WEBHOOK_BASE_PATH, { platformIdentity: true }),
+  ) as ConvAITool[];
   const secret = requireToolSecret();
   for (const t of tools) {
     if (t.webhook) {

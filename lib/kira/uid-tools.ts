@@ -84,6 +84,24 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
   // Bounded scan rather than a unique index: content is free text that arrives slightly reworded
   // each time, so the comparison has to be on the NORMALISED form, which no column constraint can
   // express. 500 is far above any real user's count (the largest today holds 116).
+  // ANOTHER COMPANY'S FACT DOES NOT GO INTO THIS GENOME.
+  //
+  // The prompt asks her not to file one. Measured over three red-team runs, that held 0 times: she
+  // named the separation herself ("a separate company with its own ABN") and filed it anyway. So the
+  // question is now a required tool parameter and this is the consequence — the same move that made
+  // record_refusal's classification stick after prose failed.
+  //
+  // PARKED, NOT DROPPED. The row is written with active=false so nothing he said is lost and
+  // scripts/split-genome-entity.mjs --restore can return it if the call was wrong. What it must not
+  // do is appear in the Genome, in recall, or in the handover document a buyer's accountant reads —
+  // where it would assert that this business does something it does not do.
+  //
+  // Absent value = this business, on purpose. The post-call distil calls the canonical handler,
+  // which knows nothing about this parameter, and a fact silently discarded because a path forgot to
+  // classify it would be a far worse failure than the one being fixed.
+  const aboutBusiness = String(body.about_business || '').trim();
+  const belongsElsewhere = aboutBusiness === 'another_business';
+
   const key = normaliseFact(content);
   const { data: priorFacts } = await supabase
     .from('kira_memory')
@@ -105,8 +123,20 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
     content,
     importance,
     source_conversation_id: sourceConversationId,
+    ...(belongsElsewhere ? { active: false, parked_reason: 'entity:other' } : {}),
   });
   if (error) return json(200, { success: false, error: 'Failed to save memory' });
+
+  if (belongsElsewhere) {
+    // NOT written to Mnemo. The semantic lane is the deep-recall path, so dual-writing here would
+    // put the other company back into everything she can reach — parking it in one store and
+    // publishing it to the other would leave the guard technically satisfied and practically absent.
+    //
+    // `parked` is returned so she can say what she actually did ("I've kept that out of this record")
+    // rather than reporting a save that did not happen — the distinction the ok:false contract
+    // exists to protect everywhere else.
+    return json(200, { success: true, parked: true, reason: 'belongs to another business' });
+  }
 
   // Dual-write to Mnemo (the semantic lane) so an explicit mid-call save is deep-recallable too.
   await mnemoAdd(uid, [content]);

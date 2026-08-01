@@ -16,6 +16,7 @@
 import { createConversationTools, CONVAI_TOOL_SECRET_HEADER } from '@caistech/elevenlabs-convai';
 
 import { kiraKnowledgeToolDef } from '../../lib/kira/knowledge-tool-def.mjs';
+import { withEntityClassification } from '../../lib/kira/memory-entity-def.mjs';
 import {
   kiraKeepDocumentToolDef,
   kiraLookupContactToolDef,
@@ -55,7 +56,10 @@ export function buildToolsForUser(userId, journeyType) {
   // platformIdentity MUST match kiraMemoryTools() in lib/kira/convai.ts. Without it, provisioning
   // quietly reverts an agent to LLM-filled conversation ids — the bug the flag exists to fix.
   const tools = [
-    ...createConversationTools(APP_URL, '/api/kira/webhooks', { platformIdentity: true }),
+    // Entity guard applied here, not after: this list is what gets pushed to ElevenLabs for the whole
+    // fleet, and an agent provisioned without the parameter cannot be told apart from one that has it
+    // by looking at the agent. See lib/kira/memory-entity-def.mjs.
+    ...withEntityClassification(createConversationTools(APP_URL, '/api/kira/webhooks', { platformIdentity: true })),
     kiraKnowledgeToolDef(APP_URL),
     ...(journeyType === 'business'
       ? [

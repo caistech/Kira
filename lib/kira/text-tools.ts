@@ -32,6 +32,7 @@
 
 import { createConversationTools } from '@caistech/elevenlabs-convai';
 
+import { withEntityClassification } from '@/lib/kira/memory-entity-def.mjs';
 import { handleApproveTask, handleCheckTasks, handleDispatchTask } from '@/lib/kira/swarm/tool-handlers';
 
 import { keepDocument, readDocument } from './document';
@@ -82,9 +83,14 @@ type Builder = (baseUrl: string, headers?: Record<string, string>) => ConvaiTool
  * topic) stays excluded — those are the transport's own bookkeeping, which it already does.
  */
 function packageMemoryToolDef(name: 'recall_memory' | 'save_memory'): ConvaiToolDef {
-  const found = (createConversationTools(UNUSED_BASE_URL) as unknown as ConvaiToolDef[]).find(
-    (t) => t.name === name,
-  );
+  // Decorated exactly as the voice fleet's are (lib/kira/memory-entity-def.mjs). Projecting the bare
+  // canonical shape here would leave the typed transport asking her to save without asking WHICH
+  // business the fact is about — so the entity guard would be present on one transport and absent on
+  // the other, which is the "one rule, two places" failure that already let the refusal boundary ship
+  // fixed in the prompt and unfixed in the tool description.
+  const found = (
+    withEntityClassification(createConversationTools(UNUSED_BASE_URL)) as unknown as ConvaiToolDef[]
+  ).find((t) => t.name === name);
   if (!found) throw new Error(`@caistech/elevenlabs-convai no longer defines ${name}`);
   return found;
 }
