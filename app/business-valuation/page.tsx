@@ -43,7 +43,7 @@ import {
   type ValuationInputs,
 } from '@/lib/valuation/model';
 import { SECTOR_MULTIPLES } from '@/lib/valuation/sde-multiples';
-import { formatMoney, getCurrency, CURRENCIES, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
+import { formatMoney, formatMoneyApprox, getCurrency, CURRENCIES, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { synonymGroup, synonymSector } from '@/lib/valuation/industry-synonyms';
 import { storeValuation, VALUATION_HANDOFF_KEY } from '@/lib/valuation/share';
 import {
@@ -733,7 +733,7 @@ export default function BusinessValuationPage() {
         )}
 
         {/* RESULT */}
-        {isResult && result && <ResultView result={result} currency={currency} planHref={planHref} firstName={firstName.trim()} />}
+        {isResult && result && <ResultView result={result} currency={currency} planHref={planHref} firstName={firstName.trim()} matchedSector={String(answers.industry ?? "")} typedSector={industryQuery.trim()} onChangeSector={() => setStepIndex(0)} />}
       </main>
 
       {/* The "Ask Kira" floating widget was REMOVED from this flow on 2026-07-27.
@@ -751,8 +751,28 @@ export default function BusinessValuationPage() {
   );
 }
 
-function ResultView({ result, currency, planHref, firstName }: { result: ReturnType<typeof computeValuation>; currency: string; planHref: string; firstName?: string }) {
-  const money = (n: number) => formatMoney(n, currency);
+function ResultView({
+  result,
+  currency,
+  planHref,
+  firstName,
+  matchedSector,
+  typedSector,
+  onChangeSector,
+}: {
+  result: ReturnType<typeof computeValuation>;
+  currency: string;
+  planHref: string;
+  firstName?: string;
+  matchedSector?: string;
+  typedSector?: string;
+  onChangeSector?: () => void;
+}) {
+  // APPROXIMATE, on the result screen. See formatMoneyApprox: eleven category answers and a sector
+  // median cannot resolve a business to the dollar, and "$1,094,292" claims they can on the one
+  // screen where this buyer decides whether to believe any of it. The walk-away auction range below
+  // is left exact because it is already expressed as a range and reads as one.
+  const money = (n: number) => formatMoneyApprox(n, currency);
   const noEarnings = result.today === 0 && result.potential === 0;
   const capturable = result.factors.filter((f) => f.capturable && f.uplift > 0);
   const readinessPct = Math.round(result.readiness * 100);
@@ -764,6 +784,34 @@ function ResultView({ result, currency, planHref, firstName }: { result: ReturnT
         <div className="inline-flex items-center gap-2 text-pink-600 text-sm font-semibold mb-2">
           <Sparkles className="h-4 w-4" /> Your indicative valuation
         </div>
+
+        {/* WHICH SECTOR WE MATCHED HIM TO, and a way to change it.
+            He typed "engineer" and the screen said "Checking 'engineer' against our sector list…",
+            accepted it, and moved on. He only discovered days later, on the dashboard, that he had
+            been filed as "Architecture & Engineering": "I don't build buildings, I fabricate steel.
+            That sector choice sets the multiple that sets the whole number, and I never got to see
+            or correct it."
+            He is right that it is load-bearing — the sector median IS the multiple — which makes it
+            the one input that must never be applied silently. Shown with what he typed beside it, so
+            a wrong match is obvious rather than something he has to go looking for. */}
+        {matchedSector && (
+          <p className="text-sm text-stone-500 mb-2">
+            Priced against <span className="font-semibold text-stone-700">{matchedSector}</span>
+            {typedSector && typedSector.toLowerCase() !== matchedSector.toLowerCase()
+              ? ` — matched from “${typedSector}”`
+              : ''}
+            . This sets the multiple, so if it is wrong the number is too.{' '}
+            {onChangeSector && (
+              <button
+                type="button"
+                onClick={onChangeSector}
+                className="min-h-[44px] underline underline-offset-4 hover:text-stone-700"
+              >
+                Change it
+              </button>
+            )}
+          </p>
+        )}
         <h1 className="font-display text-2xl sm:text-3xl font-bold text-stone-800">
           {/* Addressed to him when he told us who he is. The point of asking on the intro was never
               the account record — it was that the one screen he came for reads like it was written
@@ -838,9 +886,23 @@ function ResultView({ result, currency, planHref, firstName }: { result: ReturnT
               <strong> Business Genome</strong> and they become transferable: worth more to a buyer, and yours to
               hand over cleanly.
             </p>
+            {/* THE SCALE, not just the number. "Thirty-four out of what? Is 60 normal? Is 34 dire?
+                What does a business you'd actually buy score? A number with no scale is a number I
+                can't use, and this one is meant to be the thing I watch go up."
+                The ends are stated from the MODEL rather than invented: readiness is a weighted sum
+                of the same factors listed on this page, 0 is a business that is entirely its owner
+                and 100 is one that runs and sells without him. No benchmark is claimed — we do not
+                have a population to draw one from, and inventing "most owners score 40" on a screen
+                that just disclosed its own data sources would undo the paragraph that earned the
+                most trust in the whole walkthrough. */}
             <div className="mt-4 inline-flex items-center gap-2 text-sm bg-white/15 rounded-full px-4 py-1.5">
               <Brain className="h-4 w-4" /> Transferability score: {readinessPct}/100
             </div>
+            <p className="mt-2 text-sm text-white/80 max-w-xl">
+              0 means the business is you — nothing runs without you in it. 100 means it runs, and
+              sells, without you. It is built from the same answers listed below, so every one you
+              change moves it. This is the number to watch go up.
+            </p>
           </div>
 
           {/* Buyer-risk rationale - why the multiple is what it is, adapted to the outcome */}

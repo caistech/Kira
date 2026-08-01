@@ -111,6 +111,28 @@ export function formatPrice(n: number, currencyCode: string = DEFAULT_CURRENCY):
   return `${formatMoney(n, currencyCode)} ${taxSuffix(currencyCode)}`;
 }
 
+/**
+ * A valuation figure, rounded to the precision it actually has.
+ *
+ * "$1,094,292" is what eleven multiple-choice answers produce, and a tester who has been quoting
+ * jobs for thirty-five years read it exactly right: "that number tells me the maths is arithmetic
+ * dressed up as measurement. Round it. 'About $1.09M' is more believable, not less, and it matches
+ * the word 'indicative' you use everywhere else."
+ *
+ * He is describing significant figures. A model built on category answers and a sector median cannot
+ * resolve a business to the dollar, and printing every digit claims it can — on the one screen where
+ * this buyer decides whether to believe any of it.
+ *
+ * Three significant figures, then formatted in the reader's currency. Small figures are left alone:
+ * "about $8,000" reads as evasion where "$8,240" is simply the number.
+ */
+export function formatMoneyApprox(n: number, currencyCode: string = DEFAULT_CURRENCY): string {
+  const abs = Math.abs(n);
+  if (abs < 10_000) return formatMoney(n, currencyCode);
+  const magnitude = Math.pow(10, Math.floor(Math.log10(abs)) - 2);
+  return formatMoney(Math.round(n / magnitude) * magnitude, currencyCode);
+}
+
 /** Format a dollar figure in the given currency, no cents. VALUATION figures only — for a PRICE use formatPrice. */
 export function formatMoney(n: number, currencyCode: string = DEFAULT_CURRENCY): string {
   const c = getCurrency(currencyCode);
