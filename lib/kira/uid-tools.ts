@@ -15,7 +15,15 @@ const uidFrom = (req: Request) => new URL(req.url).searchParams.get('uid') || ''
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
-const VALID_MEMORY_TYPES = ['context', 'preference', 'goal', 'decision', 'insight', 'fact'];
+// MUST MATCH the kira_memory.memory_type CHECK constraint exactly (20260119000000_kira_complete.sql).
+//
+// It did not. This list allowed 'fact' — which the constraint REJECTS — so an agent that classified
+// something as a fact had its save rejected by Postgres and got back "Failed to save memory": a
+// fact the owner watched her agree to remember, silently not remembered. And it omitted 'followup'
+// and 'correction', which the constraint ALLOWS, so those were quietly downgraded to 'context' and
+// lost their classification. An allow-list that disagrees with the constraint it guards is worse
+// than no allow-list, because it fails in both directions at once.
+const VALID_MEMORY_TYPES = ['preference', 'context', 'goal', 'decision', 'followup', 'correction', 'insight'];
 
 /** save_memory — persist a fact the agent chose to remember mid-call, keyed by the baked uid. */
 export async function handleKiraSaveMemory(req: Request): Promise<Response> {

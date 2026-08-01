@@ -39,6 +39,7 @@ import {
   kiraLookupContactToolDef,
 } from '../lib/kira/lookup-tools-def.mjs';
 import { isUidToolUrl } from '../lib/kira/uid-tools.mjs';
+import { buildToolsForUser } from './lib/redteam-tools.mjs';
 import {
   kiraDispatchToolDef,
   kiraApproveToolDef,
@@ -89,56 +90,11 @@ const supabase = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KE
 // (drafting a client quote, a follow-up, a job reminder). A personal-journey coach is a different
 // product register and must not gain the ability to draft and send on the user's behalf, which is
 // why lib/admin/exec-reprovision.ts filters journey_type='business'. Same rule here.
-function buildToolsForUser(userId, journeyType) {
-  const secret = process.env.KIRA_TOOL_WEBHOOK_SECRET ?? process.env.CONVAI_TOOL_SECRET;
-  if (!secret) {
-    // Refuse rather than silently provision agents that cannot authenticate. The route guard now
-    // fails closed, so a header-less agent is not "slightly degraded" — it is an agent whose every
-    // memory call 401s, which surfaces to the owner as Kira quietly forgetting them.
-    throw new Error(
-      'KIRA_TOOL_WEBHOOK_SECRET (or CONVAI_TOOL_SECRET) is not set. Re-provisioning without it ' +
-        'would produce agents that cannot call their own webhooks.',
-    );
-  }
-
-  // The FULL operational tool set, matching kiraAllTools() in lib/kira/convai.ts: memory +
-  // knowledge + the two doing-slice tools. setAgentTools REPLACES an agent's tool list, so any
-  // tool omitted here is silently removed from every agent this script touches — which is exactly
-  // what happened when the tool-secret migration ran: it re-attached memory + knowledge and
-  // stripped dispatch_task/approve_task off all 10 business agents, leaving their (correctly
-  // uid-baked) workspace definitions orphaned. An incomplete set here is not a smaller migration,
-  // it is a regression, so this list must stay in step with kiraAllTools.
-  // platformIdentity MUST match kiraMemoryTools() in lib/kira/convai.ts. This script cannot import
-  // that module (TS from .mjs), so the option is repeated here — and repeating it is the whole
-  // hazard: without it, re-provisioning quietly reverts every agent to LLM-filled conversation ids,
-  // which is the bug the flag exists to fix. Change one, change both.
-  const tools = [
-    ...createConversationTools(APP_URL, '/api/kira/webhooks', { platformIdentity: true }),
-    kiraKnowledgeToolDef(APP_URL),
-    ...(journeyType === 'business'
-      ? [
-          kiraDispatchToolDef(APP_URL),
-          kiraApproveToolDef(APP_URL),
-          kiraFinancialsToolDef(APP_URL),
-          kiraCheckTasksToolDef(APP_URL),
-          kiraSearchDriveToolDef(APP_URL),
-          kiraReadDocumentToolDef(APP_URL),
-          kiraKeepDocumentToolDef(APP_URL),
-          kiraLookupContactToolDef(APP_URL),
-        ]
-      : []),
-  ];
-  for (const t of tools) {
-    if (!t.webhook) continue;
-    // The uid list is single-sourced (lib/kira/uid-tools.mjs) precisely because this file and
-    // kiraAllTools used to carry two hand-maintained copies of it.
-    if (userId && isUidToolUrl(t.webhook.url)) {
-      t.webhook.url = `${t.webhook.url}?uid=${encodeURIComponent(userId)}`;
-    }
-    t.webhook.headers = { ...(t.webhook.headers ?? {}), [CONVAI_TOOL_SECRET_HEADER]: secret };
-  }
-  return tools;
-}
+// buildToolsForUser now lives in scripts/lib/redteam-tools.mjs (imported above).
+//
+// The red-team provisioner needs the IDENTICAL set — an agent built differently is not a test of
+// the real thing — and a third copy of a list already annotated "change one, change both" is how
+// dispatch_task and approve_task were silently stripped off ten live agents. Behaviour unchanged.
 const hostname = new URL(APP_URL).hostname;
 
 // EXCLUDE the shared discovery agent. It lives in kira_agents too (provision-discovery-agent.mjs
