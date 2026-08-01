@@ -30,6 +30,7 @@ import { getCurrentAppUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { computeValuation, type ValuationInputs } from '@/lib/valuation/model';
 import { recordValuationSnapshot } from '@/lib/valuation/snapshots';
+import { DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -64,8 +65,32 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid valuation inputs' }, { status: 400 });
   }
 
-  const currency = typeof body.currency === 'string' && body.currency ? body.currency : 'USD';
+  // DEFAULT_CURRENCY, not a seventh hand-written 'USD'. The default was spelled out in six separate
+  // places and this was the seventh; that duplication is exactly why "the currency is wrong" was
+  // raised three times and fixed three times without ever being fixed.
+  const currency = typeof body.currency === 'string' && body.currency ? body.currency : DEFAULT_CURRENCY;
   const svc = createServiceClient();
+
+  // HIS NAME, ON THE FREE PATH TOO.
+  //
+  // The paid path takes it through Stripe metadata (app/api/onboarding/complete). Someone who signs
+  // up by email or magic link never goes through checkout, so without this his account keeps
+  // whatever the signup inferred — which for one real owner was "shhahhussain", straight off the
+  // local part of his email address, and is then baked into her prompt at provision and used
+  // forever.
+  //
+  // Only ever FILLS A GAP: it will not overwrite a name he has set in Settings, and it will not
+  // overwrite a real-looking existing name. A valuation is claimed once, silently, on first
+  // authenticated load, and silently renaming someone is not a repair.
+  const askedName = String((body as { firstName?: unknown }).firstName ?? '').trim().slice(0, 40);
+  if (askedName) {
+    const { data: current } = await svc.from('users').select('first_name').eq('id', user.id).maybeSingle();
+    const existingName = String(current?.first_name ?? '').trim();
+    const looksInferred = !existingName || /[@+._]/.test(existingName);
+    if (looksInferred) {
+      await svc.from('users').update({ first_name: askedName.split(' ')[0] }).eq('id', user.id);
+    }
+  }
 
   // First valuation wins — see the header note.
   const { data: existing } = await svc

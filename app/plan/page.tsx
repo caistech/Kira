@@ -99,7 +99,13 @@ export default function PlanPage() {
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inputs: payload.inputs, currency: payload.currency }),
+        // firstName rides along so the account is created with the name HE gave on the valuation
+        // intro rather than the name on the card — see app/api/onboarding/complete/route.ts.
+        body: JSON.stringify({
+          inputs: payload.inputs,
+          currency: payload.currency,
+          firstName: payload.firstName,
+        }),
       });
       const data = await res.json();
       if (!res.ok || !data.url) throw new Error(data.error || 'Checkout failed');

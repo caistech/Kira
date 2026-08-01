@@ -192,6 +192,7 @@ const STEPS: Step[] = [
 
 export default function BusinessValuationPage() {
   const [stepIndex, setStepIndex] = useState(-1); // -1 = intro, STEPS.length = result
+  const [firstName, setFirstName] = useState('');
   const [answers, setAnswers] = useState<Answers>({});
   const [industryQuery, setIndustryQuery] = useState('');
   // Currency is display-only (the valuation math is a multiple of profit). Start on the SSR-safe
@@ -236,7 +237,7 @@ export default function BusinessValuationPage() {
   const [restored, setRestored] = useState(false);
   useEffect(() => {
     try {
-      const saved = loadValuationLocal<{ stepIndex?: number; answers?: Answers; industryQuery?: string }>(
+      const saved = loadValuationLocal<{ stepIndex?: number; answers?: Answers; industryQuery?: string; firstName?: string }>(
         PROGRESS_KEY,
       );
       if (saved) {
@@ -244,6 +245,7 @@ export default function BusinessValuationPage() {
         if (typeof saved.industryQuery === 'string') setIndustryQuery(saved.industryQuery);
         // Never restore straight onto the result — recompute by stepping, so a stale partial answer
         // set can't render a number as though it were freshly produced.
+        if (typeof saved.firstName === 'string') setFirstName(saved.firstName);
         if (typeof saved.stepIndex === 'number') {
           setStepIndex(Math.min(saved.stepIndex, STEPS.length - 1));
         }
@@ -257,11 +259,11 @@ export default function BusinessValuationPage() {
   useEffect(() => {
     if (!restored) return; // don't overwrite saved progress with the initial empty state
     try {
-      saveValuationLocal(PROGRESS_KEY, { stepIndex, answers, industryQuery });
+      saveValuationLocal(PROGRESS_KEY, { stepIndex, answers, industryQuery, firstName });
     } catch {
       /* nothing to do; the visitor simply loses resume */
     }
-  }, [restored, stepIndex, answers, industryQuery]);
+  }, [restored, stepIndex, answers, industryQuery, firstName]);
 
   /**
    * Erase everything kept on this device and start over.
@@ -368,8 +370,8 @@ export default function BusinessValuationPage() {
   // pages are one navigation apart in the same tab, so the URL was never needed to get it there.
   useEffect(() => {
     if (!isResult) return;
-    storeValuation({ inputs: answers as ValuationInputs, currency });
-  }, [isResult, answers, currency]);
+    storeValuation({ inputs: answers as ValuationInputs, currency, firstName: firstName.trim() || undefined });
+  }, [isResult, answers, currency, firstName]);
 
   const planHref = '/plan';
 
@@ -447,6 +449,37 @@ export default function BusinessValuationPage() {
               <li className="flex gap-3"><span className="text-stone-400 font-bold">2.</span> What it's <strong>worth today</strong> — where a buyer is really buying themselves a job.</li>
               <li className="flex gap-3"><span className="text-stone-400 font-bold">3.</span> What it's worth once <strong>the knowledge in your head is captured</strong> — a business that runs, and sells, without you.</li>
             </ul>
+            {/* HIS NAME, ASKED ONCE, HERE.
+                This is the only place the product ever hears it from him. Everything downstream was
+                inference: the account name came from the name on the CARD, falling back to the local
+                part of his email — which produced "shhahhussain" for one owner, and greeted two
+                different people as a Stripe test customer. In production the quiet version is worse:
+                the cardholder is often not the owner (a wife's card, a company card, the accountant
+                setting it up), and the name is baked into her prompt at provision and never revisited.
+
+                On the INTRO rather than as a twelfth question, deliberately. The three-minute,
+                eleven-question, no-signup shape is the best thing on the site and the count is
+                quoted in the button below it. And optional: a first name identifies nobody, but
+                making it required would turn the one page that asks nothing of him into a form. */}
+            <div className="mb-8">
+              <label htmlFor="valuation-first-name" className="block font-display font-bold text-stone-800 mb-2">
+                What should we call you?
+              </label>
+              <input
+                id="valuation-first-name"
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value.slice(0, 40))}
+                placeholder="First name (optional)"
+                autoComplete="given-name"
+                className="w-full min-h-[52px] rounded-2xl border border-amber-200 px-4 text-lg text-stone-800 placeholder:text-stone-400 focus:border-amber-400 focus:outline-none"
+              />
+              <p className="text-base text-stone-500 mt-2">
+                Only so the result reads like it was written for you. It stays on this device with
+                your answers.
+              </p>
+            </div>
+
             <button
               onClick={next}
               className="grad-coral text-white font-display font-bold px-7 py-4 rounded-full text-lg inline-flex items-center gap-2 min-h-[52px] shadow-lg shadow-pink-200 hover:opacity-95"
@@ -700,7 +733,7 @@ export default function BusinessValuationPage() {
         )}
 
         {/* RESULT */}
-        {isResult && result && <ResultView result={result} currency={currency} planHref={planHref} />}
+        {isResult && result && <ResultView result={result} currency={currency} planHref={planHref} firstName={firstName.trim()} />}
       </main>
 
       {/* The "Ask Kira" floating widget was REMOVED from this flow on 2026-07-27.
@@ -718,7 +751,7 @@ export default function BusinessValuationPage() {
   );
 }
 
-function ResultView({ result, currency, planHref }: { result: ReturnType<typeof computeValuation>; currency: string; planHref: string }) {
+function ResultView({ result, currency, planHref, firstName }: { result: ReturnType<typeof computeValuation>; currency: string; planHref: string; firstName?: string }) {
   const money = (n: number) => formatMoney(n, currency);
   const noEarnings = result.today === 0 && result.potential === 0;
   const capturable = result.factors.filter((f) => f.capturable && f.uplift > 0);
@@ -732,7 +765,17 @@ function ResultView({ result, currency, planHref }: { result: ReturnType<typeof 
           <Sparkles className="h-4 w-4" /> Your indicative valuation
         </div>
         <h1 className="font-display text-2xl sm:text-3xl font-bold text-stone-800">
-          {noEarnings ? "Here's where your business stands" : "This is what your business could be worth"}
+          {/* Addressed to him when he told us who he is. The point of asking on the intro was never
+              the account record — it was that the one screen he came for reads like it was written
+              for him rather than generated. */}
+          {firstName ? `${firstName}, ` : ''}
+          {noEarnings
+            ? firstName
+              ? 'here’s where your business stands'
+              : "Here's where your business stands"
+            : firstName
+              ? 'this is what your business could be worth'
+              : 'This is what your business could be worth'}
         </h1>
         {!result.sectorMatched && (
           <p className="mt-3 rounded-xl bg-amber-100/70 px-4 py-3 text-base text-stone-700">

@@ -30,6 +30,22 @@ import { clearValuationLocal, loadValuationLocal, saveValuationLocal } from './p
 export interface ValuationPayload {
   inputs: ValuationInputs;
   currency: string;
+  /**
+   * What he asked to be called, given on the valuation intro. Optional — he can skip it.
+   *
+   * IT LIVES HERE RATHER THAN IN ValuationInputs because it is not an input to the maths, exactly
+   * like `currency` above it. It travels with the valuation because that is the first and only
+   * moment the product ever hears his name from HIM.
+   *
+   * Everything else was inference. `onboarding/complete` derived the name from
+   * `session.customer_details.name` — the name on the CARD — falling back to the local part of the
+   * email address. That produced "shhahhussain" for one owner and, on accounts where a Stripe test
+   * customer paid, greeted two different people as "Andrew D Romeo". The failure that matters in
+   * production is quieter: the cardholder and the owner are often not the same person. A wife's
+   * card, a company card, an accountant setting it up — and Kira spends the rest of her life
+   * greeting him by the name on the payment method, baked permanently into her prompt at provision.
+   */
+  firstName?: string;
 }
 
 /** Where the valuation is parked between the two pages, and between visits. */

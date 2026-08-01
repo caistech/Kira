@@ -49,6 +49,13 @@ export async function POST(request: NextRequest) {
       kira_journey: 'business',
       val_inputs: JSON.stringify(inputs),
       val_currency: currency.code,
+      // WHAT HE ASKED TO BE CALLED, from the valuation intro — the only place the product hears his
+      // name from HIM. It rides here so the account is created with it instead of with the name on
+      // the card, which is what onboarding/complete used to fall back to. The cardholder and the
+      // owner are frequently not the same person, and the name is baked into her prompt at provision
+      // and never revisited, so getting it from the payment method is wrong once and then wrong for
+      // good. Trimmed and bounded: Stripe metadata values are capped at 500 characters.
+      val_first_name: String((body?.firstName as string | undefined) ?? '').trim().slice(0, 40),
       val_gap: String(Math.round(result.gap)),
       val_today: String(Math.round(result.today)),
       val_potential: String(Math.round(result.potential)),

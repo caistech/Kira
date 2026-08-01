@@ -32,7 +32,24 @@ export async function POST(request: NextRequest) {
     if (!email) return NextResponse.json({ error: 'No email on session' }, { status: 400 });
 
     const m = session.metadata || {};
-    const firstName = (session.customer_details?.name || email.split('@')[0]).split(' ')[0];
+    // WHAT HE ASKED TO BE CALLED FIRST, the card second, his email address last.
+    //
+    // This line used to start at `session.customer_details.name` — the name on the CARD — and fall
+    // back to the local part of the email. It is the first and only place the account's name is set,
+    // and that name is then baked into the agent's system prompt at provision and never reconciled,
+    // so whatever lands here is what she calls him forever.
+    //
+    // Both fallbacks were producing real damage. The email path gave one owner "shhahhussain" and
+    // two synthetic accounts "dennis+qauser" / "dennis+redteam", tag and all. The card path is the
+    // quieter and worse one: the cardholder is often not the owner — a wife's card, a company card,
+    // an accountant setting it up — and a naive tester was greeted "Hey Andrew" on his first ever
+    // screen, which he read, correctly, as "if she's wrong about the one thing she should certainly
+    // know, what's she wrong about that I can't check?"
+    //
+    // So he is now asked, once, on the valuation intro, and that answer arrives here. The card and
+    // the email survive only as fallbacks for someone who skipped the question.
+    const askedName = String(m.val_first_name ?? '').trim();
+    const firstName = (askedName || session.customer_details?.name || email.split('@')[0]).split(' ')[0];
     const svc = createServiceClient();
 
     // Create the account already confirmed. If it already exists, set the password they chose.
