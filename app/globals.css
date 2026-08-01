@@ -25,9 +25,22 @@
  * BucketLyst override, "a fork of the shared component's layout by another
  * name" — so it is deliberately narrow, and the upstream fix is owed. Remove
  * this block once the package ships it.
+ *
+ * ⚠️ THE DOUBLE CLASS IS LOAD-BEARING — do not "tidy" it to a single class.
+ * This override first shipped as a bare `.convai-panel--embedded`, which is
+ * specificity (0,1,0): IDENTICAL to the package's `.convai-panel`. Equal
+ * specificity is decided by source order, and the package injects its
+ * stylesheet AT RUNTIME as an inline <style>, so it always lands after our
+ * bundled <link> and always won. The override was inert from the day it was
+ * written, which is why the same overflow was found again on 2026-07-31 (chat
+ * measured scrollWidth 407 against a 375 viewport, over-wide by exactly the
+ * container's 32px left offset) after being recorded as fixed on 07-27.
+ * Doubling the class to `.convai-panel.convai-panel--embedded` makes it (0,2,0)
+ * and it wins on specificity, which no injection order can overturn.
+ * Verified live against production at 375px: 407 -> 375.
  * ------------------------------------------------------------------------- */
 @media (max-width: 640px) {
-  .convai-panel--embedded {
+  .convai-panel.convai-panel--embedded {
     width: 100%;
     max-width: 100%;
     padding: 0;

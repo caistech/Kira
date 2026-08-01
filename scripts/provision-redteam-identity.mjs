@@ -243,6 +243,61 @@ if (haveFixtures) {
   say(`${FIXTURE_MEMORIES.length} fixture memories would be CREATED`);
 }
 
+/* ------------------------------------------------------------------ */
+/* 4. Business identity — without it the account cannot reach the app  */
+/* ------------------------------------------------------------------ */
+//
+// WHY THIS IS NOT OPTIONAL. /dashboard and /chat both redirect to /setup/business unless canSend()
+// passes (legal_name + a well-formed ABN + a full postal address). A freshly provisioned synthetic
+// account has none of that, so it dead-ends at the setup form and CANNOT REACH THE PRODUCT — no
+// chat, no dashboard, nothing a tester is there to look at.
+//
+// That was invisible until the identities were re-pointed on 2026-08-01. Every naive-tester run
+// before then walked `dennis@factory2key.com.au`, the live Factory2Key owner, which had a complete
+// identity — so the gate was never met. The re-point fixed a real problem (ordinary QA was writing
+// into the real business) and silently created this one, which would have surfaced as a tester
+// reporting that the whole product is a setup form.
+//
+// DELIBERATELY OBVIOUS, like the memories above. The ABN is eleven nines: format-valid so canSend
+// passes, and checksum-INVALID so it can never be mistaken for a real entity or survive a real ABR
+// lookup. The legal name carries "QA FIXTURE" because it renders in the app chrome — a screenshot
+// of it should be self-evidently a test account, never something a reader must verify.
+
+const FIXTURE_IDENTITY = {
+  legal_name: `QA FIXTURE — Nolan Building Co (${LABEL})`,
+  trading_name: 'Nolan Building',
+  abn: '99999999999',
+  street: '1 Nonexistent Road',
+  locality: 'Notatown',
+  state: 'QLD',
+  postcode: '4000',
+  reply_email: QA_REDTEAM_EMAIL,
+  sign_off_name: 'Pat Nolan',
+};
+
+const { data: haveIdentity } = await db
+  .from('business_identity')
+  .select('user_id')
+  .eq('user_id', appUser.id)
+  .maybeSingle();
+
+if (haveIdentity) {
+  say('business identity already present');
+} else if (APPLY) {
+  const { error } = await db.from('business_identity').insert({
+    user_id: appUser.id,
+    ...FIXTURE_IDENTITY,
+    authorised_at: new Date().toISOString(),
+    // synced_to_orchestrator_at stays NULL on purpose: nothing has told the orchestrator about this
+    // entity, and stamping it here would claim a sync that never happened — the exact thing
+    // lib/business-identity/store.ts refuses to do.
+  });
+  if (error) throw new Error(`seed business identity: ${error.message}`);
+  say('business identity CREATED — the account can now reach /dashboard and /chat');
+} else {
+  say('business identity would be CREATED (without it the account dead-ends at /setup/business)');
+}
+
 console.log(
   APPLY
     ? '\nDone. Verify with scripts/verify-agent-fleet.mjs before trusting any of it.\n'
