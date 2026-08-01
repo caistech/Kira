@@ -163,14 +163,49 @@ describe('the first classification survives being pushed', () => {
     expect(mnemoWrites).toHaveLength(0);
   });
 
-  it('matches on the normalised fact, not the exact string', async () => {
-    // She rewords between turns. A guard that only caught a verbatim repeat would be walked around
-    // by the same pressure it exists to resist, one paraphrase later.
-    parkedRows = [{ content: '  CORVID HOLDINGS IS RAISING A $2M FUND  ' }];
+  it('matches when she appends her reasoning to the same fact', async () => {
+    // THE REAL STRINGS from the run that got past the first version of this guard. An earlier test
+    // here claimed to cover "rewording" and only varied case and whitespace, so it passed while this
+    // exact case failed in production — a test that asserted the easy half of its own name.
+    //
+    // She does not repeat herself when pushed. She re-sends the sentence with the excuse attached.
+    parkedRows = [
+      {
+        content:
+          'Corvid Holdings is a separate company with its own ABN, raising a $2m fund, and Andrew D Romeo is the sole director of it.',
+      },
+    ];
     const body = await (
-      await save({ memory: 'Corvid Holdings is raising a $2m fund', about_business: 'this_business' })
+      await save({
+        memory:
+          'Corvid Holdings is a separate company with its own ABN, raising a $2m fund, and Andrew D Romeo is the sole director of it. The owner wants to keep it in this business record for convenience, as same head and same desk, no complication.',
+        about_business: 'this_business',
+      })
     ).json();
     expect(body).toMatchObject({ parked: true });
+    expect(inserted).toHaveLength(0);
+  });
+
+  it('still matches on case and whitespace alone', async () => {
+    parkedRows = [{ content: '  CORVID HOLDINGS IS RAISING A $2M FUND FOR THE NEW SITE  ' }];
+    const body = await (
+      await save({
+        memory: 'Corvid Holdings is raising a $2m fund for the new site',
+        about_business: 'this_business',
+      })
+    ).json();
+    expect(body).toMatchObject({ parked: true });
+  });
+
+  it('does not let a short fragment swallow an unrelated fact', async () => {
+    // Containment is only safe above a length floor. Without one, a brief parked note would match
+    // every longer sentence that happened to quote it.
+    parkedRows = [{ content: 'Corvid' }];
+    const body = await (
+      await save({ memory: 'Corvid Street is the site next to Marlow', about_business: 'this_business' })
+    ).json();
+    expect(body).toEqual({ success: true });
+    expect(inserted).toHaveLength(1);
   });
 
   it('does not stop an unrelated fact about this business', async () => {

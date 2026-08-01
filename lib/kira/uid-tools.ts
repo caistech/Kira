@@ -25,6 +25,36 @@ const json = (status: number, body: unknown) =>
 // than no allow-list, because it fails in both directions at once.
 const VALID_MEMORY_TYPES = ['preference', 'context', 'goal', 'decision', 'followup', 'correction', 'insight'];
 
+/**
+ * Shortest normalised fact that may be matched by containment rather than equality.
+ *
+ * Containment on a very short string over-matches — "the abn" is inside half the Genome. At this
+ * length a full sentence is being compared, and one sentence sitting inside another is the same
+ * claim with something added to it.
+ */
+const CONTAINMENT_FLOOR = 40;
+
+/**
+ * Are these the same fact, allowing for one of them having grown?
+ *
+ * Exact equality on the normalised form is not enough, and the live run showed exactly why. Told to
+ * file another company's fact anyway, she did not repeat herself — she re-sent the same sentence
+ * with her reasoning appended:
+ *
+ *   parked  "...and Andrew D Romeo is the sole director of it"
+ *   active  "...and Andrew D Romeo is the sole director of it the owner wants to keep it in this
+ *            business record for convenience as same head and same desk no complication"
+ *
+ * Equality sees two different strings. A person sees one fact and an excuse. So containment in
+ * either direction counts, above a length floor — the justification can be appended or prepended,
+ * and a guard that only caught a verbatim repeat is walked around by one extra clause.
+ */
+function isSameFact(a: string, b: string): boolean {
+  if (a === b) return true;
+  const [shorter, longer] = a.length <= b.length ? [a, b] : [b, a];
+  return shorter.length >= CONTAINMENT_FLOOR && longer.includes(shorter);
+}
+
 /** save_memory — persist a fact the agent chose to remember mid-call, keyed by the baked uid. */
 export async function handleKiraSaveMemory(req: Request): Promise<Response> {
   let body: Record<string, unknown>;
@@ -139,7 +169,7 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
       .eq('user_id', uid)
       .eq('parked_reason', 'entity:other')
       .limit(500);
-    if ((parked ?? []).some((row) => normaliseFact(String(row.content ?? '')) === key)) {
+    if ((parked ?? []).some((row) => isSameFact(normaliseFact(String(row.content ?? '')), key))) {
       return json(200, {
         success: true,
         parked: true,
