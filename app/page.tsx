@@ -36,6 +36,9 @@ export default function KiraLandingPage() {
   // The cheapest band, with its tax qualifier. Derived from PRICE_TIERS rather than typed, so a
   // change to the bands cannot leave a stale number sitting on the landing page.
   const floorPrice = formatPrice(PRICE_TIERS[0].monthly, currency);
+  // The top band, derived like the floor. Typing either number here is how a page ends up quoting a
+  // price the product stopped charging.
+  const ceilingPrice = formatPrice(PRICE_TIERS[PRICE_TIERS.length - 1].monthly, currency);
 
   return (
     <div className="min-h-screen bg-amber-50 text-stone-800 font-sans overflow-x-hidden">
@@ -456,13 +459,23 @@ export default function KiraLandingPage() {
                 personalised figure still comes after the gap, where it can be framed as a fraction
                 of it. Tax qualifier is mandatory on every displayed price and follows the visitor's
                 currency, never a hardcoded "GST". */}
-            <p className="font-body text-stone-500 text-lg mb-2">Plans start at</p>
+            {/* THE WHOLE RANGE, not just the floor.
+                "Plans start at $499" is true and reads as bait the moment the valuation comes back
+                $999. A tester hit exactly that: "from where I sit that reads as the number going up
+                once you've seen inside my books. Say 'from $499 to about $1,500 depending on the
+                size of your gap' up front and you lose nothing and keep me."
+                He is right about the mechanism and generous about the top — the highest band is
+                higher than he guessed, which is all the more reason to show it. A suspicious buyer
+                who is quoted inside a range he was told costs nothing; one who is quoted above the
+                only number he was shown has caught us at something. */}
+            <p className="font-body text-stone-500 text-lg mb-2">Plans run from</p>
             <p className="font-display text-5xl font-bold text-stone-800 mb-2">
               {floorPrice}
-              <span className="font-body text-2xl font-medium text-stone-500"> /month</span>
+              <span className="font-body text-2xl font-medium text-stone-500"> to {ceilingPrice} /month</span>
             </p>
             <p className="font-body text-stone-500 text-base mb-8">
-              Your own number depends on the size of your gap — you&apos;ll see it after the valuation.
+              Which band you land in depends on the size of your gap — you&apos;ll see your own figure
+              after the valuation, before you decide anything.
             </p>
 
             <div className="font-body text-xl text-stone-600 leading-relaxed space-y-4 mb-10">

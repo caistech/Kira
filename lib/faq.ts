@@ -58,7 +58,11 @@ export const OWNER_FAQ: FaqItem[] = [
   },
   {
     q: 'What does it cost, and when do I pay?',
-    a: "The valuation is completely free — no sign-up, no card. If you then want Kira to help close the gap, her monthly fee is set to the size of that gap: a small fraction of the value you stand to unlock, and a fraction of what the same work costs from a person. You see your own figure on screen before you decide anything — that's why there's no price list here. You're never invoiced for the month you're in: each month is billed once it has finished, and if you cancel, that month is on us.",
+    // "That's why there's no price list here" sat directly beneath a price. A tester: "Pick one.
+    // I'd pick the explanation and drop the number." We kept the number — a nav item called Pricing
+    // that shows no price reads as evasion to exactly this buyer — so the sentence that contradicted
+    // it had to go instead. The bands ARE the price list; what is not fixed is which one he lands in.
+    a: "The valuation is completely free — no sign-up, no card. If you then want Kira to help close the gap, her monthly fee is set to the size of that gap: a small fraction of the value you stand to unlock, and a fraction of what the same work costs from a person. The bands are shown up front, and you see your own figure on screen before you decide anything — which band you land in depends on your gap, not on what we think you'll pay. You're never invoiced for the month you're in: each month is billed once it has finished, and if you cancel, that month is on us.",
   },
   {
     q: 'Why is the price different for different businesses?',

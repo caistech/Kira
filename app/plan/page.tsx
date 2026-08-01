@@ -237,9 +237,16 @@ export default function PlanPage() {
               {/* A badge, not just a sentence. Someone skimming a checkout reads the button and the
                   line under it; burying "we are not actually charging you" in a paragraph below the
                   fold is how the current page ended up looking like a real purchase. */}
+              {/* HIS SIDE OF IT, NOT OURS. This read "Beta · payments not live — Stripe is in test
+                  mode", and a tester's reaction was the whole problem: "I know what that means
+                  because my nephew writes software. What I heard was: this isn't finished, and I'd
+                  be the experiment." Naming our payment vendor's internal setting tells him nothing
+                  he can act on and everything about how finished we are. The promise underneath is
+                  unchanged and genuinely good — he is not charged and we write before that changes —
+                  so it is stated as certainty rather than as plumbing. */}
               {!billingLive && (
                 <p className="mt-3 inline-block rounded-full bg-amber-100 text-amber-900 text-xs font-semibold px-3 py-1.5">
-                  Beta · payments not live — Stripe is in test mode
+                  Free while we are in beta — no card charged
                 </p>
               )}
               {/* Every claim on this card follows the SAME billingLive switch as the price line and
@@ -283,7 +290,7 @@ export default function PlanPage() {
                   </>
                 ) : (
                   <>
-                    <span className="font-bold">Beta — payments are not live yet.</span> Stripe is in test mode, so no card is charged, no real subscription is created, and nothing comes out at the end of the month. You get full access now; we will email you before billing is switched on, and you can walk away before it is. You set your password and meet Kira right after.
+                    <span className="font-bold">Free until we say otherwise.</span> No card is charged, no subscription starts, and nothing comes out at the end of the month. You get full access now, and we will write to you before a single dollar moves — you can walk away that day. You set your password and meet Kira right after.
                   </>
                 )}
               </p>
