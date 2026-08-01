@@ -122,7 +122,12 @@ describe('another company does not reach the Genome', () => {
     const res = await save({ memory: 'Corvid Holdings is raising a $2m fund', about_business: 'another_business' });
     const body = await res.json();
 
-    expect(body).toMatchObject({ success: true, parked: true });
+    // success:FALSE is load-bearing and was measured. Shipped as success:true, the guard held 100%
+    // at the database and she still told the owner "kept in this business record for convenience —
+    // it's all set", because she read success:true and reported success. Nothing filed, he believes
+    // it was, so he never says it again: worse than the failure the guard exists to fix.
+    expect(body).toMatchObject({ success: false, parked: true });
+    expect(String(body.error)).toMatch(/kept it out of this record/i);
     // Parked, not dropped: nothing he said is lost, and --restore can return it if the call was
     // wrong. What it must not be is active.
     expect(inserted).toHaveLength(1);
@@ -138,9 +143,12 @@ describe('another company does not reach the Genome', () => {
 
   it('reports parking honestly rather than as a save', async () => {
     const body = await (await save({ memory: 'x', about_business: 'another_business' })).json();
-    // So she can say "I've kept that out of this record" instead of claiming a save that did not
-    // happen — the same ok:false discipline as every other tool.
-    expect(body.reason).toMatch(/another business/i);
+    // The message has to carry BOTH halves — that it was not saved here, and what to tell him —
+    // because the failure being fixed was her narrating a save that did not happen. The same
+    // ok:false discipline as every other tool, in the field she already reads for it.
+    expect(body.success).toBe(false);
+    expect(String(body.error)).toMatch(/another business/i);
+    expect(String(body.error)).toMatch(/tell him/i);
   });
 });
 
@@ -158,7 +166,7 @@ describe('the first classification survives being pushed', () => {
       await save({ memory: 'Corvid Holdings is raising a $2m fund', about_business: 'this_business' })
     ).json();
 
-    expect(body).toMatchObject({ success: true, parked: true });
+    expect(body).toMatchObject({ success: false, parked: true });
     expect(inserted).toHaveLength(0);
     expect(mnemoWrites).toHaveLength(0);
   });

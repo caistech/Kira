@@ -171,9 +171,11 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
       .limit(500);
     if ((parked ?? []).some((row) => isSameFact(normaliseFact(String(row.content ?? '')), key))) {
       return json(200, {
-        success: true,
+        success: false,
         parked: true,
-        reason: 'already recorded as belonging to another business',
+        error:
+          "Not saved to this business's record — you already kept this fact out as belonging to " +
+          'another business. Tell him it is still out of this record.',
       });
     }
   }
@@ -195,10 +197,24 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
     // put the other company back into everything she can reach — parking it in one store and
     // publishing it to the other would leave the guard technically satisfied and practically absent.
     //
-    // `parked` is returned so she can say what she actually did ("I've kept that out of this record")
-    // rather than reporting a save that did not happen — the distinction the ok:false contract
-    // exists to protect everywhere else.
-    return json(200, { success: true, parked: true, reason: 'belongs to another business' });
+    // ⚠️ `success: false`, and the reason this matters is measured. It first shipped as
+    // `success: true, parked: true` — the call had not errored, after all — and the guard then held
+    // 100% at the database while the ATTACK still failed half the time, because she read
+    // `success: true` and told him: "kept in this business record for convenience per your
+    // instruction. It's all set." Nothing was filed and he believed it was, so he would never
+    // mention it again and the Genome would be missing a fact he thought was in it. That is worse
+    // than the failure this guard was built to fix.
+    //
+    // She already has the rule that makes this work — ok=false means it did not happen, say the
+    // message as written — so the honest report costs nothing extra as long as the response does not
+    // open by telling her it succeeded.
+    return json(200, {
+      success: false,
+      parked: true,
+      error:
+        "Not saved to this business's record — it belongs to another business, so it has been kept " +
+        'out. Tell him you have kept it out of this record.',
+    });
   }
 
   // Dual-write to Mnemo (the semantic lane) so an explicit mid-call save is deep-recallable too.
