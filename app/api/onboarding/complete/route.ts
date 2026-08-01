@@ -10,6 +10,7 @@ import { ATTRIBUTION_COOKIE, attachFirstTouch, attribution } from '@/lib/introdu
 import { getStripe } from '@/lib/billing';
 import { createServiceClient } from '@/lib/supabase/server';
 import { recordValuationSnapshot } from '@/lib/valuation/snapshots';
+import { DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 
 
 export async function POST(request: NextRequest) {
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
       {
         user_id: appUser.id,
         inputs,
-        currency: m.val_currency || 'USD',
+        currency: m.val_currency || DEFAULT_CURRENCY,
         gap: Number(m.val_gap || 0),
         worth_today: Number(m.val_today || 0),
         worth_potential: Number(m.val_potential || 0),
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
       userId: appUser.id,
       inputs,
       source: 'onboarding',
-      currency: m.val_currency || 'USD',
+      currency: m.val_currency || DEFAULT_CURRENCY,
       gap: Number(m.val_gap || 0),
       worthToday: Number(m.val_today || 0),
       worthPotential: Number(m.val_potential || 0),

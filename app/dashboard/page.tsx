@@ -4,7 +4,8 @@ import { getCurrentAppUser } from '@/lib/auth';
 import { canSend } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
 import { createServiceClient } from '@/lib/supabase/server';
-import { formatMoney } from '@/lib/valuation/currency';
+import { formatMoney, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
+import { readTaskLedger } from '@/lib/kira/swarm/open-tasks';
 
 export const metadata = { title: 'Overview · Kira' };
 export const dynamic = 'force-dynamic';
@@ -40,7 +41,18 @@ export default async function DashboardPage({
 
   // Saved here, not held by the system that sends. A real state, and one he must be able to see —
   // he is not trapped in setup over our outage, but he is not told it worked either.
-  const identityUnsynced = Boolean(identity && !identity.synced_to_orchestrator_at);
+  // NOT THE INSTANT HE ARRIVES. The sync is usually seconds behind the save, so gating purely on
+  // "not synced yet" put a fault banner at the top of the paid home screen for every owner who had
+  // just finished setup — his first impression of the product being that it is broken.
+  //
+  // Ray's rule, and it is the right one: if it is genuinely transient, don't show it until it has
+  // actually failed. Ten minutes is long enough that a normal sync is never mentioned to him, and
+  // short enough that a real outage still reaches him on the same visit.
+  const UNSYNCED_GRACE_MS = 10 * 60 * 1000;
+  const identityAge = identity?.updated_at ? Date.now() - new Date(identity.updated_at).getTime() : Infinity;
+  const identityUnsynced = Boolean(
+    identity && !identity.synced_to_orchestrator_at && identityAge > UNSYNCED_GRACE_MS,
+  );
 
   const { data: agents } = user
     ? await svc
@@ -76,18 +88,40 @@ export default async function DashboardPage({
   const talkHref = businessAgent ? `/chat/${businessAgent.elevenlabs_agent_id}` : '/start?journey=business';
 
   const val = valuation as Valuation | null;
-  const money = (n: number) => formatMoney(n, val?.currency || 'USD');
+  const money = (n: number) => formatMoney(n, val?.currency || DEFAULT_CURRENCY);
+
+  // WHAT IS WAITING ON HIM, on his own screen.
+  //
+  // Ray found 39 open items on the OPERATOR's page, several "4 days ago · nobody has looked",
+  // including a real owner's quote follow-up — and no way for that owner to see any of it. The
+  // admin page's own header says why: no owner surface reads `queued` or `awaiting_approval` at all.
+  //
+  // That is the whole promise inverted. He is buying "she keeps the list so I don't have to", and
+  // the list existed somewhere he could not look while things aged on it.
+  //
+  // READ-ONLY, deliberately. Approving still happens in conversation, where she reads the draft back
+  // and confirms the recipient out loud — the path the approval guard actually protects. Putting an
+  // Approve button here would create a second way to fire a real email at a real client, on a screen
+  // built at the end of a long day, bypassing the confirmation that makes the first path safe.
+  const ledger = user?.id ? await readTaskLedger(user.id) : { openCount: 0, open: [] as { id: string; summary: string; state: string; ageDays: number }[] };
 
   return (
     <div>
       {identityUnsynced && (
         <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-5">
+          {/* Ray, on day one: "'the sending system doesn't yet' is your plumbing, not my problem,
+              and 'this usually clears on its own' tells me it happens often enough to have a usual.
+              At the top of the page I paid for, that reads as: the thing I'm buying doesn't work."
+              He was right on both counts. It named our internals, it admitted a recurring fault, and
+              it gave him nothing to do. Now it says what he can do and what still works, in his
+              terms — and it no longer appears the instant he arrives (see the grace period above). */}
           <p className="text-base font-semibold text-stone-900">
-            Kira has your business details — the sending system doesn&apos;t yet.
+            Emails can&apos;t go out yet — everything else is working.
           </p>
           <p className="mt-1 text-base text-stone-700">
-            Until it does, she can draft emails for you but not send them. Nothing is lost; this
-            usually clears on its own.
+            Kira can draft for you and keep everything on your list; she just can&apos;t send until
+            your business details finish registering. Nothing you&apos;ve done is lost. Open your
+            business details and save them once more, and that usually does it.
           </p>
           <Link
             href="/settings#business"
@@ -96,6 +130,42 @@ export default async function DashboardPage({
             Try again
           </Link>
         </div>
+      )}
+
+      {ledger.openCount > 0 && (
+        <section className="mb-8 rounded-2xl border border-stone-200 bg-white p-5">
+          <h2 className="text-lg font-semibold text-stone-900">Waiting on you</h2>
+          <p className="mt-1 max-w-prose text-base text-stone-600">
+            Kira has these drafted and ready. Nothing goes out until you say so — tell her to send
+            one and she&apos;ll read it back to you first.
+          </p>
+          <ul className="mt-4 space-y-3">
+            {ledger.open.map((task) => (
+              <li
+                key={task.id}
+                className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t border-stone-100 pt-3"
+              >
+                <span className="text-base text-stone-900">{task.summary}</span>
+                {/* The AGE is the part that matters to him, and the part a quiet list hides. Four
+                    days is the difference between a follow-up and an apology. */}
+                <span
+                  className={`text-sm ${task.ageDays >= 2 ? 'font-semibold text-amber-700' : 'text-stone-500'}`}
+                >
+                  {task.state}
+                  {task.ageDays >= 1
+                    ? ` · ${task.ageDays} day${task.ageDays === 1 ? '' : 's'} waiting`
+                    : ' · today'}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <Link
+            href={talkHref}
+            className="mt-4 inline-block min-h-[44px] rounded-full bg-stone-900 px-5 py-3 text-base font-semibold text-white"
+          >
+            Talk to Kira about these
+          </Link>
+        </section>
       )}
 
       {val && val.gap > 0 && (

@@ -82,9 +82,14 @@ export function UsageMeter({
   return (
     <div>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
+        {/* "$0.00 of $20 used" on a billing page reads as a bill. It is not one — it is the
+            allowance included while he is on trial, and he is charged nothing for it.
+            Deliberately NOT given a "+ GST" suffix: the tax qualifier belongs on prices, and
+            attaching one here would assert he is being charged, which is the opposite of true.
+            What was missing was never the tax line, it was what the number IS. */}
         <p className="text-base text-gray-900">
           <span className="font-semibold">{money(usedUsd)}</span>
-          <span className="text-gray-500"> of {money(capUsd)} used</span>
+          <span className="text-gray-500"> of {money(capUsd)} included usage</span>
         </p>
         <p className="text-base text-gray-500">{clockLabel(trialState, daysLeft)}</p>
       </div>

@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getStripe } from '@/lib/billing';
+import { DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 
 
 export async function GET(request: NextRequest) {
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
       paid,
       email: session.customer_details?.email || null,
       monthly: session.metadata?.quoted_monthly ? Number(session.metadata.quoted_monthly) : null,
-      currency: session.metadata?.val_currency || 'USD',
+      currency: session.metadata?.val_currency || DEFAULT_CURRENCY,
       gap: session.metadata?.val_gap ? Number(session.metadata.val_gap) : null,
     });
   } catch (error) {

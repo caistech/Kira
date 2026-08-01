@@ -15,7 +15,11 @@
  * wording a given user agreed to — and a change can require re-acceptance rather than being
  * assumed to carry over.
  */
-export const TERMS_VERSION = '2026-07-26.1';
+// 2026-08-01.1 — the signup tickbox now names the Privacy Policy as well as the Terms. The document
+// below is unchanged; what changed is the SCOPE of what a signup consents to, and that is exactly
+// what this version exists to make answerable. Leaving it would give two materially different
+// consents the same string, and the record would no longer be able to say which one a user gave.
+export const TERMS_VERSION = '2026-08-01.1';
 
 export const TERMS_UPDATED = '26 July 2026';
 

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createServiceClient } from '@/lib/supabase/server';
-import { formatMoney } from '@/lib/valuation/currency';
+import { formatMoney, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 
 export const metadata = { title: 'Manage Exec user · Admin' };
 export const dynamic = 'force-dynamic';
@@ -24,7 +24,7 @@ export default async function ExecUserManagePage({ params }: { params: Promise<{
     sb.from('kira_memory').select('id, content, memory_type, importance, created_at').eq('user_id', userId).eq('active', true).order('importance', { ascending: false }).order('created_at', { ascending: false }),
   ]);
 
-  const currency = val?.currency || 'USD';
+  const currency = val?.currency || DEFAULT_CURRENCY;
   const money = (n: number | null | undefined) => (n == null ? '—' : formatMoney(n, currency));
 
   return (

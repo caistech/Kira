@@ -66,9 +66,18 @@ function signupFields(askReferralSource: boolean): AuthExtraField[] {
       required: true,
       label: (
         <>
+          {/* BOTH documents, because he is agreeing to both. The tickbox linked Terms only while
+              the thing he is actually consenting to — what happens to the inside of his business —
+              lives in the Privacy Policy. A consent record that points at half of what was agreed
+              is the same defect as a policy page with REPLACE still in it: the box was ticked, and
+              what it referred to cannot be produced. */}
           I agree to the{' '}
           <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline">
             Terms
+          </a>{' '}
+          and{' '}
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline">
+            Privacy Policy
           </a>
           , including emails about Kira. I can unsubscribe any time.
         </>

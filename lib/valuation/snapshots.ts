@@ -20,6 +20,7 @@
 
 import { createServiceClient } from '@/lib/supabase/server';
 import { MODEL_VERSION } from '@/lib/valuation/model';
+import { DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 
 /** Why a snapshot was taken. Drives how the movement is explained, so it is never guessed. */
 export type SnapshotSource = 'onboarding' | 'weekly' | 'verification' | 'manual';
@@ -62,7 +63,7 @@ export async function recordValuationSnapshot(snapshot: ValuationSnapshotInput):
       model_version: MODEL_VERSION,
       inputs: snapshot.inputs ?? {},
       source: snapshot.source,
-      currency: snapshot.currency || 'USD',
+      currency: snapshot.currency || DEFAULT_CURRENCY,
       gap: snapshot.gap ?? null,
       worth_today: snapshot.worthToday ?? null,
       worth_potential: snapshot.worthPotential ?? null,
