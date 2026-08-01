@@ -361,7 +361,7 @@ export async function POST(req: NextRequest) {
     .order('created_at', { ascending: true })
     .limit(HISTORY_TURNS);
 
-  const facts = await recalledFacts(supabase, agent.user_id as string);
+  const facts = await recalledFacts(supabase, agent.user_id as string);
 
   const messages = [
     { role: 'system' as const, content: `${systemPrompt}${facts}\n\nThe owner is TYPING to you rather than speaking. Reply in the same voice you would use aloud, but write it — no stage directions, no "*smiles*", and keep it short enough to read on a phone.` },
