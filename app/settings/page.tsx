@@ -9,6 +9,7 @@ import { denyReason, derivePlanState } from '@/lib/billing/plan-state';
 import { getSubscriptionPrice } from '@/lib/billing/subscription-price';
 import { PasswordChange } from '@/components/PasswordChange';
 import { DeleteAccount } from '@/components/DeleteAccount';
+import { SignOutEverywhere } from '@/components/SignOutEverywhere';
 import { CancelPlanButton } from '@/components/CancelPlanButton';
 import { ManageBillingButton } from '@/components/ManageBillingButton';
 import { UsageMeter } from '@/components/UsageMeter';
@@ -342,6 +343,25 @@ export default async function SettingsPage() {
             Save notifications
           </button>
         </form>
+      </section>
+
+      {/* SESSIONS, above the delete block and separate from it.
+          "There's no 'sign me out everywhere.' I use three machines and one of them is a shared
+          office PC. That matters to me more than most." It does: what is behind this login says he
+          is thinking of selling a business he has not told his staff about, and ordinary Sign Out
+          only ends the session on the machine he is already sitting at.
+          Its own section rather than inside the red Account card, because ending sessions is
+          recoverable — he signs back in — and putting it beside Delete Account would make a safe
+          action look like a dangerous one. */}
+      <section className="rounded-2xl border border-gray-200 bg-white p-6">
+        <h2 className="text-lg font-semibold text-gray-900">Signed-in devices</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Signs you out of Kira everywhere — this browser, your phone, and any machine you have used
+          and left signed in. You can sign back in whenever you like; nothing is deleted.
+        </p>
+        <div className="mt-4">
+          <SignOutEverywhere />
+        </div>
       </section>
 
       <section className="rounded-2xl border border-red-200 bg-white p-6">

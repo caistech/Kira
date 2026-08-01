@@ -19,6 +19,27 @@ export function AddIntroducerForm() {
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
+
+    // NAME THE CONSEQUENCE ON THE BUTTON, not only in the paragraph above it.
+    //
+    // Submitting puts mail in a real accountant's inbox, immediately and irreversibly. The sentence
+    // above the form says so, which a naive tester credited — "the consequence is stated in the
+    // paragraph above the form, which is right" — and then said the obvious next thing: "there's no
+    // confirmation step on the button itself, and for an action that puts mail in a real
+    // accountant's inbox I'd want one."
+    //
+    // He is right, and this is the operator's own trust at stake rather than ours: an introducer is
+    // somebody he knows professionally, and an accidental send is a relationship, not a bug. The
+    // recipient is read back so a mistyped address is caught before it leaves, which is the actual
+    // failure mode — nobody clicks Add by accident, they click it with the wrong email in the box.
+    const recipient = String(data.get('email') ?? '').trim();
+    const confirmed = window.confirm(
+      recipient
+        ? `Email ${recipient} now with their sign-in link and referral link?\n\nThis sends immediately and cannot be recalled.`
+        : 'Send their sign-in and referral links now? This sends immediately and cannot be recalled.',
+    );
+    if (!confirmed) return;
+
     setResult(null);
     startTransition(async () => {
       const outcome = await addIntroducer(data);
