@@ -46,23 +46,23 @@ export function CorporateFooter({ productName, extraLinks = [], theme = 'light' 
               </span>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-4 text-sm">
-              <a href="https://www.corporateaisolutions.com" target="_blank" rel="noopener noreferrer" className="hover:text-slate-900 transition-colors">corporateaisolutions.com</a>
+              <a href="https://www.corporateaisolutions.com" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[44px] items-center hover:text-slate-900 transition-colors">corporateaisolutions.com</a>
               {VENDOR.calendly && (
                 <>
                   <span className="hidden sm:inline opacity-30">|</span>
-                  <a href={VENDOR.calendly} target="_blank" rel="noopener noreferrer" className="hover:text-slate-900 transition-colors">Book a Call</a>
+                  <a href={VENDOR.calendly} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[44px] items-center hover:text-slate-900 transition-colors">Book a Call</a>
                 </>
               )}
               {VENDOR.phone && (
                 <>
                   <span className="hidden sm:inline opacity-30">|</span>
-                  <a href={`tel:${VENDOR.phone.replace(/\s+/g, '')}`} className="hover:text-slate-900 transition-colors">{VENDOR.phone}</a>
+                  <a href={`tel:${VENDOR.phone.replace(/\s+/g, '')}`} className="inline-flex min-h-[44px] items-center hover:text-slate-900 transition-colors">{VENDOR.phone}</a>
                 </>
               )}
               {VENDOR.email && (
                 <>
                   <span className="hidden sm:inline opacity-30">|</span>
-                  <a href={`mailto:${VENDOR.email}`} className="hover:text-slate-900 transition-colors">{VENDOR.email}</a>
+                  <a href={`mailto:${VENDOR.email}`} className="inline-flex min-h-[44px] items-center hover:text-slate-900 transition-colors">{VENDOR.email}</a>
                 </>
               )}
             </div>
@@ -72,9 +72,9 @@ export function CorporateFooter({ productName, extraLinks = [], theme = 'light' 
             {extraLinks.length > 0 && (
               <div className="flex gap-4">
                 {extraLinks.map((link) => link.external ? (
-                  <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer" className="hover:text-slate-900 transition-colors">{link.label}</a>
+                  <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[44px] items-center hover:text-slate-900 transition-colors">{link.label}</a>
                 ) : (
-                  <a key={link.href} href={link.href} className="hover:text-slate-900 transition-colors">{link.label}</a>
+                  <a key={link.href} href={link.href} className="inline-flex min-h-[44px] items-center hover:text-slate-900 transition-colors">{link.label}</a>
                 ))}
               </div>
             )}

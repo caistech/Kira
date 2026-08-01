@@ -104,9 +104,21 @@ interface AgentInfo {
   first_name?: string | null;
 }
 
-export default function ChatPage() {
+/**
+ * @param agentId supplied when this is rendered at /talk, where the owner's agent is resolved on the
+ *   server. Omitted on /chat/[agentId], where it comes from the route.
+ *
+ *   WHY /talk RENDERS THIS RATHER THAN REDIRECTING TO IT. A naive tester signed in and landed on
+ *   "/chat/agent_7601kyxn82n6fh8t9rb9bh6kwfh2": "I know that doesn't matter. It still looks like
+ *   something has gone wrong." He is the kind of buyer who reads the address bar, and a wall of
+ *   machine identifier on the first screen of a product he is deciding whether to trust reads as an
+ *   error even when nothing is wrong. /talk was already the canonical entry — the FAB target and the
+ *   PWA start_url — and it only redirected here because the component could not be reached without
+ *   a route param.
+ */
+export default function ChatPage({ agentId: agentIdProp }: { agentId?: string } = {}) {
   const params = useParams();
-  const agentId = params.agentId as string;
+  const agentId = agentIdProp ?? (params.agentId as string);
 
   const [agentInfo, setAgentInfo] = useState<AgentInfo | null>(null);
   const [context, setContext] = useState<ConversationContext | null>(null);

@@ -126,7 +126,10 @@ export default function KiraLandingPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-amber-50/80 backdrop-blur-lg border-b border-amber-200/50">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <a href="/" className="flex items-center gap-3 wiggle cursor-pointer">
+            {/* min-h-44 on the tap area, not on the mark. The logo image stays 32px — it is the
+                right size visually — while the thing a thumb has to hit is 44. A tester measured
+                this at 32 and he is on a phone more often than not. */}
+            <a href="/" className="flex min-h-[44px] items-center gap-3 wiggle cursor-pointer">
               <div className="avatar-ring">
                 <div className="w-10 h-10 rounded-full overflow-hidden bg-white">
                   <img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" />
