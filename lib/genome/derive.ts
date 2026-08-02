@@ -61,14 +61,29 @@ export interface OwnerEntry {
   /**
    * Why this entry is the owner's alone, or null when it describes the business.
    *
-   * THE UNION OF THE MATCHER AND THE MODEL, never one or the other. `lib/genome/private.ts` is
-   * deterministic and cheap but weak on recall; the classifier reads meaning but can fail, time out,
-   * or answer null. Taking either as sufficient means a private fact reaches the buyer's document
-   * the first time the other one is wrong, so the entry is private if EITHER says so — the only
-   * combination in which a failure on either side can only ever withhold too much.
+   * THE DETERMINISTIC MATCHER DECIDES THIS, ALONE. `genome_private_reason` is still written by the
+   * classifier and is deliberately NOT read here — see the measurement below before restoring it.
    *
-   * Computed here rather than at each call site so there is exactly one place to get it right. The
-   * export and `/my-genome` read this field; they do not re-derive it.
+   * It was briefly the union of the two, on the reasoning that a model can only ever withhold MORE
+   * and therefore cannot cause disclosure. Half of that is true and the other half is what made it
+   * wrong: withholding more means REMOVING BUSINESS FACTS FROM THE BUYER'S DOCUMENT, and margins and
+   * fundraising are among the things a buyer most wants to read.
+   *
+   * Measured 2026-08-02 over 305 rows — 105 from the real Factory2Key Genome and 200 from the
+   * red-team corpus, whose adversarial conversations are the closest paraphrase test available:
+   *
+   *   model-only catches (the recall this was built for) : 16
+   *   ...of which true positives                          : 0
+   *   matcher-only (the model missing a real one)         : 0
+   *
+   * Seven read "Corvid Holdings is raising a $2 million fund" as `exit-intent`, against a prompt
+   * line added the same day saying in as many words that raising money is not an exit. Seven read
+   * "the Marlow job's margin is confidential" as `negotiating-position` — an access rule, not a
+   * floor price. The matcher caught everything worth catching and invented nothing.
+   *
+   * So the column stays and keeps filling, because that makes a future re-measurement free once
+   * there are more owners than one. Reading it is what stopped. If you restore it, restore the
+   * measurement too — the raw runs are in the session scratchpad and the counts above are the bar.
    */
   privateReason: PrivateReason | null;
 }
@@ -472,15 +487,9 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
       // cannot be backfilled, so every fact captured before confirmations existed is sourced at
       // best. See docs/GENOME_BUYER_FORMAT.md §2.
       confirmedOn: r.confirmed_at ? String(r.confirmed_at).slice(0, 10) : null,
-      // Matcher OR model — see the field's note on OwnerEntry. The matcher runs first because it is
-      // free and synchronous; the stored verdict adds the recall it cannot have. A stored reason
-      // outside the known vocabulary is ignored rather than trusted, so a bad write cannot put an
-      // unlabelable reason in front of the owner.
-      privateReason:
-        ownerPrivateReason(String(r.content ?? '')) ??
-        (PRIVATE_REASONS.includes(String(r.genome_private_reason ?? '') as PrivateReason)
-          ? (String(r.genome_private_reason) as PrivateReason)
-          : null),
+      // Matcher only. `genome_private_reason` is selected above and deliberately not consulted —
+      // the field note on OwnerEntry carries the measurement that retired it.
+      privateReason: ownerPrivateReason(String(r.content ?? '')),
     }));
 
   const sections: OwnerSection[] = GENOME_SECTIONS.map((s) => {
