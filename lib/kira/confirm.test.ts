@@ -173,6 +173,19 @@ describe('what she is offered to read back', () => {
     expect(db.filters).toContainEqual(['neq', 'active', false]);
   });
 
+  // The exclusion that was missing until 2026-08-02, asserted on the QUERY rather than on the
+  // returned rows — the mock cannot filter, and a test that checked the output would pass against a
+  // handler with no filter at all.
+  //
+  // Measured before the fix, against the real QA account: of 13 offerable rows, 7 were 'none' —
+  // more than half of what she would read back were facts `deriveOwnerGenome` drops from the Genome
+  // outright, so confirming one could never count on the verifiable axis. A wasted turn of his
+  // attention is the most expensive thing this product can spend.
+  it('never offers a fact the Genome throws away', async () => {
+    await handleFactsToConfirm(post('https://kira.internal/api/kira/webhooks/facts_to_confirm?uid=owner-1', {}));
+    expect(db.filters).toContainEqual(['neq', 'genome_section', 'none']);
+  });
+
   // "Nothing came back" and "everything is confirmed" are different states, and presenting the first
   // as the second would tell him the record is better than it is.
   it('says plainly when there is nothing left to check', async () => {

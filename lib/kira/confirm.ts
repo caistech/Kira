@@ -82,6 +82,24 @@ export async function handleFactsToConfirm(req: Request): Promise<Response> {
       // Never offer a parked fact. It is out of his record, and reading one back would ask him to
       // confirm something the product has already decided not to assert.
       .neq('active', false)
+      // SAME RULE, SECOND EXCLUSION — and it was missing until 2026-08-02.
+      //
+      // A row filed as 'none' is chit-chat, a software feature request, or a fact about a different
+      // company, and `deriveOwnerGenome` drops it from the Genome outright. Offering one asks him to
+      // confirm something that can never appear in his handover document and can never count on the
+      // verifiable axis — spending the scarcest thing this product has, a turn of his attention, on
+      // a fact that is already decided against. The single real confirmation in production landed on
+      // exactly such a row, which is how this was found.
+      //
+      // ⚠️ THIS ALSO EXCLUDES UNCLASSIFIED (NULL) ROWS, DELIBERATELY, and the mechanism is worth
+      // knowing before anyone "fixes" it: `neq` renders as `genome_section <> 'none'`, which is NULL
+      // — not true — for a NULL column, so those rows are filtered out too. That is the behaviour we
+      // want. A NULL means the classifier has not run yet, so we cannot say whether the fact will
+      // survive into the Genome; offering it is the same gamble in a different costume. Classification
+      // runs at write time plus an hourly sweep, so the exclusion is brief, and a fact captured
+      // minutes ago is the last thing she should be reading back anyway — the point is re-opening old
+      // ground, which is why the order below is oldest-first.
+      .neq('genome_section', 'none')
       .is('confirmed_at', null)
       .order('created_at', { ascending: true })
       .limit(OFFER_LIMIT);
