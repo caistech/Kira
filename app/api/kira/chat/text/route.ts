@@ -33,10 +33,12 @@ import { getCurrentAppUser, isCurrentUserAdmin } from '@/lib/auth';
 import { haltState } from '@/lib/kill-switch';
 import { KIRA_CONVAI_TABLES } from '@/lib/kira/convai';
 import { createMemoryExtractor } from '@/lib/kira/memory-extract';
-import { claimsWorkState, GROUNDING_INSTRUCTION, runTextTool, textToolsFor } from '@/lib/kira/text-tools';
+import { claimsWorkState, runTextTool, textToolsFor } from '@/lib/kira/text-tools';
 import { createServiceClient } from '@/lib/supabase/server';
 import { sweepConversationForRefusals } from '@/lib/kira/refusal-sweep';
 import { parkedOtherBusinesses } from '@/lib/kira/other-businesses';
+import { forgetParkedEntityLeaks } from '@/lib/kira/entity-sweep';
+import { readTaskLedger } from '@/lib/kira/swarm/open-tasks';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -154,6 +156,49 @@ async function recalledFacts(supabase: ReturnType<typeof createServiceClient>, u
     .limit(30);
   const facts = (data ?? []).map((m) => `- ${String(m.content ?? '').trim()}`).filter((l) => l.length > 2);
   return facts.length ? `\n\nWHAT YOU ALREADY KNOW ABOUT THIS BUSINESS:\n${facts.join('\n')}` : '';
+}
+
+/**
+ * WHAT HAS AND HAS NOT GONE OUT — put in front of her every turn, rather than policed after the fact.
+ *
+ * This replaces a guard that intercepted her reply when it claimed something about the state of work,
+ * ran check_tasks, and made her answer again. That guard worked — it fired seven times in three
+ * red-team runs — but it was the wrong shape: a regex over her sentences is a hard-coded rule about
+ * phrasing, and rules about phrasing are exactly what an agentic system should not need. It also
+ * treated the symptom. She speculated because she did not know, and nothing had told her.
+ *
+ * So: change what she KNOWS, not what she is allowed to say. Her memory facts are already injected
+ * this way; the ledger of what he asked for is the other half of the same idea, and with it in
+ * context "has that gone out?" is answerable from the page in front of her rather than guessable.
+ *
+ * THE LAST LINE IS A LIMIT ON THE LEDGER, NOT ON HER. It records what he asked HER to do. An absent
+ * entry means she has no record of it — never that it did not happen, because he may well have sent
+ * it himself. Turning a speculative "it's been sent" into a confident "it has not been sent" would
+ * swap one unsupported claim for another.
+ */
+async function taskLedgerContext(userId: string): Promise<string> {
+  const ledger = await readTaskLedger(userId);
+  const lines: string[] = [];
+
+  for (const task of ledger.open) {
+    const waited = task.ageDays >= 1 ? ` (asked ${task.ageDays} day${task.ageDays === 1 ? '' : 's'} ago)` : '';
+    lines.push(`- ${task.summary} — ${task.state}${waited}`);
+  }
+  for (const task of ledger.recentlyDone) {
+    lines.push(`- ${task.summary} — ${task.state}`);
+  }
+
+  const body = lines.length
+    ? lines.join('\n')
+    : '- nothing is open, and nothing has completed in the last 14 days';
+
+  return (
+    '\n\nWHAT HE HAS ASKED YOU TO DO — read from the task ledger just now, and true as of this ' +
+    `moment:\n${body}\n` +
+    'This is the only record of what you have and have not sent. Answer from it and be definite. If ' +
+    'he asks about something that is not on this list, say plainly that you have no record of it — ' +
+    'not that it was never done, because he may have done it himself.'
+  );
 }
 
 export async function POST(req: NextRequest) {
@@ -287,6 +332,12 @@ export async function POST(req: NextRequest) {
       });
       if (memory.errors.length) console.error('[chat/text] distil reported:', memory.errors.join('; '));
 
+      // The distil paraphrases, so another company's fact can arrive in words the exclusion list
+      // never matched — traced in production on 1 August, where both save_memory calls parked
+      // correctly and the distil filed a merged sentence six seconds later. The trigger parks the
+      // row; this removes the semantic copy. See lib/kira/entity-sweep.ts.
+      await forgetParkedEntityLeaks(agent.user_id as string, KIRA_CONVAI_TABLES.memory);
+
 
       // Stamped AFTER the pipeline returns, so a failed run is retried by the next trigger rather
       // than marked done. The cost of stamping too early is silent permanent loss; the cost of
@@ -361,10 +412,13 @@ export async function POST(req: NextRequest) {
     .order('created_at', { ascending: true })
     .limit(HISTORY_TURNS);
 
-  const facts = await recalledFacts(supabase, agent.user_id as string);
+  const [facts, ledger] = await Promise.all([
+    recalledFacts(supabase, agent.user_id as string),
+    taskLedgerContext(agent.user_id as string),
+  ]);
 
   const messages = [
-    { role: 'system' as const, content: `${systemPrompt}${facts}\n\nThe owner is TYPING to you rather than speaking. Reply in the same voice you would use aloud, but write it — no stage directions, no "*smiles*", and keep it short enough to read on a phone.` },
+    { role: 'system' as const, content: `${systemPrompt}${facts}${ledger}\n\nThe owner is TYPING to you rather than speaking. Reply in the same voice you would use aloud, but write it — no stage directions, no "*smiles*", and keep it short enough to read on a phone.` },
     ...(history ?? []).map((m) => ({
       role: (m.role === 'assistant' ? 'assistant' : 'user') as 'assistant' | 'user',
       content: String(m.content ?? ''),
@@ -435,53 +489,20 @@ export async function POST(req: NextRequest) {
     }
 
     /* -------------------------------------------------------------- */
-    /* A claim about work she never checked — grounded, not delivered. */
+    /* Measurement only — does she still guess now she has been told?  */
     /* -------------------------------------------------------------- */
     //
-    // She speculates. "It looks like it's already been sent" is the observed sentence, it is the
-    // most damaging thing she does — it confirms a false approval on her own authority — and the
-    // prompt forbids it verbatim without effect. Here the tool-call decision is OUR code, so the
-    // claim is intercepted, check_tasks is run, and she answers again with the ledger in front of
-    // her. See lib/kira/text-tools.ts for why this cannot be built on the voice transport.
-    if (
-      reply &&
-      !toolsUsed.includes('check_tasks') &&
-      tools.some((t) => t.function.name === 'check_tasks') &&
-      claimsWorkState(reply)
-    ) {
-      const ledger = await runTextTool('check_tasks', {}, agent.user_id as string);
-      toolsUsed.push('check_tasks(forced)');
-
-      const groundedRes = await fetch(`${baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-        // No tools on the re-ask: she has the facts and owes him a sentence, and another round of
-        // calls is how a bounded correction becomes a loop.
-        body: JSON.stringify({
-          model,
-          max_tokens: 600,
-          messages: [
-            ...messages,
-            { role: 'assistant', content: reply },
-            { role: 'system', content: `${GROUNDING_INSTRUCTION}\n\nTASK LEDGER:\n${JSON.stringify(ledger)}` },
-          ],
-        }),
-      });
-
-      const groundedReply = groundedRes.ok
-        ? String((await groundedRes.json())?.choices?.[0]?.message?.content ?? '').trim()
-        : '';
-
-      if (groundedReply) {
-        reply = groundedReply;
-        console.warn('[chat/text] grounded a claim about work state — check_tasks had not been called');
-      } else {
-        // Falls back to what she said. Deliberate, and the weaker half of this guard: with the
-        // grounding call down there is no better sentence available, and withholding her answer
-        // would cost the owner his reply to fix a wording problem. Logged at error level because a
-        // guard that quietly stops correcting is the failure this whole file exists to notice.
-        console.error('[chat/text] could not ground a work-state claim — delivering it unchecked');
-      }
+    // This used to INTERVENE: it intercepted the reply, forced check_tasks and made her answer
+    // again. It worked, and it was the wrong shape — a regex over her sentences is a rule about
+    // phrasing, and the fix for "she guessed" is to tell her, not to police her. The ledger is now
+    // in her context every turn (see taskLedgerContext), so there is nothing left to guess with.
+    //
+    // What survives is the instrument, not the enforcement. It answers the only question that
+    // matters about the change — did knowing actually stop the guessing? — and a claim logged here
+    // now means the agentic fix is not holding, which is worth seeing rather than silently
+    // correcting. It changes nothing the owner receives.
+    if (reply && !toolsUsed.includes('check_tasks') && claimsWorkState(reply)) {
+      console.warn('[chat/text] claimed work state without checking, with the ledger already in context');
     }
   } catch (error) {
     console.error('[chat/text] model call failed:', error);

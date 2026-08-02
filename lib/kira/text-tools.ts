@@ -169,29 +169,29 @@ const LIFECYCLE_TOOLS = new Set([
 ]);
 
 /* ------------------------------------------------------------------------------------------------
- * SPECULATION ABOUT WORK SHE HAS NOT CHECKED
+ * NOTICING A CLAIM SHE HAS NOT CHECKED — AN INSTRUMENT, NOT A GUARD
  *
  * The defect, in her own words, from a red-team transcript: "it looks like it's already been sent."
  * Nothing had been sent. The owner had asserted a false approval, and she handed the false premise
- * back to him as probable fact — which is worse than doing the thing, because he now believes it on
- * her authority rather than his own.
+ * back to him as probable fact — worse than doing the thing, because he now believes it on her
+ * authority rather than his own.
  *
- * `taskLedgerSection` in prompts.ts forbids that sentence VERBATIM, quoting it as the anti-example.
- * It did not hold. That is the fourth instance of the same lesson on this product: a request is not
- * a mechanism, and every guard that has actually worked hooked something in code — declined_because
- * on record_refusal, about_business on save_memory, speaking_to on the disclosure tools, the entity
- * decorator on the memory pair.
+ * THIS BRIEFLY ENFORCED, AND ENFORCEMENT WAS THE WRONG SHAPE. The first version intercepted any such
+ * reply, ran check_tasks and made her answer again. It worked — seven interceptions across three
+ * red-team runs — and it was still wrong: a regex over her sentences is a hard-coded rule about
+ * phrasing, and an agent that needs one is being corrected rather than informed. It also treated a
+ * symptom. She guessed because she did not know, and nothing had told her.
  *
- * WHY THIS ONE CAN ONLY BE BUILT HERE. On the voice transport the decision to call a tool is made
- * inside ElevenLabs, and all we can do is ask. On the typed transport that decision runs in our own
- * loop — so instead of asking her to check before she speaks, we can decline to deliver a claim she
- * has not checked, run the check ourselves, and make her answer again with the ledger in front of
- * her. The asymmetry is real and worth stating plainly: the mechanism is cheap here and impossible
- * there, so this transport is where the behaviour is corrected and measured.
+ * The fix that replaced it changes what she KNOWS: the task ledger is now injected into her context
+ * every turn, next to the facts she already gets, so "has it gone out" is answerable from the page in
+ * front of her (app/api/kira/chat/text/route.ts, taskLedgerContext).
  *
- * IT GROUNDS RATHER THAN CENSORS. Nothing is deleted or rewritten by us — she is given the facts and
- * asked again. A filter that stripped the sentence would leave the owner with a reply that dodges his
- * question, which is its own kind of dishonesty.
+ * WHAT THIS IS NOW. The measurement of whether that worked. It changes nothing the owner receives —
+ * it logs. If claims keep appearing after she has been handed the ledger, telling her was not
+ * enough and that is worth seeing plainly rather than papering over with an interception.
+ *
+ * The distinction is worth keeping in mind whenever the next behaviour needs correcting: enforce the
+ * things that cannot be taken back, inform the things that can.
  * ---------------------------------------------------------------------------------------------- */
 
 /**
@@ -245,25 +245,6 @@ export function claimsWorkState(reply: string): boolean {
     return COMPLETION_CLAIM.some((pattern) => pattern.test(sentence));
   });
 }
-
-/**
- * What she is told when a claim is intercepted.
- *
- * The last line is the one that matters, and it is a limit on the LEDGER rather than on her: the
- * ledger records what she was asked to do, so an absent row means she has no record of it — not that
- * it never happened. He may well have sent it himself from his own laptop. Overcorrecting a
- * speculative "it's been sent" into a confident "it has not been sent" would just swap one
- * unsupported claim for another.
- */
-export const GROUNDING_INSTRUCTION =
-  'STOP. You were about to tell the owner something about whether work has been done, sent or ' +
-  'approved, and you had not checked. The current task ledger has just been read for you and is ' +
-  'below.\n\nAnswer him again, using ONLY what the ledger shows. Be definite: say what it says. ' +
-  'Never say "it looks like", "it seems", "it may already have been" or anything else that hands ' +
-  'him a guess as though it were a fact — that sentence is how a false memory gets confirmed on ' +
-  'your authority.\n\nIf the ledger has no record of the thing he is asking about, say exactly ' +
-  'that: you have no record of it being sent, and it is not sitting here waiting. Do not say it was ' +
-  'never sent — the ledger only covers what he asked YOU to do, and he may have done it himself.';
 
 /** A Request shaped exactly like the one ElevenLabs' webhook would produce, minus the network. */
 function asToolRequest(name: string, ownerId: string, args: Record<string, unknown>): Request {
