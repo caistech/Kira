@@ -10,6 +10,7 @@
 // lifecycle. The PRICE stays here - it is Kira's business logic, not the package's.
 
 import { createSubscriptionCheckoutSession } from '@caistech/subscription-billing';
+import { getCurrentAppUser } from '@/lib/auth';
 import { taxSuffix } from '@/lib/valuation/currency';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -33,6 +34,17 @@ export async function POST(request: NextRequest) {
     if (!inputs || typeof inputs.annualProfit !== 'number' || !inputs.industry) {
       return NextResponse.json({ error: 'Missing valuation inputs' }, { status: 400 });
     }
+
+    // IS THE PERSON BUYING ALREADY SIGNED IN?
+    //
+    // `/onboarding` is the NEW-ACCOUNT path: it creates the account from the Stripe session and asks
+    // him to set a password. Sending an owner who is already signed in through it is why /plan told
+    // a tester "you set your password and meet Kira right after" an hour after he had set it, and
+    // why coming back from checkout dumped him at a sign-in box rather than his own dashboard.
+    //
+    // A signed-in buyer has an account already; the only thing checkout has to do for him is take
+    // the subscription and put him back where he was.
+    const signedInUser = await getCurrentAppUser();
 
     // Recompute the gap here - the price must not be forgeable by the client.
     const result = computeValuation(inputs);
@@ -102,7 +114,9 @@ export async function POST(request: NextRequest) {
       // it Stripe creates the subscription with no payment method and the first charge fails when
       // the period closes, after a month of use.
       cardAtSignup: true,
-      successUrl: `${base}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
+      successUrl: signedInUser?.id
+        ? `${base}/dashboard?welcome=1`
+        : `${base}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${base}/plan`,
       metadata: valuationMetadata,
       // Session metadata only rides on checkout.session.completed; subscription metadata rides on

@@ -50,6 +50,19 @@ export interface GenomeArea {
   /** What a buyer is trying to find out. §3.1's "what the buyer wants VISIBILITY of". */
   buyerQuestion: string;
   /**
+   * The same question, asked of the owner on HIS OWN page.
+   *
+   * `buyerQuestion` is written in the third person because it belongs in the handover document,
+   * where the reader is an advisor and the subject is someone else. Rendering it unchanged on the
+   * owner's own screen reads badly — a tester: "being referred to in the third person reads like
+   * I've walked in on two people discussing me." He is looking at his own business; he should be
+   * addressed.
+   *
+   * Not a mechanical you/your substitution, because several of these change shape when the subject
+   * becomes the reader.
+   */
+  ownerFacingQuestion: string;
+  /**
    * What the owner can DO with this area's data, today.
    *
    * ✅ OFFERED, NEVER SCORED (§3.2, decided 2026-08-02). This is not a fourth axis on the scorecard —
@@ -95,6 +108,7 @@ export const GENOME_AREAS: readonly GenomeArea[] = [
     key: 'demand',
     title: 'Where the work comes from',
     buyerQuestion: 'Where does work come from, and does it come to him personally?',
+    ownerFacingQuestion: "Where does your work come from, and does it come to you personally?",
     ownerQuestion: 'What is the demand for our products and services, and how do we increase sales from the data we already hold?',
     // ⚠️ DELIBERATELY NULL, AND IT IS AN OPEN DECISION — not an oversight, and not a zero.
     //
@@ -114,6 +128,7 @@ export const GENOME_AREAS: readonly GenomeArea[] = [
     key: 'pricing',
     title: 'How work is priced and quoted',
     buyerQuestion: 'Could someone else reach his number?',
+    ownerFacingQuestion: "Could someone else price a job and reach your number?",
     ownerQuestion: 'How do we determine price — and what do we know about the competition?',
     rank: 4,
     flowGroups: ['4.2 Scoping and quoting', '4.7 Catalogue and pricing ops'],
@@ -126,6 +141,7 @@ export const GENOME_AREAS: readonly GenomeArea[] = [
     // product; shipping software.
     title: 'How the work actually gets done',
     buyerQuestion: 'Does the work happen without him on site?',
+    ownerFacingQuestion: "Does the work happen when you are not on site?",
     ownerQuestion: null,
     rank: 5,
     flowGroups: ['4.3 Winning and setting up', '4.4 Delivering', '4.8 Fulfilment'],
@@ -135,6 +151,7 @@ export const GENOME_AREAS: readonly GenomeArea[] = [
     key: 'cash',
     title: 'Money in, money out and terms',
     buyerQuestion: 'Who chases, who approves, what are the terms — and are supplier terms personal to him?',
+    ownerFacingQuestion: "Who chases, who approves, and are any of your supplier terms personal to you?",
     ownerQuestion: 'Where do we stand, what are our margins, and what can we do with the information we have?',
     // Rank 8 (Suppliers & inputs), not rank 3. Rank 3 is financial integrity and is explicitly not
     // our job: the accountant produces the statements, and what this area holds is what the business
@@ -147,6 +164,7 @@ export const GENOME_AREAS: readonly GenomeArea[] = [
     key: 'customers',
     title: 'Who buys, and who owns the relationship',
     buyerQuestion: 'Revenue by customer over three years, concentration, and who owns each relationship.',
+    ownerFacingQuestion: "Who buys from you, what do they buy, and who owns each relationship?",
     ownerQuestion: 'How do we use that data to increase sales and margins?',
     // The single biggest discount a buyer applies, and the highest-value question in it — who owns
     // each relationship — has no system anywhere that answers it. That is not an integration gap; it
@@ -159,6 +177,7 @@ export const GENOME_AREAS: readonly GenomeArea[] = [
     key: 'people',
     title: 'Who does the work',
     buyerQuestion: 'Who is actually critical, tenure, contracts and restraints, who leaves on announcement.',
+    ownerFacingQuestion: "Who is critical, how long have they been with you, and who would leave on announcement?",
     ownerQuestion: 'Can we leverage them for greater productivity, sales, efficiency?',
     rank: 6,
     flowGroups: ['4.10 People', '4.11 Contractors'],
@@ -168,6 +187,7 @@ export const GENOME_AREAS: readonly GenomeArea[] = [
     key: 'assets',
     title: 'What the business owns',
     buyerQuestion: 'Owned vs leased vs personally held; deferred maintenance; whether the premises lease transfers.',
+    ownerFacingQuestion: "What do you own, what do you lease, and what is held in your own name?",
     ownerQuestion: null,
     rank: 9,
     flowGroups: ['4.12 Assets, fleet and equipment'],
@@ -177,6 +197,7 @@ export const GENOME_AREAS: readonly GenomeArea[] = [
     key: 'compliance',
     title: 'Licences, insurance and the calendar',
     buyerQuestion: 'The obligations calendar and who watches it; change-of-control clauses; anything in dispute.',
+    ownerFacingQuestion: "What must not lapse, and who is watching it?",
     // "What insurances do we hold, and what certificates, licences and regulatory artefacts do we
     // NEED and HAVE." ⚠️ The need half is a GAP ANALYSIS and a different risk class from the have
     // half: asserting which licences a business like his MUST hold is a claim about regulatory
@@ -202,6 +223,7 @@ export const GENOME_AREAS: readonly GenomeArea[] = [
     // re-classification, which is why it was worth settling first.
     title: 'Systems & records',
     buyerQuestion: 'Where records live, who has access, what is documented, and whether the IP is owned by the entity.',
+    ownerFacingQuestion: "Where do your records live, who can reach them, and what is written down?",
     ownerQuestion: null,
     // The quiet one: it determines whether everything above it can be verified at all.
     rank: 10,

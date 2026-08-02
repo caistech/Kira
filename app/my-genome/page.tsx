@@ -203,7 +203,7 @@ export default async function MyGenome() {
                 <div className="px-5 py-4 border-b border-amber-100 flex items-start justify-between gap-4">
                   <div>
                     <p className="font-display font-bold text-lg">{s.title}</p>
-                    <p className="text-sm text-stone-500">{s.question}</p>
+                    <p className="text-sm text-stone-500">{s.ownerQuestion}</p>
                   </div>
                   {/* A BAND, not a percentage. Nobody knows how many facts a pricing section
                       "should" contain, so a percentage would put a precise-looking number on a

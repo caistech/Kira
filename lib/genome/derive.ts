@@ -50,6 +50,15 @@ export const GENOME_SECTIONS = GENOME_AREAS.map((a) => ({
   key: a.key,
   title: a.title,
   question: a.buyerQuestion,
+  /**
+   * The same question addressed to the owner, for HIS page.
+   *
+   * Carried alongside rather than replacing `question`: the buyer's third-person wording is correct
+   * in the handover document, where the reader is an advisor and the subject is someone else. It is
+   * only wrong on the owner's own screen. Two renderings of one Genome is the whole model (§5), and
+   * this is that distinction applied to a sentence.
+   */
+  ownerQuestion: a.ownerFacingQuestion,
 }));
 
 export type SectionKey = AreaKey;
@@ -128,7 +137,10 @@ export interface OwnerEntry {
 export interface OwnerSection {
   key: SectionKey;
   title: string;
+  /** The buyer's advisor's wording — third person, for the handover document. */
   question: string;
+  /** The same question addressed to the owner, for his own page. */
+  ownerQuestion: string;
   entries: OwnerEntry[];
   /**
    * How well this section is covered — a BAND, not a percentage.
@@ -601,7 +613,7 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
     const entries = all.filter((e) => e.section === s.key);
     const coverage =
       entries.length === 0 ? 'empty' : entries.length <= 2 ? 'thin' : entries.length <= 5 ? 'building' : 'covered';
-    return { key: s.key, title: s.title, question: s.question, entries, coverage };
+    return { key: s.key, title: s.title, question: s.question, ownerQuestion: s.ownerQuestion, entries, coverage };
   });
 
   return {
@@ -620,10 +632,10 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
     // nobody has checked.
     stillInYourHead: sections
       .filter((sec) => sec.coverage === 'empty' && areaFor(sec.key)?.truthLivesIn !== 'system')
-      .map((sec) => ({ key: sec.key, title: sec.title, question: sec.question })),
+      .map((sec) => ({ key: sec.key, title: sec.title, question: sec.ownerQuestion })),
     notYetLocated: sections
       .filter((sec) => sec.coverage === 'empty' && areaFor(sec.key)?.truthLivesIn === 'system')
-      .map((sec) => ({ key: sec.key, title: sec.title, question: sec.question })),
+      .map((sec) => ({ key: sec.key, title: sec.title, question: sec.ownerQuestion })),
   };
 }
 

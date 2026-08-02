@@ -41,8 +41,8 @@ export const EXAMPLE_BUSINESS = {
 
 export const EXAMPLE_GENOME: GenomeSection[] = [
   {
-    key: 'work-in',
-    title: 'How work comes in',
+    key: 'demand',
+    title: 'Where the work comes from',
     question: 'Where does revenue come from, and does it depend on the owner?',
     coverage: 78,
     entries: [
@@ -109,8 +109,8 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
     ],
   },
   {
-    key: 'delivery',
-    title: 'How the work gets done',
+    key: 'operations',
+    title: 'How the work actually gets done',
     question: 'Does the business run without the owner on site?',
     coverage: 41,
     entries: [
@@ -137,8 +137,8 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
     ],
   },
   {
-    key: 'suppliers',
-    title: 'Suppliers and terms',
+    key: 'cash',
+    title: 'Money in, money out and terms',
     question: 'What do the input costs depend on, and are they portable?',
     coverage: 83,
     entries: [
@@ -158,7 +158,7 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
     stillOnlyInYourHead: ['Whether the Reece pricing survives a change of owner — it has never been tested'],
   },
   {
-    key: 'obligations',
+    key: 'compliance',
     title: 'Licences, insurance and the calendar',
     question: 'What must not lapse, and who is watching it?',
     coverage: 92,
@@ -179,9 +179,14 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
     stillOnlyInYourHead: [],
   },
   {
-    key: 'only-you',
-    title: 'Things only you know',
-    question: 'What walks out the door with the owner?',
+    // WAS 'Things only you know'. That stopped being a section when the nine-area model made
+    // owner-dependence a per-fact AXIS instead of a place — it had become a bucket holding half the
+    // Genome. Both entries below are about CUSTOMERS, which is where they belong, and they are also
+    // the two most persuasive lines on this page: exactly the kind of thing that only exists in an
+    // owner's head, now filed where a buyer's advisor would look for it.
+    key: 'customers',
+    title: 'Who buys, and who owns the relationship',
+    question: 'Revenue by customer, concentration, and who owns each relationship.',
     coverage: 22,
     entries: [
       {
