@@ -44,16 +44,29 @@ export const INDUSTRY_SYNONYMS: Record<string, string> = {
   // sees the whole Construction group and picks, and if he picks nothing he gets the stated market
   // average rather than a civil-infrastructure multiple wearing his name.
   carpenter: 'Painting & Trade Contracting',
-  carpentry: 'Painting & Trade Contracting',
+  carpentry: 'Carpentry & Joinery',
   // Australian trade words the list did not know. A tester: "it doesn't know joinery, which is
   // what half the blokes I know call their business." It said so honestly rather than pretending,
   // which he rated above the coverage — but the coverage is cheap.
-  joinery: 'Painting & Trade Contracting',
-  joiner: 'Painting & Trade Contracting',
-  cabinetmaking: 'Painting & Trade Contracting',
-  cabinetmaker: 'Painting & Trade Contracting',
-  shopfitting: 'Painting & Trade Contracting',
-  shopfitter: 'Painting & Trade Contracting',
+  joinery: 'Carpentry & Joinery',
+  joiner: 'Carpentry & Joinery',
+  cabinetmaking: 'Carpentry & Joinery',
+  cabinetmaker: 'Carpentry & Joinery',
+  shopfitting: 'Carpentry & Joinery',
+  shopfitter: 'Carpentry & Joinery',
+  // The words a house builder actually uses about himself.
+  builder: 'Residential Building & General Contracting',
+  builders: 'Residential Building & General Contracting',
+  building: 'Residential Building & General Contracting',
+  residential: 'Residential Building & General Contracting',
+  'home builder': 'Residential Building & General Contracting',
+  'house builder': 'Residential Building & General Contracting',
+  construction: 'Residential Building & General Contracting',
+  contracting: 'Residential Building & General Contracting',
+  renovations: 'Residential Building & General Contracting',
+  extensions: 'Residential Building & General Contracting',
+  earthmoving: 'Landscaping & Earthmoving',
+  excavation: 'Landscaping & Earthmoving',
   chippy: 'Painting & Trade Contracting',
   painter: 'Painting & Trade Contracting',
   painting: 'Painting & Trade Contracting',
@@ -64,8 +77,6 @@ export const INDUSTRY_SYNONYMS: Record<string, string> = {
   fencing: 'Painting & Trade Contracting',
   concreter: 'Concrete',
   concreting: 'Concrete',
-  earthmoving: 'Heavy Construction',
-  excavation: 'Heavy Construction',
   civil: 'Heavy Construction',
   'civil works': 'Heavy Construction',
   demolition: 'Heavy Construction',
@@ -239,25 +250,15 @@ const normalise = (s: string) =>
  * whatever he picks is a real sourced multiple rather than our approximation of him.
  */
 export const SYNONYM_GROUPS: Record<string, string> = {
-  builder: 'Construction',
-  builders: 'Construction',
-  building: 'Construction',
-  'home builder': 'Construction',
   'home building': 'Construction',
-  'house builder': 'Construction',
   'residential builder': 'Construction',
   'residential building': 'Construction',
   'new homes': 'Construction',
   'home renovation': 'Construction',
-  renovations: 'Construction',
   renovator: 'Construction',
-  construction: 'Construction',
   'construction company': 'Construction',
   'general contractor': 'Construction',
-  contracting: 'Construction',
   'shop fitting': 'Construction',
-  shopfitting: 'Construction',
-  extensions: 'Construction',
 };
 
 /** The group a typed phrase points at, when it points at a group rather than one sector. */

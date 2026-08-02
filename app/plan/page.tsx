@@ -22,8 +22,9 @@ import {
   Loader2,
 } from 'lucide-react';
 import { computeValuation } from '@/lib/valuation/model';
-import { formatMoney, formatPrice, taxSuffix, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
+import { formatMoneyApprox, formatPrice, taxSuffix, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { priceForGap } from '@/lib/valuation/pricing';
+import { billingCopy } from '@/lib/billing/copy';
 import {
   decodeValuationParam,
   readStoredValuation,
@@ -114,12 +115,19 @@ export default function PlanPage() {
     return { result, quote };
   }, [payload]);
 
-  const money = (n: number) => formatMoney(n, payload?.currency || DEFAULT_CURRENCY);
+  // Approximate, matching the result page and every other surface. This printed $981,990 against a
+  // result screen showing $982,000 for the same gap — on a product whose most persuasive paragraph
+  // explains why it rounds. A tester checked the arithmetic precisely BECAUSE that paragraph invited
+  // him to, and found four surfaces giving three answers.
+  const money = (n: number) => formatMoneyApprox(n, payload?.currency || DEFAULT_CURRENCY);
   // Every PRICE carries its tax qualifier; `money` stays for valuation figures, which are not
   // prices and must not gain a '+ GST'. The label follows the visitor's currency — this product
   // is reachable from anywhere, and '+ GST' is meaningless to a buyer in London.
   const price = (n: number) => formatPrice(n, payload?.currency || DEFAULT_CURRENCY);
   const tax = taxSuffix(payload?.currency || DEFAULT_CURRENCY);
+  // One switch, every sentence — see lib/billing/copy.ts. The inline ternaries this replaced were
+  // the flag being honoured a dozen times independently, which is how two readings drift apart.
+  const copy = billingCopy(billingLive);
 
   async function startCheckout() {
     if (!payload || !model) return;
@@ -248,7 +256,7 @@ export default function PlanPage() {
               <p className="text-white/80 font-medium">You could unlock</p>
               <p className="font-display text-4xl sm:text-5xl font-bold mt-1">{money(model.result.gap)}</p>
               <p className="text-white/90 max-w-lg mx-auto mt-4 leading-relaxed">
-                Kira is <span className="font-bold">{money(model.quote.monthly)}/month {tax}</span>{billingLive ? ' (and you are never billed for the month you are in)' : ' (nothing is charged while we are in beta)'}
+                Kira is <span className="font-bold">{money(model.quote.monthly)}/month {tax}</span>{copy.priceQualifier}
                 {model.quote.fractionWorthQuoting ? (
                   <> — about <span className="font-bold">{model.quote.fractionOfGapPct}</span> a year of what you stand to unlock</>
                 ) : null}
@@ -288,12 +296,12 @@ export default function PlanPage() {
                   because it reads as deliberate. */}
               <ul className="text-left space-y-2.5 my-6 text-stone-700">
                 {[
-                  billingLive ? 'Nothing is charged today — your card is saved, not billed' : 'Nothing is charged while we are in beta',
+                  copy.bullets[0],
                   'Always-on Kira — talk anytime, she remembers everything',
                   'Kira quietly captures your know-how into a Business Genome',
                   'Your knowledge stays private and yours to keep',
-                  billingLive ? 'We email you 3 days before every payment' : 'We email you before billing is switched on',
-                  billingLive ? 'Cancel any time — the month you are in is never billed' : 'Cancel any time before then and pay nothing',
+                  copy.bullets[1],
+                  copy.bullets[2],
                 ].map((f, i) => (
                   <li key={i} className="flex items-start gap-2.5 text-sm"><Check className="h-4 w-4 text-violet-500 mt-0.5 flex-shrink-0" /> {f}</li>
                 ))}
@@ -305,13 +313,9 @@ export default function PlanPage() {
                   life." The next screen asks for a card either way, so the button has to say so. */}
               {confirming && (
                 <div className="mb-3 rounded-2xl border-2 border-stone-300 bg-white p-4 text-left">
-                  <p className="font-display font-bold text-stone-900">
-                    The next screen asks for your card.
-                  </p>
+                  <p className="font-display font-bold text-stone-900">{copy.confirmTitle}</p>
                   <p className="mt-1 text-sm text-stone-600 leading-relaxed">
-                    {billingLive
-                      ? `It is saved, not charged. Your first payment is ${price(model.quote.monthly)} ${tax} at the end of your first month, and we email you three days before it.`
-                      : 'Nothing is charged — billing is not switched on yet. Stripe still needs the details to set the account up, and we will email you before anything is ever billed. Because billing is off, Stripe will show a "Sandbox" badge on that page; that is our test mode, not a fake payment page.'}
+                    {copy.confirmBody(`${price(model.quote.monthly)} ${tax}`)}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
@@ -335,7 +339,7 @@ export default function PlanPage() {
                 disabled={loading}
                 className="grad-coral text-white font-display font-bold px-8 py-4 rounded-full text-lg inline-flex items-center gap-2 min-h-[52px] shadow-lg shadow-pink-200 w-full justify-center disabled:opacity-60"
               >
-                {billingLive ? 'Start now' : 'Start now — free while in beta'} <ArrowRight className="h-5 w-5" />
+                {copy.cta} <ArrowRight className="h-5 w-5" />
               </button>
               {error && <p className="text-rose-600 text-sm mt-3">{error}</p>}
               <p className="mt-4 text-sm text-stone-500">
@@ -346,15 +350,7 @@ export default function PlanPage() {
                 .
               </p>
               <p className="text-xs text-stone-400 mt-3">
-                {billingLive ? (
-                  <>
-                    Secure checkout by Stripe · billed by Corporate AI Solutions. Your card is saved today but nothing is charged. We bill in arrears: at the end of each month you pay {price(model.quote.monthly)} for the month just finished, and we email you three days before. Cancel at any point and the month you are in is written off — no payment, no proration. You set your password and meet Kira right after.
-                  </>
-                ) : (
-                  <>
-                    <span className="font-bold">Free until we say otherwise.</span> No card is charged, no subscription starts, and nothing comes out at the end of the month. You get full access now, and we will write to you before a single dollar moves — you can walk away that day. You set your password and meet Kira right after.
-                  </>
-                )}
+                {copy.finePrint(`${price(model.quote.monthly)} ${tax}`)} You set your password and meet Kira right after.
               </p>
             </div>
           </section>

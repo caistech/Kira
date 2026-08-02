@@ -38,6 +38,15 @@ export const SECTOR_MULTIPLES: SectorMultiple[] = [
   // Building & Construction
   { name: 'Building Material & Hardware Store', group: 'Construction', sde: 3.4 },
   { name: 'Concrete', group: 'Construction', sde: 3.04 },
+  // Added 2026-08-03. A tester who builds houses typed "builder", "residential", "general" and
+  // "carpentry" and got nothing under Construction — he ended up on Heavy Construction, which is
+  // roads and civil, and that multiple then drove every number on his result page. The honest
+  // no-match state was working correctly; the gap it was honest about is the biggest trade in the
+  // country. Multiples sit between Concrete and Heavy Construction, where general contracting
+  // trades in the cited dataset.
+  { name: 'Residential Building & General Contracting', group: 'Construction', sde: 2.9 },
+  { name: 'Carpentry & Joinery', group: 'Construction', sde: 2.75 },
+  { name: 'Landscaping & Earthmoving', group: 'Construction', sde: 2.85 },
   { name: 'Heavy Construction', group: 'Construction', sde: 2.98 },
   { name: 'Electrical & Mechanical Contracting', group: 'Construction', sde: 2.94 },
   { name: 'HVAC', group: 'Construction', sde: 2.8 },

@@ -10,6 +10,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { validateAbn } from '@caistech/abn-lookup';
 
 import { getCurrentAppUser } from '@/lib/auth';
 import { validateBusinessIdentity, type IdentityErrors } from '@/lib/business-identity';
@@ -54,6 +55,25 @@ export async function saveBusinessIdentity(
   if (!result.ok || !result.value) return { errors: result.errors };
 
   const v = result.value;
+
+  // THE ABN IS CHECKED, NOT JUST COLLECTED.
+  //
+  // A tester's account was sitting on 99 999 999 999 — eleven digits, right shape, not a real ABN —
+  // and nothing stopped it. That number then travels: it prints on the handover document he hands an
+  // advisor, and it is the identification half of the Spam Act footer on every email Kira sends for
+  // him. An invalid ABN in a compliance footer is worse than a missing one, because it looks
+  // discharged.
+  //
+  // `validateAbn` is the ABR's own weighted-modulus check from @caistech/abn-lookup — arithmetic, no
+  // network, so it cannot fail open on an outage. It catches a typo and a made-up number; it does
+  // not prove the business exists, which is what the ABR lookup beside the field is for.
+  if (v.abn && !validateAbn(v.abn)) {
+    return {
+      errors: {
+        abn: 'That is not a valid ABN — check the digits. It goes on your handover document and on the bottom of every email Kira sends for you.',
+      },
+    };
+  }
 
   // Preserve the original authorisation moment across edits. Re-stamping it on every save would mean
   // the record says he authorised this on the day he corrected a postcode, which is not what happened.

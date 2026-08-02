@@ -1,4 +1,5 @@
 import { isLiveMode } from '@/lib/billing';
+import { billingCopy } from '@/lib/billing/copy';
 import { createServiceClient } from '@/lib/supabase/server';
 
 export const metadata = { title: 'Admin · Kira' };
@@ -67,7 +68,7 @@ export default async function AdminOverviewPage() {
         <p className="text-sm text-gray-700">
           {liveBilling
             ? 'Real cards are being charged. Stripe is running on the live key.'
-            : 'No real money moves. Stripe is on test keys — flip STRIPE_LIVE_MODE to true and redeploy to go live.'}
+            : billingCopy(false).adminBanner}
         </p>
       </div>
 

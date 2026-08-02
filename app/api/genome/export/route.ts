@@ -23,6 +23,7 @@ import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
+import { formatMoneyApprox } from '@/lib/valuation/currency';
 
 import { displayName } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
@@ -150,8 +151,12 @@ export async function GET(request: Request) {
       '## Where the business stands',
       '',
       `- Transferability: ${Math.round(g.readiness * 100)} out of 100`,
-      g.worthToday != null ? `- Indicative value today: $${Math.round(g.worthToday).toLocaleString('en-AU')}` : '',
-      g.gap != null ? `- Value still tied to the owner: $${Math.round(g.gap).toLocaleString('en-AU')}` : '',
+      // APPROXIMATE, like every screen these came from. This printed the business to the dollar —
+      // "$1,286,802" — off eleven multiple-choice answers, in the file an owner hands his advisor.
+      // A tester's verdict: "He would laugh at it, and he'd be right to." It also disagreed with the
+      // result page and My Genome, which round; four surfaces gave three answers for one figure.
+      g.worthToday != null ? `- Indicative value today: ${formatMoneyApprox(g.worthToday)}` : '',
+      g.gap != null ? `- Value still tied to the owner: ${formatMoneyApprox(g.gap)}` : '',
       '',
       'These are indicative figures from a self-reported valuation, not a formal appraisal.',
       '',

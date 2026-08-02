@@ -136,10 +136,17 @@ mistaken for done.
 
 ## F. Billing and go-live
 
+✅ **GOING LIVE IS NOW ONE VARIABLE.** Both blockers below turned out to be already satisfied when
+checked against the live Stripe account (2026-08-03) rather than trusted from this file. Live secret
+key, live webhook signing secret, a registered and enabled live endpoint, and a live portal with
+cancellation disabled are all in place. What remains is setting **`STRIPE_LIVE_MODE=true`** in Vercel
+and redeploying — an operator decision about taking real money, not a build task. `lib/billing/copy.ts`
+makes every sentence on every surface follow that one flag.
+
 | ID | Item | Type | Sev | Detail |
 |---|---|---|---|---|
-| **F1** | Live-mode Stripe webhook endpoint does not exist | MISS | **1** | Test mode only. |
-| **F2** | `configure-billing-portal.mjs` never run against LIVE | MISS | **1** | Stripe's portal cancel **cannot waive** — it invoices either way. Two doors, one of which breaks the arrears promise, is not a promise. Test and live portals are separate configurations. |
+| ~~**F1**~~ | ~~Live-mode Stripe webhook endpoint does not exist~~ | — | — | ✅ **ALREADY DONE — the entry was wrong.** Verified against the live Stripe account 2026-08-03: an **enabled** endpoint exists at `https://kira-rho.vercel.app/api/stripe/webhook` carrying `checkout.session.completed`, `customer.subscription.created/updated/deleted`. `STRIPE_WEBHOOK_SECRET_LIVE` is set in Vercel production+preview, and `stripeWebhookSecret()` refuses to fall back to the test secret when live. |
+| ~~**F2**~~ | ~~`configure-billing-portal.mjs` never run against LIVE~~ | — | — | ✅ **ALREADY DONE — the entry was wrong.** Dry-run against LIVE 2026-08-03 reports configuration `bpc_1SrG1G…` with `subscription_cancel: false` — *"already disabled — nothing to do."* So the portal's cancel door is shut in live and the only cancel path is `/api/billing/cancel`, which passes `invoice_now: false` and honours the waiver. The reasoning in the original entry stands and is why the script exists; only the claim that it had never been run was untrue. |
 
 ---
 
