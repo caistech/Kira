@@ -102,6 +102,44 @@ const RULES: { reason: PrivateReason; pattern: RegExp; ignoreIfTrading?: boolean
       /\b(ha(s|ve)n't|has not|have not|hadn't|had not|not yet|yet to|never)\b[^.]{0,30}\b(told|informed|mentioned|discussed|said anything|announced|disclosed|shared)\b|\b(no ?one|nobody|none of (the |his |her |their )?(staff|team|family|kids|children|partners?))\b[^.]{0,25}\b(knows?|aware|been told)\b|\b(keep|keeping|kept|stay|staying)\b[^.]{0,20}\b(quiet|secret|confidential|between us|to himself|to herself)\b|\bbefore (telling|announcing|letting)\b|\bwithout (telling|informing)\b/i,
   },
   {
+    // TELLING PEOPLE ABOUT A SALE. Ordered AFTER not-yet-told, and deliberately NOT `ignoreIfTrading`.
+    //
+    // This is the rule that was missing, found in production by a tester on 2026-08-02. The sentence
+    // that got through:
+    //
+    //   "…prefers to keep control over when and how sensitive communications, such as ANNOUNCING A
+    //    SALE TO CUSTOMERS, are sent…"
+    //
+    // Two independent failures had to line up, which is why it survived review. First, the trading
+    // guard matched — `sale` followed by `to` inside forty characters is exactly the shape of "sells
+    // fencing to builders", so the guard did its job and switched the exit rule off. Second, the exit
+    // rule would not have caught it anyway: it anchors on the thing being disposed of ("sell the
+    // business"), and here the noun after "sale" is the audience, not the asset.
+    //
+    // So the guard that protects an ordinary tradesman's revenue section is what let a sale
+    // announcement into the handover document. Both behaviours are correct in isolation; the gap is
+    // between them, and it needs its own line rather than a loosening of either.
+    //
+    // ORDER MATTERS AND IS LOAD-BEARING. Placed first, this rule stole "he has not told his staff
+    // about the sale" from not-yet-told — both withhold it, so nothing leaked, but the owner is shown
+    // the REASON beside the withheld entry and "who you have and have not told" is the truer and more
+    // specific one. An existing test caught it. Most specific wins; this rule is the fallback for the
+    // sentences the other two do not describe.
+    //
+    // WHAT MAKES THIS DIFFERENT FROM TRADING: a disclosure verb. Announcing, telling, informing,
+    // notifying someone of "a sale" is about the EVENT becoming known — the vendor's position — not
+    // about goods changing hands. `\bsale\b` is singular on purpose: "announce sales figures", "sales
+    // to the eastern states" and "sold 40 units to the council" all keep passing.
+    //
+    // ⚠️ ACCEPTED FALSE POSITIVE: a retailer announcing a discount sale to customers is withheld.
+    // That is the correct error under this file's stated policy — a business fact wrongly kept out
+    // costs a line the owner can add back by hand, and a sale announcement wrongly let through cannot
+    // be recalled by the person who reads it.
+    reason: 'exit-intent',
+    pattern:
+      /\b(announc\w*|telling|tells?|told|inform\w*|disclos\w*|notify|notifying|notified|breaking the news|word gets out|finding out)\b[^.]{0,40}\b(a|the|his|her|their|any|this)\s+sale\b|\b(a|the|his|her|their|this)\s+sale\b[^.]{0,40}\b(announc\w*|is announced|becomes known|gets out)\b/i,
+  },
+  {
     // Health, family and money pressure. "health and safety", "safety record" and similar are
     // excluded inside the pattern rather than by a second guard, because they are the only common
     // business collocations of "health" and the exception belongs where the rule is.

@@ -90,3 +90,32 @@ describe('the shape the render paths depend on', () => {
     expect(ownerPrivateReason(null as unknown as string)).toBeNull();
   });
 });
+
+describe('telling people about a sale (found in production 2026-08-02)', () => {
+  // The exact sentence that reached the handover document. Two correct behaviours left a gap
+  // between them: the trading guard fired on "sale … to", and the exit rule anchors on the asset
+  // ("sell the business") while here the noun after "sale" is the audience.
+  it('withholds the sentence that leaked', () => {
+    expect(
+      ownerPrivateReason(
+        'The business owner prefers to keep control over when and how sensitive communications, such as announcing a sale to customers, are sent, despite indicating standing approval for sending emails without separate consents.',
+      ),
+    ).toBe('exit-intent');
+  });
+
+  it('withholds the other ways an owner phrases it', () => {
+    expect(ownerPrivateReason('He wants to tell the staff about the sale himself.')).not.toBeNull();
+    expect(ownerPrivateReason('Nothing goes out before we announce the sale.')).not.toBeNull();
+    expect(ownerPrivateReason('Customers should be informed of the sale in person.')).not.toBeNull();
+  });
+
+  // The whole reason the trading guard exists. If any of these start being withheld, the revenue
+  // section — the part a buyer most wants — starts disappearing from the document.
+  it('still lets ordinary trading language through', () => {
+    expect(ownerPrivateReason('The business sells fencing to builders.')).toBeNull();
+    expect(ownerPrivateReason('Sales to the eastern states are up 12%.')).toBeNull();
+    expect(ownerPrivateReason('He sold 40 units to the council last year.')).toBeNull();
+    expect(ownerPrivateReason('We announce sales figures to the team each month.')).toBeNull();
+    expect(ownerPrivateReason('Annual sales are around $3.4M.')).toBeNull();
+  });
+});
