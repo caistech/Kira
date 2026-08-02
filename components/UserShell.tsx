@@ -14,7 +14,7 @@
 // is the difference between arriving somewhere of his and arriving in software.
 
 import { redirect } from 'next/navigation';
-import { getAuthUser, getCurrentAppUser } from '@/lib/auth';
+import { getAuthUser, getCurrentAppUser, isCurrentUserAdmin } from '@/lib/auth';
 import { canSend } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
 import { PortalShell, type NavItem } from '@/components/PortalShell';
@@ -90,11 +90,19 @@ export async function UserShell({
     redirect('/setup/business');
   }
 
+  const isOperator = await isCurrentUserAdmin();
+
   return (
     <PortalShell
       title={shellTitle(identity)}
       homeHref="/dashboard"
-      items={USER_NAV}
+      /* THE WAY BACK, for the one person who needs it.
+         The admin console's Settings link points at THIS portal's settings page — correctly, because
+         an operator's account settings are his own. But there was no route back: he left the console
+         and the user nav had nothing to return him to it, so a tester walking the admin path ended up
+         retyping the URL. §8.5 says an admin may reach user routes; it does not say he should get
+         stranded there. Rendered only for operators, so a customer never sees a door he cannot open. */
+      items={isOperator ? [...USER_NAV, { href: '/admin', label: 'Admin console' }] : USER_NAV}
       userEmail={authUser.email ?? ''}
     >
       {/* If they ran a valuation before signing up, attach it to the account now. Mounted on the

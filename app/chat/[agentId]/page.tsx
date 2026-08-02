@@ -485,8 +485,20 @@ export default function ChatPage({ agentId: agentIdProp }: { agentId?: string } 
               textInput
               textFallback
               onTextFallbackSubmit={handleTypedMessage}
+              // SUBSTANCE, NOT THE BOOKKEEPING FLAG.
+              //
+              // `has_history` is true as soon as a conversation ROW exists, which is not the same as
+              // there being anything to remember. A tester signed in for the first time, with zero
+              // conversations, and was told "Kira remembers where you left off" — his note: "Don't
+              // tell me you remember me when you don't; it's the one claim the whole product rests
+              // on." He is right, and it is the cheapest possible way to lose him: the sentence is
+              // checkable, he checked it, and it was false on the first screen he ever saw.
+              //
+              // So the banner now requires something actually recalled — a usable topic or real
+              // messages. Where there is none he gets the plain greeting, which is a good greeting,
+              // not a degraded one.
               title={
-                context?.has_history
+                context?.has_history && (lastTopic || (context.message_count ?? 0) > 0)
                   ? 'Welcome back — Kira remembers where you left off. Tap the mic to continue.'
                   : undefined
               }

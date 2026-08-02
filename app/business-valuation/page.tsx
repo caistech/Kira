@@ -102,9 +102,9 @@ const STEPS: Step[] = [
     help: 'The direction of travel matters more than any single year.',
     options: [
       { value: 'growing_strongly', label: 'Growing strongly', sub: 'Up meaningfully most years' },
-      { value: 'growing', label: 'Growing steadily' },
+      { value: 'growing', label: 'Growing steadily', sub: 'Up a bit most years' },
       { value: 'flat', label: 'Flat', sub: 'Ticking along about the same' },
-      { value: 'declining', label: 'Declining' },
+      { value: 'declining', label: 'Declining', sub: 'Down more years than not' },
     ],
   },
   {
@@ -114,9 +114,9 @@ const STEPS: Step[] = [
     title: 'And your margins?',
     help: 'What you keep from every dollar of revenue.',
     options: [
-      { value: 'improving', label: 'Improving' },
-      { value: 'stable', label: 'Holding steady' },
-      { value: 'shrinking', label: 'Getting squeezed' },
+      { value: 'improving', label: 'Improving', sub: 'Keeping more of every dollar' },
+      { value: 'stable', label: 'Holding steady', sub: 'About the same as always' },
+      { value: 'shrinking', label: 'Getting squeezed', sub: 'Costs rising faster than prices' },
     ],
   },
   {
@@ -127,8 +127,8 @@ const STEPS: Step[] = [
     help: 'Whether demand is building or fading.',
     options: [
       { value: 'expanding', label: 'Expanding', sub: 'Winning new clients faster than losing them' },
-      { value: 'stable', label: 'Stable' },
-      { value: 'shrinking', label: 'Shrinking' },
+      { value: 'stable', label: 'Stable', sub: 'Winning about as many as we lose' },
+      { value: 'shrinking', label: 'Shrinking', sub: 'Losing more than we win' },
     ],
   },
   {
@@ -164,7 +164,7 @@ const STEPS: Step[] = [
     help: 'The operating system of the business. Where does it actually live?',
     options: [
       { value: 'documented_team', label: 'Documented, and a team runs them', sub: 'Written down, not just remembered' },
-      { value: 'some', label: 'Partly written down' },
+      { value: 'some', label: 'Partly written down', sub: 'Some of it is, the rest is habit' },
       { value: 'in_my_head', label: "Mostly in my head", sub: 'I just know how it all works' },
     ],
   },
@@ -176,7 +176,7 @@ const STEPS: Step[] = [
     help: 'Contracts, retainers, memberships, repeat accounts - anything a buyer can count on continuing.',
     options: [
       { value: 'strong', label: 'A lot', sub: 'Contracts / recurring accounts carry us' },
-      { value: 'some', label: 'Some' },
+      { value: 'some', label: 'Some', sub: 'A handful of accounts we can rely on' },
       { value: 'none', label: 'Almost none', sub: 'We start each month from scratch' },
     ],
   },
@@ -371,7 +371,14 @@ export default function BusinessValuationPage() {
   // pages are one navigation apart in the same tab, so the URL was never needed to get it there.
   useEffect(() => {
     if (!isResult) return;
-    storeValuation({ inputs: answers as ValuationInputs, currency, firstName: firstName.trim() || undefined });
+    storeValuation({
+      inputs: answers as ValuationInputs,
+      currency,
+      firstName: firstName.trim() || undefined,
+      // Carried so the app does not later ask him whether a valuation he ran from his own dashboard,
+      // signed in, is his — see ValuationPayload.fromApp.
+      fromApp: returningToApp,
+    });
   }, [isResult, answers, currency, firstName]);
 
   /**
@@ -681,7 +688,11 @@ export default function BusinessValuationPage() {
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 text-lg">{currencySymbol}</span>
                 <input
-                  type="number"
+                  // NOT type="number": it renders spinner arrows, and scrolling the page with
+                  // the cursor over the field silently changes the figure. A tester spotted it
+                  // before it bit him — "I'll change my turnover without knowing". inputMode
+                  // still gives the numeric keypad on a phone, so nothing is lost.
+                  type="text"
                   inputMode="numeric"
                   min={0}
                   placeholder={step.placeholder}

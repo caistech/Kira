@@ -4,7 +4,7 @@ import { getCurrentAppUser } from '@/lib/auth';
 import { canSend } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
 import { createServiceClient } from '@/lib/supabase/server';
-import { formatMoney, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
+import { formatMoney, formatMoneyApprox, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { shouldInviteBaseline } from '@/lib/valuation/baseline-invite';
 import { readTaskLedger } from '@/lib/kira/swarm/open-tasks';
 
@@ -101,7 +101,14 @@ export default async function DashboardPage({
   const talkHref = businessAgent ? `/chat/${businessAgent.elevenlabs_agent_id}` : '/start?journey=business';
 
   const val = valuation as Valuation | null;
-  const money = (n: number) => formatMoney(n, val?.currency || DEFAULT_CURRENCY);
+  // APPROXIMATE, like the result page — see formatMoneyApprox.
+  //
+  // The valuation result explains, carefully and correctly, that putting a ± on these figures
+  // would be "inventing a precision we do not have", and rounds to $1,440,000. This page then
+  // showed $1,441,595 for the same number. A tester caught it in one glance: "You've argued for
+  // rounding and then not done it three screens later. A man who's just been told precision would
+  // be dishonest and is then shown five significant figures notices."
+  const money = (n: number) => formatMoneyApprox(n, val?.currency || DEFAULT_CURRENCY);
 
   // Two decisions, not one condition — see lib/valuation/baseline-invite.ts, where they are pinned
   // by tests because both read as tidy-uppable.

@@ -98,7 +98,7 @@ export default async function AdminOverviewPage() {
                     <td className="py-2 pr-3 text-gray-800">{String(u.email ?? '')}</td>
                     <td className="py-2 pr-3">{u.auth_user_id ? '✓' : '—'}</td>
                     <td className="py-2 text-gray-500">
-                      {u.created_at ? new Date(String(u.created_at)).toLocaleDateString() : ''}
+                      {u.created_at ? new Date(String(u.created_at)).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
                     </td>
                   </tr>
                 ))}

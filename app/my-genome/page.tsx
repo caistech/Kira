@@ -1,7 +1,7 @@
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
-import { formatMoney, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
+import { formatMoney, formatMoneyApprox, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { RedactEntry } from '@/components/RedactEntry';
 import { PRIVATE_REASON_LABEL } from '@/lib/genome/private';
 
@@ -44,7 +44,9 @@ export default async function MyGenome() {
   }
 
   const g = await deriveOwnerGenome(appUser.id);
-  const money = (n: number | null) => (n == null ? '—' : formatMoney(n, DEFAULT_CURRENCY));
+  // Approximate, matching the valuation result — the same figure must not be rounded on one screen
+  // and exact on another, least of all in the document this page is about.
+  const money = (n: number | null) => (n == null ? '—' : formatMoneyApprox(n, DEFAULT_CURRENCY));
 
   return (
     <main className="max-w-3xl mx-auto px-5 py-10 pb-20">

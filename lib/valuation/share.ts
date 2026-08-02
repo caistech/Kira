@@ -39,6 +39,23 @@ export interface ValuationPayload {
   inputs: ValuationInputs;
   currency: string;
   /**
+   * True when this was run from INSIDE the signed-in app (the dashboard's "set your starting point"
+   * card, which links with `?from=app`).
+   *
+   * It exists to switch off a question that becomes absurd in that case. `ClaimStoredValuation` asks
+   * "there's a valuation saved on this device — is it yours, or did someone else use this computer?"
+   * That is exactly right for an anonymous run: the handoff persists on the DEVICE for seven days,
+   * and on a shared office machine the next person to sign in would otherwise inherit someone's
+   * turnover as their own permanent baseline. A tester asked for that guard and he was right.
+   *
+   * But he then hit the other side of it: he started the valuation from a button on his own
+   * dashboard, signed in as himself, and ninety seconds later was asked whether it was his. "Asking
+   * whether it's mine is right when someone does it logged out, and odd when the app watched me do
+   * it." The app did watch him do it — this flag is that knowledge, carried the one hop it needs to
+   * travel.
+   */
+  fromApp?: boolean;
+  /**
    * What he asked to be called, given on the valuation intro. Optional — he can skip it.
    *
    * IT LIVES HERE RATHER THAN IN ValuationInputs because it is not an input to the maths, exactly

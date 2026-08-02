@@ -224,7 +224,14 @@ export default function KiraLandingPage() {
               business can be sold with. Most owners start this <span className="font-semibold text-stone-800">before they&apos;ve told anyone</span>.
             </p>
 
-            <div className={`flex flex-col sm:flex-row items-center justify-center gap-4 ${isVisible ? 'fade-up fade-up-delay-3' : 'opacity-0'}`}>
+            {/* STACKED, NEVER A ROW. These two were siblings in a `sm:flex-row`, so on a laptop the
+                800px demo card below took the row and squeezed the primary CTA — the one thing this
+                page exists to get pressed — into the leftover 166px: a two-line pill in the left
+                margin, level with the middle of an unrelated card. A tester scrolled straight past it
+                and used the small "Value my business" in the corner instead. "It looks like something
+                fell off." They are not peers competing for a row; the button is the call and the demo
+                is the evidence under it. */}
+            <div className={`flex flex-col items-center justify-center gap-4 ${isVisible ? 'fade-up fade-up-delay-3' : 'opacity-0'}`}>
               <a href="/business-valuation" className="font-display gradient-coral text-white px-8 py-4 rounded-full text-lg font-bold hover-pop shadow-xl shadow-pink-200 inline-block">Find out in 3 minutes →</a>
 
               {/* THE DEMO, IN THE HERO — not a section further down and not a route of its own.

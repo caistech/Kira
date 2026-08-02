@@ -72,9 +72,38 @@ export default function PlanPage() {
       // opened rather than every time the page is shared onward from here.
       storeValuation(legacy);
       window.history.replaceState(null, '', window.location.pathname);
+      setPayload(legacy);
+      setReady(true);
+      return;
     }
-    setPayload(legacy);
-    setReady(true);
+
+    // THEN THE ACCOUNT — the fix for a closed loop a tester walked.
+    //
+    // He finished the eleven questions from a button on his own dashboard, was sent here by the
+    // result page, and was told "Let's find your number first… take the 3-minute valuation and it'll
+    // bring you right back here." The only two links on this page send him back to the valuation, so
+    // there was no way out — while /dashboard was showing his completed figures the whole time.
+    //
+    // The device store is genuinely right FIRST: an anonymous visitor who has just run the numbers
+    // in this browser has no account to read, and that is this page's main audience. But a signed-in
+    // owner on a different machine, or after clearing his browser, is not someone to ask to do it
+    // again — his answer is on his account.
+    let cancelled = false;
+    fetch('/api/valuation/mine')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body) => {
+        if (cancelled) return;
+        setPayload(body?.valuation ?? null);
+        setReady(true);
+      })
+      .catch(() => {
+        // Signed out, offline, or the lookup failed — the page's own "run the valuation" state is
+        // the correct answer for all three, and it is the state this page was written for.
+        if (!cancelled) setReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const model = useMemo(() => {

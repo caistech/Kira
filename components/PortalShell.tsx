@@ -21,10 +21,23 @@ interface PortalShellProps {
   homeHref: string;
   items: NavItem[];
   userEmail: string;
+  /**
+   * Where the Settings link goes. Defaults to the customer page, which is right for the user portal
+   * and was WRONG for the admin console — an operator clicking Settings left the console entirely
+   * and had no route back but the address bar.
+   */
+  settingsHref?: string;
   children: React.ReactNode;
 }
 
-export function PortalShell({ title, homeHref, items, userEmail, children }: PortalShellProps) {
+export function PortalShell({
+  title,
+  homeHref,
+  items,
+  userEmail,
+  settingsHref = '/settings',
+  children,
+}: PortalShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const pathname = usePathname();
 
@@ -50,11 +63,15 @@ export function PortalShell({ title, homeHref, items, userEmail, children }: Por
         ))}
       </div>
       <div className="border-t border-gray-100 px-2 py-3">
+        {/* CONFIGURABLE, because this shell serves BOTH portals and the destination is not the same
+            for each. It was hardcoded to /settings, so an operator clicking Settings in the admin
+            console landed on the CUSTOMER settings page — out of the console, with no way back except
+            the address bar. Found by a tester walking the admin path. */}
         <Link
-          href="/settings"
+          href={settingsHref}
           onClick={() => setDrawerOpen(false)}
           className={`block rounded-lg px-3 py-2.5 text-base font-medium ${
-            isActive('/settings') ? 'bg-teal-50 text-teal-800' : 'text-gray-700 hover:bg-gray-50'
+            isActive(settingsHref) ? 'bg-teal-50 text-teal-800' : 'text-gray-700 hover:bg-gray-50'
           }`}
         >
           Settings

@@ -46,6 +46,23 @@ export function ClaimStoredValuation() {
     setPayload(readStoredValuation());
   }, []);
 
+  // HE STARTED IT FROM IN HERE — don't ask him whose it is.
+  //
+  // The question below exists for the anonymous case, where the seven-day device handoff means the
+  // next person to sign in on a shared machine could inherit someone else's turnover as their own
+  // permanent baseline. A tester asked for that guard and was right to.
+  //
+  // He then walked the other side of it: he ran the valuation from a button on his own dashboard,
+  // signed in, and was asked ninety seconds later whether it was his. "Odd when the app watched me
+  // do it." So when the run began inside the app, it is claimed silently — the ownership question
+  // has already been answered by the session it started in.
+  useEffect(() => {
+    if (!payload?.fromApp || busy) return;
+    void decide(true);
+    // `decide` is stable for this purpose and re-running on its identity would re-fire the claim.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payload?.fromApp]);
+
   if (!payload) return null;
 
   // Recomputed locally purely to SHOW him something recognisable. The number that gets stored is

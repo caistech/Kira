@@ -45,6 +45,15 @@ export const INDUSTRY_SYNONYMS: Record<string, string> = {
   // average rather than a civil-infrastructure multiple wearing his name.
   carpenter: 'Painting & Trade Contracting',
   carpentry: 'Painting & Trade Contracting',
+  // Australian trade words the list did not know. A tester: "it doesn't know joinery, which is
+  // what half the blokes I know call their business." It said so honestly rather than pretending,
+  // which he rated above the coverage — but the coverage is cheap.
+  joinery: 'Painting & Trade Contracting',
+  joiner: 'Painting & Trade Contracting',
+  cabinetmaking: 'Painting & Trade Contracting',
+  cabinetmaker: 'Painting & Trade Contracting',
+  shopfitting: 'Painting & Trade Contracting',
+  shopfitter: 'Painting & Trade Contracting',
   chippy: 'Painting & Trade Contracting',
   painter: 'Painting & Trade Contracting',
   painting: 'Painting & Trade Contracting',

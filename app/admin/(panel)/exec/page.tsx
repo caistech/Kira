@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { getExecUsers } from '@/lib/admin/exec';
-import { formatMoney } from '@/lib/valuation/currency';
+import { formatMoneyApprox } from '@/lib/valuation/currency';
 
 export const metadata = { title: 'Kira Exec · Admin' };
 export const dynamic = 'force-dynamic';
@@ -29,7 +29,9 @@ export default async function ExecAdminPage() {
       ) : (
         <div className="space-y-4">
           {rows.map((r) => {
-            const money = (n: number | null) => (n == null ? '—' : formatMoney(n, r.currency));
+            // Approximate, like every other surface showing a valuation. The operator reading a
+            // figure to the dollar here would quote it to an owner who is shown a rounded one.
+            const money = (n: number | null) => (n == null ? '—' : formatMoneyApprox(n, r.currency));
             const primaryAgent =
               r.agents.find((a) => a.journeyType === 'business' && a.status === 'active') ?? r.agents[0];
             const totalConvos = r.agents.reduce((s, a) => s + a.totalConversations, 0);
@@ -99,7 +101,7 @@ export default async function ExecAdminPage() {
                   <p className="mt-3 text-xs text-gray-400">
                     {primaryAgent.agentName}
                     {primaryAgent.lastConversationAt
-                      ? ` · last active ${new Date(primaryAgent.lastConversationAt).toLocaleDateString()}`
+                      ? ` · last active ${new Date(primaryAgent.lastConversationAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}`
                       : ' · no conversations yet'}
                   </p>
                 )}

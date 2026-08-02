@@ -132,7 +132,7 @@ export default async function AdminLoiPage() {
                     </td>
                     <td className="py-2 pr-3 text-gray-400">{r.source ?? '—'}</td>
                     <td className="py-2 whitespace-nowrap text-gray-500">
-                      {r.created_at ? new Date(r.created_at).toLocaleDateString() : ''}
+                      {r.created_at ? new Date(r.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
                     </td>
                   </tr>
                 ))}

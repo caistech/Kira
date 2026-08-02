@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createServiceClient } from '@/lib/supabase/server';
-import { formatMoney, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
+import { formatMoneyApprox, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 
 export const metadata = { title: 'Manage Exec user · Admin' };
 export const dynamic = 'force-dynamic';
@@ -25,7 +25,8 @@ export default async function ExecUserManagePage({ params }: { params: Promise<{
   ]);
 
   const currency = val?.currency || DEFAULT_CURRENCY;
-  const money = (n: number | null | undefined) => (n == null ? '—' : formatMoney(n, currency));
+  // Approximate, like every other surface showing a valuation.
+  const money = (n: number | null | undefined) => (n == null ? '—' : formatMoneyApprox(n, currency));
 
   return (
     <div>
@@ -55,7 +56,7 @@ export default async function ExecUserManagePage({ params }: { params: Promise<{
                   <p className="truncate text-sm font-medium text-gray-900">{a.agent_name}</p>
                   <p className="text-xs text-gray-500">
                     {a.journey_type} · {a.status} · {a.total_conversations ?? 0} conversations
-                    {a.last_conversation_at ? ` · last ${new Date(a.last_conversation_at).toLocaleDateString()}` : ''}
+                    {a.last_conversation_at ? ` · last ${new Date(a.last_conversation_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
                   </p>
                 </div>
                 {a.elevenlabs_agent_id && a.status === 'active' && (
@@ -73,7 +74,7 @@ export default async function ExecUserManagePage({ params }: { params: Promise<{
             {(docs ?? []).map((d: any) => (
               <li key={d.id} className="py-3">
                 <p className="truncate text-sm font-medium text-gray-900">{d.title || d.file_name || d.url}</p>
-                <p className="text-xs text-gray-500">{d.source_type} · {d.status} · {new Date(d.created_at).toLocaleDateString()}</p>
+                <p className="text-xs text-gray-500">{d.source_type} · {d.status} · {new Date(d.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
               </li>
             ))}
           </ul>
@@ -86,7 +87,7 @@ export default async function ExecUserManagePage({ params }: { params: Promise<{
             {(memory ?? []).map((m: any) => (
               <li key={m.id} className="py-3">
                 <p className="text-sm text-gray-800">{m.content}</p>
-                <p className="text-xs text-gray-400">{m.memory_type} · importance {m.importance} · {new Date(m.created_at).toLocaleDateString()}</p>
+                <p className="text-xs text-gray-400">{m.memory_type} · importance {m.importance} · {new Date(m.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
               </li>
             ))}
           </ul>
