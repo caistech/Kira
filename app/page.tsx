@@ -41,39 +41,46 @@ export default function KiraLandingPage() {
   const ceilingPrice = formatPrice(PRICE_TIERS[PRICE_TIERS.length - 1].monthly, currency);
 
   return (
-    <div className="min-h-screen bg-amber-50 text-stone-800 font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-kira-mist text-stone-800 font-sans overflow-x-hidden">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400;1,9..40,500&family=Outfit:wght@300;400;500;600;700&display=swap');
         
         .font-display { font-family: 'Outfit', sans-serif; }
         .font-body { font-family: 'DM Sans', sans-serif; }
         
+        /* DESIGN.md §3 — one palette. These were five unrelated colour families (amber, pink,
+           lavender, mint, slate) built as a deliberate playful system, on a page selling to a
+           60-70 year old owner about the sale of his business. The STRUCTURE is kept — the
+           gradients, the drifting blobs, the depth — and only the hues are unified onto the green
+           ramp and the warm neutrals, so the page keeps its energy without arguing with the
+           product. Raw values here rather than tokens because a <style> block cannot read Tailwind
+           theme keys; they are the DESIGN.md ramp verbatim. */
         .gradient-hero {
-          background: 
-            radial-gradient(ellipse at 20% 20%, rgba(251, 191, 36, 0.3) 0%, transparent 50%),
-            radial-gradient(ellipse at 80% 80%, rgba(244, 114, 182, 0.25) 0%, transparent 50%),
-            radial-gradient(ellipse at 50% 50%, rgba(167, 139, 250, 0.15) 0%, transparent 60%),
-            linear-gradient(135deg, #fffbeb 0%, #fef3c7 50%, #fce7f3 100%);
+          background:
+            radial-gradient(ellipse at 20% 20%, rgba(22, 163, 74, 0.22) 0%, transparent 50%),
+            radial-gradient(ellipse at 80% 80%, rgba(21, 128, 61, 0.18) 0%, transparent 50%),
+            radial-gradient(ellipse at 50% 50%, rgba(125, 117, 109, 0.12) 0%, transparent 60%),
+            linear-gradient(135deg, #FAFAF9 0%, #F0FDF4 50%, #F5F3F0 100%);
         }
-        
-        .gradient-coral { background: linear-gradient(135deg, #fb7185 0%, #f472b6 100%); }
-        .gradient-sunny { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); }
-        .gradient-lavender { background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%); }
-        .gradient-mint { background: linear-gradient(135deg, #34d399 0%, #10b981 100%); }
+
+        .gradient-coral { background: linear-gradient(135deg, #16A34A 0%, #15803D 100%); }
+        .gradient-sunny { background: linear-gradient(135deg, #16A34A 0%, #166534 100%); }
+        .gradient-lavender { background: linear-gradient(135deg, #4A4541 0%, #2D2A26 100%); }
+        .gradient-mint { background: linear-gradient(135deg, #16A34A 0%, #15803D 100%); }
         
         .blob-1 {
           position: absolute; width: 600px; height: 600px;
-          background: radial-gradient(circle, rgba(251, 191, 36, 0.4) 0%, transparent 70%);
+          background: radial-gradient(circle, rgba(22, 163, 74, 0.28) 0%, transparent 70%);
           border-radius: 50%; filter: blur(60px); animation: float1 20s ease-in-out infinite;
         }
         .blob-2 {
           position: absolute; width: 500px; height: 500px;
-          background: radial-gradient(circle, rgba(244, 114, 182, 0.35) 0%, transparent 70%);
+          background: radial-gradient(circle, rgba(21, 128, 61, 0.22) 0%, transparent 70%);
           border-radius: 50%; filter: blur(60px); animation: float2 25s ease-in-out infinite;
         }
         .blob-3 {
           position: absolute; width: 400px; height: 400px;
-          background: radial-gradient(circle, rgba(167, 139, 250, 0.3) 0%, transparent 70%);
+          background: radial-gradient(circle, rgba(125, 117, 109, 0.18) 0%, transparent 70%);
           border-radius: 50%; filter: blur(50px); animation: float3 18s ease-in-out infinite;
         }
         
@@ -104,12 +111,14 @@ export default function KiraLandingPage() {
         .wiggle:hover { animation: wiggle 0.5s ease-in-out; }
         @keyframes wiggle { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(-3deg); } 75% { transform: rotate(3deg); } }
         
-        .avatar-ring { background: linear-gradient(135deg, #fbbf24 0%, #f472b6 50%, #a78bfa 100%); padding: 3px; border-radius: 50%; }
-        .chat-bubble-kira { background: linear-gradient(135deg, #fef3c7 0%, #fce7f3 100%); border: 2px solid rgba(251, 191, 36, 0.3); }
-        .chat-bubble-user { background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%); }
-        .fun-border { border: 3px solid transparent; background: linear-gradient(white, white) padding-box, linear-gradient(135deg, #fbbf24 0%, #f472b6 50%, #a78bfa 100%) border-box; }
-        .cas-badge { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); transition: all 0.3s ease; }
-        .cas-badge:hover { background: linear-gradient(135deg, #334155 0%, #475569 100%); }
+        .avatar-ring { background: linear-gradient(135deg, #16A34A 0%, #15803D 50%, #166534 100%); padding: 3px; border-radius: 50%; }
+        .chat-bubble-kira { background: linear-gradient(135deg, #F0FDF4 0%, #F5F3F0 100%); border: 2px solid rgba(22, 163, 74, 0.28); }
+        /* Carries WHITE text, so it must be the 600 end of the ramp — 5.02:1. The violet pair it
+           replaces was 4.23:1 and 2.72:1 with white on it, i.e. both under AA. DESIGN.md §3.1. */
+        .chat-bubble-user { background: linear-gradient(135deg, #15803D 0%, #166534 100%); }
+        .fun-border { border: 3px solid transparent; background: linear-gradient(white, white) padding-box, linear-gradient(135deg, #16A34A 0%, #15803D 50%, #166534 100%) border-box; }
+        .cas-badge { background: linear-gradient(135deg, #2D2A26 0%, #4A4541 100%); transition: all 0.3s ease; }
+        .cas-badge:hover { background: linear-gradient(135deg, #4A4541 0%, #736B63 100%); }
         
         .journey-card { transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
         .journey-card:hover { transform: translateY(-8px) scale(1.02); }
@@ -117,13 +126,13 @@ export default function KiraLandingPage() {
         .step-connector { position: relative; }
         .step-connector::after {
           content: ''; position: absolute; top: 50%; right: -2rem; width: 4rem; height: 3px;
-          background: linear-gradient(90deg, #fbbf24, #f472b6); border-radius: 2px;
+          background: linear-gradient(90deg, #16A34A, #15803D); border-radius: 2px;
         }
         @media (max-width: 768px) { .step-connector::after { display: none; } }
       `}</style>
 
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-amber-50/80 backdrop-blur-lg border-b border-amber-200/50">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-kira-mist/80 backdrop-blur-lg border-b border-kira-mist/50">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-6">
             {/* min-h-44 on the tap area, not on the mark. The logo image stays 32px — it is the
@@ -135,7 +144,7 @@ export default function KiraLandingPage() {
                   <img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" />
                 </div>
               </div>
-              <span className="font-display font-bold text-2xl bg-gradient-to-r from-amber-500 via-pink-500 to-violet-500 bg-clip-text text-transparent">Kira</span>
+              <span className="font-display font-bold text-2xl bg-gradient-to-r from-kira-600 via-kira-600 to-kira-600 bg-clip-text text-transparent">Kira</span>
             </a>
             {/* Attribution stays — it is true and it is trust-building. The LINK out to a
                 marketplace of other agents does not. */}
@@ -145,12 +154,12 @@ export default function KiraLandingPage() {
             </span>
           </div>
           <div className="flex items-center gap-3 sm:gap-6">
-            <a href="#how-it-works" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">How it works</a>
-            <a href="#pricing" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">Pricing</a>
-            <a href="/genome" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">What you get</a>
-            <a href="/advisors" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">Advisors</a>
-            <a href="/about" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium hidden md:block">About</a>
-            <a href="/login" className="font-body flex min-h-[44px] items-center px-2 text-sm font-medium text-stone-700 hover:text-pink-500">Sign in</a>
+            <a href="#how-it-works" className="font-body text-stone-600 hover:text-kira-600 transition-colors font-medium hidden md:block">How it works</a>
+            <a href="#pricing" className="font-body text-stone-600 hover:text-kira-600 transition-colors font-medium hidden md:block">Pricing</a>
+            <a href="/genome" className="font-body text-stone-600 hover:text-kira-600 transition-colors font-medium hidden md:block">What you get</a>
+            <a href="/advisors" className="font-body text-stone-600 hover:text-kira-600 transition-colors font-medium hidden md:block">Advisors</a>
+            <a href="/about" className="font-body text-stone-600 hover:text-kira-600 transition-colors font-medium hidden md:block">About</a>
+            <a href="/login" className="font-body flex min-h-[44px] items-center px-2 text-sm font-medium text-stone-700 hover:text-kira-600">Sign in</a>
             <a href="/business-valuation" className="font-display gradient-sunny text-stone-800 px-4 py-2.5 rounded-full text-sm font-bold hover-pop shadow-md flex min-h-[44px] items-center">Value my business →</a>
             <button
               type="button"
@@ -171,12 +180,12 @@ export default function KiraLandingPage() {
         </div>
         {/* Mobile dropdown — same items, thumb-reachable */}
         {menuOpen && (
-          <div className="md:hidden border-t border-amber-100 bg-white/95 backdrop-blur px-6 py-3 space-y-1">
-            <a href="#how-it-works" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">How it works</a>
-            <a href="#pricing" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">Pricing</a>
-            <a href="/genome" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">What you get</a>
-            <a href="/advisors" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">Advisors</a>
-            <a href="/about" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-amber-50">About</a>
+          <div className="md:hidden border-t border-kira-mist bg-white/95 backdrop-blur px-6 py-3 space-y-1">
+            <a href="#how-it-works" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-kira-mist">How it works</a>
+            <a href="#pricing" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-kira-mist">Pricing</a>
+            <a href="/genome" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-kira-mist">What you get</a>
+            <a href="/advisors" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-kira-mist">Advisors</a>
+            <a href="/about" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-kira-mist">About</a>
             {/* No Admin link. The operator console is not a customer destination, and putting it in
                 the public nav advertises an attack surface to every visitor while telling the
                 customer this is a tool for someone else. Reachable directly at /admin/login. */}
@@ -197,7 +206,7 @@ export default function KiraLandingPage() {
                   product whose entire pitch is ONE assistant that learns YOUR business. It told a
                   cautious owner he was browsing a catalogue before he had read a word about himself. */}
               <span className="inline-flex items-center gap-2 bg-stone-800/90 text-white px-4 py-2 rounded-full text-sm font-body">
-                <span className="text-amber-400">&#9679;</span>
+                <span className="text-kira-600">&#9679;</span>
                 <span>For owners whose business still runs on them</span>
               </span>
             </div>
@@ -212,7 +221,7 @@ export default function KiraLandingPage() {
 
             <h1 className={`font-display text-4xl lg:text-6xl font-bold text-stone-800 mb-6 leading-tight ${isVisible ? 'fade-up fade-up-delay-1' : 'opacity-0'}`}>
               You spent thirty years building it.
-              <br /><span className="text-2xl lg:text-4xl text-stone-600">Now sell it for what it&apos;s <span className="bg-gradient-to-r from-violet-500 to-pink-500 bg-clip-text text-transparent">actually worth.</span></span>
+              <br /><span className="text-2xl lg:text-4xl text-stone-600">Now sell it for what it&apos;s <span className="bg-gradient-to-r from-kira-600 to-kira-600 bg-clip-text text-transparent">actually worth.</span></span>
             </h1>
 
             <p className={`font-body text-lg lg:text-xl text-stone-600 max-w-2xl mx-auto mb-6 leading-relaxed ${isVisible ? 'fade-up fade-up-delay-2' : 'opacity-0'}`}>
@@ -220,7 +229,7 @@ export default function KiraLandingPage() {
               profitable business that runs on <span className="font-semibold text-stone-800">them</span>. Everything that matters is
               in your head, not on paper — so a buyer isn&apos;t buying an asset, they&apos;re buying you, and they
               price it accordingly. <span className="font-semibold text-stone-800">Kira</span> works alongside you day to day, in
-              conversation, and turns what you know into a documented <a href="/genome" className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500">Business Genome</a> the
+              conversation, and turns what you know into a documented <a href="/genome" className="font-semibold text-kira-600 underline decoration-kira-600 underline-offset-4 hover:decoration-kira-600">Business Genome</a> the
               business can be sold with. Most owners start this <span className="font-semibold text-stone-800">before they&apos;ve told anyone</span>.
             </p>
 
@@ -232,7 +241,7 @@ export default function KiraLandingPage() {
                 fell off." They are not peers competing for a row; the button is the call and the demo
                 is the evidence under it. */}
             <div className={`flex flex-col items-center justify-center gap-4 ${isVisible ? 'fade-up fade-up-delay-3' : 'opacity-0'}`}>
-              <a href="/business-valuation" className="font-display gradient-coral text-white px-8 py-4 rounded-full text-lg font-bold hover-pop shadow-xl shadow-pink-200 inline-block">Find out in 3 minutes →</a>
+              <a href="/business-valuation" className="font-display gradient-coral text-white px-8 py-4 rounded-full text-lg font-bold hover-pop shadow-xl shadow-kira-500/20 inline-block">Find out in 3 minutes →</a>
 
               {/* THE DEMO, IN THE HERO — not a section further down and not a route of its own.
                   A 66-year-old who has told nobody he is selling does not scroll a marketing page
@@ -252,7 +261,7 @@ export default function KiraLandingPage() {
 
           {/* Valuation teaser preview */}
           <div className={`mt-16 max-w-lg mx-auto ${isVisible ? 'fade-up fade-up-delay-3' : 'opacity-0'}`}>
-            <div className="bg-white/80 backdrop-blur rounded-3xl p-6 shadow-2xl border border-amber-100">
+            <div className="bg-white/80 backdrop-blur rounded-3xl p-6 shadow-2xl border border-kira-mist">
               <div className="text-center mb-4">
                 <span className="text-sm font-body text-stone-400 bg-stone-100 px-3 py-1 rounded-full">A real plumbing business, run through the actual calculator</span>
               </div>
@@ -267,17 +276,17 @@ export default function KiraLandingPage() {
                   <p className="text-sm uppercase tracking-wide text-stone-400 font-semibold">Walk away</p>
                   <p className="font-display font-bold text-stone-700 text-sm mt-1">$220k</p>
                 </div>
-                <div className="rounded-2xl bg-amber-50 border border-amber-200 p-3">
+                <div className="rounded-2xl bg-kira-mist border border-kira-mist p-3">
                   <p className="text-sm uppercase tracking-wide text-stone-400 font-semibold">Today</p>
                   <p className="font-display font-bold text-stone-800 text-sm mt-1">$582k</p>
                 </div>
-                <div className="rounded-2xl bg-gradient-to-br from-violet-50 to-pink-50 border border-violet-300 p-3">
+                <div className="rounded-2xl bg-gradient-to-br from-kira-50 to-kira-50 border border-kira-mist p-3">
                   <p className="text-sm uppercase tracking-wide text-stone-400 font-semibold">Captured</p>
-                  <p className="font-display font-bold text-violet-700 text-sm mt-1">$1.02M</p>
+                  <p className="font-display font-bold text-kira-600 text-sm mt-1">$1.02M</p>
                 </div>
               </div>
               <p className="font-body text-center text-sm text-stone-600">
-                The <span className="font-semibold text-violet-600">$438k gap</span> is the knowledge in your head. Kira helps you capture it.
+                The <span className="font-semibold text-kira-600">$438k gap</span> is the knowledge in your head. Kira helps you capture it.
               </p>
             </div>
           </div>
@@ -289,24 +298,24 @@ export default function KiraLandingPage() {
         <div className="max-w-5xl mx-auto px-6">
           <div className="text-center mb-16">
             <span className="text-5xl mb-4 block">✨</span>
-            <h2 className="font-display text-4xl lg:text-5xl font-bold text-stone-800 mb-6">Every Kira is <span className="bg-gradient-to-r from-amber-500 to-pink-500 bg-clip-text text-transparent">different.</span></h2>
+            <h2 className="font-display text-4xl lg:text-5xl font-bold text-stone-800 mb-6">Every Kira is <span className="bg-gradient-to-r from-kira-600 to-kira-600 bg-clip-text text-transparent">different.</span></h2>
             <p className="font-body text-xl text-stone-600 max-w-2xl mx-auto leading-relaxed">Because every business is different. Yours deserves an exec who knows it inside out — not a generic bot.</p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-8 mb-16">
-            <div className="bg-gradient-to-br from-rose-50 to-pink-100 rounded-3xl p-8 border-2 border-rose-200">
+            <div className="bg-gradient-to-br from-kira-50 to-kira-50 rounded-3xl p-8 border-2 border-kira-mist">
               <div className="flex items-center gap-3 mb-4">
                 <span className="text-3xl">❌</span>
                 <h3 className="font-display text-xl font-bold text-stone-800">Other AI assistants</h3>
               </div>
               <ul className="font-body text-stone-600 space-y-3">
-                <li className="flex items-start gap-2"><span className="text-rose-400">•</span> Same generic AI for everyone</li>
-                <li className="flex items-start gap-2"><span className="text-rose-400">•</span> You repeat context every conversation</li>
-                <li className="flex items-start gap-2"><span className="text-rose-400">•</span> Tries to answer everything instantly</li>
-                <li className="flex items-start gap-2"><span className="text-rose-400">•</span> No memory of what matters to you</li>
+                <li className="flex items-start gap-2"><span className="text-kira-600">•</span> Same generic AI for everyone</li>
+                <li className="flex items-start gap-2"><span className="text-kira-600">•</span> You repeat context every conversation</li>
+                <li className="flex items-start gap-2"><span className="text-kira-600">•</span> Tries to answer everything instantly</li>
+                <li className="flex items-start gap-2"><span className="text-kira-600">•</span> No memory of what matters to you</li>
               </ul>
             </div>
-            <div className="bg-gradient-to-br from-amber-50 to-yellow-100 rounded-3xl p-8 border-2 border-amber-300">
+            <div className="bg-gradient-to-br from-kira-mist to-kira-mist rounded-3xl p-8 border-2 border-kira-mist">
               <div className="flex items-center gap-3 mb-4">
                 <span className="text-3xl">✨</span>
                 {/* "Fractional exec" means nothing to the man this page is written for. His words:
@@ -317,10 +326,10 @@ export default function KiraLandingPage() {
                 <h3 className="font-display text-xl font-bold text-stone-800">Your Kira — like a part-time GM</h3>
               </div>
               <ul className="font-body text-stone-700 space-y-3">
-                <li className="flex items-start gap-2"><span className="text-amber-500">•</span> <strong>Built around YOUR business</strong></li>
-                <li className="flex items-start gap-2"><span className="text-amber-500">•</span> Knows your context from day one</li>
-                <li className="flex items-start gap-2"><span className="text-amber-500">•</span> Gets things done, then closes the loop</li>
-                <li className="flex items-start gap-2"><span className="text-amber-500">•</span> Remembers and builds on every conversation</li>
+                <li className="flex items-start gap-2"><span className="text-kira-600">•</span> <strong>Built around YOUR business</strong></li>
+                <li className="flex items-start gap-2"><span className="text-kira-600">•</span> Knows your context from day one</li>
+                <li className="flex items-start gap-2"><span className="text-kira-600">•</span> Gets things done, then closes the loop</li>
+                <li className="flex items-start gap-2"><span className="text-kira-600">•</span> Remembers and builds on every conversation</li>
               </ul>
             </div>
           </div>
@@ -328,11 +337,11 @@ export default function KiraLandingPage() {
       </section>
 
       {/* Business exit — the primary journey */}
-      <section className="bg-gradient-to-br from-amber-100 via-pink-50 to-violet-50 py-24">
+      <section className="bg-gradient-to-br from-kira-mist via-kira-50 to-kira-50 py-24">
         <div className="max-w-5xl mx-auto px-6">
           <div className="text-center mb-14">
             <span className="text-5xl mb-4 block">🏦</span>
-            <h2 className="font-display text-4xl lg:text-5xl font-bold text-stone-800 mb-6">Built to sell — <span className="bg-gradient-to-r from-amber-500 to-pink-500 bg-clip-text text-transparent">for what it's really worth.</span></h2>
+            <h2 className="font-display text-4xl lg:text-5xl font-bold text-stone-800 mb-6">Built to sell — <span className="bg-gradient-to-r from-kira-600 to-kira-600 bg-clip-text text-transparent">for what it's really worth.</span></h2>
             <p className="font-body text-xl text-stone-600 max-w-2xl mx-auto leading-relaxed">After decades building it, most owners discover their business is worth a fraction of what they hoped — because it can't run without them. Kira changes that.</p>
           </div>
 
@@ -343,7 +352,7 @@ export default function KiraLandingPage() {
               { n: "2", grad: "gradient-lavender", title: "Capture your knowledge", body: "Kira interviews you like a smart buyer would, turning the systems and relationships in your head into a living Business Genome." },
               { n: "3", grad: "gradient-coral", title: "Sell an asset, not a job", body: "A documented, transferable business commands a real multiple — and hands over cleanly to a buyer or successor." },
             ].map((s) => (
-              <div key={s.n} className="journey-card bg-white rounded-3xl p-7 shadow-xl border-2 border-amber-200">
+              <div key={s.n} className="journey-card bg-white rounded-3xl p-7 shadow-xl border-2 border-kira-mist">
                 <div className={`${s.grad} w-12 h-12 rounded-2xl flex items-center justify-center mb-5 text-white font-display font-bold text-xl`}>{s.n}</div>
                 <h3 className="font-display text-xl font-bold text-stone-800 mb-2">{s.title}</h3>
                 <p className="font-body text-stone-600 text-sm leading-relaxed">{s.body}</p>
@@ -352,7 +361,7 @@ export default function KiraLandingPage() {
           </div>
 
           <div className="text-center">
-            <a href="/business-valuation" className="font-display gradient-coral text-white px-8 py-4 rounded-full text-lg font-bold hover-pop shadow-xl shadow-pink-200 inline-block">What's my business worth? →</a>
+            <a href="/business-valuation" className="font-display gradient-coral text-white px-8 py-4 rounded-full text-lg font-bold hover-pop shadow-xl shadow-kira-500/20 inline-block">What's my business worth? →</a>
             <p className="font-body text-stone-500 text-sm mt-3">Retiring, selling, or planning succession — start here.</p>
           </div>
         </div>
@@ -385,22 +394,22 @@ export default function KiraLandingPage() {
           </div>
 
           {/* Visual flow */}
-          <div className="bg-gradient-to-r from-amber-50 via-pink-50 to-violet-50 rounded-3xl p-8 border border-amber-200">
+          <div className="bg-gradient-to-r from-kira-mist via-kira-50 to-kira-50 rounded-3xl p-8 border border-kira-mist">
             <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8">
               <div className="flex items-center gap-3 bg-white rounded-full px-5 py-3 shadow-sm">
                 <span className="text-2xl">👤</span>
                 <span className="font-body font-medium text-stone-700">You</span>
               </div>
-              <span className="text-pink-400 text-2xl">→</span>
+              <span className="text-kira-600 text-2xl">→</span>
               <div className="flex items-center gap-3 bg-white rounded-full px-5 py-3 shadow-sm">
                 <div className="avatar-ring"><div className="w-8 h-8 rounded-full overflow-hidden bg-white"><img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" /></div></div>
                 <span className="font-body font-medium text-stone-700">Setup Kira</span>
               </div>
-              <span className="text-pink-400 text-2xl">→</span>
-              <div className="flex items-center gap-3 bg-gradient-to-r from-amber-100 to-pink-100 rounded-full px-5 py-3 shadow-sm border-2 border-amber-300">
+              <span className="text-kira-600 text-2xl">→</span>
+              <div className="flex items-center gap-3 bg-gradient-to-r from-kira-mist to-kira-50 rounded-full px-5 py-3 shadow-sm border-2 border-kira-mist">
                 <div className="avatar-ring"><div className="w-8 h-8 rounded-full overflow-hidden bg-white"><img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" /></div></div>
                 <span className="font-display font-bold text-stone-800">YOUR Kira</span>
-                <span className="text-sm bg-amber-400 text-stone-800 px-2 py-0.5 rounded-full font-bold">Personalized</span>
+                <span className="text-sm bg-kira-600 text-stone-800 px-2 py-0.5 rounded-full font-bold">Personalized</span>
               </div>
             </div>
           </div>
@@ -408,40 +417,40 @@ export default function KiraLandingPage() {
       </section>
 
       {/* The Two-Way Partnership */}
-      <section className="bg-gradient-to-b from-white to-amber-50 py-24">
+      <section className="bg-gradient-to-b from-white to-kira-mist py-24">
         <div className="max-w-4xl mx-auto px-6">
           <div className="text-center mb-16">
             <span className="text-5xl mb-6 block">🤝</span>
-            <h2 className="font-display text-4xl lg:text-5xl font-bold text-stone-800 mb-6">This is a <span className="bg-gradient-to-r from-violet-500 to-pink-500 bg-clip-text text-transparent">partnership.</span></h2>
+            <h2 className="font-display text-4xl lg:text-5xl font-bold text-stone-800 mb-6">This is a <span className="bg-gradient-to-r from-kira-600 to-kira-600 bg-clip-text text-transparent">partnership.</span></h2>
             <p className="font-body text-xl text-stone-600 max-w-2xl mx-auto leading-relaxed">Kira's honest about what she can and can't do. She needs you to show up too.</p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-white rounded-3xl p-8 shadow-sm border border-amber-100">
+            <div className="bg-white rounded-3xl p-8 shadow-sm border border-kira-mist">
               <h3 className="font-display text-xl font-bold text-stone-800 mb-6 flex items-center gap-2">
                 <span className="text-2xl">💬</span> What Kira brings
               </h3>
               <ul className="space-y-4 font-body text-stone-600">
-                <li className="flex items-start gap-3"><span className="text-amber-500 mt-1">✓</span> Asks the questions you haven't thought of</li>
-                <li className="flex items-start gap-3"><span className="text-amber-500 mt-1">✓</span> Pushes back when something's unclear</li>
-                <li className="flex items-start gap-3"><span className="text-amber-500 mt-1">✓</span> Remembers your context and builds on it</li>
-                <li className="flex items-start gap-3"><span className="text-amber-500 mt-1">✓</span> Admits when she doesn't know something</li>
+                <li className="flex items-start gap-3"><span className="text-kira-600 mt-1">✓</span> Asks the questions you haven't thought of</li>
+                <li className="flex items-start gap-3"><span className="text-kira-600 mt-1">✓</span> Pushes back when something's unclear</li>
+                <li className="flex items-start gap-3"><span className="text-kira-600 mt-1">✓</span> Remembers your context and builds on it</li>
+                <li className="flex items-start gap-3"><span className="text-kira-600 mt-1">✓</span> Admits when she doesn't know something</li>
               </ul>
             </div>
-            <div className="bg-white rounded-3xl p-8 shadow-sm border border-pink-100">
+            <div className="bg-white rounded-3xl p-8 shadow-sm border border-kira-50">
               <h3 className="font-display text-xl font-bold text-stone-800 mb-6 flex items-center gap-2">
                 <span className="text-2xl">🙋</span> What Kira needs from you
               </h3>
               <ul className="space-y-4 font-body text-stone-600">
-                <li className="flex items-start gap-3"><span className="text-pink-500 mt-1">✓</span> Be honest about what's really going on</li>
-                <li className="flex items-start gap-3"><span className="text-pink-500 mt-1">✓</span> Correct her when she's off track</li>
-                <li className="flex items-start gap-3"><span className="text-pink-500 mt-1">✓</span> Add context — the more she knows, the better</li>
-                <li className="flex items-start gap-3"><span className="text-pink-500 mt-1">✓</span> Think WITH her, not just ask for answers</li>
+                <li className="flex items-start gap-3"><span className="text-kira-600 mt-1">✓</span> Be honest about what's really going on</li>
+                <li className="flex items-start gap-3"><span className="text-kira-600 mt-1">✓</span> Correct her when she's off track</li>
+                <li className="flex items-start gap-3"><span className="text-kira-600 mt-1">✓</span> Add context — the more she knows, the better</li>
+                <li className="flex items-start gap-3"><span className="text-kira-600 mt-1">✓</span> Think WITH her, not just ask for answers</li>
               </ul>
             </div>
           </div>
 
-          <div className="mt-12 bg-gradient-to-r from-violet-100 to-pink-100 rounded-2xl p-6 text-center">
+          <div className="mt-12 bg-gradient-to-r from-kira-50 to-kira-50 rounded-2xl p-6 text-center">
             <p className="font-body text-stone-700 text-lg">
               <span className="font-bold">When it's not working?</span> Kira offers four paths: add more info, reset your goal, try a different approach, or end the conversation. <span className="text-stone-500">No judgment, just options.</span>
             </p>
@@ -463,10 +472,10 @@ export default function KiraLandingPage() {
       {/* The Offer — the floor price, then the personalised number after the valuation */}
       <section id="pricing" className="bg-white py-24">
         <div className="max-w-3xl mx-auto px-6 text-center">
-          <div className="fun-border rounded-3xl p-10 lg:p-14 bg-gradient-to-br from-amber-50 to-pink-50">
+          <div className="fun-border rounded-3xl p-10 lg:p-14 bg-gradient-to-br from-kira-mist to-kira-50">
             {/* Was 💷 — a pound sign on an Australian product. */}
             <span className="text-6xl mb-6 block">💰</span>
-            <h2 className="font-display text-4xl lg:text-5xl font-bold text-stone-800 mb-6">See the number. <span className="bg-gradient-to-r from-amber-500 to-pink-500 bg-clip-text text-transparent">Then decide.</span></h2>
+            <h2 className="font-display text-4xl lg:text-5xl font-bold text-stone-800 mb-6">See the number. <span className="bg-gradient-to-r from-kira-600 to-kira-600 bg-clip-text text-transparent">Then decide.</span></h2>
 
             {/* The floor, stated plainly. A nav item called "Pricing" that showed no price read as
                 evasion to the cautious owner this page is written for — and he will not spend three
@@ -498,22 +507,22 @@ export default function KiraLandingPage() {
               <p>Kira&apos;s fee is set to <span className="font-semibold text-stone-800">a small fraction of what you stand to unlock</span>, so the number you see is sized to your business. You&apos;re <span className="font-bold text-stone-800">never invoiced for the month you&apos;re in</span> — each month is billed once it has finished, and if you cancel, that month is on us.</p>
               <p>No gap, no pressure. The number is yours to keep either way.</p>
             </div>
-            <a href="/business-valuation" className="font-display gradient-coral text-white px-10 py-5 rounded-full text-xl font-bold hover-pop shadow-xl shadow-pink-200 inline-block">What&apos;s my business worth? →</a>
+            <a href="/business-valuation" className="font-display gradient-coral text-white px-10 py-5 rounded-full text-xl font-bold hover-pop shadow-xl shadow-kira-500/20 inline-block">What&apos;s my business worth? →</a>
             <p className="font-body text-stone-400 text-sm mt-4">Free · no sign-up · your indicative valuation in 3 minutes ⚡</p>
           </div>
         </div>
       </section>
 
       {/* FAQ */}
-      <section className="bg-gradient-to-b from-white to-amber-50 py-24">
+      <section className="bg-gradient-to-b from-white to-kira-mist py-24">
         <div className="max-w-3xl mx-auto px-6">
           <h2 className="font-display text-3xl font-bold text-stone-800 mb-12 text-center">Questions? 🙋‍♀️</h2>
           <div className="space-y-4">
             {OWNER_FAQ.map((faq, index) => (
-              <details key={index} className="bg-white rounded-2xl border border-amber-100 group">
-                <summary className="font-display text-lg font-bold text-stone-800 p-6 cursor-pointer list-none flex items-center justify-between hover:bg-amber-50 rounded-2xl transition-colors">
+              <details key={index} className="bg-white rounded-2xl border border-kira-mist group">
+                <summary className="font-display text-lg font-bold text-stone-800 p-6 cursor-pointer list-none flex items-center justify-between hover:bg-kira-mist rounded-2xl transition-colors">
                   {faq.q}
-                  <span className="text-pink-400 group-open:rotate-45 transition-transform text-2xl">+</span>
+                  <span className="text-kira-600 group-open:rotate-45 transition-transform text-2xl">+</span>
                 </summary>
                 <div className="px-6 pb-6 font-body text-stone-600 leading-relaxed">{faq.a}</div>
               </details>
@@ -536,10 +545,10 @@ export default function KiraLandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <a href="/business-valuation"
-              className="font-display bg-amber-500 hover:bg-amber-400 text-stone-900 px-6 py-3 rounded-full font-bold transition-colors inline-flex items-center gap-2">
+              className="font-display bg-kira-600 hover:bg-kira-600 text-stone-900 px-6 py-3 rounded-full font-bold transition-colors inline-flex items-center gap-2">
               See what your business is worth &#8594;
             </a>
-            <a href="/about" className="font-display text-white hover:text-amber-400 px-6 py-3 font-medium transition-colors inline-flex items-center gap-2">Learn Our Story</a>
+            <a href="/about" className="font-display text-white hover:text-kira-600 px-6 py-3 font-medium transition-colors inline-flex items-center gap-2">Learn Our Story</a>
           </div>
         </div>
       </section>
@@ -559,11 +568,11 @@ export default function KiraLandingPage() {
                 so the wrong one opens. Flex-wrap rather than a scroll: five items at full height
                 need two rows on a narrow screen, and a row that runs off-screen hides links. */}
             <div className="flex flex-wrap items-center justify-center gap-x-6 font-body text-sm text-stone-400">
-              <a href="/about" className="flex min-h-[44px] items-center hover:text-pink-400 transition-colors">About</a>
-              <a href="#how-it-works" className="flex min-h-[44px] items-center hover:text-pink-400 transition-colors">How it Works</a>
-              <a href="#pricing" className="flex min-h-[44px] items-center hover:text-pink-400 transition-colors">Pricing</a>
-              <a href="/privacy" className="flex min-h-[44px] items-center hover:text-pink-400 transition-colors">Privacy</a>
-              <a href="/terms" className="flex min-h-[44px] items-center hover:text-pink-400 transition-colors">Terms</a>
+              <a href="/about" className="flex min-h-[44px] items-center hover:text-kira-600 transition-colors">About</a>
+              <a href="#how-it-works" className="flex min-h-[44px] items-center hover:text-kira-600 transition-colors">How it Works</a>
+              <a href="#pricing" className="flex min-h-[44px] items-center hover:text-kira-600 transition-colors">Pricing</a>
+              <a href="/privacy" className="flex min-h-[44px] items-center hover:text-kira-600 transition-colors">Privacy</a>
+              <a href="/terms" className="flex min-h-[44px] items-center hover:text-kira-600 transition-colors">Terms</a>
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-stone-700 text-center">
@@ -578,7 +587,7 @@ export default function KiraLandingPage() {
             </p>
             <p className="font-body text-stone-500 text-sm mt-3">
               © 2026 Corporate AI Solutions · Created by Dennis McMahon ·
-              <a href="https://corporate-ai-solutions.vercel.app/studio/thesis" target="_blank" rel="noopener noreferrer" className="text-amber-500 hover:text-amber-400 ml-1">Longtail AI Ventures</a>
+              <a href="https://corporate-ai-solutions.vercel.app/studio/thesis" target="_blank" rel="noopener noreferrer" className="text-kira-600 hover:text-kira-600 ml-1">Longtail AI Ventures</a>
             </p>
           </div>
         </div>
