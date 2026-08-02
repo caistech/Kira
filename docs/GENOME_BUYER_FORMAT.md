@@ -301,6 +301,46 @@ Read down the last column and it is a work list, in order, for a business that h
 That is the whole product in one table: she finds where each area lives, and every rung above the
 bottom has a specific thing she can offer to do next.
 
+### 3.3 The operating model — desired, current, and the plan between them
+
+✅ **DECIDED (2026-08-02).** Every area carries three things, and Kira's job is two things.
+
+| Per area | |
+|---|---|
+| **(a) desired location** | where this data *should* live |
+| **(b) current location** | where it *actually* lives — a DISTRIBUTION, not one answer |
+| **(c) the split** | how much is already at (a), how much is still at (b) |
+
+> **Her job: understand (a) and (b) for each area, and devise the plan that moves (b) into (a).**
+
+**An area's data is spread, and that is the point.** Assets is typically insurance certificates in a
+filing cabinet, a depreciation schedule at the accountant's, a plant register in his head and finance
+agreements in Drive — four rungs at once. Asking "where does Assets live?" and taking one answer
+throws away the only interesting part.
+
+**(c) is the honest denominator §4 was reaching for.** Not "how full is your Genome", which nobody can
+answer, but **what proportion of this area's operating knowledge is somewhere a buyer could verify.**
+That is explainable in front of the person it is shown to, which is the only test §4 sets. It also
+replaces `OwnerSection.coverage`: an entry-count band cannot distinguish two facts about a paper
+filing cabinet from two facts about a live Xero feed, and those are not the same business.
+
+Precision is not required and should not be implied. A band from him — *"most of it is still in my
+head"*, *"about half is filed"* — is a legitimate input, on the same footing as the eleven valuation
+questions, provided it is labelled as his estimate.
+
+**But unlike the valuation, part of (b) is OBSERVED rather than reported.** She can see what is in
+Drive, what Xero returns, which contacts exist. That makes this number materially more defensible
+than the self-reported valuation — worth knowing given §6's warning that the two must never read as
+one score. This one can carry evidence; that one cannot.
+
+**(a) is a decision, not a fact.** The default is the highest practical rung, but it is his to
+override — he may not want payroll in anyone's cloud, and a plan that ignores that is a plan he will
+not follow. Same shape as §4's deactivation: **she proposes, he confirms, both are recorded.**
+
+And this is the North Star loop in miniature: she does the tireless middle — finding out where
+everything is, working out what to move and in what order — while he keeps the two judgements that
+are his, where it should live and whether to act.
+
 ✅ **DECIDED: on a local answer she OFFERS THE MIGRATION rather than recording the gap.** What a
 human exec assistant would do — *"let's get it somewhere you and I and anyone else can reach; I'll
 tell you exactly what to move, once."* This is what stops four empty areas reading as a report card:
