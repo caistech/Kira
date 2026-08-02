@@ -204,6 +204,67 @@ Three things follow:
 
 ---
 
+## 4.1 Where the questions get asked — two entry states, one instrument
+
+The eleven pre-signup questions (`app/business-valuation/page.tsx`) were being asked to do two jobs
+at once: be a low-friction hook that produces a figure worth signing up for, and be the measurement
+baseline. They are good at the first and were never designed for the second — four of the buyer's
+top ten areas in §3.1 have no question at all, and every answer is self-reported, so none of them can
+ever score on the verifiable axis.
+
+✅ **DECIDED (2026-08-02): the eleven stay exactly as they are. The serious question set moves into
+signed-in onboarding.**
+
+Pre-signup stays a **hook** — general, cheap, few questions, produces a number. Onboarding becomes
+the **instrument** — per-area, sets the denominator, gives the gap analysis something to measure
+against. Two jobs, two places, one of which he only reaches after deciding he wants this.
+
+**But there are two ways in, and the second one has no eleven answers to build on.** A client who
+arrives through a broker's referral link (`/r/[token]`, which drops the cookie and lands him on the
+home page) may sign up without ever running the valuation. Today that path gets **no
+`business_valuations` row at all** — both writers originate from the eleven, one via Stripe checkout
+metadata and one via the device handoff — so he has no gap, no baseline snapshot, and the
+introducer's "valuation movement" column has nothing to move. Inert rather than broken, which is
+worse, because it looks like it is working.
+
+So onboarding is **one instrument in three blocks**, and what he sees depends only on what is
+already known about him:
+
+| Block | Ran the eleven | Straight in | Gate |
+|---|---|---|---|
+| **1. Baseline** — the eleven, unchanged | skipped (already claimed) | **asked here** | **blocks** |
+| **2. Scope** — which of the nine areas exist, mostly yes/no | asked | asked | **blocks** |
+| **3. Depth** — one open question per active area | asked | asked | skippable |
+
+**The ceiling on the question count is therefore not a number — it is whatever has not been answered
+yet.** And the gate rule is: **block on what the measurement cannot exist without, skip on what Kira
+will get anyway.** Without block 1 there is no number; without block 2 there is no denominator, so
+every percentage after it is a lie. Block 3 is Kira's actual job, and blocking on it builds the
+deficiency report §5 says loses him.
+
+Four things this obliges:
+
+- **The eleven answers seed the Genome as facts**, rather than dying in `business_valuations.inputs`
+  as JSON, which is where they sit today. Otherwise onboarding re-asks what he answered four minutes
+  earlier — the exact friction this split removes, and worse than friction: it teaches a 66-year-old
+  that the product does not listen, which is the fear it exists to answer.
+- **A pre-filled field he clicked past is NOT a confirmation.** It will be tempting to count
+  review-at-onboarding on the verifiable axis. That would open day one at a high number that then
+  never moves — the failure §5 warns about, in the one direction this document cannot afford.
+  Onboarding answers are **asserted**; verifiable stays near zero until she reads something back.
+- **Block 1 must be the same eleven at the same `MODEL_VERSION`**, not a variant tuned for the
+  signed-in context. Two cohorts whose baselines came from different instruments are not comparable,
+  and cross-owner comparison is precisely what the broker channel would buy.
+- **Block 2 is where §4's deactivation actually starts.** Kira cannot propose a deactivation at
+  onboarding — she has no conversation to infer from yet — so this is the owner *declaring* scope.
+  Her proposals refine it later, against the record he set here.
+
+One second-order consequence, noted rather than decided: a referred client never sees the gap figure
+that makes people sign up, because he signed up on a broker's word first. That argues his first
+session should **end** on the number rather than open with it — the payoff rather than the hook.
+
+---
+
 ## 5. What the owner sees vs what the buyer sees
 
 Same data, two renderings, and conflating them is the trap.
@@ -276,18 +337,29 @@ front of them rather than name what is missing.
 
 ## 8. What the decisions leave to build
 
-In dependency order. Nothing here is started.
+In dependency order. **Tracked as B1–B11 and C1–C4 in `BUILD_REGISTER.md`** — that file is the
+status of record; this list is the shape.
 
-1. **The confirmation record** (§2) — a tool call and a row: fact id, read back when, what he said.
-   Everything else on the verifiable axis depends on it, and it is the one that must be a mechanism
-   rather than a prompt.
+1. ✅ **The confirmation record** (§2) — **BUILT 2026-08-02** (`5f9255f`): `facts_to_confirm` +
+   `confirm_fact`, a row per read-back, live on the business agents. ⚠️ **But the count it produces
+   is rendered nowhere** — not on `/my-genome`, not in the export (register **B1**). Until that is
+   closed the verifiable axis exists in the database and nowhere a human can see it.
 2. **The area model** (§3) — nine areas, with the flow registry's tier data behind them as the
    denominator, and `only-you` retired as a section in favour of the per-area owner-dependence axis.
-3. **Deactivation** (§4) — her proposal, his confirmation, both recorded.
+   **This gates everything below it, and §4.1's onboarding set as well.** The evidence that it is
+   overdue: in a real export pulled 2026-08-02, five of the six current sections were empty and
+   every captured fact had landed in `only-you`.
+3. **Deactivation** (§4) — her proposal, his confirmation, both recorded. Begins from the scope the
+   owner declares at onboarding (§4.1 block 2).
 4. **The score** — three axes per area, weighted by the §3.1 ranking, held as data so a broker can
    move a row.
 5. **The two renderings** (§5) — his, which moves in the first session; the buyer's, behind the
-   sign-off gate of §5.
+   sign-off gate of §5. ⚠️ **The sign-off gate is more urgent than it reads.** The export today
+   applies no sensitivity filter whatsoever: the QA identity's entire Genome is *"the owner is
+   considering selling after 35 years and has not told anyone"*, and it renders straight into the
+   document this section describes as being for a buyer's accountant (register **B7**).
+6. **The onboarding question set** (§4.1) — three blocks, block/block/skip, with the eleven seeded
+   forward as facts.
 
 The public example (`lib/genome/example.ts`) comes down to what the product does, or up to it, before
 any of this ships — a page promising hand-authored precision beside a scorecard built on confirmed
