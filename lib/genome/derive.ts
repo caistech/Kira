@@ -44,6 +44,16 @@ export interface OwnerEntry {
    * and shown as unsourced rather than quietly presented as if it were sourced.
    */
   source: { conversationId: string; spokenOn: string } | null;
+  /**
+   * The date he was read this back and agreed, or null.
+   *
+   * The three states a fact can be in are asserted (he said it), sourced (traceable to the
+   * conversation), and CONFIRMED (read back and agreed) — and only the third is evidence a buyer
+   * cannot discount. Null is currently the honest majority: confirmations began on 2026-08-02 and
+   * are deliberately not backfillable, because a confirmation nobody made is the one lie a handover
+   * document cannot survive.
+   */
+  confirmedOn: string | null;
 }
 
 export interface OwnerSection {
@@ -75,6 +85,14 @@ export interface OwnerGenome {
   empty: boolean;
   /** How many entries can be traced to a conversation. Stated plainly; a buyer will ask. */
   sourced: number;
+  /**
+   * How many he has been read back and agreed with — the count a buyer cannot discount.
+   *
+   * Distinct from `sourced` on purpose: traceable to a conversation means we know when he said it,
+   * and confirmed means he heard it back and stood by it. Only the second survives a buyer asking
+   * "and how do you know that is still true?"
+   */
+  confirmed: number;
   /**
    * The sections with nothing in them yet — the "still only in your head" list.
    *
@@ -192,7 +210,9 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
 
   const { data: rows } = await supabase
     .from('kira_memory')
-    .select('id, content, created_at, importance, genome_section, genome_headline, source_conversation_id')
+    .select(
+      'id, content, created_at, importance, genome_section, genome_headline, source_conversation_id, confirmed_at',
+    )
     .eq('user_id', userId)
     .neq('active', false)
     .order('created_at', { ascending: false });
@@ -254,6 +274,10 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
               spokenOn: spokenOn.get(String(r.source_conversation_id)) as string,
             }
           : null,
+      // When he was read this back and agreed. Null is the honest majority for now — the record
+      // cannot be backfilled, so every fact captured before confirmations existed is sourced at
+      // best. See docs/GENOME_BUYER_FORMAT.md §2.
+      confirmedOn: r.confirmed_at ? String(r.confirmed_at).slice(0, 10) : null,
     }));
 
   const sections: OwnerSection[] = GENOME_SECTIONS.map((s) => {
@@ -273,6 +297,7 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
     worthToday: valuation?.worth_today != null ? Number(valuation.worth_today) : null,
     empty: all.length === 0,
     sourced: all.filter((e) => e.source).length,
+    confirmed: all.filter((e) => e.confirmedOn).length,
     stillInYourHead: sections
       .filter((sec) => sec.coverage === 'empty')
       .map((sec) => ({ key: sec.key, title: sec.title, question: sec.question })),

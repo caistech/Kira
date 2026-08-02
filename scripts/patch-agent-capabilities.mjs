@@ -76,6 +76,17 @@ const TASK_MARKER = '## ACCOUNTING FOR WHAT THEY ASKED FOR';
 const taskMatch = promptsSrc.match(/export const taskLedgerSection = `([\s\S]*?)`;/);
 if (!taskMatch) throw new Error('Could not read taskLedgerSection from lib/kira/prompts.ts');
 
+// The confirmation section is gated on facts_to_confirm — the same rule again. Told to read facts
+// back without the tool that supplies them with handles, she would either narrate a check she never
+// made or invent a handle, and an invented handle is a confirmation landing on the wrong fact.
+const CONFIRM_MARKER = '## CHECKING WHAT YOU HAVE GOT RIGHT';
+const confirmMatch = promptsSrc.match(/export const confirmationSection = `([\s\S]*?)`;/);
+if (!confirmMatch) throw new Error('Could not read confirmationSection from lib/kira/prompts.ts');
+const confirmation = confirmMatch[1].trim();
+if (!confirmation.includes(CONFIRM_MARKER)) {
+  throw new Error(`confirmationSection is missing its marker ${CONFIRM_MARKER}`);
+}
+
 // The files-and-contacts section is gated on search_drive, for the same reason again. It is the one
 // section that also CONTRADICTS the capability boundary above it ("you cannot reach another
 // system"), deliberately and in as many words — so an agent that received it without holding the
@@ -192,6 +203,7 @@ for (const a of agents) {
       current.indexOf(MARKER),
       current.indexOf(FIN_MARKER),
       current.indexOf(TASK_MARKER),
+      current.indexOf(CONFIRM_MARKER),
       current.indexOf(FILES_MARKER),
       current.indexOf(HONESTY_MARKER),
       current.indexOf(TYPED_MARKER),
@@ -218,6 +230,7 @@ for (const a of agents) {
       isDiscovery ? null : boundary,
       !isDiscovery && held.has('look_up_financials') ? financials : null,
       !isDiscovery && held.has('check_tasks') ? taskLedger : null,
+      !isDiscovery && held.has('facts_to_confirm') ? confirmation : null,
       withFiles ? filesAndContacts : null,
       honesty,
       typed,

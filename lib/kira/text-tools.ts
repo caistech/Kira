@@ -50,6 +50,8 @@ import {
 import { lookUpContact, searchDrive } from './lookup';
 import { kiraRecordRefusalToolDef } from './refusal-tool-def.mjs';
 import { handleRecordRefusal } from './refusal';
+import { kiraConfirmFactToolDef, kiraFactsToConfirmToolDef } from './confirm-tool-def.mjs';
+import { handleConfirmFact, handleFactsToConfirm } from './confirm';
 import {
   kiraApproveToolDef,
   kiraCheckTasksToolDef,
@@ -108,6 +110,8 @@ const BUILDERS: Record<string, Builder> = {
   keep_document: kiraKeepDocumentToolDef as Builder,
   lookup_contact: kiraLookupContactToolDef as Builder,
   record_refusal: kiraRecordRefusalToolDef as Builder,
+  facts_to_confirm: kiraFactsToConfirmToolDef as Builder,
+  confirm_fact: kiraConfirmFactToolDef as Builder,
 };
 
 const UNUSED_BASE_URL = 'https://in-process.invalid';
@@ -281,6 +285,10 @@ export async function runTextTool(
         return await (await handleCheckTasks(asToolRequest(name, ownerId, args))).json();
       case 'record_refusal':
         return await (await handleRecordRefusal(asToolRequest(name, ownerId, args))).json();
+      case 'facts_to_confirm':
+        return await (await handleFactsToConfirm(asToolRequest(name, ownerId, args))).json();
+      case 'confirm_fact':
+        return await (await handleConfirmFact(asToolRequest(name, ownerId, args))).json();
       case 'search_knowledge':
         return await (await handleSearchKnowledge(asToolRequest(name, ownerId, args))).json();
       // Both take the owner from `?uid` exactly as the voice path does. save_memory is the same

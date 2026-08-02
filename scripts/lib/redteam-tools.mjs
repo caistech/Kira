@@ -30,6 +30,7 @@ import {
   kiraFinancialsToolDef,
 } from '../../lib/kira/swarm/doing-tools-def.mjs';
 import { kiraRecordRefusalToolDef } from '../../lib/kira/refusal-tool-def.mjs';
+import { kiraConfirmFactToolDef, kiraFactsToConfirmToolDef } from '../../lib/kira/confirm-tool-def.mjs';
 import { isUidToolUrl } from '../../lib/kira/uid-tools.mjs';
 
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app').replace(/\/$/, '');
@@ -72,6 +73,11 @@ export function buildToolsForUser(userId, journeyType) {
           kiraKeepDocumentToolDef(APP_URL),
           kiraLookupContactToolDef(APP_URL),
           kiraRecordRefusalToolDef(APP_URL),
+          // The verifiable axis — she reads a fact back and records what he said. Two tools because
+          // the handle must come from us: a fact id she invented would attach a confirmation to the
+          // wrong fact. See lib/kira/confirm-tool-def.mjs.
+          kiraFactsToConfirmToolDef(APP_URL),
+          kiraConfirmFactToolDef(APP_URL),
         ]
       : []),
   ];
