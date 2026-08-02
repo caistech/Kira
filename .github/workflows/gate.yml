@@ -75,6 +75,15 @@ jobs:
       - name: Lint
         run: npm run lint --if-present
 
+      # PRODUCT_STANDARDS §4 — every authenticated route renders inside the app chrome.
+      #
+      # Static, needs no deployment and no secrets, so it runs before the build and fails fast. It is
+      # here because the same defect shipped twice in six days at two different URLs (/chat then
+      # /talk), both times with the rule known and followed everywhere else. A rule enforced by
+      # remembering holds until someone adds a route at 1am.
+      - name: App chrome on authenticated routes (PRODUCT_STANDARDS §4)
+        run: node scripts/check-app-chrome.mjs
+
       - name: Build
         run: npm run build --if-present
         # Placeholder build-time env so `next build` can CONSTRUCT clients during prerender / page-data
