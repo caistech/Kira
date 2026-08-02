@@ -15,7 +15,11 @@
 
 import 'server-only';
 import { createServiceClient } from '@/lib/supabase/server';
+// PRIVATE_REASONS is still used to validate what the classifier answers before it is STORED — the
+// column keeps filling so a future re-measurement is free. It is `ownerPrivateReason` alone that
+// decides what the owner and the buyer actually see. See OwnerEntry.privateReason.
 import { ownerPrivateReason, PRIVATE_REASONS, type PrivateReason } from './private';
+import { dropRestatements } from './similar';
 
 /** What the note is about. `software` forces section 'none' — enforced in code, not just asked for. */
 const ABOUT_VALUES = ['business', 'software', 'personal'];
@@ -449,27 +453,21 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
     .select('id', { count: 'exact', head: true })
     .eq('user_id', userId);
 
-  const seen = new Set<string>();
-  const all: OwnerEntry[] = (rows ?? [])
-    // 'none' is filed away rather than shown: it is real memory, but it is not about how the
-    // business operates, and padding a Genome with chit-chat is how it stops being believable.
-    .filter((r) => r.genome_section !== 'none')
-    // NEAR-DUPLICATES OUT. The same fact said in three conversations distils three times, and a
-    // handover document that repeats itself reads as padding — which is exactly how a buyer's
-    // advisor decides a document was generated rather than written. Compared on a normalised form so
-    // punctuation and casing do not smuggle a duplicate through.
-    .filter((r) => {
-      const key = String(r.content ?? '')
-        .toLowerCase()
-        .replace(/[^a-z0-9 ]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .slice(0, 120);
-      if (!key || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .map((r) => ({
+  // 'none' is filed away rather than shown: it is real memory, but it is not about how the business
+  // operates, and padding a Genome with chit-chat is how it stops being believable.
+  const relevant = (rows ?? []).filter((r) => r.genome_section !== 'none');
+
+  // RESTATEMENTS OUT. The same fact said in three conversations distils three times, and a handover
+  // document that repeats itself reads as padding — exactly how a buyer's advisor decides a document
+  // was generated rather than written.
+  //
+  // This used to compare a normalised STRING, which caught only a fact saved twice word for word.
+  // What the product actually produces is paraphrase: the QA export carried six entries that were
+  // really two facts. `dropRestatements` compares significant-word containment instead — see
+  // lib/genome/similar.ts for the measurement behind the threshold. Rows arrive newest-first, and
+  // first-wins is kept from the old filter, so the most recent phrasing survives and this change
+  // removes repetition without also reshuffling which version of every fact he sees.
+  const all: OwnerEntry[] = dropRestatements(relevant, (r) => String(r.content ?? '')).map((r) => ({
       id: String(r.id),
       headline: (r.genome_headline as string | null) ?? null,
       content: String(r.content ?? ''),

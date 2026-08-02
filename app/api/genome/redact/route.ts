@@ -36,6 +36,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentAppUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { mnemoForget } from '@/lib/kira/mnemo';
+import { restatementCluster } from '@/lib/genome/similar';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -74,6 +75,46 @@ export async function POST(request: NextRequest) {
     console.error('[genome/redact] failed:', error.message);
     return NextResponse.json({ error: 'Could not update that entry' }, { status: 500 });
   }
+
+  // THE OTHER PHRASINGS. The same fact told in two conversations is stored twice, differently
+  // worded, and the Genome shows only one of them — so parking the row he clicked would take away
+  // the sentence he saw and leave its restatement behind, ready to surface in its place. He would
+  // have watched the line disappear, believed it gone, and been wrong. For the one feature whose
+  // entire purpose is that he decides what is kept, that is worse than not offering it.
+  //
+  // Transitive, via restatementCluster: A restates B, B restates C, and A may not reach C directly.
+  // Parking only direct matches leaves a sentence saying the thing he just took back.
+  //
+  // Scoped to his own rows in the query. Never on restore — bringing one line back should not drag
+  // in everything that resembles it, because he is choosing that one sentence, not a topic.
+  let alsoParked = 0;
+  const parkedRow = (data ?? [])[0] as { content?: string } | undefined;
+  if (parkedRow?.content && body.restore !== true) {
+    const { data: siblings } = await svc
+      .from('kira_memory')
+      .select('id, content')
+      .eq('user_id', user.id)
+      .neq('active', false)
+      .neq('id', id);
+    const cluster = restatementCluster(String(parkedRow.content), (siblings ?? []) as { id: string; content: string }[], (r) =>
+      String(r.content ?? ''),
+    );
+    for (const dup of cluster) {
+      const { error: dupError } = await svc
+        .from('kira_memory')
+        .update({ active: false, parked_reason: 'owner:redacted-restatement' })
+        .eq('id', dup.id)
+        .eq('user_id', user.id);
+      if (dupError) console.error('[genome/redact] restatement not parked:', dup.id, dupError.message);
+      else alsoParked += 1;
+      // The semantic copy of each restatement goes too, for the same reason the primary one does.
+      try {
+        await mnemoForget(user.id, String(dup.content ?? ''));
+      } catch (mnemoError) {
+        console.error('[genome/redact] semantic forget threw for restatement:', mnemoError);
+      }
+    }
+  }
   // THE OTHER COPY. save_memory dual-writes — the fact goes into kira_memory AND into Mnemo, the
   // semantic recall lane — so parking the row alone left it reachable. He would have taken it back
   // from everything he can see and been wrong.
@@ -84,10 +125,9 @@ export async function POST(request: NextRequest) {
   // AND removed. Not-found and would-not-go are different from done, and both are returned as
   // false rather than dressed up.
   let semanticRemoved = false;
-  const row = (data ?? [])[0] as { content?: string } | undefined;
-  if (row?.content && body.restore !== true) {
+  if (parkedRow?.content && body.restore !== true) {
     try {
-      const { matched, forgotten } = await mnemoForget(user.id, String(row.content));
+      const { matched, forgotten } = await mnemoForget(user.id, String(parkedRow.content));
       semanticRemoved = matched > 0 && forgotten === matched;
       if (matched > forgotten) {
         console.warn(`[genome/redact] ${matched - forgotten} semantic copy(ies) survived for ${id}`);
@@ -101,5 +141,8 @@ export async function POST(request: NextRequest) {
 
   // No rows means it was not his. Answered the same way as a success, deliberately: telling a
   // caller "that id exists but is not yours" is a membership oracle over other people's Genomes.
-  return NextResponse.json({ ok: true, changed: (data ?? []).length, semanticRemoved });
+  // `alsoParked` is reported rather than hidden: if taking one line back removed three sentences, he
+  // is entitled to know that, and a silent extra deletion in the feature built on trust is the last
+  // place to be quiet about scope.
+  return NextResponse.json({ ok: true, changed: (data ?? []).length, semanticRemoved, alsoParked });
 }
