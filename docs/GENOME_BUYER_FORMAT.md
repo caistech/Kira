@@ -1,6 +1,7 @@
 # The Genome, formatted for the buyer's eye — draft for review
 
-**Status** DRAFT. Nothing here is built. Decisions marked ⬜ are Dennis's.
+**Status** Shape DECIDED, nothing built. All five open decisions were taken by Dennis on 2026-08-02
+and are recorded inline as ✅ DECIDED, each with what it obliges. What remains is the build.
 **Date** 2026-08-02
 **Why now** `/my-genome` diverges from the public example in three ways, and the root cause was never
 a display bug: the example is hand-authored fixture data promising capabilities no derivation
@@ -58,8 +59,26 @@ recording" is evidence they can put in a file. The Genome already tracks provena
 (`OwnerEntry.source`) and already counts how many entries are sourced — it is simply not presented
 as the asset it is.
 
-⬜ **Decision: does "verifiable" mean sourced-to-a-conversation, or confirmed-back-to-him?** The
-second is stronger and is a build (she has to ask, and record the answer). The first exists today.
+✅ **DECIDED (2026-08-02): verifiable means CONFIRMED BACK TO HIM.** Not merely traceable to a
+conversation — she reads the fact back, he agrees, and the agreement is recorded.
+
+Three consequences, and the first two are costs worth taking knowingly:
+
+- **It cannot be backfilled.** Every fact captured to date is *sourced* at best, so the confirmed
+  count starts at zero and grows only as she asks. The buyer view is thin at first and that is the
+  honest state — a confirmation invented for existing rows would be the one lie this document cannot
+  survive.
+- **It is a build, and it needs a mechanism rather than a prompt.** "Confirmed" is a buyer-facing
+  claim, which puts it squarely in the class this codebase has learned to enforce rather than
+  request: a confirmation is a ROW — fact id, when it was read back, what he said — written by a
+  tool call, never a state she can assert in prose. Everything about this product's history says a
+  description would be ignored within the day.
+- **It gives her a reason to re-open old ground**, which the conversation needs anyway. "Can I read
+  something back to you from March?" is a natural turn and it is exactly the work the score wants
+  done.
+
+Three states, then: **asserted** (he said it) → **sourced** (traceable to the conversation he said it
+in) → **confirmed** (read back and agreed). Only the third counts on this axis.
 
 ---
 
@@ -135,10 +154,17 @@ applies when he cannot see it.** "Visibility" is therefore not "does the departm
   re-opens the price. This is a strong candidate for something Kira asks about early — it is cheap to
   answer and expensive to discover.
 
-⬜ **Decision: is this ranking ours to assert?** It is a hypothesis built from how buyers price risk,
-not from transactions we have run. It should be put to Anneke and Andrew Cooke as a list to re-order
-before it becomes the spine of a score — the same validation §7 asks for, applied to this table
-first, because the order is what the whole scorecard inherits.
+✅ **DECIDED (2026-08-02): the ranking is OURS TO ASSERT, then verify with external eyes.**
+
+We publish this order as our position and build on it now; Anneke, Andrew Cooke and any broker who
+will sit still are asked to re-order it afterwards. Asserting first is deliberate — a ranking
+assembled by committee from people who have never seen the product would describe the pack they
+already receive, which is the thing this replaces.
+
+What that obliges: the order must be **cheap to change**. It is a weighting, so it lives as data the
+scorecard reads, never as the sequence sections happen to be written in. When a broker moves a row,
+that is a config change and a re-score, not a rebuild — and the re-score must be visible rather than
+silent, because a number that moved without explanation is worse than one that never moved.
 
 ---
 
@@ -158,8 +184,23 @@ inter-branch transfer and must not be scored for lacking it. Start from the maxi
 what does not apply, and the remainder is his denominator. Without this the score punishes small
 businesses for being small, which would be worse than the bands it replaced.
 
-⬜ **Decision: who deactivates?** Kira inferring it from conversation is the agentic answer and can
-be wrong invisibly. An operator/broker confirming it is reliable and adds a step.
+✅ **DECIDED (2026-08-02): Kira PROPOSES the deactivation, the owner confirms, rejects, or keeps it.**
+
+The agentic answer with a human gate — she does the tireless part, he keeps the judgement. She
+notices from conversation that he has one site and no trade accounts and proposes switching those
+off; he says yes, or says "no, keep it, I'm about to open a second yard."
+
+Three things follow:
+
+- **A rejected deactivation is not a no-op.** The area stays in his denominator and scores zero until
+  it is filled, which is the honest reading: he has told us it applies and we hold nothing about it.
+- **The deactivation record is itself buyer-relevant.** "The owner states this business has no
+  inter-branch transfer" is an answer, and a buyer who sees a missing area will ask why. Store who
+  decided and when, exactly as facts are stored — a denominator that changed for unrecorded reasons
+  is a number nobody can defend.
+- **A proposal is not a decision.** She must never deactivate on inference alone, because a silently
+  shrunken denominator inflates the score, and inflating the score is the one direction of error this
+  document cannot afford.
 
 ---
 
@@ -173,12 +214,30 @@ Same data, two renderings, and conflating them is the trap.
 - **The buyer** sees the scorecard, the three axes per area, and the provenance. Blunt, because the
   buyer's alternative is assuming the worst.
 
-⬜ **Decision: when does the owner first see a number?** On day one it is a first impression formed
-before she knows anything. Framing it as *"what a buyer can currently verify"* is true, is not a
-judgement of him, and starting low is then the point rather than an insult.
+✅ **DECIDED (2026-08-02): he sees a number on DAY ONE**, framed as *"what a buyer can currently
+verify."*
 
-⬜ **Decision: is the buyer view ever shown without the owner's sign-off?** It must not be — but it
-changes what the export is for, and it is his business.
+Starting low is the point rather than an insult, because the sentence is true and is not about him:
+on day one a buyer can verify nothing, since nobody has told us anything yet. The number describes
+the state of the record, not the quality of his business, and the wording has to carry that every
+time it appears — "what a buyer can verify today", never "your score".
+
+The corollary is that **it must move in the first session.** A number that sits at its opening value
+while he talks for twenty minutes teaches him the number is decorative, and he will not look at it
+again.
+
+✅ **DECIDED (2026-08-02): NEVER. The buyer view is not shown to anyone without the owner's sign-off.**
+
+No exception for a broker who introduced him, no exception for a demo, no exception for us. He is
+usually selling before he has told his staff or his family; a scorecard of his business reaching
+anyone he did not release it to is the single worst thing this product could do, and it would be
+irreversible in the only way that matters — someone would have read it.
+
+That makes sign-off a **gate with a mechanism**, not a setting: an explicit act, per release, that
+names who it is for and when, and is recorded. It also makes the introducer's view a different
+document — the referring party sees that his client is progressing, never the contents (the same wall
+`@caistech/coordination-sdk` draws for `introducer`/`broker` roles, which grant `view_status` without
+`view` for exactly this reason).
 
 ---
 
@@ -198,12 +257,38 @@ changes what the export is for, and it is his business.
 
 ---
 
-## 7. What to validate before building
+## 7. Validation — after asserting, not before
 
-The categories should come from what a broker actually asks for, not from us. The nine areas above
-are derived from a flow registry built for an operations thesis, not from a transaction. One
-conversation with Anneke or Andrew Cooke, asking *"what do you always have to dig for, and what do
-you never get at all?"*, either confirms this list or reshapes it — cheaply, before anything is
-built on it.
+Per the §3.1 decision, this is our position and we build on it. Validation runs alongside rather than
+in front, and it is one conversation with Anneke or Andrew Cooke:
 
-The five things in §1 are the specific list to test.
+> *"What do you always have to dig for, and what do you never get at all?"*
+
+Put to them, in this order: the **ten-row ranking** (ask them to re-order it — that order is what the
+whole scorecard inherits), then the **five things in §1**, then the nine areas. What comes back is a
+re-weighting, which the §3.1 decision already obliges us to make cheap.
+
+**The one answer that would change the shape rather than the weights** is a row nobody thought of
+appearing at the top. Worth asking for explicitly, because a broker will otherwise reorder what is in
+front of them rather than name what is missing.
+
+---
+
+## 8. What the decisions leave to build
+
+In dependency order. Nothing here is started.
+
+1. **The confirmation record** (§2) — a tool call and a row: fact id, read back when, what he said.
+   Everything else on the verifiable axis depends on it, and it is the one that must be a mechanism
+   rather than a prompt.
+2. **The area model** (§3) — nine areas, with the flow registry's tier data behind them as the
+   denominator, and `only-you` retired as a section in favour of the per-area owner-dependence axis.
+3. **Deactivation** (§4) — her proposal, his confirmation, both recorded.
+4. **The score** — three axes per area, weighted by the §3.1 ranking, held as data so a broker can
+   move a row.
+5. **The two renderings** (§5) — his, which moves in the first session; the buyer's, behind the
+   sign-off gate of §5.
+
+The public example (`lib/genome/example.ts`) comes down to what the product does, or up to it, before
+any of this ships — a page promising hand-authored precision beside a scorecard built on confirmed
+facts repeats exactly the debt the invented testimonials were removed for.
