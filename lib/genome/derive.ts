@@ -15,6 +15,10 @@
 
 import 'server-only';
 import { createServiceClient } from '@/lib/supabase/server';
+import { ownerPrivateReason, PRIVATE_REASONS, type PrivateReason } from './private';
+
+/** What the note is about. `software` forces section 'none' — enforced in code, not just asked for. */
+const ABOUT_VALUES = ['business', 'software', 'personal'];
 
 export const GENOME_SECTIONS = [
   { key: 'work-in', title: 'How work comes in', question: 'Where does revenue come from, and does it depend on you?' },
@@ -54,6 +58,19 @@ export interface OwnerEntry {
    * document cannot survive.
    */
   confirmedOn: string | null;
+  /**
+   * Why this entry is the owner's alone, or null when it describes the business.
+   *
+   * THE UNION OF THE MATCHER AND THE MODEL, never one or the other. `lib/genome/private.ts` is
+   * deterministic and cheap but weak on recall; the classifier reads meaning but can fail, time out,
+   * or answer null. Taking either as sufficient means a private fact reaches the buyer's document
+   * the first time the other one is wrong, so the entry is private if EITHER says so — the only
+   * combination in which a failure on either side can only ever withhold too much.
+   *
+   * Computed here rather than at each call site so there is exactly one place to get it right. The
+   * export and `/my-genome` read this field; they do not re-derive it.
+   */
+  privateReason: PrivateReason | null;
 }
 
 export interface OwnerSection {
@@ -108,7 +125,24 @@ const SECTION_KEYS = GENOME_SECTIONS.map((s) => s.key) as string[];
 
 const CLASSIFY_SYSTEM = `
 You are filing one note into a small business's OPERATING MANUAL — the document its owner would hand
-to a buyer. Reply with ONLY a JSON object: {"section": "<key>", "headline": "<short lead>"}
+to a buyer. Reply with ONLY a JSON object:
+{"about": "<business|software|personal>", "section": "<key>", "headline": "<short lead>", "private": "<reason|null>"}
+
+ANSWER "about" FIRST. It decides most of the rest.
+
+business  how the business runs, earns, delivers, buys, or is obliged. Includes the owner's own
+          judgement and relationships WHEN THEY ARE ABOUT RUNNING IT — his pricing instinct, which
+          client he would not take on, why he walks away from a job.
+software  about KIRA, this app, or any tool: what it may access, what it should or should not send,
+          how he wants to be asked, what he wants built, upload problems, feature requests.
+personal  about the OWNER's life or intentions rather than the operation: selling up, retiring,
+          health, family, money pressure, how he feels about the work.
+
+THE TEST THAT SEPARATES business FROM software, and it is the one that goes wrong most often:
+a rule about HOW THE ASSISTANT SHOULD BEHAVE is software. A rule about HOW THE BUSINESS OPERATES is
+business. Both are "rules the owner holds", so that phrasing decides nothing — ask WHO THE RULE
+GOVERNS. "Do not send anything without my approval" governs the assistant → software. "No job starts
+without a signed variation" governs the business → business.
 
 SECTIONS
 work-in      how work/revenue arrives: clients, referrals, contracts, marketing, who brings the work
@@ -119,14 +153,28 @@ obligations  licences, insurance, compliance, registrations, renewals, deadlines
 only-you     judgement, history, relationships or rules that live only in the owner's head
 none         everything else — and "none" is the right answer far more often than it looks
 
-FILE AS "none":
-- Anything about the ASSISTANT, the app or the software — what it can or cannot do, what access it
-  needs, what the owner wants built, how he prefers to talk to it, upload problems, feature requests.
-  This is the most common mistake: a note mentioning "email access", "tracking tasks" or "uploading
-  documents" is about the SOFTWARE, not about the business. A buyer does not care what tools he used.
-- Anything about a DIFFERENT company or product than the one this manual is for.
-- Personal life, chit-chat, and one-off errands with no bearing on operations (a van being repaired,
-  travel plans).
+HOW "about" CONSTRAINS "section":
+- about=software  → section MUST be "none". Always. No exceptions. A buyer does not care what tools
+  he used, and this manual is not a record of how he talks to an assistant.
+- about=personal  → still choose a real section when the fact bears on the business at all (a plan to
+  sell, a health reason behind it, who has not been told). Only use "none" for personal life with no
+  bearing on the business whatsoever — a van being repaired, holiday plans, chit-chat.
+- about=business  → choose the section that fits.
+
+ALSO FILE AS "none": anything about a DIFFERENT company or product than the one this manual is for.
+
+"private" — WOULD THIS SENTENCE COST HIM MONEY IF THE BUYER READ IT?
+Most notes are not private; answer null. It is private when it describes HIS POSITION rather than the
+business, because that only ever moves the price against him. One of exactly these, or null:
+  exit-intent            he is thinking of selling, retiring, winding down, stepping back
+  not-yet-told           who does not know yet — staff, family, customers, anyone
+  personal-circumstances health, divorce, bereavement, personal debt or guarantees driving the sale
+  negotiating-position   what he would accept, his floor, how urgently he needs it done
+  how-he-feels           burnt out, had enough, sick of it, desperate to be out
+NOT private: how the business runs, however candid. "He walks away from jobs with bad access" is his
+operating judgement and a buyer is paying to learn it. When genuinely unsure, answer with the reason
+rather than null — a business fact wrongly withheld costs a line he can add back, and a private fact
+wrongly released cannot be recalled.
 
 DO **NOT** FILE AS "none" JUST BECAUSE IT IS CURRENT OR UNFINISHED. Real operating knowledge is
 usually in motion: a live approval problem on a site, who is being chased about it, which projects
@@ -191,12 +239,146 @@ export async function classifyPendingMemories(userId: string, limit = 50): Promi
           genome_section: verdict.section,
           genome_headline: verdict.headline,
           genome_classified_at: new Date().toISOString(),
+          genome_about: verdict.about,
+          genome_private_reason: verdict.private,
+          // Stamped whatever the answer was, including null. This is what makes a null reason
+          // readable later: reason null + this null means never asked, reason null + this set means
+          // asked and no. Without it a half-finished backfill is indistinguishable from a complete
+          // one that found nothing.
+          genome_privacy_classified_at: new Date().toISOString(),
         })
         .eq('id', m.id);
       classified += 1;
     }),
   );
   return { classified, deferred };
+}
+
+/** One row's current and proposed classification. The unit the operator reviews and then applies. */
+export interface ProposedChange {
+  id: string;
+  email: string | null;
+  content: string;
+  before: { section: string | null; about: string | null; privateReason: string | null };
+  after: { section: string | null; about: string | null; privateReason: string | null };
+}
+
+/**
+ * Re-ask the classifier for every row that was never asked, and report what WOULD change.
+ *
+ * Writes nothing. The point of separating this from the apply is that re-classification moves facts
+ * out of a live Genome — a row going `only-you` → `none` vanishes from an owner's page — and that is
+ * not something to do to a real business record without a person reading the list first.
+ *
+ * Rows the model declines to classify are counted, not guessed at: `classifyOne` returns null on a
+ * transient failure and those rows simply stay unasked, exactly as they are today.
+ */
+export async function classifyForReview({
+  userId,
+  limit = 1000,
+}: { userId?: string; limit?: number } = {}): Promise<{
+  considered: number;
+  failed: number;
+  changes: ProposedChange[];
+  summary: { sectionMoves: number; toNone: number; newlyPrivate: number; labelledOnly: number };
+}> {
+  const supabase = createServiceClient();
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return { considered: 0, failed: 0, changes: [], summary: { sectionMoves: 0, toNone: 0, newlyPrivate: 0, labelledOnly: 0 } };
+
+  let q = supabase
+    .from('kira_memory')
+    .select('id, user_id, content, genome_section, genome_about, genome_private_reason')
+    .is('genome_privacy_classified_at', null)
+    .neq('active', false)
+    .order('created_at', { ascending: true })
+    .limit(limit);
+  if (userId) q = q.eq('user_id', userId);
+
+  const { data: rows } = await q;
+  if (!rows?.length) return { considered: 0, failed: 0, changes: [], summary: { sectionMoves: 0, toNone: 0, newlyPrivate: 0, labelledOnly: 0 } };
+
+  // Whose row it is, so a report spanning accounts can be read. One query rather than a join, for
+  // the same reason the Genome resolves its sources separately: a missing user degrades one line
+  // instead of dropping the row.
+  const userIds = [...new Set(rows.map((r) => String(r.user_id)))];
+  const emails = new Map<string, string>();
+  const { data: users } = await supabase.from('users').select('id, email').in('id', userIds);
+  for (const u of users ?? []) emails.set(String(u.id), String(u.email ?? ''));
+
+  const changes: ProposedChange[] = [];
+  let failed = 0;
+
+  // Sequential on purpose. This runs a few hundred model calls against one key, and the parallel
+  // version rate-limits into failures that look exactly like "the model could not classify it".
+  for (const r of rows) {
+    const verdict = await classifyOne(apiKey, String(r.content ?? ''));
+    if (verdict === null) {
+      failed += 1;
+      continue;
+    }
+    changes.push({
+      id: String(r.id),
+      email: emails.get(String(r.user_id)) ?? null,
+      content: String(r.content ?? '').slice(0, 220),
+      before: {
+        section: (r.genome_section as string) ?? null,
+        about: (r.genome_about as string) ?? null,
+        privateReason: (r.genome_private_reason as string) ?? null,
+      },
+      after: { section: verdict.section, about: verdict.about, privateReason: verdict.private },
+    });
+  }
+
+  const sectionMoves = changes.filter((c) => c.before.section !== c.after.section);
+  return {
+    considered: rows.length,
+    failed,
+    changes,
+    summary: {
+      sectionMoves: sectionMoves.length,
+      toNone: sectionMoves.filter((c) => c.after.section === 'none').length,
+      // Counted against the MATCHER, not against the stored value — a row the matcher already
+      // catches is not new protection, and reporting it as such would overstate what this run buys.
+      newlyPrivate: changes.filter((c) => c.after.privateReason && !ownerPrivateReason(c.content)).length,
+      labelledOnly: changes.filter((c) => c.before.section === c.after.section).length,
+    },
+  };
+}
+
+/**
+ * Write back exactly the decisions that were reviewed — or, on `before`, undo them.
+ *
+ * Takes the proposal rather than re-running the model. At temperature 0 a second run would probably
+ * agree, and "probably" is not the bar for silently rewriting someone's business record: the
+ * operator applies the list he read.
+ */
+export async function applyReviewedClassification(
+  changes: ProposedChange[],
+  { direction }: { direction: 'after' | 'before' },
+): Promise<number> {
+  const supabase = createServiceClient();
+  const now = new Date().toISOString();
+  let written = 0;
+
+  for (const c of changes) {
+    const target = direction === 'after' ? c.after : c.before;
+    const { error } = await supabase
+      .from('kira_memory')
+      .update({
+        genome_section: target.section,
+        genome_about: target.about,
+        genome_private_reason: target.privateReason,
+        // On a revert this returns to NULL, which is what puts the row back in the "never asked"
+        // pool — a revert that left the stamp behind would make the row invisible to a later run
+        // and quietly permanent.
+        genome_privacy_classified_at: direction === 'after' ? now : null,
+      })
+      .eq('id', c.id);
+    if (error) console.error('[genome-reclassify] write failed for', c.id, error.message);
+    else written += 1;
+  }
+  return written;
 }
 
 /**
@@ -211,7 +393,7 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
   const { data: rows } = await supabase
     .from('kira_memory')
     .select(
-      'id, content, created_at, importance, genome_section, genome_headline, source_conversation_id, confirmed_at',
+      'id, content, created_at, importance, genome_section, genome_headline, source_conversation_id, confirmed_at, genome_private_reason',
     )
     .eq('user_id', userId)
     .neq('active', false)
@@ -278,6 +460,15 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
       // cannot be backfilled, so every fact captured before confirmations existed is sourced at
       // best. See docs/GENOME_BUYER_FORMAT.md §2.
       confirmedOn: r.confirmed_at ? String(r.confirmed_at).slice(0, 10) : null,
+      // Matcher OR model — see the field's note on OwnerEntry. The matcher runs first because it is
+      // free and synchronous; the stored verdict adds the recall it cannot have. A stored reason
+      // outside the known vocabulary is ignored rather than trusted, so a bad write cannot put an
+      // unlabelable reason in front of the owner.
+      privateReason:
+        ownerPrivateReason(String(r.content ?? '')) ??
+        (PRIVATE_REASONS.includes(String(r.genome_private_reason ?? '') as PrivateReason)
+          ? (String(r.genome_private_reason) as PrivateReason)
+          : null),
     }));
 
   const sections: OwnerSection[] = GENOME_SECTIONS.map((s) => {
@@ -316,8 +507,8 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
 async function classifyOne(
   apiKey: string,
   content: string,
-): Promise<{ section: string; headline: string | null } | null> {
-  if (!content.trim()) return { section: 'none', headline: null }; // a real verdict, not a failure
+): Promise<{ section: string; headline: string | null; about: string | null; private: PrivateReason | null } | null> {
+  if (!content.trim()) return { section: 'none', headline: null, about: null, private: null }; // a real verdict, not a failure
   try {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -325,7 +516,10 @@ async function classifyOne(
       body: JSON.stringify({
         model: 'gpt-4.1-mini',
         temperature: 0,
-        max_tokens: 120,
+        // Raised from 120 with the two extra fields. A truncated JSON object throws in the parse
+        // below and returns null, which the sweep retries forever — a cap that is merely too tight
+        // presents as a row that will not classify, with nothing pointing at the cap.
+        max_tokens: 200,
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: CLASSIFY_SYSTEM },
@@ -338,15 +532,35 @@ async function classifyOne(
     const parsed = JSON.parse(String(json?.choices?.[0]?.message?.content ?? '{}')) as {
       section?: unknown;
       headline?: unknown;
+      about?: unknown;
+      private?: unknown;
     };
-    const section = String(parsed.section ?? '').trim().toLowerCase();
+    let section = String(parsed.section ?? '').trim().toLowerCase();
     if (!SECTION_KEYS.includes(section) && section !== 'none') {
       // An answer outside the vocabulary is a model problem, not a verdict about the fact.
       console.warn(`[genome] unrecognised section "${section.slice(0, 40)}" — leaving unclassified.`);
       return null;
     }
+
+    const about = ABOUT_VALUES.includes(String(parsed.about ?? '').trim().toLowerCase())
+      ? String(parsed.about).trim().toLowerCase()
+      : null;
+
+    // THE CONSTRAINT IS ENFORCED HERE, NOT LEFT TO THE PROMPT. The prompt says about=software must
+    // file as "none", and the model mostly obeys — but "mostly" is how the vendor's AI-assistant
+    // preferences ended up in a document we told him to hand to a buyer. A rule stated in prose and
+    // checked in code is a mechanism; stated only in prose it is a request.
+    if (about === 'software' && section !== 'none') {
+      console.warn(`[genome] about=software with section "${section}" — forcing none.`);
+      section = 'none';
+    }
+
+    const privateReason = PRIVATE_REASONS.includes(String(parsed.private ?? '').trim().toLowerCase() as PrivateReason)
+      ? (String(parsed.private).trim().toLowerCase() as PrivateReason)
+      : null;
+
     const headline = typeof parsed.headline === 'string' ? parsed.headline.trim().slice(0, 90) : '';
-    return { section, headline: headline || null };
+    return { section, headline: headline || null, about, private: privateReason };
   } catch {
     return null;
   }

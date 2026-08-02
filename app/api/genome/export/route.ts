@@ -23,7 +23,7 @@ import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
-import { isOwnerPrivate } from '@/lib/genome/private';
+
 import { displayName } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
 
@@ -111,7 +111,12 @@ export async function GET(request: Request) {
   // than in `deriveOwnerGenome`, because the owner's own page must keep showing him everything —
   // the difference between the two renderings is the whole point, and a filter applied upstream
   // would silently take his own facts away from him too.
-  const publicSections = g.sections.map((s) => ({ ...s, entries: s.entries.filter((e) => !isOwnerPrivate(e.content)) }));
+  //
+  // `privateReason` is the UNION of the deterministic matcher and the classifier's stored verdict,
+  // merged once in deriveOwnerGenome. Read here, never re-derived — a second opinion computed at
+  // this call site is the one that ends up disagreeing with the marker the owner was shown on his
+  // own page, and then he cannot audit what he was promised he could.
+  const publicSections = g.sections.map((s) => ({ ...s, entries: s.entries.filter((e) => !e.privateReason) }));
 
   // Counted over what the document ACTUALLY SHOWS, not over everything held. Reporting "6 of 6
   // traceable" under a document displaying two entries is the kind of number that is technically

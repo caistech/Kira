@@ -3,7 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { formatMoney, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { RedactEntry } from '@/components/RedactEntry';
-import { ownerPrivateReason, PRIVATE_REASON_LABEL } from '@/lib/genome/private';
+import { PRIVATE_REASON_LABEL } from '@/lib/genome/private';
 
 export const dynamic = 'force-dynamic';
 
@@ -239,10 +239,10 @@ export default async function MyGenome() {
                               reason rather than just the fact of it also makes a false positive
                               reportable: "that is not about my plans" is only sayable if he can see
                               what we thought it was. */}
-                          {ownerPrivateReason(e.content) && (
+                          {e.privateReason && (
                             <p className="text-xs font-medium text-violet-700 mt-0.5">
                               Yours only — kept out of the handover document, because it touches on{' '}
-                              {PRIVATE_REASON_LABEL[ownerPrivateReason(e.content)!]}.
+                              {PRIVATE_REASON_LABEL[e.privateReason]}.
                             </p>
                           )}
                           {/* On the FILED entries too, not only the unsorted ones. The sentence the

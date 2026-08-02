@@ -42,6 +42,21 @@ export type PrivateReason =
   | 'negotiating-position'
   | 'how-he-feels';
 
+/**
+ * The vocabulary, as an array, so the classifier can validate a model's answer against exactly the
+ * same list the renderer will later look up. Derived from the label map rather than written twice —
+ * a reason the model may return but the UI cannot label would render an empty explanation beside a
+ * withheld entry, which is worse than no marker: he would see something held back and not be told
+ * what.
+ */
+export const PRIVATE_REASONS = [
+  'exit-intent',
+  'not-yet-told',
+  'personal-circumstances',
+  'negotiating-position',
+  'how-he-feels',
+] as const satisfies readonly PrivateReason[];
+
 /** What the owner is shown next to a withheld entry. His words for it, not the enum's. */
 export const PRIVATE_REASON_LABEL: Record<PrivateReason, string> = {
   'exit-intent': 'that you are thinking about selling',
