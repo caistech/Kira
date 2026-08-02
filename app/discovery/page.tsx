@@ -38,7 +38,7 @@ export default function DiscoveryPage() {
     <div className="overflow-x-hidden">
       <div className="mx-auto max-w-2xl">
         <header className="mb-6">
-          <p className="text-sm font-medium text-teal-700">Discovery</p>
+          <p className="text-sm font-medium text-violet-700">Discovery</p>
           <h1 className="mt-1 text-2xl font-bold text-gray-900">Let&apos;s get to know you</h1>
           <p className="mt-2 text-base text-gray-600">
             Before Kira can be genuinely useful, she needs to understand you and how you work — your
@@ -51,7 +51,7 @@ export default function DiscoveryPage() {
           {error ? (
             <div className="text-center">
               <p className="text-sm text-red-600">{error}</p>
-              <Link href="/dashboard" className="mt-4 inline-block text-sm text-teal-700 hover:underline">
+              <Link href="/dashboard" className="mt-4 inline-block text-sm text-violet-700 hover:underline">
                 Back to dashboard
               </Link>
             </div>
@@ -72,7 +72,7 @@ export default function DiscoveryPage() {
           <span className="text-gray-500">
             Stage {stageIdx + 1} of {DISCOVERY_STAGES.length}
           </span>
-          <Link href="/dashboard" className="text-teal-700 hover:underline">
+          <Link href="/dashboard" className="text-violet-700 hover:underline">
             Done for now →
           </Link>
         </div>
@@ -149,7 +149,7 @@ function PreBriefPanel() {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://example.com/about"
-              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-base focus:border-teal-500 focus:outline-none"
+              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-base focus:border-violet-500 focus:outline-none"
             />
           </div>
           <div className="text-center text-xs text-gray-400">or</div>
@@ -163,17 +163,17 @@ function PreBriefPanel() {
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Anything that helps Kira understand you and your work…"
-              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-base focus:border-teal-500 focus:outline-none"
+              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-base focus:border-violet-500 focus:outline-none"
             />
           </div>
           {message && (
-            <p className={`text-sm ${status === 'error' ? 'text-red-600' : 'text-teal-700'}`}>{message}</p>
+            <p className={`text-sm ${status === 'error' ? 'text-red-600' : 'text-violet-700'}`}>{message}</p>
           )}
           <button
             type="button"
             onClick={submit}
             disabled={status === 'working'}
-            className="w-full rounded-xl bg-teal-700 px-4 py-3 text-base font-medium text-white hover:bg-teal-800 disabled:opacity-60"
+            className="w-full rounded-xl bg-violet-700 px-4 py-3 text-base font-medium text-white hover:bg-violet-800 disabled:opacity-60"
           >
             {status === 'working' ? 'Reading…' : 'Let Kira read this'}
           </button>

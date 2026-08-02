@@ -47,7 +47,7 @@ export default function TermsPage() {
         <footer className="mt-12 border-t border-gray-200 pt-6 text-sm text-gray-500">
           <p>Corporate AI Solutions · legal@corporateaisolutions.com</p>
           <p className="mt-3">
-            <Link href="/" className="font-medium text-teal-700 underline">
+            <Link href="/" className="font-medium text-violet-700 underline">
               Back to Kira
             </Link>
           </p>

@@ -33,9 +33,9 @@ export default function RequestLinkForm() {
 
   if (sent) {
     return (
-      <div className="mt-6 rounded-lg border border-teal-200 bg-teal-50 p-4">
-        <p className="text-base text-teal-900">{sent}</p>
-        <p className="mt-2 text-sm text-teal-800">
+      <div className="mt-6 rounded-lg border border-violet-200 bg-violet-50 p-4">
+        <p className="text-base text-violet-900">{sent}</p>
+        <p className="mt-2 text-sm text-violet-800">
           It can take a minute to arrive. Check your spam folder before asking for another.
         </p>
       </div>
@@ -56,12 +56,12 @@ export default function RequestLinkForm() {
           required
           autoComplete="email"
           placeholder="you@yourfirm.com.au"
-          className="min-h-[44px] w-full rounded-lg border border-gray-300 px-3 text-base text-gray-900 placeholder:text-gray-400 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+          className="min-h-[44px] w-full rounded-lg border border-gray-300 px-3 text-base text-gray-900 placeholder:text-gray-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
         />
         <button
           type="submit"
           disabled={pending}
-          className="min-h-[44px] shrink-0 rounded-lg bg-teal-700 px-5 text-base font-semibold text-white hover:bg-teal-800 disabled:opacity-60"
+          className="min-h-[44px] shrink-0 rounded-lg bg-violet-700 px-5 text-base font-semibold text-white hover:bg-violet-800 disabled:opacity-60"
         >
           {pending ? 'Sending…' : 'Send me a link'}
         </button>

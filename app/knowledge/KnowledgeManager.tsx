@@ -21,7 +21,7 @@ export interface KnowledgeItem {
 }
 
 function sourceIcon(t: string) {
-  if (t === 'user_url' || t === 'kira_research') return <Link2 size={18} className="text-teal-600" />;
+  if (t === 'user_url' || t === 'kira_research') return <Link2 size={18} className="text-violet-600" />;
   if (t === 'user_note') return <StickyNote size={18} className="text-amber-600" />;
   return <FileText size={18} className="text-indigo-600" />;
 }
@@ -121,12 +121,12 @@ export function KnowledgeManager({ userId, initial }: { userId: string; initial:
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="Paste a link (a report, a page, a spec…)"
-            className="w-full flex-1 rounded-lg border border-gray-300 px-3 py-3 text-base focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+            className="w-full flex-1 rounded-lg border border-gray-300 px-3 py-3 text-base focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
           />
           <button
             type="submit"
             disabled={adding || !url.trim()}
-            className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-teal-600 px-4 py-3 text-base font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+            className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-violet-600 px-4 py-3 text-base font-medium text-white hover:bg-violet-700 disabled:opacity-50"
           >
             {adding ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
             Add link
@@ -181,7 +181,7 @@ export function KnowledgeManager({ userId, initial }: { userId: string; initial:
                         href={item.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="mt-1 block truncate text-xs text-teal-600 hover:underline"
+                        className="mt-1 block truncate text-xs text-violet-600 hover:underline"
                       >
                         {item.url}
                       </a>

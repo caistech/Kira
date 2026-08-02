@@ -223,7 +223,7 @@ export default async function DashboardPage({
           </p>
           <Link
             href="/start"
-            className="mt-4 inline-block rounded-lg bg-teal-600 px-5 py-3 text-base font-semibold text-white hover:bg-teal-700"
+            className="mt-4 inline-block rounded-lg bg-violet-600 px-5 py-3 text-base font-semibold text-white hover:bg-violet-700"
           >
             Start talking to Kira
           </Link>
@@ -234,7 +234,7 @@ export default async function DashboardPage({
             <Link
               key={String(a.id)}
               href={`/chat/${a.elevenlabs_agent_id}`}
-              className="rounded-2xl border border-gray-200 bg-white p-5 hover:border-teal-300 hover:shadow-sm"
+              className="rounded-2xl border border-gray-200 bg-white p-5 hover:border-violet-300 hover:shadow-sm"
             >
               <div className="flex items-center justify-between">
                 {/* TWO WRONGS, ONE LINE.
@@ -278,13 +278,13 @@ export default async function DashboardPage({
             </p>
             {(profile?.sessions_count ?? 0) > 0 && !profile?.discovery_complete && (
               <div className="mt-3 h-2 w-full max-w-xs overflow-hidden rounded-full bg-white">
-                <div className="h-full rounded-full bg-teal-500" style={{ width: `${pct}%` }} />
+                <div className="h-full rounded-full bg-violet-500" style={{ width: `${pct}%` }} />
               </div>
             )}
           </div>
           <Link
             href="/discovery"
-            className="inline-block whitespace-nowrap rounded-lg border border-teal-600 px-5 py-2.5 text-base font-semibold text-teal-700 hover:bg-teal-50"
+            className="inline-block whitespace-nowrap rounded-lg border border-violet-600 px-5 py-2.5 text-base font-semibold text-violet-700 hover:bg-violet-50"
           >
             {(profile?.sessions_count ?? 0) > 0 ? 'Continue discovery' : 'Start discovery'}
           </Link>

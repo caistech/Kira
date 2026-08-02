@@ -77,7 +77,7 @@ export function UsageMeter({
   // The bar is only red for a budget denial. A trial that hasn't started isn't an alarm state —
   // colouring it red was part of what made a new account look broken.
   const capReached = !allowed && (reason === 'cost_cap' || reason === 'daily_cap' || reason === 'total_cap');
-  const barColour = capReached ? 'bg-red-500' : warn ? 'bg-amber-500' : 'bg-teal-600';
+  const barColour = capReached ? 'bg-red-500' : warn ? 'bg-amber-500' : 'bg-violet-600';
 
   return (
     <div>

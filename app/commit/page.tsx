@@ -108,7 +108,7 @@ export default function CommitPage() {
         <header className="mb-8">
           <h1 className="font-bold text-3xl text-stone-800">Put it in writing</h1>
           <p className="mt-2 text-stone-600 leading-relaxed">
-            If Kira — your fractional exec — is something you’d actually use, say so here. It’s a quick,
+            If Kira — your part-time general manager — is something you’d actually use, say so here. It’s a quick,
             genuine expression of intent (not a contract, no card). It helps us build the right thing for
             you and back it with the partners who make it real.
           </p>

@@ -30,7 +30,7 @@ type IntroducerRow = {
 
 const STATUS_CLASS: Record<string, string> = {
   invited: 'bg-amber-100 text-amber-700',
-  active: 'bg-teal-100 text-teal-700',
+  active: 'bg-violet-100 text-violet-700',
   suspended: 'bg-red-100 text-red-700',
 };
 
@@ -81,7 +81,7 @@ export default async function AdminIntroducersPage() {
         </div>
         <div className="rounded-2xl border border-gray-200 bg-white p-5">
           <p className="text-sm text-gray-500">Paying</p>
-          <p className="mt-1 text-3xl font-bold text-teal-700">{totalPaying}</p>
+          <p className="mt-1 text-3xl font-bold text-violet-700">{totalPaying}</p>
         </div>
       </section>
 
@@ -135,7 +135,7 @@ export default async function AdminIntroducersPage() {
                   </div>
                   <div>
                     <dt className="text-sm text-gray-500">Paying</dt>
-                    <dd className="text-xl font-semibold text-teal-700">{counts.paying}</dd>
+                    <dd className="text-xl font-semibold text-violet-700">{counts.paying}</dd>
                   </div>
                   <div className="col-span-2">
                     <dt className="text-sm text-gray-500">Their link</dt>

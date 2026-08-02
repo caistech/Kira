@@ -28,7 +28,7 @@ const STATUS_LABEL: Record<OwnerProjection['status'], { text: string; tone: stri
   // Legacy: Kira bills in arrears and issues no trials, so no NEW introduction reaches this state.
   // Rows written before the billing model changed still carry it, so it keeps a truthful label.
   trialing: { text: 'First month', tone: 'bg-amber-50 text-amber-700' },
-  paying: { text: 'Paying', tone: 'bg-teal-50 text-teal-700' },
+  paying: { text: 'Paying', tone: 'bg-violet-50 text-violet-700' },
   lapsed: { text: 'Lapsed', tone: 'bg-red-50 text-red-700' },
 };
 
@@ -76,7 +76,7 @@ function Movement({ owner }: { owner: OwnerProjection }) {
 
   const from = Math.round(owner.baselineReadiness);
   const delta = now - from;
-  const tone = delta > 0 ? 'text-teal-700' : delta < 0 ? 'text-amber-700' : 'text-gray-500';
+  const tone = delta > 0 ? 'text-violet-700' : delta < 0 ? 'text-amber-700' : 'text-gray-500';
 
   return (
     <span className="text-gray-700">
@@ -138,7 +138,7 @@ export default async function IntroducerBoardPage() {
         </div>
         <div className="rounded-2xl border border-gray-200 bg-white p-5">
           <p className="text-sm text-gray-500">Paying</p>
-          <p className="mt-1 text-3xl font-bold text-teal-700">{paying}</p>
+          <p className="mt-1 text-3xl font-bold text-violet-700">{paying}</p>
         </div>
       </section>
 

@@ -60,14 +60,14 @@ export function IntroducerActions({
         disabled={pending}
         className={
           suspended
-            ? `${button} border-teal-300 text-teal-700 hover:bg-teal-50`
+            ? `${button} border-violet-300 text-violet-700 hover:bg-violet-50`
             : `${button} border-red-300 text-red-700 hover:bg-red-50`
         }
       >
         {suspended ? 'Restore access' : 'Suspend'}
       </button>
       {result && (
-        <span className={`text-sm ${result.ok ? 'text-teal-700' : 'text-red-600'}`}>
+        <span className={`text-sm ${result.ok ? 'text-violet-700' : 'text-red-600'}`}>
           {result.message}
         </span>
       )}

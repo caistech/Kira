@@ -22,7 +22,7 @@ export default async function SignupPage() {
         variant="user"
         redirectTo="/dashboard"
         title="Create your Kira"
-        subtitle="Your fractional exec — she remembers everything."
+        subtitle="Your part-time general manager — she remembers everything."
         askReferralSource={!alreadyAttributed}
       />
     </AuthShell>

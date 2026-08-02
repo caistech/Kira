@@ -50,7 +50,7 @@ export function AcceptUndertakingForm({ defaultOrgName = '' }: { defaultOrgName?
           ).map((option) => (
             <label
               key={option.value}
-              className="flex min-h-[44px] flex-1 cursor-pointer items-center gap-3 rounded-lg border border-gray-300 px-4 py-2.5 has-[:checked]:border-teal-600 has-[:checked]:bg-teal-50"
+              className="flex min-h-[44px] flex-1 cursor-pointer items-center gap-3 rounded-lg border border-gray-300 px-4 py-2.5 has-[:checked]:border-violet-600 has-[:checked]:bg-violet-50"
             >
               <input
                 type="radio"
@@ -58,7 +58,7 @@ export function AcceptUndertakingForm({ defaultOrgName = '' }: { defaultOrgName?
                 value={option.value}
                 checked={payeeType === option.value}
                 onChange={() => setPayeeType(option.value)}
-                className="h-4 w-4 text-teal-600 focus:ring-teal-500"
+                className="h-4 w-4 text-violet-600 focus:ring-violet-500"
               />
               <span className="text-base text-gray-900">{option.label}</span>
             </label>
@@ -73,7 +73,7 @@ export function AcceptUndertakingForm({ defaultOrgName = '' }: { defaultOrgName?
             defaultValue={defaultOrgName}
             required={payeeType === 'entity'}
             hint="Start typing and pick it from the business register — that way the ABN is right."
-            inputClassName="mt-1 w-full rounded-lg border border-gray-300 px-3 py-3 text-base outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+            inputClassName="mt-1 w-full rounded-lg border border-gray-300 px-3 py-3 text-base outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
           />
         </div>
       </fieldset>
@@ -84,7 +84,7 @@ export function AcceptUndertakingForm({ defaultOrgName = '' }: { defaultOrgName?
           name="confirmed"
           checked={checked}
           onChange={(e) => setChecked(e.target.checked)}
-          className="mt-1 h-5 w-5 shrink-0 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+          className="mt-1 h-5 w-5 shrink-0 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
         />
         <span className="text-base text-gray-900">
           I&apos;ve read the above and I agree. In particular, I&apos;ll only send my link to owners
@@ -95,7 +95,7 @@ export function AcceptUndertakingForm({ defaultOrgName = '' }: { defaultOrgName?
       <button
         type="submit"
         disabled={pending || !checked}
-        className="mt-5 min-h-[44px] w-full rounded-lg bg-teal-600 px-4 py-3 text-base font-semibold text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+        className="mt-5 min-h-[44px] w-full rounded-lg bg-violet-600 px-4 py-3 text-base font-semibold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
       >
         {pending ? 'Saving…' : 'Agree and continue'}
       </button>

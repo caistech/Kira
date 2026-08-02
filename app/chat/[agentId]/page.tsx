@@ -364,7 +364,7 @@ export default function ChatPage({ agentId: agentIdProp }: { agentId?: string } 
             {isConnected
               ? '🟢 Live conversation'
               : agentInfo?.journey_type === 'business'
-                ? 'Kira · your fractional exec'
+                ? 'Kira · your part-time general manager'
                 : 'Kira · your thinking partner'}
           </p>
         </header>

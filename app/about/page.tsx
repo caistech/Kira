@@ -138,7 +138,7 @@ export default function AboutPage() {
         <div className="max-w-4xl mx-auto px-6 text-center">
           <div className="avatar-ring inline-block mb-6"><div className="w-24 h-24 rounded-full overflow-hidden bg-white"><img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" /></div></div>
           <h2 className="font-display text-3xl lg:text-4xl font-bold text-stone-800 mb-4">Where Kira Fits</h2>
-          <p className="font-body text-xl text-stone-600 max-w-2xl mx-auto leading-relaxed mb-8">Kira is the fractional exec for business owners in the Corporate AI Solutions family. She's not trying to be everything — she's trying to be the best right-hand your business has ever had.</p>
+          <p className="font-body text-xl text-stone-600 max-w-2xl mx-auto leading-relaxed mb-8">Kira is the part-time general manager for business owners in the Corporate AI Solutions family. She's not trying to be everything — she's trying to be the best right-hand your business has ever had.</p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <a href="/start" className="font-display gradient-sunny text-stone-800 px-8 py-4 rounded-full text-lg font-bold hover-pop shadow-lg inline-block">Start Talking to Kira →</a>
             <a href="/" className="font-display text-stone-600 hover:text-pink-500 px-6 py-3 font-medium transition-colors">Back to Home</a>

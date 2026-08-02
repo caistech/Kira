@@ -15,7 +15,8 @@
 // own Kira, so there is no list here and no "add another" — the copy says so, because an owner with
 // two businesses will otherwise look for the button and conclude the product cannot do it.
 
-import { useActionState } from 'react';
+import { AddressAutocomplete } from '@caistech/corporate-components/address-autocomplete';
+import { useActionState, useState } from 'react';
 import { AbnLookupField } from '@/components/AbnLookupField';
 import { AU_STATES, type BusinessIdentity } from '@/lib/business-identity';
 import { saveBusinessIdentity, type IdentityFormState } from '@/app/setup/business/actions';
@@ -65,6 +66,13 @@ export function BusinessIdentityForm({
     null,
   );
   const errors = state?.errors ?? {};
+
+  // Held in state ONLY so a chosen address can fill them. They remain fully editable — a lookup that
+  // takes the pen away is worse than no lookup, and rural and new-estate addresses are exactly where
+  // Mapbox is weakest and this owner is strongest.
+  const [locality, setLocality] = useState(identity?.locality ?? '');
+  const [stateCode, setStateCode] = useState(identity?.state ?? '');
+  const [postcode, setPostcode] = useState(identity?.postcode ?? '');
 
   return (
     <form action={formAction} className="space-y-6">
@@ -122,27 +130,42 @@ export function BusinessIdentityForm({
           see who it is from and write back.
         </p>
 
+        {/* LOOKUP, NOT A PLAIN BOX — the standing portfolio rule, and a tester named it precisely:
+            "if you're doing lookups for the ABN, do them for the address too." He had just watched
+            the ABN field return five real ABNs with states and called it "the sort of thing that
+            tells me a grown-up built it", and then typed his address into an empty box.
+            Consumes the shared @caistech/corporate-components/address-autocomplete over
+            @caistech/mapbox rather than a local Mapbox call. Picking a suggestion fills suburb,
+            state and postcode below it, so the three fields that were four separate chances to
+            mistype become one. Typing still works untouched if the lookup finds nothing or the
+            token is unset — degrade, never block. */}
         <Field label="Street address" error={errors.street}>
-          <input
+          <AddressAutocomplete
             name="street"
-            autoComplete="street-address"
             defaultValue={identity?.street ?? ''}
-            className={INPUT}
+            placeholder="Start typing the address"
+            inputClassName={INPUT}
+            onSelect={(a) => {
+              setLocality(a.suburb ?? '');
+              setStateCode(a.state ?? '');
+              setPostcode(a.postcode ?? '');
+            }}
           />
         </Field>
 
         <Field label="Suburb or town" error={errors.locality}>
           <input
             name="locality"
+            value={locality}
+            onChange={(e) => setLocality(e.target.value)}
             autoComplete="address-level2"
-            defaultValue={identity?.locality ?? ''}
             className={INPUT}
           />
         </Field>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="State" error={errors.state}>
-            <select name="state" defaultValue={identity?.state ?? ''} className={INPUT}>
+            <select name="state" value={stateCode} onChange={(e) => setStateCode(e.target.value)} className={INPUT}>
               <option value="">Choose…</option>
               {AU_STATES.map((s) => (
                 <option key={s} value={s}>
@@ -155,10 +178,11 @@ export function BusinessIdentityForm({
           <Field label="Postcode" error={errors.postcode}>
             <input
               name="postcode"
+              value={postcode}
+              onChange={(e) => setPostcode(e.target.value)}
               inputMode="numeric"
               autoComplete="postal-code"
               maxLength={4}
-              defaultValue={identity?.postcode ?? ''}
               className={INPUT}
             />
           </Field>

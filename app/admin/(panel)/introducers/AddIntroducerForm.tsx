@@ -49,7 +49,7 @@ export function AddIntroducerForm() {
   }
 
   const field =
-    'mt-1 w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100';
+    'mt-1 w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100';
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
@@ -101,13 +101,13 @@ export function AddIntroducerForm() {
       <button
         type="submit"
         disabled={pending}
-        className="min-h-[44px] rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
+        className="min-h-[44px] rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {pending ? 'Adding…' : 'Add and send their links'}
       </button>
 
       {result && (
-        <p className={`text-sm ${result.ok ? 'text-teal-700' : 'text-red-600'}`}>{result.message}</p>
+        <p className={`text-sm ${result.ok ? 'text-violet-700' : 'text-red-600'}`}>{result.message}</p>
       )}
     </form>
   );

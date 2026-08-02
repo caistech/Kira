@@ -86,7 +86,7 @@ export default async function SettingsPage() {
               <input
                 name="first_name"
                 defaultValue={String(appUser?.first_name ?? '')}
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
               />
             </label>
             <label className="block">
@@ -94,7 +94,7 @@ export default async function SettingsPage() {
               <input
                 name="last_name"
                 defaultValue={String(appUser?.last_name ?? '')}
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
               />
             </label>
           </div>
@@ -104,7 +104,7 @@ export default async function SettingsPage() {
           </div>
           <button
             type="submit"
-            className="rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-700"
+            className="rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700"
           >
             Save profile
           </button>
@@ -177,7 +177,7 @@ export default async function SettingsPage() {
         ) : (
           <Link
             href="/setup/business"
-            className="mt-4 inline-block min-h-[44px] rounded-lg bg-teal-600 px-4 py-2.5 text-base font-semibold text-white"
+            className="mt-4 inline-block min-h-[44px] rounded-lg bg-violet-600 px-4 py-2.5 text-base font-semibold text-white"
           >
             Add your business details
           </Link>
@@ -251,7 +251,7 @@ export default async function SettingsPage() {
             <p className="mt-4 text-base text-gray-600">Nothing connected yet.</p>
             <Link
               href="/setup/drive"
-              className="mt-4 inline-block min-h-[44px] rounded-lg bg-teal-600 px-4 py-2.5 text-base font-semibold text-white"
+              className="mt-4 inline-block min-h-[44px] rounded-lg bg-violet-600 px-4 py-2.5 text-base font-semibold text-white"
             >
               Connect Google Drive
             </Link>
@@ -327,7 +327,7 @@ export default async function SettingsPage() {
               type="checkbox"
               name="email_notifications_opt_in"
               defaultChecked={appUser?.email_notifications_opt_in ?? true}
-              className="mt-1 h-5 w-5 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+              className="mt-1 h-5 w-5 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
             />
             <span>
               <span className="block text-sm font-medium text-gray-900">Email updates</span>
@@ -338,7 +338,7 @@ export default async function SettingsPage() {
           </label>
           <button
             type="submit"
-            className="rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-700"
+            className="rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700"
           >
             Save notifications
           </button>

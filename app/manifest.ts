@@ -4,9 +4,9 @@ import type { MetadataRoute } from 'next';
 // one home-screen icon that opens straight to the mic (start_url = /talk) in a standalone window.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Kira — your fractional exec',
+    name: 'Kira — your part-time general manager',
     short_name: 'Kira',
-    description: 'Talk to Kira — your fractional exec. One tap, and she picks up where you left off.',
+    description: 'Talk to Kira — your part-time general manager. One tap, and she picks up where you left off.',
     start_url: '/talk',
     scope: '/',
     display: 'standalone',

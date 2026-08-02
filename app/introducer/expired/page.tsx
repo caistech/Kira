@@ -28,7 +28,7 @@ export default function IntroducerExpiredPage() {
       <p className="mt-8 border-t border-gray-200 pt-6 text-sm text-gray-500">
         Still stuck? Email{' '}
         <a
-          className="font-medium text-teal-700 underline"
+          className="font-medium text-violet-700 underline"
           href="mailto:hello@corporateaisolutions.com"
         >
           hello@corporateaisolutions.com

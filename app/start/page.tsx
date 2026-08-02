@@ -321,7 +321,7 @@ export default function StartPage() {
               <h3 className="text-xl font-bold text-white mb-2">Tell Kira about your business</h3>
               <p className="text-stone-400 text-sm mb-4">
                 What you do, how it runs, what you&apos;re trying to sort out. Have a quick chat and Kira
-                builds a brief for you to review — then becomes your fractional exec.
+                builds a brief for you to review — then becomes your part-time general manager.
               </p>
               <span className="text-pink-400 text-sm font-medium inline-flex items-center gap-1">
                 Start talking

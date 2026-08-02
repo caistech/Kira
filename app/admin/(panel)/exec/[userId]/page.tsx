@@ -31,7 +31,7 @@ export default async function ExecUserManagePage({ params }: { params: Promise<{
   return (
     <div>
       <div className="mb-4">
-        <Link href="/admin/exec" className="text-sm text-teal-700 hover:underline">← Kira Exec</Link>
+        <Link href="/admin/exec" className="text-sm text-violet-700 hover:underline">← Kira Exec</Link>
       </div>
 
       <header className="mb-6">
@@ -60,7 +60,7 @@ export default async function ExecUserManagePage({ params }: { params: Promise<{
                   </p>
                 </div>
                 {a.elevenlabs_agent_id && a.status === 'active' && (
-                  <Link href={`/chat/${a.elevenlabs_agent_id}`} className="flex-shrink-0 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-700">Open</Link>
+                  <Link href={`/chat/${a.elevenlabs_agent_id}`} className="flex-shrink-0 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700">Open</Link>
                 )}
               </li>
             ))}

@@ -45,7 +45,16 @@ export function PortalShell({
 
   const nav = (
     <nav className="flex h-full flex-col">
-      <Link href={homeHref} className="px-4 py-5 text-lg font-bold text-gray-900" onClick={() => setDrawerOpen(false)}>
+      {/* ONE BRAND EITHER SIDE OF THE LOGIN. The marketing site sets "Kira" in the amber→pink→violet
+          gradient; this shell used plain grey with teal accents, and a tester crossing from one to
+          the other said: "the logo changes from the pink circle on the website to a green square in
+          the app. I noticed and wondered if I was on the right site." For a buyer already deciding
+          whether to trust the thing, that is a bad question to raise for free. */}
+      <Link
+        href={homeHref}
+        className="block px-4 py-5 text-lg font-bold bg-gradient-to-r from-amber-500 via-pink-500 to-violet-500 bg-clip-text text-transparent"
+        onClick={() => setDrawerOpen(false)}
+      >
         {title}
       </Link>
       <div className="flex-1 space-y-1 px-2">
@@ -55,7 +64,7 @@ export function PortalShell({
             href={it.href}
             onClick={() => setDrawerOpen(false)}
             className={`block rounded-lg px-3 py-2.5 text-base font-medium ${
-              isActive(it.href) ? 'bg-teal-50 text-teal-800' : 'text-gray-700 hover:bg-gray-50'
+              isActive(it.href) ? 'bg-violet-50 text-violet-800' : 'text-gray-700 hover:bg-gray-50'
             }`}
           >
             {it.label}
@@ -71,7 +80,7 @@ export function PortalShell({
           href={settingsHref}
           onClick={() => setDrawerOpen(false)}
           className={`block rounded-lg px-3 py-2.5 text-base font-medium ${
-            isActive(settingsHref) ? 'bg-teal-50 text-teal-800' : 'text-gray-700 hover:bg-gray-50'
+            isActive(settingsHref) ? 'bg-violet-50 text-violet-800' : 'text-gray-700 hover:bg-gray-50'
           }`}
         >
           Settings
@@ -91,7 +100,7 @@ export function PortalShell({
 
       {/* Mobile top bar */}
       <header className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 md:hidden">
-        <Link href={homeHref} className="text-lg font-bold text-gray-900">
+        <Link href={homeHref} className="text-lg font-bold bg-gradient-to-r from-amber-500 via-pink-500 to-violet-500 bg-clip-text text-transparent">
           {title}
         </Link>
         <button

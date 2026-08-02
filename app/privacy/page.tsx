@@ -52,11 +52,11 @@ export default function PrivacyPage() {
             {OPERATOR.postal} · {OPERATOR.email}
           </p>
           <p className="mt-3">
-            <Link href="/terms" className="font-medium text-teal-700 underline">
+            <Link href="/terms" className="font-medium text-violet-700 underline">
               Terms
             </Link>
             {' · '}
-            <Link href="/" className="font-medium text-teal-700 underline">
+            <Link href="/" className="font-medium text-violet-700 underline">
               Back to Kira
             </Link>
           </p>

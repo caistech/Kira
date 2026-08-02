@@ -19,6 +19,7 @@
     "@caistech/elevenlabs-convai": "^0.11.2",
     "@caistech/email-compliance": "^0.4.0",
     "@caistech/email-send": "^0.2.0",
+    "@caistech/mapbox": "^0.2.1",
     "@caistech/mnemo": "^0.2.0",
     "@caistech/platform-trust-middleware": "^0.4.1",
     "@caistech/sayfix-embed": "^0.6.0",

@@ -34,11 +34,11 @@ export function PasswordChange() {
     <form onSubmit={onSubmit} className="space-y-3">
       <PasswordInput value={password} onChange={setPassword} autoComplete="new-password" placeholder="New password" />
       {err && <p className="text-sm text-red-600">{err}</p>}
-      {msg && <p className="text-sm text-teal-700">{msg}</p>}
+      {msg && <p className="text-sm text-violet-700">{msg}</p>}
       <button
         type="submit"
         disabled={busy}
-        className="rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
+        className="rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
       >
         {busy ? 'Updating…' : 'Update password'}
       </button>

@@ -44,6 +44,16 @@ export default async function MyGenome() {
   }
 
   const g = await deriveOwnerGenome(appUser.id);
+
+  // WHAT HE HAS, FIRST. The areas are held in buyer-priority order, which is right for the handover
+  // document and wrong for the first thing he sees: it put empty sections above the ones with his
+  // own words in them, so the page opened on a list of things he had not done. Populated areas lead;
+  // the empties keep their relative order underneath. Stable sort, so ranking is preserved within
+  // each group.
+  const sections = [...g.sections].sort(
+    (a, b) => Number(b.entries.length > 0) - Number(a.entries.length > 0),
+  );
+  const populated = g.sections.filter((s) => s.entries.length > 0).length;
   // Approximate, matching the valuation result — the same figure must not be rounded on one screen
   // and exact on another, least of all in the document this page is about.
   const money = (n: number | null) => (n == null ? '—' : formatMoneyApprox(n, DEFAULT_CURRENCY));
@@ -101,7 +111,14 @@ export default async function MyGenome() {
       ) : (
         <>
           <p className="text-base text-stone-500 mt-6">
+            {/* WHERE those things ARE, not just how many.
+                It said "3 things captured" above five sections each reading "Not captured — nothing
+                here yet". A tester: "I thought it was broken until I scrolled far enough to find
+                them." Nothing was wrong; the header simply gave a count with no shape, so every
+                empty section read as a fault rather than as the honest remainder. Naming the number
+                of areas makes an empty one expected — and it stays true as the model widens. */}
             {g.totalCaptured} {g.totalCaptured === 1 ? 'thing' : 'things'} captured
+            {populated > 0 ? `, across ${populated} of the ${g.sections.length} areas below` : ''}
             {g.documents > 0 ? `, plus ${g.documents} document${g.documents === 1 ? '' : 's'} you have shared` : ''}.
             {/* THE COUNT HAS TO ACCOUNT FOR THE UNDATED ONES, or it reads as a contradiction.
                 This said "5 of them are dated to the conversation you said them in — that is what a
@@ -181,7 +198,7 @@ export default async function MyGenome() {
           </p>
 
           <div className="mt-6 space-y-3">
-            {g.sections.map((s) => (
+            {sections.map((s) => (
               <article key={s.key} className="rounded-2xl border border-amber-200 bg-white overflow-hidden">
                 <div className="px-5 py-4 border-b border-amber-100 flex items-start justify-between gap-4">
                   <div>
