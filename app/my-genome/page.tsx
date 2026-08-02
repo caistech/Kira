@@ -120,6 +120,35 @@ export default async function MyGenome() {
             )}
           </p>
 
+          {/* THE STRONGEST THING ON THE PAGE, and until now it was computed and shown nowhere.
+              Dated-to-a-conversation says we know when he said it. Read back and agreed says he
+              stood behind it, and that is the difference between a note and evidence a buyer
+              cannot wave away.
+
+              WRITTEN TO READ WELL AT ZERO, which is where every owner starts and where most will
+              sit for a while: confirmations only began on 2 August and are deliberately not
+              backfillable, because a confirmation nobody made is the one lie this document cannot
+              survive. So the empty state is an explanation of what is coming, never a score he is
+              failing — he does not get a deficiency report on his own business. */}
+          <p className="mt-3 text-base">
+            {g.confirmed > 0 ? (
+              <span className="text-stone-600">
+                <span className="font-semibold text-emerald-700">
+                  {g.confirmed} {g.confirmed === 1 ? 'has' : 'have'} been read back to you and you
+                  agreed.
+                </span>{' '}
+                That is the strongest form anything here can take — a buyer discounts what you said
+                once, and cannot discount what you confirmed.
+              </span>
+            ) : (
+              <span className="text-stone-600">
+                Kira has not read any of these back to you yet. She will, as you talk — checking a
+                fact with you turns it from something you mentioned into something a buyer can rely
+                on, and that is most of what this is worth.
+              </span>
+            )}
+          </p>
+
           {/* WHO ELSE READS THIS — at the top, where he is looking at the sentence that worries him.
               A tester found "the owner is considering selling the business and has not told anyone"
               sitting on this page and called it the most impressive and most frightening thing he
@@ -187,6 +216,21 @@ export default async function MyGenome() {
                               ? `You said this on ${new Date(e.source.spokenOn).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}`
                               : `Captured ${new Date(e.capturedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })} — conversation not recorded`}
                           </p>
+                          {/* On its own line and in a different colour, because it is a different
+                              CLAIM rather than more detail about the same one: the line above says
+                              when he said it, this one says he heard it back and stood by it. Shown
+                              only when true — an "unconfirmed" marker on every other entry would
+                              turn a record of his business into a list of things not done yet. */}
+                          {e.confirmedOn && (
+                            <p className="text-xs font-medium text-emerald-700 mt-0.5">
+                              Read back to you and confirmed on{' '}
+                              {new Date(e.confirmedOn).toLocaleDateString('en-AU', {
+                                day: 'numeric',
+                                month: 'long',
+                                year: 'numeric',
+                              })}
+                            </p>
+                          )}
                           {/* On the FILED entries too, not only the unsorted ones. The sentence the
                               tester wanted to take back — "considering selling, has not told anyone"
                               — was a filed entry, so a Remove that only reached the loose notes

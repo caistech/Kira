@@ -107,7 +107,15 @@ export async function GET(request: Request) {
         const said = e.source
           ? `stated ${new Date(e.source.spokenOn).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}`
           : 'source not recorded';
-        lines.push(`- ${e.content} *(${said})*`);
+        // The confirmation is the line a buyer's advisor is actually looking for, so it is stated
+        // per entry rather than only totalled at the bottom — a total tells them how much of the
+        // document to trust, this tells them WHICH parts. Absent where it did not happen; there is
+        // no "unconfirmed" marker, because labelling every other line would read as a disclaimer
+        // over the whole document rather than a distinction within it.
+        const confirmed = e.confirmedOn
+          ? `; read back to the owner and confirmed ${new Date(e.confirmedOn).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}`
+          : '';
+        lines.push(`- ${e.content} *(${said}${confirmed})*`);
       }
       lines.push('');
     }
@@ -124,9 +132,23 @@ export async function GET(request: Request) {
       'independently. Sections marked as carried by the owner alone are the parts of the business ' +
       'that are not yet transferable.',
     '',
-    `Each entry above is dated to the conversation in which the owner stated it. ${g.sourced} of ` +
-      `${g.totalCaptured} entries are traceable this way; any marked "source not recorded" were ` +
-      'captured without a conversation reference and should be confirmed with the owner directly.',
+    // THREE STATES, NAMED, because a reader who cannot tell them apart discounts all of it to the
+    // weakest. Reworded when the confirmation count was added: the old closing line ended "should
+    // be confirmed with the owner directly", which used "confirmed" in the loose sense right where
+    // the document had just started using it as a specific, dated, recorded claim. One word meaning
+    // two things is how a provenance note stops being worth reading.
+    `Every entry above carries its provenance. ${g.sourced} of ${g.totalCaptured} are dated to the ` +
+      'conversation in which the owner stated them; any marked "source not recorded" were captured ' +
+      'without a conversation reference and are worth raising with the owner directly.',
+    '',
+    g.confirmed > 0
+      ? `${g.confirmed} of them go further: they were read back to the owner in a later conversation ` +
+        'and he agreed they were correct, with the date recorded above. Those are the entries that ' +
+        'do not rest on a single recollection.'
+      : 'None have yet been read back to the owner for confirmation — that process began on ' +
+        '2 August 2026 and applies only to conversations from that point, so an older entry is ' +
+        'recorded as it was stated rather than as it was re-checked. Nothing here has been marked ' +
+        'confirmed retrospectively.',
     '',
   );
 
