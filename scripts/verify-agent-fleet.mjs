@@ -54,16 +54,41 @@ const BUSINESS_ONLY = [
   'keep_document',
   'lookup_contact',
   'record_refusal',
+  // THE VERIFIABLE AXIS. Added 2026-08-02 after the fleet was found holding 17 tools against an
+  // expected set of 15 — and passing. The two the script did not know about were exactly the pair
+  // that carries §2's confirmed state, so a re-provision that dropped them would have reported
+  // "fleet is consistent" while the axis the product charges for was dead across every agent. That
+  // is the same shape as the doing-slice strip this file's header describes, which is the argument
+  // for the rule underneath it: a tool the fleet holds and this list does not is a tool nothing
+  // guards.
+  'facts_to_confirm',
+  'confirm_fact',
 ];
 
 /**
  * Prompt sections, and the tool that entitles an agent to carry each one. `null` = ungated (it
  * describes no tool, so every business agent gets it).
  */
+/**
+ * ⚠️ THIS LIST MUST MIRROR `patch-agent-capabilities.mjs`'s `next` array EXACTLY, gate for gate.
+ *
+ * It did not, for three sections, and the drift was silent in the direction that matters: the
+ * patcher wrote confirmation, entity separation and authority onto the fleet, and this file did not
+ * know they existed — so it could never have reported them missing. A verifier that checks a subset
+ * of what a writer writes does not verify the writer; it verifies the part of the writer it happens
+ * to remember, and reports the rest as green.
+ *
+ * Two of the three are guards with a measured before/after (entity separation went 0/3 → 3/3, the
+ * refusal record 0/6 → 6/6). Losing one to a re-provision would show up as behaviour drifting back,
+ * days later, with a passing fleet check standing behind it.
+ *
+ * When a section is added to the patcher, add it here in the same change.
+ */
 const SECTIONS = [
   { label: 'capability boundary', marker: '## WHAT YOU CAN GET DONE', gate: null },
   { label: 'accounts', marker: '## READING THEIR ACCOUNTS', gate: ['look_up_financials'] },
   { label: 'task ledger', marker: '## ACCOUNTING FOR WHAT THEY ASKED FOR', gate: ['check_tasks'] },
+  { label: 'confirmation', marker: '## CHECKING WHAT YOU HAVE GOT RIGHT', gate: ['facts_to_confirm'] },
   {
     label: 'files and contacts',
     marker: '## THEIR FILES AND THEIR CONTACTS',
@@ -71,6 +96,8 @@ const SECTIONS = [
   },
   { label: 'tool honesty', marker: '## NEVER SAY YOU CHECKED SOMETHING YOU DID NOT', gate: null },
   { label: 'typed input', marker: '## WHEN HE TYPES INSTEAD OF SPEAKING', gate: null },
+  { label: 'entity separation', marker: '## ONE ACCOUNT, ONE BUSINESS', gate: null },
+  { label: 'authority', marker: '## WHO IS ACTUALLY ASKING', gate: null },
 ];
 
 const el = (path) =>
@@ -160,6 +187,49 @@ for (const a of agents) {
 
   if (!agentProblems) console.log(`  ✓ ${label} — ${held.size} tools, prompt sections correct`);
 }
+
+/**
+ * SHADOW AGENTS — an ElevenLabs agent sharing a name with one of ours that no row points at.
+ *
+ * `provisionVoiceAgent` is idempotent BY NAME (`findAgentsByName`), so two agents with one name is
+ * not untidiness — it is a coin toss over which one a future provision hands to an owner, and the
+ * loser is typically the empty one, because it is the abandoned first attempt. That is the exact
+ * BucketLyst failure: the second buyer's dashboard hit a duplicate-key error on the binding insert
+ * and fell back to no voice agent at all, silently.
+ *
+ * Nothing saw this before now. The per-agent loop above walks kira_agents rows, so an agent with no
+ * row is invisible to it by construction — the check has to start from the WORKSPACE and look back.
+ *
+ * Scoped to names some kira_agents row actually uses, because this workspace is shared with other
+ * products whose duplicates are none of our business.
+ */
+console.log('\n[verify] shadow agents (same name, no row)…');
+const ourNames = new Set(agents.map((a) => a.agent_name).filter(Boolean));
+const boundIds = new Set(agents.map((a) => a.elevenlabs_agent_id));
+const workspace = [];
+let cursor = null;
+do {
+  const page = await el(`agents?page_size=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
+  workspace.push(...(page?.agents ?? []));
+  cursor = page?.has_more ? page.next_cursor : null;
+} while (cursor);
+
+let shadows = 0;
+for (const name of ourNames) {
+  const matches = workspace.filter((a) => a.name === name);
+  if (matches.length < 2) continue;
+  for (const m of matches) {
+    if (boundIds.has(m.agent_id)) continue;
+    shadows += 1;
+    problems += 1;
+    const full = await el(`agents/${m.agent_id}`);
+    const toolCount = (full?.conversation_config?.agent?.prompt?.tool_ids ?? []).length;
+    console.log(
+      `  ✗ ${name}: unbound twin ${m.agent_id} (${toolCount} tools) — a provision by name may hand an owner THIS one`,
+    );
+  }
+}
+if (!shadows) console.log('  ✓ no shadow agents');
 
 console.log(problems ? `\n[verify] ${problems} PROBLEM(S)` : '\n[verify] fleet is consistent');
 process.exit(problems ? 1 : 0);
