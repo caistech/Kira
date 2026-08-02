@@ -253,19 +253,53 @@ and integration with IRIS and XPlan are managed"* — where the lots are F2K and
 Parking the row loses the F2K half; keeping it carries CAS content across. **Splitting one fact into
 two is a rewrite of the owner's record and is an operator decision, not a classifier one.**
 
-### Where it lives is a SCORE, not just plumbing
+### No area is ever EMPTY. Every area is somewhere.
+
+✅ **DECIDED (2026-08-02), and it reframes the whole model.** Every one of the nine areas exists in
+any operating business. A company that trades has customers, people, assets, cash, obligations and
+records — even if "people" is one man and "assets" is a ute. **The question is never whether an area
+exists. It is where it lives**, and the answer is always one of five:
+
+> the owner's head · paper in a filing cabinet · a local machine · his own cloud · third-party cloud
+
+This kills the failure the four new areas otherwise walk into. "Nothing recorded for Assets" is not a
+blank and must never render as one — it means the asset register is **in his head**, which is a
+position on a ladder, is true, is the single most valuable thing a buyer could know, and is precisely
+what he is paying to change. A blank looks like the product not working; a position looks like the
+product working correctly on day one.
+
+It also aligns the areas with a number the product already shows him. `/my-genome` leads with
+**"Locked in your head"** as a dollar figure from the valuation. This is that same idea, per area.
+
+**Two corrections this forces:**
+
+1. **PAPER was missing from the earlier ladder and is not a rounding error.** This ICP is a 60–70
+   year old owner of a physical trade business: licences, insurance certificates, signed variations
+   and plant records live in a filing cabinet. Paper is reachable by a person who knows it exists,
+   invisible to every connector ever built, and it needs SCANNING — a third distinct ask, neither an
+   integration nor an upload.
+2. **DEACTIVATION (§4) OPERATES ON FLOWS, NOT ON AREAS.** §4's example is right — a 12-person fencing
+   contractor has no inter-branch transfer — but that is a flow inside an area, not an area. The
+   area-level denominator is always nine. Deactivating an area would be saying the business does not
+   have customers.
+
+### Where it lives is the SCORE, and each rung has its own next action
 
 The onboarding scope question (§4.1 block 2) and the retrieval question are the same question asked
-once — *"what do you use for X, and where does it live?"* — and the answer feeds three things at
-once: the denominator, where she looks, and the transferability axes:
+once — *"what do you use for X, and where does it live?"* — and the answer feeds four things: the
+denominator, where she looks, the transferability axes, and **what she offers to do about it**.
 
-| Location | Written down | Runs without him | Verifiable |
-|---|---|---|---|
-| his head | ✗ | ✗ | ✗ |
-| (a) local spreadsheet | ✓ | ✗ — nobody else can find it | only if he produces it |
-| (b) local software | ✓ | ✗ | export-dependent |
-| (c) cloud storage | ✓ | ✓ | ✓ |
-| (d) cloud SaaS | ✓ | ✓ | ✓✓ — a buyer can be given read access |
+| Location | Written down | Reachable by others | Verifiable by a buyer | The move up |
+|---|---|---|---|---|
+| **the owner's head** | ✗ | ✗ | ✗ | **talk to her** — this is the product |
+| **paper, filing cabinet** | ✓ physically | only if they know it exists | in the room only | scan it |
+| **local machine** | ✓ | ✗ | only if he produces it | upload it |
+| **his own cloud** | ✓ | ✓ | ✓ | grant access |
+| **third-party cloud** | ✓ | ✓ | ✓✓ read access can be granted | already there |
+
+Read down the last column and it is a work list, in order, for a business that has never had one.
+That is the whole product in one table: she finds where each area lives, and every rung above the
+bottom has a specific thing she can offer to do next.
 
 ✅ **DECIDED: on a local answer she OFFERS THE MIGRATION rather than recording the gap.** What a
 human exec assistant would do — *"let's get it somewhere you and I and anyone else can reach; I'll
