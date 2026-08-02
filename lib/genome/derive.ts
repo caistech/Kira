@@ -224,13 +224,13 @@ customers   WHO buys, what they buy, repeat vs one-off, concentration, who owns 
 people      who is inside the business: roles, skills, tenure, contractors, who is critical
 assets      what the business owns or leases: plant, vehicles, equipment, premises, their condition
 compliance  licences, insurance, registrations, renewals, deadlines, disputes
-management  WHERE THE RECORDS LIVE and what is documented — the business's own memory, its systems
+systems     WHERE THE RECORDS LIVE and what is documented — the business's own memory, its systems
 none        everything else — and "none" is the right answer far more often than it looks
 
 HOW "about" CONSTRAINS "section":
 - about=assistant → section MUST be "none". Always. No exceptions. A buyer does not care what tools
   he used, and this manual is not a record of how he talks to an assistant.
-- about=systems   → section is almost always "management". Only choose another area when the note is
+- about=systems   → section is almost always "systems". Only choose another area when the note is
   really about that area and merely MENTIONS a system.
 - about=personal  → still choose a real section when the fact bears on the business at all (a plan to
   sell, a health reason behind it, who has not been told). Only use "none" for personal life with no
@@ -661,8 +661,8 @@ async function classifyOne(
     // then files it as `none` — the habit the old prompt trained for months — would reproduce the
     // exact bug the split was made to fix, quietly and while appearing to comply.
     if (about === 'systems' && section === 'none') {
-      console.warn('[genome] about=systems filed as none — routing to management.');
-      section = 'management';
+      console.warn('[genome] about=systems filed as none — routing to the systems area.');
+      section = 'systems';
     }
 
     const privateReason = PRIVATE_REASONS.includes(String(parsed.private ?? '').trim().toLowerCase() as PrivateReason)

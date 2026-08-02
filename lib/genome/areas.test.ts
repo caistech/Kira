@@ -115,7 +115,7 @@ describe('where an area\'s truth lives', () => {
   // depreciation schedule is at the accountant's, and he knows it.
   it('treats the four new areas as source gaps, not head gaps', () => {
     const systemAreas = GENOME_AREAS.filter((a) => a.truthLivesIn === 'system').map((a) => a.key);
-    expect(systemAreas.sort()).toEqual(['assets', 'customers', 'management', 'people']);
+    expect(systemAreas.sort()).toEqual(['assets', 'customers', 'people', 'systems']);
   });
 
   it('keeps the five widened-from-legacy areas conversational', () => {

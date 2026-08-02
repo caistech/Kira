@@ -25,7 +25,7 @@
 --    Genome, 34 rows name a system and every one was filed `none`, including "bank accounts are not
 --    synchronised with Xero" and "documents are on Drive but may not use straightforward file names".
 --    Those are the first things a buyer's accountant hits. `assistant` (how Kira should behave) still
---    goes to `none`; `systems` (what the business runs on) goes to the management area.
+--    goes to `none`; `systems` (what the business runs on) goes to the systems area.
 --
 -- NOTHING IS BACKFILLED HERE, ON PURPOSE. Re-filing ~700 rows across two live Genomes is a REVIEWED
 -- pass through POST /api/admin/genome/reclassify (dry-run by default, the proposal read and then
@@ -38,7 +38,7 @@ ALTER TABLE public.kira_memory
   ADD COLUMN IF NOT EXISTS genome_owner_dependent boolean;
 
 COMMENT ON COLUMN public.kira_memory.genome_section IS
-  'demand | pricing | operations | cash | customers | people | assets | compliance | management | none. '
+  'demand | pricing | operations | cash | customers | people | assets | compliance | systems | none. '
   'NULL = not yet classified; show as unsorted, never hide. '
   'Legacy values (work-in, delivery, suppliers, obligations, only-you) may persist until the reviewed '
   're-classification runs; lib/genome/areas.ts resolves unknown keys to null rather than throwing.';
@@ -51,7 +51,7 @@ COMMENT ON COLUMN public.kira_memory.genome_owner_dependent IS
 COMMENT ON COLUMN public.kira_memory.genome_about IS
   'business | assistant | systems | personal. `assistant` (how Kira should behave) is forced to '
   'section none; `systems` (what the business runs on, where its records live) belongs to the '
-  'management area and is rank 10. The pre-2026-08-02 value `software` conflated the two and cost the '
+  'systems area and is rank 10. The pre-2026-08-02 value `software` conflated the two and cost the '
   'highest-ranked area every fact it had.';
 
 -- Partial, because the axis is only ever read for rows that are IN the Genome. An index over the

@@ -187,12 +187,20 @@ export const GENOME_AREAS: readonly GenomeArea[] = [
     truthLivesIn: 'conversation',
   },
   {
-    key: 'management',
-    // ⚠️ SYSTEMS, NOT PEOPLE. §3.1 rank 10 is "Systems, data & IP" and the operator's definition is
-    // explicit: "this is not people, this is management systems — what is run by them, and what can
-    // they tell us." A rename to `Systems & records` is PROPOSED and not decided; the title below is
-    // worded to carry the meaning either way, so nobody reads this as people-management.
-    title: 'Where the records live',
+    key: 'systems',
+    // ✅ RENAMED from `management` 2026-08-02, by decision. §3.1 rank 10 is "Systems, data & IP" and
+    // the operator's definition is explicit: "this is not people, this is management systems — what
+    // is run by them, and what can they tell us."
+    //
+    // The old name was actively misleading in a way that only appeared once the model widened: it sat
+    // directly beside a PEOPLE area, so "Management" read as managers to anyone who had not read
+    // §3.1 — including a broker seeing the list for the first time. The rename also makes one word
+    // mean one thing across the model: `about: systems` now files into the `systems` area, where it
+    // previously crossed into a differently-named place for no reason a reader could see.
+    //
+    // Free to do today because nothing is filed here yet; it would NOT be free after the reviewed
+    // re-classification, which is why it was worth settling first.
+    title: 'Systems & records',
     buyerQuestion: 'Where records live, who has access, what is documented, and whether the IP is owned by the entity.',
     ownerQuestion: null,
     // The quiet one: it determines whether everything above it can be verified at all.

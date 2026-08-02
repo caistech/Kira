@@ -389,10 +389,30 @@ auto-load here.)
   name, and per `DATA_STANDARD` it wants an authoritative, citable source, never conversation or
   inference.
 
-⚠️ **`Management & records` is proposed for rename to `Systems & records` — NOT decided.** Rank 10 is
-*Systems, data & IP* and the operator's definition is explicit that this is not people, but the
-current name reads as people-management to anyone who has not read §3.1. `Delivery`→`Operations` was
-decided in the same conversation; this one was not raised.
+✅ **DECIDED: `Management & records` is renamed `Systems & records`.** Rank 10 is *Systems, data & IP*
+and the operator's definition is explicit that this is not people. The old name only became actively
+misleading once the model widened — it now sits directly beside a **People** area, so "Management"
+reads as *managers* to anyone who has not read §3.1, including a broker seeing the list for the first
+time. The rename also makes one word mean one thing across the model: `about: systems` files into the
+`systems` area, where it previously crossed into a differently-named place for no reason a reader
+could see. Free to do now because nothing is filed there yet; **not** free after the reviewed
+re-classification, which is why it was settled first.
+
+⚠️ **OPEN — DEMAND'S RANK IS A QUESTION FOR THE BROKERS, not for us.** It stays `null` in
+`lib/genome/areas.ts` and a scorer must refuse it loudly rather than treat it as zero. Nothing in
+§3.1's ten is lead generation (rank 1 is revenue *concentration*, which is Customers), so we have no
+basis to assign one — and inventing a number here is the same fabrication this document keeps
+refusing elsewhere. §3.1 already commits to asserting the order and then having brokers re-order it,
+and the operator has broker and accountant meetings booked **this week** framed around *"on what
+basis do you make your valuation judgements"*. This is precisely that question, so it goes into those
+conversations and comes back as evidence.
+
+**The question to put to them, in their language:** *when you value a business, how much does it
+matter WHERE the work comes from — and would you discount a business whose enquiries all come through
+one referral source, or through the owner personally?* The second half is already covered by the
+owner-dependence axis; the first half — **source concentration** — is a real risk that no other area
+in this model measures, and their answer decides whether Demand needs a rank of its own or scores
+through the axis alone.
 
 ✅ **DECIDED: `only-you` is re-filed into the area each fact is really about, and each row carries an
 `owner_dependent` flag so the axis has data the day it is built.** Retiring the section before the
