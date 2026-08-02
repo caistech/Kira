@@ -281,6 +281,34 @@ export default async function MyGenome() {
             </section>
           )}
 
+          {g.notYetLocated.length > 0 && (
+            /* A SEPARATE LIST, AND THE DIFFERENCE IS THE POINT.
+               These areas are empty because nobody has shown Kira where they live — not because the
+               owner is carrying them in his head. His depreciation schedule is at the accountant's;
+               his insurance certificates are in a filing cabinet. Putting them under "still only in
+               your head — today only you can answer it" is a confident falsehood about a man's own
+               business, and he knows it is wrong the instant he reads it, which costs more than the
+               line is worth.
+               So this one asks instead of asserting. Once the location model has real data the two
+               lists collapse into one answer per area (GENOME_BUYER_FORMAT §3.3). */
+            <section className="mt-6 rounded-2xl border-2 border-dashed border-stone-300 bg-white p-5">
+              <p className="font-display font-bold text-lg">Kira hasn&apos;t been shown these yet</p>
+              <p className="text-sm text-stone-600 mt-1">
+                These usually live in a system, a folder or a filing cabinet rather than in a
+                conversation — so they may already be written down somewhere. Tell Kira where they
+                are and she&apos;ll take it from there.
+              </p>
+              <ul className="mt-3 space-y-2">
+                {g.notYetLocated.map((sec) => (
+                  <li key={sec.key} className="text-stone-700">
+                    <span className="font-semibold">{sec.title}</span>
+                    <span className="text-stone-500"> — {sec.question}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           {g.unsorted.length > 0 && (
             /* Shown, never hidden. A memory the owner gave us that appears nowhere is exactly the
                failure this product exists to prevent. */

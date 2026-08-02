@@ -20,20 +20,39 @@ import { createServiceClient } from '@/lib/supabase/server';
 // decides what the owner and the buyer actually see. See OwnerEntry.privateReason.
 import { ownerPrivateReason, PRIVATE_REASONS, type PrivateReason } from './private';
 import { dropRestatements } from './similar';
+import { GENOME_AREAS, areaFor, type AreaKey } from './areas';
 
-/** What the note is about. `software` forces section 'none' — enforced in code, not just asked for. */
-const ABOUT_VALUES = ['business', 'software', 'personal'];
+/**
+ * What the note is about.
+ *
+ * `software` SPLIT INTO TWO on 2026-08-02, and the split is the point. Applying "software → none"
+ * bluntly discarded WHERE THE BUSINESS KEEPS ITS RECORDS, which is rank 10 — measured on the real
+ * Genome, 34 rows named a system and every one was filed `none`, among them "bank accounts are not
+ * synchronised with Xero". That is the first thing a buyer's accountant hits.
+ *
+ *   assistant → how Kira should behave. Still forced to `none`; a buyer does not care what tools he
+ *               used to talk to an assistant.
+ *   systems   → what the business RUNS ON and where its records live. Belongs to `management`.
+ *
+ * `software` is still accepted so rows classified before the split keep parsing, and is treated as
+ * `assistant` — the conservative read, since that is what the old prompt was mostly catching.
+ */
+const ABOUT_VALUES = ['business', 'assistant', 'systems', 'software', 'personal'];
 
-export const GENOME_SECTIONS = [
-  { key: 'work-in', title: 'How work comes in', question: 'Where does revenue come from, and does it depend on you?' },
-  { key: 'pricing', title: 'How work is priced and quoted', question: 'Could someone else quote a job and reach your number?' },
-  { key: 'delivery', title: 'How the work gets done', question: 'Does the business run when you are not on site?' },
-  { key: 'suppliers', title: 'Suppliers and terms', question: 'What do your costs depend on, and are those terms portable?' },
-  { key: 'obligations', title: 'Licences, insurance and the calendar', question: 'What must not lapse, and who is watching it?' },
-  { key: 'only-you', title: 'Things only you know', question: 'What walks out the door with you?' },
-] as const;
+/**
+ * The nine areas, in the shape this module already renders.
+ *
+ * Derived from `areas.ts` rather than restated, so the ranking stays in ONE place — §3.1 obliges the
+ * order to be cheap for a broker to re-order, and a second hand-written copy here is exactly what
+ * makes that a rewrite instead of a config change.
+ */
+export const GENOME_SECTIONS = GENOME_AREAS.map((a) => ({
+  key: a.key,
+  title: a.title,
+  question: a.buyerQuestion,
+}));
 
-export type SectionKey = (typeof GENOME_SECTIONS)[number]['key'];
+export type SectionKey = AreaKey;
 
 export interface OwnerEntry {
   id: string;
@@ -138,6 +157,21 @@ export interface OwnerGenome {
    * is the honest answer to "what still walks out the door with you?".
    */
   stillInYourHead: { key: SectionKey; title: string; question: string }[];
+  /**
+   * Empty areas whose truth normally lives in a SYSTEM or a DOCUMENT, not in his head.
+   *
+   * Split out of `stillInYourHead` when the model widened to nine areas (2026-08-02), because the
+   * copy attached to that list — *"today only you can answer it"* — became FALSE for four of them.
+   * Assets, People, Customers and Management are empty because nobody has shown Kira where they
+   * live, not because the owner is carrying them: his depreciation schedule is at the accountant's
+   * and his insurance certificates are in a filing cabinet.
+   *
+   * Telling a 66-year-old that his asset register is in his head is the kind of confident wrong that
+   * makes him stop trusting the parts that ARE right — and he knows it is wrong immediately, which is
+   * worse than saying nothing. §3.2's rule is that no area is ever empty, only located; until §3.3's
+   * location model has real data this coarse split is the honest version of that.
+   */
+  notYetLocated: { key: SectionKey; title: string; question: string }[];
 }
 
 const SECTION_KEYS = GENOME_SECTIONS.map((s) => s.key) as string[];
@@ -145,16 +179,24 @@ const SECTION_KEYS = GENOME_SECTIONS.map((s) => s.key) as string[];
 const CLASSIFY_SYSTEM = `
 You are filing one note into a small business's OPERATING MANUAL — the document its owner would hand
 to a buyer. Reply with ONLY a JSON object:
-{"about": "<business|software|personal>", "section": "<key>", "headline": "<short lead>", "private": "<reason|null>"}
+{"about": "<business|assistant|systems|personal>", "section": "<key>", "headline": "<short lead>",
+ "private": "<reason|null>", "owner_dependent": <true|false|null>}
 
-ANSWER "about" FIRST, and START BY TRYING TO SAY "software". It decides most of the rest.
+ANSWER "about" FIRST, and START BY TRYING TO SAY "assistant". It decides most of the rest.
 
-software  THE DEFAULT SUSPICION, and the answer far more often than it looks. Anything mentioning
-          the assistant, this app, an integration or a tool — what it may access, what it should or
-          should not send, how it should ask, reminders and task-tracking, drafting or sending mail
-          on his behalf, Drive or Gmail or Contacts access, uploads, onboarding, what he wants built
-          next, anything phrased as a want/need/preference ABOUT BEING HELPED. If the sentence would
-          make no sense to someone who had never heard of this product, it is software.
+assistant HOW THIS ASSISTANT SHOULD BEHAVE, and the answer far more often than it looks. What she may
+          access, what she should or should not send, how she should ask, reminders and task-tracking,
+          drafting on his behalf, uploads, what he wants built next — anything phrased as a
+          want/need/preference ABOUT BEING HELPED. If the sentence would make no sense to someone who
+          had never heard of this assistant, it is "assistant".
+systems   WHAT THE BUSINESS RUNS ON, and WHERE ITS RECORDS LIVE. Named tools the business itself
+          depends on, what is in them, what is NOT in them, how well they are kept. "Bank accounts
+          are not synchronised with Xero." "Documents are on Drive but file names are inconsistent."
+          "Quotes are tracked in a spreadsheet on his laptop." This is NOT about the assistant — it is
+          about the business's own memory, and a buyer's accountant hits it on day one.
+          THE LINE BETWEEN THEM: does the sentence tell you how KIRA should act, or where the
+          BUSINESS keeps things? "Send me a reminder about Drive" is assistant. "The contracts are in
+          Drive" is systems.
 business  how the business EARNS, DELIVERS, BUYS, or is OBLIGED — clients, jobs, sites, prices,
           crews, suppliers, invoices, cash, licences, financing. Includes the owner's own judgement
           when it governs the WORK: his pricing instinct, which client he will not take, why he
@@ -163,31 +205,49 @@ personal  about the OWNER's life or intentions rather than the operation: sellin
           health, family, money pressure, how he feels about the work.
 
 THE TEST — and it is the one that goes wrong most often. Ask WHO OR WHAT THE SENTENCE IS ABOUT:
-  "Reminders are needed to follow up with Dave"            → about being HELPED  → software
-  "Follow-up with Dave on soil testing is due 7 August"    → about the WORK      → business
-  "Emails are drafted and reviewed before sending"         → about the ASSISTANT → software
-  "Invoices are issued at practical completion"            → about the BUSINESS  → business
-  "Files for Lot 91 are in a shared Drive folder"          → about the TOOL      → software
-  "Lot 91 was delivered before building approval"          → about the SITE      → business
+  "Reminders are needed to follow up with Dave"            → about being HELPED    → assistant
+  "Follow-up with Dave on soil testing is due 7 August"    → about the WORK        → business
+  "Emails are drafted and reviewed before sending"         → about the ASSISTANT   → assistant
+  "Invoices are issued at practical completion"            → about the BUSINESS    → business
+  "Files for Lot 91 are in a shared Drive folder"          → where RECORDS LIVE    → systems
+  "Lot 91 was delivered before building approval"          → about the SITE        → business
 Both kinds mention real projects and real people. The project names prove nothing. Ask what the
-sentence is TELLING you: how the business works, or what the assistant should do.
+sentence is TELLING you: how the business works, where it keeps its records, or what the assistant
+should do.
 
-SECTIONS
-work-in      how work/revenue arrives: clients, referrals, contracts, marketing, who brings the work
-pricing      how anything is priced, quoted, discounted, or what it costs the customer
-delivery     how the work actually gets done: crews, scheduling, process, who does what, quality
-suppliers    suppliers, purchasing, materials, subcontractors, trade terms
-obligations  licences, insurance, compliance, registrations, renewals, deadlines
-only-you     judgement, history, relationships or rules that live only in the owner's head
-none         everything else — and "none" is the right answer far more often than it looks
+SECTIONS — nine areas, the ones a buyer's advisor actually asks about
+demand      where work comes from: clients arriving, referrals, marketing, reputation, who brings it
+pricing     how anything is priced, quoted, discounted, what it costs the customer, the competition
+operations  how the work actually gets done: crews, scheduling, process, who does what, quality
+cash        money in and out: invoicing, who chases, terms, margins, suppliers, purchasing, financing
+customers   WHO buys, what they buy, repeat vs one-off, concentration, who owns each relationship
+people      who is inside the business: roles, skills, tenure, contractors, who is critical
+assets      what the business owns or leases: plant, vehicles, equipment, premises, their condition
+compliance  licences, insurance, registrations, renewals, deadlines, disputes
+management  WHERE THE RECORDS LIVE and what is documented — the business's own memory, its systems
+none        everything else — and "none" is the right answer far more often than it looks
 
 HOW "about" CONSTRAINS "section":
-- about=software  → section MUST be "none". Always. No exceptions. A buyer does not care what tools
+- about=assistant → section MUST be "none". Always. No exceptions. A buyer does not care what tools
   he used, and this manual is not a record of how he talks to an assistant.
+- about=systems   → section is almost always "management". Only choose another area when the note is
+  really about that area and merely MENTIONS a system.
 - about=personal  → still choose a real section when the fact bears on the business at all (a plan to
   sell, a health reason behind it, who has not been told). Only use "none" for personal life with no
   bearing on the business whatsoever — a van being repaired, holiday plans, chit-chat.
-- about=business  → choose the section that fits.
+- about=business  → choose the area that fits.
+
+"owner_dependent" — DOES THIS LIVE ONLY IN HIS HEAD?
+true when the fact describes judgement, history, a relationship or a rule that exists because HE
+holds it — his pricing instinct, the client he will not take, why he walks away from a job, the
+supplier who gives him terms because of who he is, the thing nobody else in the business knows.
+false when it is written down, systematised, or held by someone else — a documented process, a named
+non-owner who does it, a rule anyone could apply from the records.
+null when you genuinely cannot tell. Prefer null to a guess: this is the axis a buyer prices the
+business on, and a confident wrong answer on it is worse than an honest gap.
+This is NOT a section — it is a property of the fact, and it applies to every area. "Pricing is
+entirely in his head" and "the yard tidy-up is in his head" are both true and are not the same risk,
+which is why it is measured per fact rather than filed in one bucket.
 
 ALSO FILE AS "none": anything about a DIFFERENT company or product than the one this manual is for.
 
@@ -272,6 +332,10 @@ export async function classifyPendingMemories(userId: string, limit = 50): Promi
           genome_classified_at: new Date().toISOString(),
           genome_about: verdict.about,
           genome_private_reason: verdict.private,
+          // The bridge that lets `only-you` stop being a place. Written on every classification from
+          // here, so the axis has data the day it is built rather than needing a second pass over
+          // the owner's record.
+          genome_owner_dependent: verdict.ownerDependent,
           // Stamped whatever the answer was, including null. This is what makes a null reason
           // readable later: reason null + this null means never asked, reason null + this set means
           // asked and no. Without it a half-finished backfill is indistinguishable from a complete
@@ -508,8 +572,14 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
     empty: all.length === 0,
     sourced: all.filter((e) => e.source).length,
     confirmed: all.filter((e) => e.confirmedOn).length,
+    // Empty areas, split by where their truth normally comes from — see `notYetLocated` above. An
+    // area with `truthLivesIn: 'system'` is NOT claimed to be in his head, because that is a claim
+    // nobody has checked.
     stillInYourHead: sections
-      .filter((sec) => sec.coverage === 'empty')
+      .filter((sec) => sec.coverage === 'empty' && areaFor(sec.key)?.truthLivesIn !== 'system')
+      .map((sec) => ({ key: sec.key, title: sec.title, question: sec.question })),
+    notYetLocated: sections
+      .filter((sec) => sec.coverage === 'empty' && areaFor(sec.key)?.truthLivesIn === 'system')
       .map((sec) => ({ key: sec.key, title: sec.title, question: sec.question })),
   };
 }
@@ -526,8 +596,15 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
 async function classifyOne(
   apiKey: string,
   content: string,
-): Promise<{ section: string; headline: string | null; about: string | null; private: PrivateReason | null } | null> {
-  if (!content.trim()) return { section: 'none', headline: null, about: null, private: null }; // a real verdict, not a failure
+): Promise<{
+  section: string;
+  headline: string | null;
+  about: string | null;
+  private: PrivateReason | null;
+  ownerDependent: boolean | null;
+} | null> {
+  // a real verdict, not a failure
+  if (!content.trim()) return { section: 'none', headline: null, about: null, private: null, ownerDependent: null };
   try {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -553,6 +630,7 @@ async function classifyOne(
       headline?: unknown;
       about?: unknown;
       private?: unknown;
+      owner_dependent?: unknown;
     };
     let section = String(parsed.section ?? '').trim().toLowerCase();
     if (!SECTION_KEYS.includes(section) && section !== 'none') {
@@ -561,25 +639,43 @@ async function classifyOne(
       return null;
     }
 
-    const about = ABOUT_VALUES.includes(String(parsed.about ?? '').trim().toLowerCase())
+    let about = ABOUT_VALUES.includes(String(parsed.about ?? '').trim().toLowerCase())
       ? String(parsed.about).trim().toLowerCase()
       : null;
+    // A pre-split row (or a model still answering the old vocabulary) reads as `assistant`. That is
+    // the conservative direction: `software` was mostly catching assistant-preferences, and treating
+    // it as `systems` would promote a pile of unreviewed rows straight into the buyer's document.
+    if (about === 'software') about = 'assistant';
 
     // THE CONSTRAINT IS ENFORCED HERE, NOT LEFT TO THE PROMPT. The prompt says about=software must
     // file as "none", and the model mostly obeys — but "mostly" is how the vendor's AI-assistant
     // preferences ended up in a document we told him to hand to a buyer. A rule stated in prose and
     // checked in code is a mechanism; stated only in prose it is a request.
-    if (about === 'software' && section !== 'none') {
-      console.warn(`[genome] about=software with section "${section}" — forcing none.`);
+    if (about === 'assistant' && section !== 'none') {
+      console.warn(`[genome] about=assistant with section "${section}" — forcing none.`);
       section = 'none';
+    }
+
+    // THE OTHER HALF OF THE SPLIT, and it must be enforced in the same place for the same reason.
+    // `systems` exists precisely to stop rank 10 being empty, so a model that answers systems and
+    // then files it as `none` — the habit the old prompt trained for months — would reproduce the
+    // exact bug the split was made to fix, quietly and while appearing to comply.
+    if (about === 'systems' && section === 'none') {
+      console.warn('[genome] about=systems filed as none — routing to management.');
+      section = 'management';
     }
 
     const privateReason = PRIVATE_REASONS.includes(String(parsed.private ?? '').trim().toLowerCase() as PrivateReason)
       ? (String(parsed.private).trim().toLowerCase() as PrivateReason)
       : null;
 
+    // Strictly tri-state. Anything that is not a real boolean — a string "unsure", a missing field,
+    // a null — becomes null, because the honest gap is the point: false is a CLAIM that this fact
+    // does not depend on the owner, in a document whose whole subject is what does.
+    const ownerDependent = typeof parsed.owner_dependent === 'boolean' ? parsed.owner_dependent : null;
+
     const headline = typeof parsed.headline === 'string' ? parsed.headline.trim().slice(0, 90) : '';
-    return { section, headline: headline || null, about, private: privateReason };
+    return { section, headline: headline || null, about, private: privateReason, ownerDependent };
   } catch {
     return null;
   }
