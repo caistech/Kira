@@ -369,18 +369,6 @@ export default function BusinessValuationPage() {
   // and profit, and a URL carrying them ends up in browser history, in the Referer header of every
   // outbound click, in server logs, and in the email chain the moment someone forwards it. The two
   // pages are one navigation apart in the same tab, so the URL was never needed to get it there.
-  useEffect(() => {
-    if (!isResult) return;
-    storeValuation({
-      inputs: answers as ValuationInputs,
-      currency,
-      firstName: firstName.trim() || undefined,
-      // Carried so the app does not later ask him whether a valuation he ran from his own dashboard,
-      // signed in, is his — see ValuationPayload.fromApp.
-      fromApp: returningToApp,
-    });
-  }, [isResult, answers, currency, firstName]);
-
   /**
    * Did an owner who is ALREADY INSIDE the product send himself here?
    *
@@ -415,6 +403,21 @@ export default function BusinessValuationPage() {
   useEffect(() => {
     setReturningToApp(new URLSearchParams(window.location.search).get('from') === 'app');
   }, []);
+
+  useEffect(() => {
+    if (!isResult) return;
+    storeValuation({
+      inputs: answers as ValuationInputs,
+      currency,
+      firstName: firstName.trim() || undefined,
+      // Carried so the app does not later ask him whether a valuation he ran from his own dashboard,
+      // signed in, is his — see ValuationPayload.fromApp.
+      fromApp: returningToApp,
+    });
+    // `returningToApp` is in the deps and DECLARED ABOVE, deliberately. It was below, so the
+    // effect closed over the initial false and only worked by accident of ordering — the
+    // result screen is eleven answers away, by which time the flag has settled.
+  }, [isResult, answers, currency, firstName, returningToApp]);
 
   const planHref = returningToApp ? '/dashboard' : '/plan';
 
