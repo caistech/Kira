@@ -168,6 +168,121 @@ silent, because a number that moved without explanation is worse than one that n
 
 ---
 
+## 3.2 The area model, settled — and where each area's truth actually lives
+
+§3 derives nine areas bottom-up from the flow registry; §3.1 ranks ten departments top-down by what
+moves the price. They were never reconciled, and three of the ten cannot be areas at all by the
+document's own reasoning: **owner dependence** is the axis (§3 retires it as a place), **financial
+integrity** is explicitly not our job, and **suppliers** appears as its own rank while §3 folds it
+into Cash.
+
+✅ **DECIDED (2026-08-02): NINE AREAS, with the ten ranks as WEIGHTING over them.** The ranking is
+config the scorecard reads — which §3.1 already obliges — not a second list of sections.
+
+✅ **DECIDED: `only-you` is re-filed into the area each fact is really about, and each row carries an
+`owner_dependent` flag so the axis has data the day it is built.** Retiring the section before the
+axis exists would strand real facts; the flag is the bridge.
+
+The section is also actively MISLEADING, which is the argument the doc did not make. One of the real
+entries is *"Uwe Jacobs holds the governance gate for all developer-position decisions"* — a named
+second decision-maker is **management depth**, rank 2's good direction and one of the strongest
+things a buyer can read. Filed under "Things only you know" it reads as a weakness.
+
+### The four new areas are SOURCE gaps, not conversational ones
+
+Customers, People & labour, Assets and Management & records have no equivalent in the current six.
+They are empty not because he has not talked, but because their truth lives in a system or a
+document rather than in a conversation. Access as at 2026-08-02:
+
+| Area | Where the truth lives | Reachable today |
+|---|---|---|
+| **Customers** (rank 1) | revenue by customer, concentration | partly — `invoices_owed_to_you` is receivables, not 3-year revenue |
+| | **who owns each relationship** | **conversation only — no system knows this** |
+| **People** (rank 6) | contracts, tenure | Drive, if filed |
+| | payroll | ✅ **DECIDED: the Xero payroll exclusion is REOPENED** (2026-08-02) |
+| | who is critical, who leaves on announcement | conversation only |
+| **Assets** (rank 9) | depreciation schedule, insurance, finance agreements, lease | Drive, if filed |
+| **Management** (rank 10) | where records live, what is documented | **partly self-evidencing — she can report what she can see** |
+
+Shipped connectors: Google Drive (`search_drive`, `read_document`, `keep_document`), Contacts
+(`lookup_contact`), Gmail send, Xero read (`bank_balances`, `invoices_owed_to_you`, `bills_you_owe`,
+`profit_and_loss`, `organisation`).
+
+**The highest-value question in the highest-ranked area has no system at all.** Who owns each
+customer relationship is rank 1's biggest discount and no CRM answers it. That is not an integration
+gap — it is precisely what Kira exists to capture.
+
+### `about: software` must split, or rank 10 stays empty forever
+
+B14 established that facts about the assistant belong in `none`. Applied bluntly it also discards
+*where the business keeps its records* — and that IS rank 10. Measured on the real Genome: **34 rows
+name a system, and every one is filed `none`.** Among them, *"bank accounts are not synchronised with
+Xero"* and *"documents are on Drive but may not use straightforward file names"* — exactly what a
+buyer's accountant hits on day one.
+
+✅ **DECIDED: split it.** `assistant` (how Kira should behave → `none`) versus `systems` (what the
+business runs on and where its records live → **Management & records**). One prompt line and a
+reviewed re-classification turns the emptiest new area into the best-populated one from facts already
+held.
+
+### Whose Genome — the test is the ACTIVITY, not the system
+
+✅ **DECIDED (2026-08-02).** A fact goes to the Genome of the business whose **activity it describes**,
+not the business that owns or built the thing it names. The same system appears in both Genomes:
+
+The uncontroversial case first, because it makes the rule obvious: **Factory2Key neither built nor
+owns Xero, and its financial activity lives there — so the Xero facts are F2K's.** Nobody would file
+them under "Xero". Ownership of the tool was never the question.
+
+| Fact | Genome | Why |
+|---|---|---|
+| F2K's invoices and bank position are in Xero | **Factory2Key** | F2K's financial activity |
+| GBTA built Checkpoint / licensed it to a customer | **GBTA** | GBTA's product and revenue |
+| Lot 91's tasks are tracked in Checkpoint | **Factory2Key** | F2K running its projects |
+| Kira integrates with XPlan for a client | **GBTA / CAS** | AI work, whoever the client is |
+| F2K's site contracts live in Drive | **Factory2Key** | F2K's records |
+
+Checkpoint is the case that looks hard only because GBTA happens to have built it — and the Xero row
+above shows why that never mattered. The obvious rule, **file by the company NAMED**, is wrong: it
+would drag every Checkpoint fact into the GBTA Genome and every Xero fact out of F2K's. The entity guard keys on names, so it cannot make
+this call alone; the classifier has to ask **whose work is this describing.**
+
+It also produces a case the guard structurally cannot handle: a memory spanning both entities. One
+exists today — *"Multiple projects involving soil testing, approvals for Lot 91, Lots 109 and 442,
+and integration with IRIS and XPlan are managed"* — where the lots are F2K and IRESS/XPlan is CAS.
+Parking the row loses the F2K half; keeping it carries CAS content across. **Splitting one fact into
+two is a rewrite of the owner's record and is an operator decision, not a classifier one.**
+
+### Where it lives is a SCORE, not just plumbing
+
+The onboarding scope question (§4.1 block 2) and the retrieval question are the same question asked
+once — *"what do you use for X, and where does it live?"* — and the answer feeds three things at
+once: the denominator, where she looks, and the transferability axes:
+
+| Location | Written down | Runs without him | Verifiable |
+|---|---|---|---|
+| his head | ✗ | ✗ | ✗ |
+| (a) local spreadsheet | ✓ | ✗ — nobody else can find it | only if he produces it |
+| (b) local software | ✓ | ✗ | export-dependent |
+| (c) cloud storage | ✓ | ✓ | ✓ |
+| (d) cloud SaaS | ✓ | ✓ | ✓✓ — a buyer can be given read access |
+
+✅ **DECIDED: on a local answer she OFFERS THE MIGRATION rather than recording the gap.** What a
+human exec assistant would do — *"let's get it somewhere you and I and anyone else can reach; I'll
+tell you exactly what to move, once."* This is what stops four empty areas reading as a report card:
+**an empty area arrives with an offer**, which is §5's "her work list, not his homework" made
+concrete. It also closes the loop the product needs — the diagnostic produces the action that
+improves the thing it measured, and moving records off a laptop is a real transferability gain rather
+than a cosmetic one.
+
+⚠️ **BOUNDED BY WHAT EXISTS.** She has Drive read/search/file — **no folder creation, no write, and no
+OneDrive connector at all.** "I'll arrange either one" is an overclaim of the exact class removed
+elsewhere in this product. Until a OneDrive connector exists she offers Drive and is plain about the
+rest. Local storage is an UPLOAD problem, never an integration one: no connector will ever reach a
+spreadsheet on his laptop, and the wording must not imply otherwise.
+
+---
+
 ## 4. This is what makes the percentage honest
 
 The reason `/my-genome` shows bands rather than percentages is documented and correct: a percentage
