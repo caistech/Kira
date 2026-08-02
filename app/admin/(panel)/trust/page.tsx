@@ -41,7 +41,13 @@ const MIN_RUNS_FOR_TREND = 6;
 type Result = {
   id: string;
   attack: string;
-  held: boolean;
+  /**
+   * Three-valued. NULL is a run that established nothing — the model that judges what she CLAIMED
+   * was unreachable, so the attack has no outcome. Shown, never scored: it is excluded from every
+   * percentage on this page rather than counted as either a pass or a breach. A judge outage
+   * recorded as a breach is what put a false first-ever-breach on this page on 2 August.
+   */
+  held: boolean | null;
   detail: string | null;
   created_at: string;
 };
@@ -51,6 +57,7 @@ type Run = {
   commit_sha: string | null;
   attacks_run: number;
   attacks_breached: number;
+  attacks_inconclusive: number | null;
   started_at: string;
   finished_at: string | null;
   aborted_at: string | null;
@@ -113,8 +120,17 @@ function age(iso: string): string {
   return `${days} day${days === 1 ? '' : 's'} ago`;
 }
 
-/** Per-attack history, oldest first, so the dot strip reads left-to-right like a timeline. */
-function byAttack(results: Result[]): { attack: string; outcomes: Result[]; held: number }[] {
+/**
+ * Per-attack history, oldest first, so the dot strip reads left-to-right like a timeline.
+ *
+ * `conclusive` is tracked separately from `outcomes.length` and is the denominator of every rate
+ * shown for the attack. An inconclusive run still appears in the strip — it happened, and hiding it
+ * would make a thin history look denser than it is — but it cannot move a percentage, because
+ * nothing was observed to put in one.
+ */
+function byAttack(
+  results: Result[],
+): { attack: string; outcomes: Result[]; held: number; conclusive: number }[] {
   const groups = new Map<string, Result[]>();
   for (const r of results) {
     const list = groups.get(r.attack) ?? [];
@@ -124,11 +140,17 @@ function byAttack(results: Result[]): { attack: string; outcomes: Result[]; held
   return [...groups.entries()]
     .map(([attack, rows]) => {
       const outcomes = [...rows].sort((a, b) => a.created_at.localeCompare(b.created_at));
-      return { attack, outcomes, held: outcomes.filter((o) => o.held).length };
+      return {
+        attack,
+        outcomes,
+        held: outcomes.filter((o) => o.held === true).length,
+        conclusive: outcomes.filter((o) => o.held !== null).length,
+      };
     })
     // Weakest first. The attack most often talked past is the one to read, and it should not be
-    // somewhere down an alphabetical list.
-    .sort((a, b) => a.held / a.outcomes.length - b.held / b.outcomes.length);
+    // somewhere down an alphabetical list. An attack with nothing conclusive yet sorts as 1 rather
+    // than NaN: unknown is not the same as weak, and it must not be presented as the worst thing here.
+    .sort((a, b) => (a.conclusive ? a.held / a.conclusive : 1) - (b.conclusive ? b.held / b.conclusive : 1));
 }
 
 function pct(held: number, total: number): string {
@@ -141,8 +163,18 @@ function Dots({ outcomes }: { outcomes: Result[] }) {
       {outcomes.map((o) => (
         <span
           key={o.id}
-          title={`${when(o.created_at)} — ${o.held ? 'held' : 'BREACHED'}${o.detail ? `: ${o.detail}` : ''}`}
-          className={`h-3 w-3 rounded-full ${o.held ? 'bg-emerald-500' : 'bg-red-500'}`}
+          title={`${when(o.created_at)} — ${
+            o.held === null ? 'no verdict' : o.held ? 'held' : 'BREACHED'
+          }${o.detail ? `: ${o.detail}` : ''}`}
+          // Grey, and hollow. An inconclusive run must not read at a glance as a near-miss green or a
+          // near-miss red — it is an absence, and the strip should look like one.
+          className={`h-3 w-3 rounded-full ${
+            o.held === null
+              ? 'border border-gray-300 bg-white'
+              : o.held
+                ? 'bg-emerald-500'
+                : 'bg-red-500'
+          }`}
         />
       ))}
     </div>
@@ -161,7 +193,7 @@ export default async function TrustPage() {
     svc
       .from('kira_redteam_runs')
       .select(
-        'id, trigger, commit_sha, attacks_run, attacks_breached, started_at, finished_at, aborted_at, aborted_reason',
+        'id, trigger, commit_sha, attacks_run, attacks_breached, attacks_inconclusive, started_at, finished_at, aborted_at, aborted_reason',
       )
       .order('started_at', { ascending: false })
       .limit(25),
@@ -179,8 +211,13 @@ export default async function TrustPage() {
   const refusals = (refusalRows ?? []) as unknown as Refusal[];
 
   const attacks = byAttack(results);
-  const totalHeld = results.filter((r) => r.held).length;
-  const breaches = results.filter((r) => !r.held);
+  const totalHeld = results.filter((r) => r.held === true).length;
+  const breaches = results.filter((r) => r.held === false);
+  // Every rate on this page divides by this, not by results.length. An attack the suite could not
+  // judge is not a data point about Kira, and letting it into the denominator would quietly drag the
+  // headline percentage down as if she had been getting worse.
+  const conclusive = totalHeld + breaches.length;
+  const noVerdict = results.length - conclusive;
   const enoughForTrend = runs.length >= MIN_RUNS_FOR_TREND;
 
   const ownerRefusals = refusals.filter((r) => !isSyntheticIdentity(r));
@@ -212,7 +249,10 @@ export default async function TrustPage() {
         <p className="mt-1 max-w-prose text-sm text-gray-600">
           Every red-team execution against the synthetic owner. Runs fire automatically after a
           re-provision or a capability patch — the two things that change her behaviour — and on
-          demand before a demo.
+          demand before a demo. A hollow dot is an attack the suite could not judge: it reached her
+          and recorded the conversation, but the model that decides what she claimed was unreachable.
+          Those are shown and never scored — neither a pass nor a breach, because nothing was
+          observed.
         </p>
 
         {results.length === 0 ? (
@@ -226,11 +266,14 @@ export default async function TrustPage() {
               <div className="rounded-2xl border border-gray-200 bg-white p-5">
                 <p className="text-sm font-medium text-gray-500">Attacks held</p>
                 <p className="mt-1 text-3xl font-bold text-gray-900">
-                  {pct(totalHeld, results.length)}
+                  {pct(totalHeld, conclusive)}
                 </p>
                 <p className="mt-1 text-xs text-gray-500">
-                  {totalHeld} of {results.length} across {runs.length}{' '}
+                  {totalHeld} of {conclusive} across {runs.length}{' '}
                   {runs.length === 1 ? 'run' : 'runs'}
+                  {/* Named here rather than folded into the total. A percentage over a smaller
+                      sample than the reader assumes is the quiet way a number misleads. */}
+                  {noVerdict > 0 && ` · ${noVerdict} more had no verdict`}
                 </p>
               </div>
               <div className="rounded-2xl border border-gray-200 bg-white p-5">
@@ -269,7 +312,7 @@ export default async function TrustPage() {
 
             <div className="mt-6 space-y-3">
               {attacks.map((a) => {
-                const rate = a.held / a.outcomes.length;
+                const rate = a.conclusive ? a.held / a.conclusive : 1;
                 return (
                   <div key={a.attack} className="rounded-2xl border border-gray-200 bg-white p-5">
                     <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -283,12 +326,14 @@ export default async function TrustPage() {
                               : 'bg-red-100 text-red-700'
                         }`}
                       >
-                        {pct(a.held, a.outcomes.length)} held
+                        {pct(a.held, a.conclusive)} held
                       </span>
                     </div>
                     <p className="mt-1 text-xs text-gray-500">
-                      {a.held} of {a.outcomes.length} · oldest first · last{' '}
-                      {age(a.outcomes[a.outcomes.length - 1].created_at)}
+                      {a.held} of {a.conclusive}
+                      {a.outcomes.length > a.conclusive &&
+                        ` · ${a.outcomes.length - a.conclusive} no verdict`}{' '}
+                      · oldest first · last {age(a.outcomes[a.outcomes.length - 1].created_at)}
                     </p>
                     <div className="mt-3">
                       <Dots outcomes={a.outcomes} />
@@ -348,6 +393,17 @@ export default async function TrustPage() {
                         ) : r.attacks_breached > 0 ? (
                           <span className="font-semibold text-red-600">
                             {r.attacks_breached} of {r.attacks_run} breached
+                            {(r.attacks_inconclusive ?? 0) > 0
+                              ? ` · ${r.attacks_inconclusive} no verdict`
+                              : ''}
+                          </span>
+                        ) : (r.attacks_inconclusive ?? 0) > 0 ? (
+                          // Nothing breached — but not "all held" either, and the gap between those
+                          // two sentences is the point. "All 8 held" is what gets repeated to a
+                          // distributor, and it must not cover an attack the suite never judged.
+                          <span className="text-amber-700">
+                            {r.attacks_run - (r.attacks_inconclusive ?? 0)} held ·{' '}
+                            {r.attacks_inconclusive} no verdict
                           </span>
                         ) : (
                           <span className="text-emerald-700">all {r.attacks_run} held</span>

@@ -29,12 +29,12 @@ function run(over: Partial<DriftRun> = {}): DriftRun {
  * `held` newest-first, matching how the route queries. Timestamps descend so ordering inside the
  * module is exercised rather than assumed from array order.
  */
-function history(attack: string, held: boolean[], startHoursAgo = 1): DriftResult[] {
+function history(attack: string, held: (boolean | null)[], startHoursAgo = 1): DriftResult[] {
   return held.map((h, i) => ({
     run_id: `run-${i}`,
     attack,
     held: h,
-    detail: h ? null : 'talked past it',
+    detail: h === null ? 'judge unavailable (fetch failed)' : h ? null : 'talked past it',
     created_at: new Date(NOW.getTime() - (startHoursAgo + i) * 3_600_000).toISOString(),
   }));
 }
@@ -184,6 +184,72 @@ describe('speaking up', () => {
       started_at: '2026-08-01T09:00:00.000Z',
     });
     expect(detectDrift([silent, run()], history('a', [true, true]), NOW).map((f) => f.kind)).toEqual(['died']);
+  });
+});
+
+// The bug these exist for, stated once: on 2 August a transient network failure to the judge was
+// recorded as `held = false`, which produced a permanent false FIRST-EVER-BREACH alert against a
+// transcript in which she had declined perfectly. A result nobody established must not be able to
+// generate any finding about her behaviour — and must not be able to suppress one either.
+describe('a result the suite never established', () => {
+  it('does not report a first breach when the judge simply could not be reached', () => {
+    const findings = detectDrift([run()], history('the Felix con', [null, true, true, true, true]), NOW);
+    expect(findings.filter((f) => f.kind === 'first-breach')).toEqual([]);
+  });
+
+  it('does not count as a breach in an attack\'s own history', () => {
+    // If the NULL were read as a failure, the real breach at the head would no longer be the first
+    // one and would go unreported — the same conflation, costing an alert instead of causing one.
+    const findings = detectDrift([run()], history('the Felix con', [false, null, true, true]), NOW);
+    expect(findings.map((f) => f.kind)).toEqual(['first-breach']);
+  });
+
+  it('does not drag a pass rate down', () => {
+    // Five held and five unjudged is a 100% attack with a thin sample, not a 50% attack. Scored the
+    // other way this is a DECLINE finding — an operator mailed that a guard is degrading when
+    // nothing about her changed at all.
+    const findings = detectDrift(
+      [run()],
+      history('a', [null, null, null, null, null, true, true, true, true, true]),
+      NOW,
+    );
+    expect(findings.filter((f) => f.kind === 'decline')).toEqual([]);
+  });
+
+  it('does not fill a comparison window it contributed no evidence to', () => {
+    // Ten rows, but only four judged — below the two full windows the decline check requires. The
+    // guard is that windows are built from observations, not from rows.
+    const findings = detectDrift(
+      [run()],
+      history('a', [false, false, null, null, null, null, null, null, true, true]),
+      NOW,
+    );
+    expect(findings.filter((f) => f.kind === 'decline')).toEqual([]);
+  });
+
+  it('says nothing about one unjudged attack among several', () => {
+    // A single blip is visible on /admin/trust and is not worth an email. Mailing about it is how
+    // this channel becomes furniture, which is the failure the whole module is shaped around.
+    const blip = run({ attacks_run: 4, attacks_inconclusive: 1 });
+    expect(detectDrift([blip], history('a', [null, true, true]), NOW)).toEqual([]);
+  });
+
+  it('reports a run where the judge was down for everything', () => {
+    // The case that would otherwise be silent. Judge failures used to arrive here as first-breach
+    // emails because they were recorded as breaches; recording them honestly removes that alarm, so
+    // this replaces it. A finished run that tested nothing must not read as a clean sheet.
+    const blind = run({ id: 'blind-1', attacks_run: 8, attacks_inconclusive: 8 });
+    const findings = detectDrift([blind], history('a', [null, null]), NOW);
+    expect(findings.map((f) => f.kind)).toEqual(['blind']);
+    expect(findings[0].fingerprint).toBe('blind:blind-1');
+    expect(findings[0].detail).toContain('8 attacks');
+  });
+
+  it('treats a run with no inconclusive count as having none', () => {
+    // Rows written before the column existed. An absent count must read as zero, not as blindness —
+    // otherwise deploying this would alert on every historical run at once.
+    const legacy = run({ id: 'legacy', attacks_run: 8, attacks_inconclusive: null });
+    expect(detectDrift([legacy], history('a', [true, true]), NOW).filter((f) => f.kind === 'blind')).toEqual([]);
   });
 });
 

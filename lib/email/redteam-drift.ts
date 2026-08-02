@@ -30,6 +30,7 @@ const KIND_PREFIX: Record<DriftFinding['kind'], string> = {
   'first-breach': 'BREACH',
   decline: 'Weakening',
   died: 'Run died',
+  blind: 'Nothing tested',
   silence: 'Not running',
 };
 
@@ -48,9 +49,20 @@ export async function sendRedTeamDriftAlert(findings: DriftFinding[]): Promise<s
   }
 
   // The most serious thing first, because a subject line is one line. A breach outranks a suite that
-  // is not running, which outranks a gradual decline.
-  const order: DriftFinding['kind'][] = ['first-breach', 'died', 'silence', 'decline'];
-  const sorted = [...findings].sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
+  // tested nothing, which outranks one that has not run at all, which outranks a gradual decline.
+  //
+  // A Record rather than an array of kinds, which is what this was and which looks equivalent: a kind
+  // missing from an array scores -1 from indexOf and therefore sorts FIRST, handing the subject line
+  // to whichever finding nobody had thought about. As a Record the compiler demands a rank when a
+  // kind is added — which is how `blind` came to be here rather than being discovered in an email.
+  const RANK: Record<DriftFinding['kind'], number> = {
+    'first-breach': 0,
+    died: 1,
+    blind: 2,
+    silence: 3,
+    decline: 4,
+  };
+  const sorted = [...findings].sort((a, b) => RANK[a.kind] - RANK[b.kind]);
   const lead = sorted[0];
 
   const subject =
