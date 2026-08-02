@@ -35,6 +35,14 @@ const config: Config = {
           soft: '#736B63', //     5.01:1 — CORRECTED from #7D756D, which was 4.34:1 and failed AA
           mist: '#F5F3F0', //     borders, dividers, inset panels
           surface: '#FAFAF9', //  page background
+          line: '#E7E3DE', //     hairline rules — one step darker than mist, so a divider is
+          //                      visible on a mist panel instead of disappearing into it
+
+          // Text on a DARK surface (the footer). Added because the ramp above only answers
+          // "what goes on light", and the answer for dark is not simply the same values
+          // inverted — both are contrast-checked against kira-dark, not assumed.
+          'on-dark': '#C9C2BA', //       8.10:1 on kira-dark — body text
+          'on-dark-muted': '#A79F96', // 5.47:1 on kira-dark — legal, secondary
         },
       },
       fontFamily: {

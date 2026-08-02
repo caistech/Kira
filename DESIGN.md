@@ -67,8 +67,18 @@ buttons with `--green-600`. This is the single most likely mistake when implemen
 | `--ink-900` | `#2D2A26` | 13.67:1 | Body text, headings |
 | `--ink-700` | `#4A4541` | — | Secondary text |
 | `--ink-500` | `#736B63` | 5.01:1 | **Muted text — corrected.** The old `#7D756D` was 4.34:1 and failed AA. |
-| `--ink-100` | `#F5F3F0` | — | Borders, dividers, inset panels |
+| `--ink-100` | `#F5F3F0` | — | Borders, dividers, inset panels (`kira-mist`) |
+| `--line` | `#E7E3DE` | — | Hairline rules (`kira-line`). One step darker than mist, so a divider on a mist panel is still visible. |
 | `--surface` | `#FAFAF9` | — | Page background |
+
+**Text on a DARK surface** — added 2026-08-03 with `LandingNew`'s footer. The light ramp above does
+not answer this, and the answer is not the same values inverted, so both are contrast-checked against
+`kira-dark` rather than assumed:
+
+| Token | Hex | On `#2D2A26` | Use |
+|---|---|---|---|
+| `kira-on-dark` | `#C9C2BA` | 8.10:1 | Body text on a dark section |
+| `kira-on-dark-muted` | `#A79F96` | 5.47:1 | Legal and secondary text on dark |
 
 ### 3.3 Three-layer tokens
 
