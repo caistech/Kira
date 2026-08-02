@@ -366,10 +366,13 @@ she cannot honour is worse than no offer at all: it converts the one asset this 
 belief that she is straight with him, into the thing it loses first. The most helpful version of her
 is the one whose every offer is real.
 
-⚠️ **Consequence to settle elsewhere: the trail needs a TERM.** A trailing commission on a
-subscription with no exit event is an open-ended liability on every referral. Perpetual, capped in
-years, or conditional on continuing service from the introducer — this is a `REFERRAL_FEE_POSITION`
-decision (orchestrator repo, which does **not** auto-load here), not a Genome-format one.
+✅ **DECIDED — the trail is 10% for the LIFE OF THE SUBSCRIPTION ENGAGEMENT** (operator, 2026-08-02).
+Not perpetual-beyond-the-engagement and not capped in years: it runs exactly as long as the client
+keeps paying, which is what makes it an annuity for the introducer rather than a lottery ticket on a
+sale. The pitch that follows from it, in the operator's words: a broker earns nothing from **99 of
+every 100** owners who kick the tyres — *bring us the 99*, and the ones who never sell still pay you
+every month. (Mirror this into `REFERRAL_FEE_POSITION` in the orchestrator repo, which does not
+auto-load here.)
 
 **Three consequences that follow from the definitions themselves:**
 
