@@ -24,6 +24,7 @@ import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { formatMoneyApprox } from '@/lib/valuation/currency';
+import { formatAbn } from '@caistech/abn-lookup';
 
 import { displayName } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
@@ -105,6 +106,33 @@ export async function GET(request: Request) {
       .eq('user_id', appUser.id)
       .order('created_at', { ascending: false });
 
+    // ⚠️ WHAT HE REMOVED DOES NOT TRAVEL IN HIS FILE — even though this file is "everything we hold".
+    //
+    // These two promises collided, and I caused it: making the raw export honest about everything
+    // held meant redacted rows came with it, tombstoned but with the sentence intact. The Remove
+    // dialog says it takes the fact out of "your Genome, your recall and your export", and a tester
+    // checked: "There it is, twice, verbatim, flagged inactive and marked owner:redacted."
+    //
+    // His judgement settles the conflict, and he is right: "If I ask you to delete the one thing I
+    // haven't told my wife, 'we kept a copy and labelled it deleted' is not delete."
+    //
+    // So the ROW still appears — he is entitled to know something was removed and when — and the
+    // CONTENT does not. A tombstone without the words is honest about the record and safe to forward
+    // to a solicitor without opening. The database keeps the original either way, so a restore is
+    // unaffected; this is about what leaves the building.
+    const REDACTED = /^owner:redacted/;
+    const held = (everything ?? []).map((row) =>
+      REDACTED.test(String(row.parked_reason ?? ''))
+        ? {
+            ...row,
+            content: null,
+            genome_headline: null,
+            removed_by_you: true,
+            note: 'You removed this. The wording is deliberately not included here.',
+          }
+        : row,
+    );
+
     return new NextResponse(
       JSON.stringify(
         {
@@ -114,7 +142,7 @@ export async function GET(request: Request) {
           // Named so the two are not confused: `sections`/`unsorted` are the Genome as the product
           // renders it; this is the underlying record it was derived from, including what the
           // Genome leaves out and why.
-          everythingHeld: everything ?? [],
+          everythingHeld: held,
         },
         null,
         2,
@@ -131,7 +159,9 @@ export async function GET(request: Request) {
   const lines: string[] = [
     `# Business Genome — ${subject}`,
     '',
-    identity?.abn ? `${identity.legal_name} · ABN ${identity.abn}` : '',
+    // FORMATTED, like every other surface. This printed `ABN 99999999999` — an eleven-digit blob on
+    // line two of the document a solicitor reads — while Settings rendered the same value correctly.
+    identity?.abn ? `${identity.legal_name} · ABN ${formatAbn(identity.abn)}` : '',
     `Recorded by ${owner}. Exported ${new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}.`,
     '',
     'This document records how this business actually runs, organised by the questions a buyer&rsquo;s'.replace('&rsquo;', "'") +
@@ -194,7 +224,11 @@ export async function GET(request: Request) {
   // Counted over what the document ACTUALLY SHOWS, not over everything held. Reporting "6 of 6
   // traceable" under a document displaying two entries is the kind of number that is technically
   // sourced from something real and still tells the reader a false thing.
-  const shown = publicSections.flatMap((s) => s.entries);
+  // BOTH COLLECTIONS, because both are rendered. This counted sections only, so a document whose
+  // entries all sat in "Recorded, not yet filed" closed with "0 of 0 are dated" printed directly
+  // under an entry. A tester: "My accountant is precisely the sort of person who reads the small
+  // print at the bottom and asks why it disagrees with the front page."
+  const shown = [...publicSections.flatMap((s) => s.entries), ...publicUnsorted];
   const shownSourced = shown.filter((e) => e.source).length;
   const shownConfirmed = shown.filter((e) => e.confirmedOn).length;
 

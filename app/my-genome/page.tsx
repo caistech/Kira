@@ -390,6 +390,35 @@ export default async function MyGenome() {
             </section>
           )}
 
+          {g.otherHeld.length > 0 && (
+            /* EVERYTHING ELSE SHE IS HOLDING, so "anything here can be taken back" is true.
+               These are the notes Kira decided are not part of the business record — chit-chat,
+               things about how she should work, facts about another company. They are correctly out
+               of the Genome and out of the handover document, and they were also invisible: a tester
+               counted 2 on this page against 12 in his own export, and "ten of the twelve aren't on
+               the page, so there is no entry and no Remove."
+               One of his was "...organizing knowledge and documents to improve business clarity and
+               value for a POTENTIAL SALE" — filed as being about the assistant, so out of the Genome,
+               so unremovable by him, while reading to a broker exactly like a man preparing to sell.
+               Nothing deterministic could reach it. He can. */
+            <section className="mt-6 rounded-2xl border border-stone-200 bg-white p-5">
+              <p className="font-display font-bold">Other things she has noted ({g.otherHeld.length})</p>
+              <p className="text-sm text-stone-600 mt-1 max-w-prose">
+                Kept out of your Genome and out of the handover document — these are notes about how
+                you want her to work, or things that are not about the business. They are here because
+                they are still yours, and anything you would rather she did not keep can go.
+              </p>
+              <ul className="mt-3 space-y-2">
+                {g.otherHeld.slice(0, 30).map((e) => (
+                  <li key={e.id} className="text-stone-700 text-sm">
+                    · {e.content}
+                    <RedactEntry id={e.id} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           <section className="mt-10">
             <h2 className="font-display text-xl font-bold">Take it with you</h2>
             <p className="text-stone-600 mt-2 max-w-2xl leading-relaxed">

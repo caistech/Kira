@@ -218,7 +218,15 @@ export default function PlanPage() {
           {/* How the machine works */}
           <section className="py-16">
             <h2 className="font-display text-2xl sm:text-3xl font-bold text-center mb-3">What happens when you talk to Kira</h2>
-            <p className="text-center text-stone-600 max-w-2xl mx-auto mb-12">You only ever talk to Kira. Behind her is software that does the work and keeps the record — not a team of people. Nobody reads your conversations.</p>
+            {/* ⚠️ THIS SAID "Nobody reads your conversations." It was not true, and it was on the page read
+                BEFORE paying while the honest version sat on a page only reachable after.
+                A tester found all three readings in one session — this one, My Genome's "our support
+                team can see what Kira has captured", and the operator console rendering his facts
+                verbatim — and drew the obvious conclusion: "the honest one is the only one I couldn't
+                see until after I'd signed up. That's the wrong way round." He also pointed out the
+                fix is not to hide the screen: "Fix the promise, not the screen."
+                So the pre-purchase page now carries the same sentence as the post-purchase one. */}
+            <p className="text-center text-stone-600 max-w-2xl mx-auto mb-12">You only ever talk to Kira. Behind her is software that does the work and keeps the record — not a room of people reading transcripts. Our support team can see what she has captured when they need to keep the service running, and it is never shared with anyone who referred you, or shown to a buyer.</p>
             {/* The page that asks for $999 had ZERO links to the page showing what you get for it.
                 Ray, 66, read the whole sales page and never learned the deliverable existed
                 (naive-tester, 2026-07-28). This is the difference between buying a promise and
@@ -234,7 +242,10 @@ export default function PlanPage() {
                 { icon: <Network className="h-5 w-5" />, t: 'She lines up the work', b: 'Kira turns what you said into a clear set of tasks — exactly the pieces of work that actually need doing.' },
                 { icon: <Users className="h-5 w-5" />, t: 'The work gets done — and written down', b: 'The tasks get completed and recorded, so what you know about your business stops living only in your head.' },
                 { icon: <Brain className="h-5 w-5" />, t: 'Kira remembers it — instantly', b: 'Everything you tell Kira is remembered, so next time she already knows and picks up right where you left off.' },
-                { icon: <ShieldCheck className="h-5 w-5" />, t: 'Your knowledge stays yours', b: 'Everything Kira captures is private and protected — only you, and anyone you choose, can ever see it.' },
+                // "only you, and anyone you choose, can ever see it" was the second overclaim on this page.
+                // What is true and still worth saying: it is not shown to a buyer, not shared with an
+                // introducer, and the handover document leaves out his own position.
+                { icon: <ShieldCheck className="h-5 w-5" />, t: 'Your knowledge stays yours', b: 'It is never shown to a buyer and never shared with anyone who referred you. The handover document leaves out your own position — your plans, your circumstances, what you would accept. Our support team can see what she has captured when they need to keep the service running.' },
               ].map((s, i, arr) => (
                 <div key={i} className="flex gap-4 items-start bg-white rounded-2xl p-5 border border-amber-100">
                   <div className="grad-coral text-white w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0">{s.icon}</div>

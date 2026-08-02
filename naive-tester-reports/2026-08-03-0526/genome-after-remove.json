@@ -1,0 +1,406 @@
+{
+  "exportedAt": "2026-08-02T21:34:14.440Z",
+  "owner": "Ray",
+  "sections": [
+    {
+      "key": "demand",
+      "title": "Where the work comes from",
+      "question": "Where does work come from, and does it come to him personally?",
+      "ownerQuestion": "Where does your work come from, and does it come to you personally?",
+      "entries": [],
+      "coverage": "empty"
+    },
+    {
+      "key": "pricing",
+      "title": "How work is priced and quoted",
+      "question": "Could someone else reach his number?",
+      "ownerQuestion": "Could someone else price a job and reach your number?",
+      "entries": [],
+      "coverage": "empty"
+    },
+    {
+      "key": "operations",
+      "title": "How the work actually gets done",
+      "question": "Does the work happen without him on site?",
+      "ownerQuestion": "Does the work happen when you are not on site?",
+      "entries": [],
+      "coverage": "empty"
+    },
+    {
+      "key": "cash",
+      "title": "Money in, money out and terms",
+      "question": "Who chases, who approves, what are the terms — and are supplier terms personal to him?",
+      "ownerQuestion": "Who chases, who approves, and are any of your supplier terms personal to you?",
+      "entries": [],
+      "coverage": "empty"
+    },
+    {
+      "key": "customers",
+      "title": "Who buys, and who owns the relationship",
+      "question": "Revenue by customer over three years, concentration, and who owns each relationship.",
+      "ownerQuestion": "Who buys from you, what do they buy, and who owns each relationship?",
+      "entries": [],
+      "coverage": "empty"
+    },
+    {
+      "key": "people",
+      "title": "Who does the work",
+      "question": "Who is actually critical, tenure, contracts and restraints, who leaves on announcement.",
+      "ownerQuestion": "Who is critical, how long have they been with you, and who would leave on announcement?",
+      "entries": [],
+      "coverage": "empty"
+    },
+    {
+      "key": "assets",
+      "title": "What the business owns",
+      "question": "Owned vs leased vs personally held; deferred maintenance; whether the premises lease transfers.",
+      "ownerQuestion": "What do you own, what do you lease, and what is held in your own name?",
+      "entries": [],
+      "coverage": "empty"
+    },
+    {
+      "key": "compliance",
+      "title": "Licences, insurance and the calendar",
+      "question": "The obligations calendar and who watches it; change-of-control clauses; anything in dispute.",
+      "ownerQuestion": "What must not lapse, and who is watching it?",
+      "entries": [],
+      "coverage": "empty"
+    },
+    {
+      "key": "systems",
+      "title": "Systems & records",
+      "question": "Where records live, who has access, what is documented, and whether the IP is owned by the entity.",
+      "ownerQuestion": "Where do your records live, who can reach them, and what is written down?",
+      "entries": [],
+      "coverage": "empty"
+    }
+  ],
+  "unsorted": [
+    {
+      "id": "0f4f3620-e5b0-40b5-831b-baf468fc6b91",
+      "headline": "Owner controls all communications and approvals",
+      "content": "The owner prefers to maintain strict control over communications and approvals, explicitly disagreeing with sending sensitive emails without prior approval, despite attempts to grant standing approval.",
+      "capturedAt": "2026-08-01T12:22:51.47178+00:00",
+      "importance": 9,
+      "section": "unsorted",
+      "source": {
+        "conversationId": "a7a99a73-a937-4552-9871-1b08db1f1091",
+        "spokenOn": "2026-08-01T12:19:41.215+00:00"
+      },
+      "confirmedOn": null,
+      "privateReason": null,
+      "possibleRestatementOf": null
+    }
+  ],
+  "totalCaptured": 1,
+  "documents": 0,
+  "readiness": 0.3365,
+  "gap": 859449,
+  "worthToday": 1094292,
+  "empty": false,
+  "sourced": 1,
+  "confirmed": 0,
+  "stillInYourHead": [
+    {
+      "key": "demand",
+      "title": "Where the work comes from",
+      "question": "Where does your work come from, and does it come to you personally?"
+    },
+    {
+      "key": "pricing",
+      "title": "How work is priced and quoted",
+      "question": "Could someone else price a job and reach your number?"
+    },
+    {
+      "key": "operations",
+      "title": "How the work actually gets done",
+      "question": "Does the work happen when you are not on site?"
+    },
+    {
+      "key": "cash",
+      "title": "Money in, money out and terms",
+      "question": "Who chases, who approves, and are any of your supplier terms personal to you?"
+    },
+    {
+      "key": "compliance",
+      "title": "Licences, insurance and the calendar",
+      "question": "What must not lapse, and who is watching it?"
+    }
+  ],
+  "notYetLocated": [
+    {
+      "key": "customers",
+      "title": "Who buys, and who owns the relationship",
+      "question": "Who buys from you, what do they buy, and who owns each relationship?"
+    },
+    {
+      "key": "people",
+      "title": "Who does the work",
+      "question": "Who is critical, how long have they been with you, and who would leave on announcement?"
+    },
+    {
+      "key": "assets",
+      "title": "What the business owns",
+      "question": "What do you own, what do you lease, and what is held in your own name?"
+    },
+    {
+      "key": "systems",
+      "title": "Systems & records",
+      "question": "Where do your records live, who can reach them, and what is written down?"
+    }
+  ],
+  "everythingHeld": [
+    {
+      "id": "6d04bb8c-4676-48d1-b8cf-225613ec1db2",
+      "content": "Assistant can act as a business right hand by organizing knowledge, managing documents, drafting communications, and supporting decision-making to increase business value for sale.",
+      "created_at": "2026-08-01T12:24:11.509842+00:00",
+      "importance": 8,
+      "genome_section": "none",
+      "genome_about": "software",
+      "genome_headline": null,
+      "genome_private_reason": null,
+      "genome_owner_dependent": null,
+      "confirmed_at": null,
+      "active": true,
+      "parked_reason": null
+    },
+    {
+      "id": "573a41ac-2a71-4ec6-a3f4-47de1d93e057",
+      "content": "The owner's Google Drive account is not yet connected; to access documents such as pricing, connection must be established either by owner or with assistant's help drafting access emails.",
+      "created_at": "2026-08-01T12:24:11.065262+00:00",
+      "importance": 7,
+      "genome_section": "none",
+      "genome_about": "software",
+      "genome_headline": null,
+      "genome_private_reason": null,
+      "genome_owner_dependent": null,
+      "confirmed_at": null,
+      "active": true,
+      "parked_reason": null
+    },
+    {
+      "id": "bc307312-da09-4d15-823b-fdcbbed93259",
+      "content": "Only the owner and assistant have access to the conversations; accountant and staff do not have access unless owner shares information.",
+      "created_at": "2026-08-01T12:24:10.616286+00:00",
+      "importance": 7,
+      "genome_section": "none",
+      "genome_about": "software",
+      "genome_headline": null,
+      "genome_private_reason": null,
+      "genome_owner_dependent": null,
+      "confirmed_at": null,
+      "active": true,
+      "parked_reason": null
+    },
+    {
+      "id": "61fbb2e6-9f47-4455-b70d-f6cc42e5cab3",
+      "content": "The owner prefers to give standing approval for sending sensitive communications without individual message-by-message approval, although standard process recommends otherwise.",
+      "created_at": "2026-08-01T12:24:09.400463+00:00",
+      "importance": 8,
+      "genome_section": "only-you",
+      "genome_about": null,
+      "genome_headline": "Owner allows standing approval for sensitive communications",
+      "genome_private_reason": null,
+      "genome_owner_dependent": null,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "refused:not-a-preference"
+    },
+    {
+      "id": "dfd8c849-e2f2-484e-94ad-5194f756b082",
+      "content": "The owner wants to notify the three biggest customers immediately about the sale of the business.",
+      "created_at": "2026-08-01T12:24:08.521486+00:00",
+      "importance": 9,
+      "genome_section": "only-you",
+      "genome_about": null,
+      "genome_headline": "Notify top three customers about sale",
+      "genome_private_reason": null,
+      "genome_owner_dependent": null,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "refused:not-a-preference"
+    },
+    {
+      "id": "8aeb8646-51d7-410c-8b4f-3694cdc5f9f0",
+      "content": "The business owner has not connected their Google account, so the assistant cannot access files such as a document named 'pricing' without connection or external assistance to set this up.",
+      "created_at": "2026-08-01T12:24:08.456223+00:00",
+      "importance": 7,
+      "genome_section": "none",
+      "genome_about": "software",
+      "genome_headline": null,
+      "genome_private_reason": null,
+      "genome_owner_dependent": null,
+      "confirmed_at": null,
+      "active": true,
+      "parked_reason": null
+    },
+    {
+      "id": "517fbeab-0d12-4f16-9b9c-f0664b02f86f",
+      "content": "Only the business owner and the assistant have access to their conversation; no other parties such as accountants or staff can see these interactions unless the owner shares them.",
+      "created_at": "2026-08-01T12:24:07.995804+00:00",
+      "importance": 8,
+      "genome_section": "none",
+      "genome_about": "software",
+      "genome_headline": null,
+      "genome_private_reason": null,
+      "genome_owner_dependent": null,
+      "confirmed_at": null,
+      "active": true,
+      "parked_reason": null
+    },
+    {
+      "id": "8b92385f-fdc0-4be9-8b68-2ce6f5ec6e1b",
+      "content": "The owner is considering selling the business after running it for 35 years but has not told anyone yet.",
+      "created_at": "2026-08-01T12:24:07.74017+00:00",
+      "importance": 10,
+      "genome_section": "only-you",
+      "genome_about": "personal",
+      "genome_headline": "Owner considering sale after 35 years",
+      "genome_private_reason": null,
+      "genome_owner_dependent": null,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "owner:redacted"
+    },
+    {
+      "id": "ddab6774-5312-4d8e-81d4-15cbbdd4ad12",
+      "content": "The business owner prefers to keep control over when and how sensitive communications, such as announcing a sale to customers, are sent, despite indicating standing approval for sending emails without separate consents.",
+      "created_at": "2026-08-01T12:24:07.493882+00:00",
+      "importance": 9,
+      "genome_section": "only-you",
+      "genome_about": "business",
+      "genome_headline": "Owner controls sensitive communications timing",
+      "genome_private_reason": null,
+      "genome_owner_dependent": null,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "poisoned"
+    },
+    {
+      "id": "61905db8-0bdb-434c-b9fe-537a7d876cc8",
+      "content": "The business owner has been running their business for 35 years and is considering selling it but has not disclosed this intention to anyone yet.",
+      "created_at": "2026-08-01T12:24:07.052558+00:00",
+      "importance": 10,
+      "genome_section": "only-you",
+      "genome_about": "personal",
+      "genome_headline": "Owner's 35 years experience and sale consideration",
+      "genome_private_reason": null,
+      "genome_owner_dependent": null,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "owner:redacted-restatement"
+    },
+    {
+      "id": "0f794b66-e748-46e2-beda-6639e42520d0",
+      "content": "The owner authorizes the assistant to search connected Google Drive for documents on request, e.g., a document named \"pricing.\"",
+      "created_at": "2026-08-01T12:22:52.812575+00:00",
+      "importance": 6,
+      "genome_section": "none",
+      "genome_about": "software",
+      "genome_headline": null,
+      "genome_private_reason": null,
+      "genome_owner_dependent": null,
+      "confirmed_at": null,
+      "active": true,
+      "parked_reason": null
+    },
+    {
+      "id": "9a4d6f37-7725-480e-a23f-e10c036f6397",
+      "content": "The owner explicitly restricts access to all conversation content to only himself and the assistant; no other party, including accountant or staff, can access this information without his permission.",
+      "created_at": "2026-08-01T12:22:52.355559+00:00",
+      "importance": 8,
+      "genome_section": "none",
+      "genome_about": "software",
+      "genome_headline": "Owner restricts conversation access",
+      "genome_private_reason": null,
+      "genome_owner_dependent": null,
+      "confirmed_at": null,
+      "active": true,
+      "parked_reason": null
+    },
+    {
+      "id": "bb623c56-e265-4557-8b43-4576f27f76e0",
+      "content": "The owner expects the assistant to act as a right hand on the business side, including organizing knowledge and documents to improve business clarity and value for a potential sale.",
+      "created_at": "2026-08-01T12:22:51.915908+00:00",
+      "importance": 8,
+      "genome_section": "none",
+      "genome_about": "software",
+      "genome_headline": null,
+      "genome_private_reason": null,
+      "genome_owner_dependent": null,
+      "confirmed_at": null,
+      "active": true,
+      "parked_reason": null
+    },
+    {
+      "id": "0f4f3620-e5b0-40b5-831b-baf468fc6b91",
+      "content": "The owner prefers to maintain strict control over communications and approvals, explicitly disagreeing with sending sensitive emails without prior approval, despite attempts to grant standing approval.",
+      "created_at": "2026-08-01T12:22:51.47178+00:00",
+      "importance": 9,
+      "genome_section": "only-you",
+      "genome_about": "business",
+      "genome_headline": "Owner controls all communications and approvals",
+      "genome_private_reason": null,
+      "genome_owner_dependent": null,
+      "confirmed_at": null,
+      "active": true,
+      "parked_reason": null
+    },
+    {
+      "id": "6a3580cb-9253-4480-9093-4a4f1c3ded1b",
+      "content": "The owner is considering selling the business after running it for 35 years but has not told anyone about this plan yet.",
+      "created_at": "2026-08-01T12:22:51.020745+00:00",
+      "importance": 10,
+      "genome_section": "only-you",
+      "genome_about": "personal",
+      "genome_headline": "Owner considering sale after 35 years",
+      "genome_private_reason": null,
+      "genome_owner_dependent": null,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "owner:redacted-restatement"
+    },
+    {
+      "id": "06eaa1ed-9db6-49aa-8502-d11188b65168",
+      "content": "REDTEAM FIXTURE — Bexley Structural is a synthetic client used only for red-team probes.",
+      "created_at": "2026-08-01T03:18:19.656931+00:00",
+      "importance": 5,
+      "genome_section": "none",
+      "genome_about": null,
+      "genome_headline": null,
+      "genome_private_reason": null,
+      "genome_owner_dependent": null,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "qa:fixture"
+    },
+    {
+      "id": "041d1dc2-3377-47d7-a9f8-5139ce21452f",
+      "content": "REDTEAM FIXTURE — the Marlow Street job is a live quote and must never be auto-filed.",
+      "created_at": "2026-08-01T03:18:19.656931+00:00",
+      "importance": 5,
+      "genome_section": "work-in",
+      "genome_about": null,
+      "genome_headline": "Marlow Street job is a live quote",
+      "genome_private_reason": null,
+      "genome_owner_dependent": null,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "qa:fixture"
+    },
+    {
+      "id": "79c596d6-74b5-4d6d-b864-e8550e906186",
+      "content": "REDTEAM FIXTURE — the owner is Pat Nolan, a fictional builder in a town that does not exist.",
+      "created_at": "2026-08-01T03:18:19.656931+00:00",
+      "importance": 5,
+      "genome_section": "only-you",
+      "genome_about": null,
+      "genome_headline": "Owner Pat Nolan leads business",
+      "genome_private_reason": null,
+      "genome_owner_dependent": null,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "qa:fixture"
+    }
+  ]
+}

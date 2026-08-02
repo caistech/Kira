@@ -164,6 +164,12 @@ export interface OwnerGenome {
   worthToday: number | null;
   /** True when nothing has been captured — the empty state must be honest, not decorative. */
   empty: boolean;
+  /**
+   * Held, but deliberately NOT in the Genome — chit-chat, notes about the assistant, another
+   * company's facts. Shown so "anything here can be taken back" is a promise about everything he has
+   * said rather than about the subset that happened to be filed. See the note at the call site.
+   */
+  otherHeld: OwnerEntry[];
   /** How many entries can be traced to a conversation. Stated plainly; a buyer will ask. */
   sourced: number;
   /**
@@ -554,6 +560,35 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
   // operates, and padding a Genome with chit-chat is how it stops being believable.
   const relevant = (rows ?? []).filter((r) => r.genome_section !== 'none');
 
+  // EVERYTHING ELSE HE IS HOLDING, so "anything here can be taken back" is true.
+  //
+  // Rows filed `none` are chit-chat, notes about the assistant, or facts about another company —
+  // correctly kept out of the Genome and out of the handover document. But the page tells him
+  // "Anything here can be taken back — use Remove on the entry itself", and a tester counted: the
+  // page showed 2 while the export held 12. "Ten of the twelve aren't on the page, so there is no
+  // entry and no Remove. The promise is scoped to what's visible and doesn't say so."
+  //
+  // It matters more than housekeeping. One of his surviving rows read "...organizing knowledge and
+  // documents to improve business clarity and value for a POTENTIAL SALE" — filed `none` because it
+  // is about the assistant, invisible on his page, and therefore un-removable by him. The redaction
+  // net could not reach it either: it shares almost no vocabulary with the sentence he removed, so
+  // neither the lexical cluster nor the private matcher sees it. What CAN be fixed is letting him
+  // see it and decide, which is the whole posture of this feature.
+  const otherHeld: OwnerEntry[] = (rows ?? [])
+    .filter((r) => r.genome_section === 'none')
+    .map((r) => ({
+      id: String(r.id),
+      headline: (r.genome_headline as string) ?? null,
+      content: String(r.content ?? ''),
+      capturedAt: String(r.created_at),
+      importance: (r.importance as number) ?? null,
+      section: 'unsorted' as const,
+      source: null,
+      confirmedOn: null,
+      privateReason: ownerPrivateReason(String(r.content ?? '')),
+      possibleRestatementOf: null,
+    }));
+
   // RESTATEMENTS OUT. The same fact said in three conversations distils three times, and a handover
   // document that repeats itself reads as padding — exactly how a buyer's advisor decides a document
   // was generated rather than written.
@@ -625,6 +660,7 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
     gap: valuation?.gap != null ? Number(valuation.gap) : null,
     worthToday: valuation?.worth_today != null ? Number(valuation.worth_today) : null,
     empty: all.length === 0,
+    otherHeld,
     sourced: all.filter((e) => e.source).length,
     confirmed: all.filter((e) => e.confirmedOn).length,
     // Empty areas, split by where their truth normally comes from — see `notYetLocated` above. An
