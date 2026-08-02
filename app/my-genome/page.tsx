@@ -155,10 +155,27 @@ export default async function MyGenome() {
               sitting on this page and called it the most impressive and most frightening thing he
               saw. His note: an assurance about who can see it "belongs at the top, in the
               explanatory header, not buried in an FAQ on the landing page." */}
+          {/* ⚠️ THIS SENTENCE USED TO SAY "Nobody at Corporate AI Solutions reads it." IT WAS NOT TRUE.
+              The operator console (/admin/exec → Manage) shows a customer's memory in full sentences,
+              which is how support and classification review actually work. A tester found both screens
+              in one session and put it plainly: the product makes a promise on one screen that another
+              screen in the same product disproves, and the day a customer sees both, he is gone.
+
+              So the promise was changed to the truth rather than the truth to the promise — an
+              operator decision, taken knowing this is the weakest of the honest options and that the
+              original line was the strongest sentence in the product. What is now claimed is exactly
+              what the privacy policy already claimed ("access is limited to those who need it to
+              operate the service"), so the two no longer disagree.
+
+              DO NOT restore the absolute wording without first removing operator access to contents.
+              The considered version — request, log, and show the owner every look — is the build that
+              would earn the original sentence back. */}
           <p className="mt-3 text-base text-stone-600">
-            Only you can see this page. Nobody at Corporate AI Solutions reads it, and it is not
-            shared with anyone you have referred or been referred by. Anything here can be taken back
-            — use <span className="font-semibold">Remove</span> on the entry itself.
+            This page is yours. It is never shared with anyone you have referred or been referred by,
+            and it is never shown to a buyer — only the handover document is, and that leaves out your
+            own position. Our support team can see what Kira has captured when they need to keep the
+            service running. Anything here can be taken back — use{' '}
+            <span className="font-semibold">Remove</span> on the entry itself.
           </p>
 
           <div className="mt-6 space-y-3">
