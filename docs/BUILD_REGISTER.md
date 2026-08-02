@@ -48,7 +48,8 @@ Shape decided in `GENOME_BUYER_FORMAT.md` (six ✅ decisions). Build items in de
 
 | ID | Item | Type | Sev | Blocked by | Detail |
 |---|---|---|---|---|---|
-| **B1** | `confirmed` count rendered nowhere | BUG | 2 | — | `deriveOwnerGenome` computes `confirmed`/`confirmedOn`; zero references in `app/` or `components/`. The axis §2 calls "the one that earns the product its fee" is invisible to the owner *and absent from the export*. Cheapest real win on this list. |
+| ~~**B1**~~ | ~~`confirmed` count rendered nowhere~~ | — | — | — | ✅ **CLOSED 2026-08-02 (`b47ff7c`)** — see *Closed* below. |
+| **B12** | She can ask him to confirm a fact that will never appear in his Genome | BUG | 3 | — | Found while closing B1: the one real confirmation in prod sits on a row classified `genome_section: 'none'`, so it is filtered out of the Genome entirely. The confirmation is real and the fact it confirms is invisible. If `facts_to_confirm` offers `none`-classified rows, she spends conversation turns — the scarcest thing here — confirming facts that cannot ever count on the verifiable axis. **Not yet investigated**: check whether the offer query filters on `genome_section`. |
 | **B2** | Nine-area model does not exist in code | MISS | 2 | — | `derive.ts` still ships the original six sections. **Gates B3–B6 and C1–C3.** |
 | **B3** | `only-you` retired as a section, becomes the per-area axis | MISS | 2 | B2 | Evidence it is urgent: in the QA export **5 of 6 sections are empty and everything landed in `only-you`**; on the red-team account it holds 115 of 233 classified rows. The taxonomy is functioning as five sections plus a bucket. |
 | **B4** | Deactivation — she proposes, he confirms, both recorded | MISS | 2 | B2 | §4. Without it there is no denominator, so every percentage after it is indefensible. |
@@ -155,8 +156,8 @@ mistaken for done.
 Derived from the dependency columns, not from preference.
 
 **Now — cheap, unblocked, and each closes a live exposure:**
-1. **B1** surface `confirmed` (hours; makes yesterday's build real)
-2. **B7** sensitivity filter on the export ← *the worst thing on this list*
+1. ~~**B1** surface `confirmed`~~ ✅ **done and observed 2026-08-02**
+2. **B7** sensitivity filter on the export ← *the worst thing on this list* — **next**
 3. **D1 + D2** patch the stale agent, resolve the duplicates
 4. **C1** give a direct signup a valuation path
 5. **A8** confirm whether the PDF render bug is real
@@ -188,6 +189,17 @@ What "done and observed" means per area, since that is the column that keeps bei
 | Doing loop | One round trip to a `done` row | voice, operator only |
 | Whole product | `/naive-tester` as **Ray** | Dennis, gates the share gate |
 | Deploy integrity | Deployed SHA == expected ref | `portfolio-gate-deploy-status` |
+
+---
+
+## Closed
+
+Kept, not deleted — with **what was observed**, because "we already did that, didn't we?" is the
+question this file exists to answer, and a tick with no evidence behind it is how an item comes back.
+
+| ID | Closed | Commit | What was observed (not what was edited) |
+|---|---|---|---|
+| **B1** | 2026-08-02 | `b47ff7c` | Against the live deployment, as the QA identity: `/my-genome` rendered *"2 have been read back to you and you agreed"* with two rows temporarily confirmed, the per-entry line *"Read back to you and confirmed on 2 August 2026"* appeared and **disappeared again on revert**, the zero state read *"Kira has not read any of these back to you yet…"*, and the Markdown export carried both *"(stated 1 August 2026; read back to the owner and confirmed 2 August 2026)"* and the zero-state closing paragraph. The two temporary confirmations were set on the **synthetic QA account only** and reverted in the same script; QA rows carrying `confirmed_at` afterwards: **0**. |
 
 ---
 
