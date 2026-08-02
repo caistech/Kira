@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { formatMoney, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { RedactEntry } from '@/components/RedactEntry';
+import { ownerPrivateReason, PRIVATE_REASON_LABEL } from '@/lib/genome/private';
 
 export const dynamic = 'force-dynamic';
 
@@ -231,6 +232,19 @@ export default async function MyGenome() {
                               })}
                             </p>
                           )}
+                          {/* SHOWN TO HIM PRECISELY BECAUSE IT IS HIDDEN FROM THEM.
+                              He is the only person who can audit this filter — he knows which
+                              sentences would hurt him and we are guessing — so a silent exclusion
+                              would be us deciding on his behalf and never telling him. Naming the
+                              reason rather than just the fact of it also makes a false positive
+                              reportable: "that is not about my plans" is only sayable if he can see
+                              what we thought it was. */}
+                          {ownerPrivateReason(e.content) && (
+                            <p className="text-xs font-medium text-violet-700 mt-0.5">
+                              Yours only — kept out of the handover document, because it touches on{' '}
+                              {PRIVATE_REASON_LABEL[ownerPrivateReason(e.content)!]}.
+                            </p>
+                          )}
                           {/* On the FILED entries too, not only the unsorted ones. The sentence the
                               tester wanted to take back — "considering selling, has not told anyone"
                               — was a filed entry, so a Remove that only reached the loose notes
@@ -290,6 +304,19 @@ export default async function MyGenome() {
             <h2 className="font-display text-xl font-bold">Take it with you</h2>
             <p className="text-stone-600 mt-2 max-w-2xl leading-relaxed">
               It is yours. Download a copy whenever you like — if you stop paying us, you keep it.
+            </p>
+            {/* THE TWO FILES ARE NOT THE SAME FILE, and he has to know that before he forwards one.
+                The handover document is the one built to be sent on, so it leaves out anything about
+                your own position; the raw data is everything we hold, for you. Saying so here, next
+                to the buttons, is the moment it matters — a note further up the page is a note he
+                has already scrolled past by the time he clicks. */}
+            <p className="text-stone-600 mt-2 max-w-2xl leading-relaxed">
+              They are different files on purpose. The{' '}
+              <span className="font-semibold">handover document</span> is the one built to be sent to
+              an advisor or a buyer, so it covers the business and leaves out anything marked{' '}
+              <span className="font-semibold text-violet-700">yours only</span> above. The{' '}
+              <span className="font-semibold">raw data</span> is everything we hold, including those —
+              that one is for you.
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
               <a

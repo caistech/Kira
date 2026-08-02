@@ -23,6 +23,7 @@ import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
+import { isOwnerPrivate } from '@/lib/genome/private';
 import { displayName } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
 
@@ -82,6 +83,13 @@ export async function GET(request: Request) {
     'This document records how this business actually runs, organised by the questions a buyer&rsquo;s'.replace('&rsquo;', "'") +
       ' advisor asks in due diligence. It was built from ordinary conversations with the owner.',
     '',
+    // Stated in the document itself, not only in the code. A reader who cannot tell the difference
+    // between "the owner told us nothing about his plans" and "this document is about the business,
+    // not about the owner" will read the absence as evasion. One sentence removes that reading, and
+    // it commits us in writing to a boundary the owner is relying on.
+    'It covers the business. It deliberately does not cover the owner&rsquo;s own position — his plans, '.replace('&rsquo;', "'") +
+      'his circumstances, or what he would accept — which are his to raise, not ours to disclose.',
+    '',
   ];
 
   if (g.readiness != null) {
@@ -97,10 +105,27 @@ export async function GET(request: Request) {
     );
   }
 
-  for (const s of g.sections) {
+  // THE OWNER'S POSITION DOES NOT TRAVEL. See lib/genome/private.ts for the line and the reasoning;
+  // in short, this file calls itself a handover document, and until 2 August it would render "the
+  // owner is considering selling and has not told anyone" straight into it. Filtered here rather
+  // than in `deriveOwnerGenome`, because the owner's own page must keep showing him everything —
+  // the difference between the two renderings is the whole point, and a filter applied upstream
+  // would silently take his own facts away from him too.
+  const publicSections = g.sections.map((s) => ({ ...s, entries: s.entries.filter((e) => !isOwnerPrivate(e.content)) }));
+
+  // Counted over what the document ACTUALLY SHOWS, not over everything held. Reporting "6 of 6
+  // traceable" under a document displaying two entries is the kind of number that is technically
+  // sourced from something real and still tells the reader a false thing.
+  const shown = publicSections.flatMap((s) => s.entries);
+  const shownSourced = shown.filter((e) => e.source).length;
+  const shownConfirmed = shown.filter((e) => e.confirmedOn).length;
+
+  for (const s of publicSections) {
     lines.push(`## ${s.title}`, '', `*${s.question}*`, '');
     if (s.entries.length === 0) {
-      // Stated, not omitted — see the note at the top of this file.
+      // Stated, not omitted — see the note at the top of this file. Also the honest line for a
+      // section whose every entry was the owner's own: the buyer learns nothing about that area,
+      // and "still carried by the owner alone" is exactly why.
       lines.push('> Nothing recorded here yet. This is still carried by the owner alone.', '');
     } else {
       for (const e of s.entries) {
@@ -137,12 +162,12 @@ export async function GET(request: Request) {
     // be confirmed with the owner directly", which used "confirmed" in the loose sense right where
     // the document had just started using it as a specific, dated, recorded claim. One word meaning
     // two things is how a provenance note stops being worth reading.
-    `Every entry above carries its provenance. ${g.sourced} of ${g.totalCaptured} are dated to the ` +
+    `Every entry above carries its provenance. ${shownSourced} of ${shown.length} are dated to the ` +
       'conversation in which the owner stated them; any marked "source not recorded" were captured ' +
       'without a conversation reference and are worth raising with the owner directly.',
     '',
-    g.confirmed > 0
-      ? `${g.confirmed} of them go further: they were read back to the owner in a later conversation ` +
+    shownConfirmed > 0
+      ? `${shownConfirmed} of them go further: they were read back to the owner in a later conversation ` +
         'and he agreed they were correct, with the date recorded above. Those are the entries that ' +
         'do not rest on a single recollection.'
       : 'None have yet been read back to the owner for confirmation — that process began on ' +
