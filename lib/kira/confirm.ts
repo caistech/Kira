@@ -161,16 +161,25 @@ export async function handleConfirmFact(req: Request): Promise<Response> {
 
     // SCOPED TO HIM IN THE QUERY ITSELF. A handle from another owner's account matches nothing here
     // rather than matching a row we then have to remember to reject.
-    const { data: candidates, error: findError } = await supabase
+    //
+    // THE PREFIX IS MATCHED IN JS, NOT IN THE QUERY. `id` is a uuid column and Postgres has no
+    // ILIKE for one — the first version shipped `.ilike('id', ...)` and every call died on
+    // "operator does not exist: uuid ~~* unknown". The unit tests passed it, because a mocked
+    // client cannot fail on a type mismatch that only exists in the database; the end-to-end probe
+    // caught it on the first try. Casting in the filter is not available through PostgREST, so the
+    // candidates come back scoped to the owner and the prefix is applied here. Bounded the same way
+    // the save_memory dedupe scan is, and for the same reason: far above any real owner's count.
+    const { data: owned, error: findError } = await supabase
       .from('kira_memory')
       .select('id, content, kira_agent_id')
       .eq('user_id', userId)
       .neq('active', false)
-      .ilike('id', `${handle}%`)
-      .limit(2);
+      .limit(500);
     if (findError) throw findError;
 
-    if (!candidates || candidates.length === 0) {
+    const candidates = (owned ?? []).filter((row) => String(row.id).toLowerCase().startsWith(handle));
+
+    if (candidates.length === 0) {
       return json(200, {
         success: false,
         error: "That handle doesn't match anything on his record — call facts_to_confirm and use a handle from there.",
