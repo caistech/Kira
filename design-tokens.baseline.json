@@ -1,0 +1,16 @@
+{
+  "app/about/page.tsx": 12,
+  "app/business-valuation/page.tsx": 8,
+  "app/genome/page.tsx": 5,
+  "app/layout.tsx": 1,
+  "app/manifest.ts": 2,
+  "app/my-genome/page.tsx": 5,
+  "app/onboarding/page.tsx": 5,
+  "app/page.tsx": 27,
+  "app/plan/page.tsx": 8,
+  "app/pubguard/config.ts": 2,
+  "app/unsubscribe/route.ts": 1,
+  "components/auth/AuthForm.tsx": 1,
+  "components/DemoPlayer.tsx": 10,
+  "components/DemoScene.tsx": 5
+}

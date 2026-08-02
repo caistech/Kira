@@ -84,6 +84,15 @@ jobs:
       - name: App chrome on authenticated routes (PRODUCT_STANDARDS §4)
         run: node scripts/check-app-chrome.mjs
 
+      # DESIGN.md §3 — UI code paints with tokens, not raw hex.
+      #
+      # Same shape and same reason as the chrome check above: static, no secrets, no deployment,
+      # fails fast. It is a RATCHET over ~92 pre-existing literals rather than a clean sweep,
+      # because a gate that is red on arrival is a gate somebody deletes. It fails only when a file
+      # gains a literal it did not have.
+      - name: Design tokens (DESIGN.md §3)
+        run: node scripts/check-design-tokens.mjs
+
       - name: Build
         run: npm run build --if-present
         # Placeholder build-time env so `next build` can CONSTRUCT clients during prerender / page-data

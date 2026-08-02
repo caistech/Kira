@@ -188,9 +188,28 @@ the font aliases. None of that requires Tailwind v4.
 **Later (Tailwind v4 + `ui-styling`):** deferred by decision — v3→v4 is a breaking migration on a live
 product and is its own piece of work, not a side effect of adopting this file.
 
-**Enforcement:** `design-system`'s `validate-tokens.cjs` scans for hardcoded values. Wire it once the
-tokens land — *a design system nobody validates is prose with no mechanism*, and drift resumes the day
-after.
+**Enforcement — wired 2026-08-03.** `scripts/check-design-tokens.mjs`, run by `npm run check:tokens`
+and by the `portfolio-gate` workflow beside the app-chrome check. *A design system nobody validates is
+prose with no mechanism.*
+
+It is a **ratchet, not a sweep**: 92 pre-existing literals across 14 files are baselined in
+`design-tokens.baseline.json`, and the gate fails only when a file **gains** one. Fixing lowers the
+baseline (`--update`); it can never drift up. A gate that is red on arrival is a gate somebody deletes.
+
+Two exemptions, both correct code rather than debt: **`lib/email/**`** (CSS custom properties do not
+survive Outlook or Gmail, so inline hex is required for mail to render — 186 of 187 findings in `lib/`
+were here) and **`app/api/**`** (OG images and PDFs render outside the browser's CSS cascade). A file
+that must carry a literal opts out with `// @design-tokens-ok: <reason>`; a bare marker is rejected.
+
+Scope is **hex only**, deliberately. Pixel values were tried and dropped: in JSX they appear in SVG
+attributes and icon sizing where they are legitimate, and a check with a high false-positive rate
+teaches people to ignore it.
+
+**Proven, not assumed:** injecting `#ff0000` into a clean file flipped it to exit 1 naming that file;
+removing it returned exit 0.
+
+**Where the debt is:** `app/page.tsx` (27), `app/about/page.tsx` (12), `components/DemoPlayer.tsx` (10)
+— the marketing surfaces, which is where the inconsistency was reported.
 
 ---
 
