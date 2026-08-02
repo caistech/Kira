@@ -128,21 +128,30 @@ You are filing one note into a small business's OPERATING MANUAL — the documen
 to a buyer. Reply with ONLY a JSON object:
 {"about": "<business|software|personal>", "section": "<key>", "headline": "<short lead>", "private": "<reason|null>"}
 
-ANSWER "about" FIRST. It decides most of the rest.
+ANSWER "about" FIRST, and START BY TRYING TO SAY "software". It decides most of the rest.
 
-business  how the business runs, earns, delivers, buys, or is obliged. Includes the owner's own
-          judgement and relationships WHEN THEY ARE ABOUT RUNNING IT — his pricing instinct, which
-          client he would not take on, why he walks away from a job.
-software  about KIRA, this app, or any tool: what it may access, what it should or should not send,
-          how he wants to be asked, what he wants built, upload problems, feature requests.
+software  THE DEFAULT SUSPICION, and the answer far more often than it looks. Anything mentioning
+          the assistant, this app, an integration or a tool — what it may access, what it should or
+          should not send, how it should ask, reminders and task-tracking, drafting or sending mail
+          on his behalf, Drive or Gmail or Contacts access, uploads, onboarding, what he wants built
+          next, anything phrased as a want/need/preference ABOUT BEING HELPED. If the sentence would
+          make no sense to someone who had never heard of this product, it is software.
+business  how the business EARNS, DELIVERS, BUYS, or is OBLIGED — clients, jobs, sites, prices,
+          crews, suppliers, invoices, cash, licences, financing. Includes the owner's own judgement
+          when it governs the WORK: his pricing instinct, which client he will not take, why he
+          walks away from a job.
 personal  about the OWNER's life or intentions rather than the operation: selling up, retiring,
           health, family, money pressure, how he feels about the work.
 
-THE TEST THAT SEPARATES business FROM software, and it is the one that goes wrong most often:
-a rule about HOW THE ASSISTANT SHOULD BEHAVE is software. A rule about HOW THE BUSINESS OPERATES is
-business. Both are "rules the owner holds", so that phrasing decides nothing — ask WHO THE RULE
-GOVERNS. "Do not send anything without my approval" governs the assistant → software. "No job starts
-without a signed variation" governs the business → business.
+THE TEST — and it is the one that goes wrong most often. Ask WHO OR WHAT THE SENTENCE IS ABOUT:
+  "Reminders are needed to follow up with Dave"            → about being HELPED  → software
+  "Follow-up with Dave on soil testing is due 7 August"    → about the WORK      → business
+  "Emails are drafted and reviewed before sending"         → about the ASSISTANT → software
+  "Invoices are issued at practical completion"            → about the BUSINESS  → business
+  "Files for Lot 91 are in a shared Drive folder"          → about the TOOL      → software
+  "Lot 91 was delivered before building approval"          → about the SITE      → business
+Both kinds mention real projects and real people. The project names prove nothing. Ask what the
+sentence is TELLING you: how the business works, or what the assistant should do.
 
 SECTIONS
 work-in      how work/revenue arrives: clients, referrals, contracts, marketing, who brings the work
@@ -166,7 +175,10 @@ ALSO FILE AS "none": anything about a DIFFERENT company or product than the one 
 "private" — WOULD THIS SENTENCE COST HIM MONEY IF THE BUYER READ IT?
 Most notes are not private; answer null. It is private when it describes HIS POSITION rather than the
 business, because that only ever moves the price against him. One of exactly these, or null:
-  exit-intent            he is thinking of selling, retiring, winding down, stepping back
+  exit-intent            he is thinking of selling, retiring, winding down, stepping back.
+                         NOT raising money, taking on equity partners, refinancing, or bringing in
+                         an investor — those are how a business GROWS, they are exactly what a buyer
+                         wants to read, and calling them an exit both hides them and misreads them.
   not-yet-told           who does not know yet — staff, family, customers, anyone
   personal-circumstances health, divorce, bereavement, personal debt or guarantees driving the sale
   negotiating-position   what he would accept, his floor, how urgently he needs it done
