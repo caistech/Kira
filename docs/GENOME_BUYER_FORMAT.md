@@ -80,6 +80,13 @@ Three consequences, and the first two are costs worth taking knowingly:
 Three states, then: **asserted** (he said it) → **sourced** (traceable to the conversation he said it
 in) → **confirmed** (read back and agreed). Only the third counts on this axis.
 
+**The argument above is not the strongest one for building this.** It argues about grading what we
+hold. §3.2 has the harder case: the record contains corrupted proper nouns *at capture* — IRESS
+stored as "IRIS", F2K as "S2K" — and a read-back is the only mechanism in the product that catches
+them. That is about correctness, not grade. It also carries a constraint this section does not: a
+confirmation obtained by **voice** on a phonetically-corrupted name upgrades the error rather than
+finding it.
+
 ---
 
 ## 3. The areas — derived from the 140 flows, not invented
@@ -99,7 +106,7 @@ Collapsing the 15 flow groups into areas a broker recognises:
 |---|---|---|
 | **Demand** | 4.1 Getting attention | Where does work come from, and does it come to *him*? |
 | **Pricing & quoting** | 4.2 Scoping and quoting · 4.7 Catalogue and pricing ops | Could someone else reach his number? |
-| **Delivery** | 4.3 Winning and setting up · 4.4 Delivering · 4.8 Fulfilment | Does the work happen without him on site? |
+| **Operations** | 4.3 Winning and setting up · 4.4 Delivering · 4.8 Fulfilment | Does the work happen without him on site? |
 | **Cash & working capital** | 4.5 Money in · 4.6 Money out and supply | Who chases, who approves, what are the terms? |
 | **Customers** | 4.9 Keeping the client | Who owns each relationship? |
 | **People & labour** | 4.10 People · 4.11 Contractors | Who does what, and who holds them to it? |
@@ -108,7 +115,7 @@ Collapsing the 15 flow groups into areas a broker recognises:
 | **Management & records** | 4.14 Running the thing · 4.15 Data hygiene | Does the business have a memory of its own? |
 
 **The current six Genome sections map onto these cleanly** — this is a widening, not a rewrite:
-`work-in`→Demand, `pricing`→Pricing, `delivery`→Delivery, `suppliers`→Cash, `obligations`→Compliance.
+`work-in`→Demand, `pricing`→Pricing, `delivery`→Operations, `suppliers`→Cash, `obligations`→Compliance.
 
 ### The one structural change: "Things only you know" stops being a section
 
@@ -178,6 +185,211 @@ into Cash.
 
 ✅ **DECIDED (2026-08-02): NINE AREAS, with the ten ranks as WEIGHTING over them.** The ranking is
 config the scorecard reads — which §3.1 already obliges — not a second list of sections.
+
+### What each area IS — the operator's definitions, 2026-08-02
+
+Given in his own words, and they are not restatements of the §3 table. The spine underneath them:
+**we sell the WHAT to WHO, and this is HOW we deliver it** — *who* is Customers, *how* is Operations.
+
+| Area | What it is | What a BUYER wants | What the OWNER can do with it |
+|---|---|---|---|
+| **Demand** | marketing and sales | where does work come from, and does it come to *him*? | what is the demand for our products and services, and **how do we increase sales from the data we already hold?** |
+| **Pricing & quoting** | also marketing | could someone else reach his number? | how do we determine price — and **what do we know about the competition?** |
+| **Operations** *(was Delivery)* | **the HOW of the business.** Sending out a machine and an operator; packaging a product and posting or couriering it; shipping a software product | does the work happen without him on site? | *(not given — capacity and throughput are the obvious candidates)* |
+| **Cash & working capital** | the financials of the business | who chases, who approves, what the terms are, and whether supplier terms are personal to him | where do we stand, what are our margins, **what can we do with the information we have?** |
+| **Customers** | who are they, what do they buy, are they repeat or one-off, what do we know about them | revenue by customer over 3 years; concentration; **who owns each relationship** | **how do we use that data to increase sales and margins?** |
+| **People & labour** | who is inside the company, their roles, their skills, what they actually do | who is critical, tenure, contracts and restraints, who leaves on announcement | **can we leverage them for greater productivity, sales, efficiency?** |
+| **Assets** | what are they, what is their status, what is their value | owned vs leased vs **personally held**; deferred maintenance; whether the premises lease transfers | *(not given)* |
+| **Compliance & obligations** | the regulatory environment | the obligations calendar and who watches it; change-of-control clauses | what insurances do we hold and what are they; what certificates, licences and regulatory artefacts do we **need** and **have** |
+| **Management & records** | **NOT people — management SYSTEMS.** What is run by them, and what can they tell us | where records live, who has access, what is documented | *(the systems are themselves the answer)* |
+
+**Five of the nine definitions end in a forward question, and that is the finding.** *How do we
+increase sales from the data we have. Can we leverage them for productivity. What can we do with the
+information we have.* §1–§3.1 frame every area as what a buyer needs to see and the discount he
+applies when he cannot. These describe each area as a **live operating asset — data to be USED, not
+merely SHOWN.** It is the extension of §3.3's decision to offer the migration rather than record the
+gap: from *where does this live* to *what is it for*. It also answers a question this document does
+not otherwise answer — why an owner does this work now, when the sale is two years away.
+
+✅ **DECIDED (2026-08-02): the operator face is how she EARNS THE CONVERSATION; the buyer face is
+what the conversation PRODUCES. Operator actions are OFFERED, never SCORED.**
+
+Three options were on the table and the middle one is deliberately rejected. It is **not** a fourth
+column on the scorecard — *"your customer data is 40% usable"* is a worse sentence than any of §2's
+three, because unlike them it implies an action we do not take, and the number would be invented in
+exactly the way `B8`'s hand-authored 78/54/41 and the valuation's inflated multiples already are.
+This document does not need a third credibility problem. It is **not** a replacement for the buyer
+face either: being accurate about what he said is a bar we can hold; being *right* about how to
+improve his margins is business advice, which is where the speculation defect (`D4`) and the whole
+overclaim class live.
+
+So every area's operator question becomes a **trigger for an offer**, and §3.3's already-decided
+behaviour is the template rather than an exception: *on a local-storage answer she offers the
+migration rather than recording the gap.* That was the operator face all along — note that it
+proposes an action and scores nothing.
+
+**What it buys, and this is the part that reaches past the product.** An exit-readiness tool has a
+natural death: he sells, or he decides not to, and either way he churns. An operating tool does not
+— the relationship continues, the record keeps improving, and the uplift in value arrives as a
+by-product of work that paid for itself along the way.
+
+✅ **DECIDED (2026-08-02): she SURVIVES THE TRANSACTION. Kira changes bosses.** When a buyer takes
+over and appoints a manager to run the business, she does not end — she onboards the new manager and
+helps them assimilate. That closes the other half of the churn hole above: **a sale stops being a
+churn event and becomes an account transfer.**
+
+Three things follow, and the third is the largest.
+
+- **It answers "why not just produce a PDF" completely.** What the buyer reads during diligence is a
+  document; what he *takes over* is a live system that already holds how the business runs and can
+  teach it to someone who has never seen it. The document is the snapshot; she is the asset.
+- **It makes the owner-dependence axis literally true rather than a proxy.** The axis measures how
+  much of the business lives only in his head. If she transfers with the business, then knowledge
+  held in her is knowledge that genuinely survives him — which is the exact thing the score claims to
+  measure and has until now only approximated.
+- **It makes the BUYER a customer, which is a market nobody in this document has been selling to.**
+  The strongest sentence available to a buyer is that the risk he is pricing hardest — everything is
+  in the seller's head and walks out the door on completion — has a thing attached to the deal that
+  holds it and will teach his manager. That is a discount *not taken*, which is precisely the
+  defensible claim this document already makes about what documentation is worth.
+
+⚠️ **WHAT TRANSFERS IS THE BUSINESS HALF, NOT THE WHOLE RECORD — and this is a decision, not a
+detail.** The Genome contains things that belong to the *person*, not the company: that he is
+considering selling and has told nobody, his private read on his staff, his reasoning about margins.
+Handing that to the person who just bought his business would be a betrayal of the only asset this
+product runs on. **`B7`'s sensitivity filter is the mechanism that makes transfer possible at all** —
+the split it already draws between *his only* and *the handover document* is exactly the split a
+transfer needs, which makes that piece of work more foundational than it looked when it shipped.
+
+Two consequences to settle before this is built, neither of which is a Genome-format question:
+
+- **Tenancy.** The tenant is the **user id** today (register `I4`). A transfer requires the
+  business-scoped content to move to a new owner account while the personal half stays with — or is
+  destroyed for — the seller. That is an architecture change with a migration, not a config flag.
+- **Consent and disclosure.** What happens to his data when the business is sold has to be stated in
+  the privacy policy *before* it can happen, not at the point of sale. Per `REGULATORY_INCLUSIONS`
+  this is an I1 gap: the policy currently describes collection and retention, not succession.
+
+**And the new manager is a different job, not the same conversation.** Building a Genome from nothing
+is capture; onboarding a manager into an existing one is **teaching** — she already holds the
+answers and the human does not. Same record, opposite direction of flow, and assuming one mode
+serves both is how the handover session becomes an interrogation of someone who has nothing to tell
+her yet.
+
+**And it gives the distribution layer a payout that does not depend on an exit.** Under a pure
+readiness framing an introducer's return is contingent on a sale that may be five years away or may
+never happen — a lottery ticket, which is a weak thing to ask a broker to sell. A subscription the
+owner keeps because it makes him money pays the introducer a trail **from month one, whether he ever
+sells or not**, and the listing becomes upside rather than the entire thesis. It also removes the
+conflict an owner is most alert to: the introducer no longer needs him to sell in order to get paid.
+
+**It is what makes ACCOUNTANTS a distribution layer at all.** An accountant cannot monetise an exit —
+that is the broker's fee — so under readiness-only they have no reason to refer. A client whose
+records get better makes the accountant's own job cheaper and is a service they can resell. That is
+the canonical distributor archetype in `BUSINESS_MODEL.md` §3, and this is the framing that reaches
+it.
+
+✅ **DECIDED: being helpful outranks rubric precision, and the sequencing follows.** The rubric and
+the valuation get better with **the platform-level metadata accumulated across many clients** —
+neither can be finished by thinking harder about them today. Helpfulness is available on day one, and
+it is what makes the owner keep talking, which is the only thing that produces clients, which is the
+only thing that produces the metadata. So the order is: **be useful → capture → grade**, and the
+scorecard and the buyer rendering are the *last* things in the chain rather than the first.
+
+**That is a loop, not a preference, and it is the stronger form of the argument.** Rubric quality is a
+function of client count; client count is a function of usefulness. So the fastest route to a
+defensible rubric runs *through* being useful, and building the scorecard first is not merely
+premature — it is the slower path to the same scorecard. It is also what eventually fixes `A1–A4`
+properly: the multiples currently rest on one cited third-party range, and enough real businesses
+make it **our own dataset**, which is the compounding asset a tool does not have.
+
+What that metadata makes possible, in rough order of when: **sector and size norms** for the rubric
+weights; a **denominator §4 can defend** — not "nine areas" but what businesses like his actually
+hold; **benchmark offers**, which are operator-face and impossible without cross-client data; and
+eventually **observed outcomes** rather than a published range.
+
+### The network — every Kira reading a shared knowledge base the others wrote
+
+⏸️ **PARKED — SPITBALL ONLY, DO NOT BUILD (2026-08-02, operator).** This is a shape for the future,
+recorded so it is not re-derived from scratch. **Nothing below is a decision**, nothing here is on the
+build list, and it is deliberately not tracked in `BUILD_REGISTER.md`. It becomes a real question when
+there is a client base to draw on; today n is two, one of them synthetic.
+
+The idea: the metadata is not only calibration for the rubric. It could be **a
+knowledge base each Kira can consult** — a network of them supporting each other with what has been
+learned and gleaned across every client, so the hundredth owner's Kira arrives experienced rather
+than naive. That is a compounding asset a tool does not have and a competitor's day-one agent cannot
+match, and the owner benefits from other owners without ever seeing one.
+
+**This does not need inventing — the portfolio has already built its shape once.**
+`@caistech/planning-memory` is exactly this pattern: distilled, jurisdiction-general **conclusions**
+in a **shared, state-keyed Mnemo scope**, so retrieval depth compounds across products while the
+citation layer stays in owned RAG. Swap "state" for sector or business size and it is the same
+design, on the same substrate, under the same rules — and consuming it rather than forking a fourth
+Mnemo client is the `@caistech`-first rule (`SHARED_SERVICES`: transport is shared, **scope policy is
+the consumer's**, deliberately, because these policies must not be unified — Kira's per-owner voice
+memory stays per-user isolated per `DATA_STANDARD` S2 regardless of what the network scope does).
+
+⚠️ **The read side is safe; the WRITE side is the whole risk, and they must not share a path.**
+Consulting aggregate conclusions carries nothing out. Contributing does — and `DATA_STANDARD` I4 is
+explicit that Mnemo takes **distilled results, never raw artifacts or PII**. So the contribution has
+to be a **generalisation performed deliberately**: *"in trades businesses under $5M the asset register
+is usually in the owner's head while the depreciation schedule sits with the accountant"* — never
+*"Factory2Key's asset register is in his head."* A model asked to summarise will eventually carry a
+specific across, so this cannot be a side effect of `save_memory`; it is a **separate, gated tool**,
+the same reasoning that made reading a document and filing one two tools rather than one flag.
+
+**And this is the point at which the Sphinx patterns stop being theoretical.** They were assessed as
+not-yet-useful here because their value is disambiguating **conflicting knowledge between multiple
+principals**, and a single-owner tenant has one ground truth. A network KB is precisely the
+multi-principal case: two clients' Kiras will contribute conclusions that contradict each other, and
+**controversy surfacing** plus the **PR → approve → implement convergence** are built for exactly
+that. Worth revisiting when this is scoped, not before.
+
+⚠️ **Three constraints on it, and the first is not a compliance item — it is the product's core
+promise.** The ICP is a man who has not told his own family. If he ever concludes that his record
+trains something used for other clients, the trust this entire document rests on is gone in one
+sentence. So the cross-client layer must be **aggregate and derived, never row-level** — `DATA_STANDARD`
+S2 makes isolation mandatory, and *"another builder in Perth prices at X"* is a breach of it no matter
+how it is phrased. Second, **disclosure precedes use**: the privacy policy has to say that
+de-identified aggregate data improves the platform *before* any of it does (`REGULATORY_INCLUSIONS`
+I1, the same gap as succession above). Third, **n is two today, one of them synthetic** — a norm drawn
+from a handful of businesses is invented precision of exactly the class this document keeps removing
+(`B8`, the multiples, `H5`). Any published benchmark states its n, or it does not ship.
+
+⚠️ **The trap inside that, stated plainly because it is the one this product is most prone to.**
+"Ever helpful" and "never overclaim" pull against each other: the maximally helpful agent is the one
+that says yes to things it cannot do, and this codebase has removed that class of failure repeatedly.
+**Helpful means DOING the thing, not PROMISING it.** That is exactly why §3.3's bound is load-bearing
+— Drive read/search/file only, no folder creation, no write, no OneDrive connector — and why an offer
+she cannot honour is worse than no offer at all: it converts the one asset this product runs on, his
+belief that she is straight with him, into the thing it loses first. The most helpful version of her
+is the one whose every offer is real.
+
+⚠️ **Consequence to settle elsewhere: the trail needs a TERM.** A trailing commission on a
+subscription with no exit event is an open-ended liability on every referral. Perpetual, capped in
+years, or conditional on continuing service from the introducer — this is a `REFERRAL_FEE_POSITION`
+decision (orchestrator repo, which does **not** auto-load here), not a Genome-format one.
+
+**Three consequences that follow from the definitions themselves:**
+
+- **"WHAT we sell" has no area.** The spine is what × who × how, and the catalogue sits in flow group
+  4.7, which §3 folds into **Pricing & quoting**. So the product and service mix — the thing a buyer
+  wants revenue split across, and the thing Demand acts on — is currently a sub-part of how a price
+  is reached. Either Pricing owns it explicitly, or it is a tenth area.
+- **Competition is genuinely new.** *What do we know about the competition* appears nowhere: not in
+  the nine areas, not in the ten ranks, not in the flow registry. Pricing today asks only how a price
+  is reached and whether someone else could reach it.
+- **Compliance's "need AND have" is a gap analysis, and a different risk class.** Recording the
+  insurances he holds is a fact. Asserting which licences a business like his *must* hold is a claim
+  about regulatory obligation — wrong there is not the same kind of wrong as a mis-spelled customer
+  name, and per `DATA_STANDARD` it wants an authoritative, citable source, never conversation or
+  inference.
+
+⚠️ **`Management & records` is proposed for rename to `Systems & records` — NOT decided.** Rank 10 is
+*Systems, data & IP* and the operator's definition is explicit that this is not people, but the
+current name reads as people-management to anyone who has not read §3.1. `Delivery`→`Operations` was
+decided in the same conversation; this one was not raised.
 
 ✅ **DECIDED: `only-you` is re-filed into the area each fact is really about, and each row carries an
 `owner_dependent` flag so the axis has data the day it is built.** Retiring the section before the
@@ -252,6 +464,42 @@ exists today — *"Multiple projects involving soil testing, approvals for Lot 9
 and integration with IRIS and XPlan are managed"* — where the lots are F2K and IRESS/XPlan is CAS.
 Parking the row loses the F2K half; keeping it carries CAS content across. **Splitting one fact into
 two is a rewrite of the owner's record and is an operator decision, not a classifier one.**
+
+### Corrupted proper nouns are a CAPTURE-time defect, and this pass is what publishes them
+
+Register **B15**. The real Genome holds **IRESS as "IRIS" three times** and **F2K as "S2K" twice** —
+both phonetic, both voice-transcription shaped. It is provable rather than suspected: one row spells
+*"Iress Open"* correctly, so the same entity is stored two ways and the wrong spelling outnumbers the
+right one 3:1. Once one memory is wrong, later distils reinforce it.
+
+This belongs inside the area conversation rather than beside it, for two reasons.
+
+**It is the same rows.** The entity-spanning memory quoted immediately above — *"…Lot 91, Lots 109
+and 442, and integration with IRIS and XPlan…"* — is `none`-classified today, and is exactly the kind
+of row the `systems` split promotes into Management & records. A corrupted name sitting in `none` is
+invisible; the same name in a populated area is in the handover document. **The re-classification
+does not create the defect, it publishes it** — that row is corrupted, in the wrong entity, and about
+to become visible, all at once.
+
+**Proper nouns are most of the content in the four new areas.** Customers, People and Assets are
+almost entirely names — clients, staff, lots, insurers, systems. An area whose value is names has
+wrong names as its failure mode, so the areas this pass adds are the four most exposed to it.
+
+**And it is a stronger argument for §2's confirmation loop than §2 makes itself.** §2 argues from
+buyer evidence: a confirmed fact is worth more than an asserted one. That is an argument about
+*grading* what we hold. This is an argument about *correctness* — a handover document naming two
+systems the business does not use, in front of an advisor, over the owner's name. The register-rewrite
+guard checks that proper nouns survive a *rewrite*; nothing checks they were right at *capture*, and
+reading a fact back is the only thing in the product that does.
+
+⚠️ **OPEN — a SPOKEN read-back is a weak catch for this specific class, so B15 must not be recorded
+as mitigated on the strength of the confirmation loop alone.** The channel that corrupted the name is
+the channel doing the checking: "IRIS" read aloud is near enough to IRESS that he agrees, and the
+error is then *confirmed* — upgraded to the strongest label this document has, which is worse than
+leaving it asserted. The reliable catch is the fact seen **spelled**: the typed transport, or the
+entry as rendered on `/my-genome`. Two candidate mechanisms, neither decided: spell-sensitive facts
+are offered in text rather than voice, or a proper-noun consistency check flags an entity stored two
+ways before it is ever offered for confirmation.
 
 ### No area is ever EMPTY. Every area is somewhere.
 
@@ -421,9 +669,62 @@ already known about him:
 
 | Block | Ran the eleven | Straight in | Gate |
 |---|---|---|---|
+| **0. Origin** — why he started it | **asked, first** | **asked, first** | **no gate — it is how the conversation opens** |
 | **1. Baseline** — the eleven, unchanged | skipped (already claimed) | **asked here** | **blocks** |
 | **2. Scope** — which of the nine areas exist, mostly yes/no | asked | asked | **blocks** |
 | **3. Depth** — one open question per active area | asked | asked | skippable |
+
+### Block 0 — why did you start this?
+
+✅ **DECIDED (2026-08-02): the conversation opens on origin, in front of everything else.** The three
+questions the operator says he always asks in a personal conversation: **why did you start this? what
+problem were you looking to solve? what gap did you see in the market?**
+
+**It is not a warm-up, and treating it as one wastes it.** It is the cheapest source of content the
+model has, and it fills the two holes §3.2 identifies without adding an area to fill them:
+
+| What it produces | Where it lands |
+|---|---|
+| the gap he saw in the market | **competition / Pricing** — the thing that appears nowhere else in the model |
+| the problem he set out to solve | **what we sell** — the missing third of *what × who × how* |
+| why customers came to him rather than someone else | **Customers** |
+| what he personally knew, had, or could do that nobody else could | **the owner-dependence axis** — and this is the valuable one |
+
+That last row is the reason to ask it first. A business founded on *"I knew everyone in the industry"*
+is owner-dependent **by construction**, and owner-dependence is rank 2 — the deal-breaker at the top
+end. He will say it unprompted in the origin story and would deny it if asked directly, because to him
+it is not a weakness, it is the reason the business exists.
+
+**And it is the right opening for this ICP in particular.** Someone thirty-five years in, who has not
+told his staff or his family what he is considering, has not been asked why he started it in a very
+long time — and can answer it for an hour. *"Which of your nine areas shall we begin with"* is a form.
+This is a conversation, and the entire thesis of the product is that the second one gets answers the
+first cannot.
+
+**No gate, deliberately.** By this section's own rule — block on what the measurement cannot exist
+without — origin blocks nothing: it produces no number and no denominator. It is also the one block
+that must never render as a form field, since the whole argument for it is that it is asked the way a
+person asks it.
+
+⚠️ **Three constraints, each of which has already bitten this product somewhere else.**
+
+- **Narrative must land as facts.** This is the block most likely to produce a well-written paragraph
+  and nothing checkable. *"He started it because nobody in the region would take jobs under $50k"* is
+  an entry that can be read back and agreed; a page of story is not. The failure mode is a Genome
+  whose best-written section sits above nine empty areas.
+- **It runs straight at the do-not-infer-exit rule** (register **H3**). *Why did you start it* leads
+  naturally to *and where are you now*, and that turn is exactly where the rule gets broken. Exit
+  intent is a learning **if he raises it**, never an inference — least of all from a story about the
+  past.
+- **The founding story must be filed against the business it is about** (§3.2, whose Genome). An
+  owner with two entities has two origins, and this block is the single most likely place for the
+  wrong one to be captured against the wrong Genome.
+
+**Sequencing note, not decided:** for the straight-in client this puts an open, human question
+immediately in front of a blocking eleven-field form. The comparability constraint below requires the
+same eleven at the same `MODEL_VERSION` — it does not require them to be rendered as a form, so she
+could ask them in the same conversation provided the questions and the version are identical. It also
+strengthens the closing note of this section: **open on the origin, close on the number.**
 
 **The ceiling on the question count is therefore not a number — it is whatever has not been answered
 yet.** And the gate rule is: **block on what the measurement cannot exist without, skip on what Kira
@@ -530,9 +831,11 @@ In dependency order. **Tracked as B1–B11 and C1–C4 in `BUILD_REGISTER.md`** 
 status of record; this list is the shape.
 
 1. ✅ **The confirmation record** (§2) — **BUILT 2026-08-02** (`5f9255f`): `facts_to_confirm` +
-   `confirm_fact`, a row per read-back, live on the business agents. ⚠️ **But the count it produces
-   is rendered nowhere** — not on `/my-genome`, not in the export (register **B1**). Until that is
-   closed the verifiable axis exists in the database and nowhere a human can see it.
+   `confirm_fact`, a row per read-back, live on the business agents. The count is now **rendered on
+   `/my-genome` and in the export** (register **B1**, closed `b47ff7c`), and facts the Genome would
+   discard are no longer offered for confirmation (**B12**, `fe200fe`). ⚠️ **Remaining:** a spoken
+   read-back does not reliably catch a phonetically-corrupted proper noun and can promote one to
+   `confirmed` — see §3.2, register **B15**.
 2. **The area model** (§3) — nine areas, with the flow registry's tier data behind them as the
    denominator, and `only-you` retired as a section in favour of the per-area owner-dependence axis.
    **This gates everything below it, and §4.1's onboarding set as well.** The evidence that it is
@@ -547,8 +850,8 @@ status of record; this list is the shape.
    applies no sensitivity filter whatsoever: the QA identity's entire Genome is *"the owner is
    considering selling after 35 years and has not told anyone"*, and it renders straight into the
    document this section describes as being for a buyer's accountant (register **B7**).
-6. **The onboarding question set** (§4.1) — three blocks, block/block/skip, with the eleven seeded
-   forward as facts.
+6. **The onboarding question set** (§4.1) — **four blocks**, open/block/block/skip, opening on
+   **Block 0, why he started it**, with the eleven seeded forward as facts.
 
 The public example (`lib/genome/example.ts`) comes down to what the product does, or up to it, before
 any of this ships — a page promising hand-authored precision beside a scorecard built on confirmed
