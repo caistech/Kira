@@ -19,7 +19,7 @@ import { createServiceClient } from '@/lib/supabase/server';
 // column keeps filling so a future re-measurement is free. It is `ownerPrivateReason` alone that
 // decides what the owner and the buyer actually see. See OwnerEntry.privateReason.
 import { ownerPrivateReason, PRIVATE_REASONS, type PrivateReason } from './private';
-import { dropRestatements } from './similar';
+import { dropRestatements, possibleRestatements } from './similar';
 import { GENOME_AREAS, areaFor, type AreaKey } from './areas';
 
 /**
@@ -109,6 +109,20 @@ export interface OwnerEntry {
    * measurement too — the raw runs are in the session scratchpad and the counts above are the bar.
    */
   privateReason: PrivateReason | null;
+  /**
+   * The id of an earlier entry this one MIGHT be restating, or null.
+   *
+   * SURFACED, NEVER MERGED — and that is the decision, not a limitation. Above the merge threshold a
+   * restatement is collapsed automatically. In the band below it, two entries are alike enough to be
+   * worth asking about and not alike enough to act on, so the owner is asked. Silently collapsing two
+   * things he said is a rewrite of his own record, and the product is built on him controlling that.
+   *
+   * The band was previously unreachable: lowering the threshold far enough to catch a real
+   * restatement (containment 0.58) also merged Lot 91 with Lot 442 — different sites, different
+   * money. `identifiersConflict` removed that danger, because those two are near-identical precisely
+   * BECAUSE the only difference is the number. Guard the identifiers and the band opens up.
+   */
+  possibleRestatementOf: string | null;
 }
 
 export interface OwnerSection {
@@ -531,7 +545,15 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
   // lib/genome/similar.ts for the measurement behind the threshold. Rows arrive newest-first, and
   // first-wins is kept from the old filter, so the most recent phrasing survives and this change
   // removes repetition without also reshuffling which version of every fact he sees.
-  const all: OwnerEntry[] = dropRestatements(relevant, (r) => String(r.content ?? '')).map((r) => ({
+  const survivors = dropRestatements(relevant, (r) => String(r.content ?? ''));
+  // Computed over the SURVIVORS, so he is never asked about a pair where one side has already been
+  // merged away — that question has no answer he could act on.
+  const maybeSame = possibleRestatements(
+    survivors,
+    (r) => String(r.id),
+    (r) => String(r.content ?? ''),
+  );
+  const all: OwnerEntry[] = survivors.map((r) => ({
       id: String(r.id),
       headline: (r.genome_headline as string | null) ?? null,
       content: String(r.content ?? ''),
@@ -552,6 +574,7 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
       // Matcher only. `genome_private_reason` is selected above and deliberately not consulted —
       // the field note on OwnerEntry carries the measurement that retired it.
       privateReason: ownerPrivateReason(String(r.content ?? '')),
+      possibleRestatementOf: maybeSame.get(String(r.id)) ?? null,
     }));
 
   const sections: OwnerSection[] = GENOME_SECTIONS.map((s) => {

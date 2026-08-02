@@ -96,8 +96,105 @@ export function containment(a: string, b: string): number {
  */
 export const NEAR_DUPLICATE = 0.8;
 
+/**
+ * The floor for a POSSIBLE restatement — surfaced to the owner, never merged.
+ *
+ * 0.55, which reaches the real pair the header above documents as uncatchable (containment 0.58):
+ *
+ *   "prefers to keep control over when and how sensitive communications … are sent"
+ *   "prefers to maintain strict control over communications and approvals"
+ *
+ * The header was right that MERGING at this level is unsafe. It was wrong that nothing could be done
+ * about it, and the reason is in `identifiersConflict` below: what makes 0.58 dangerous is Lot 91
+ * against Lot 442, and those two are near-identical precisely BECAUSE the only difference is an
+ * identifier. Guard the identifiers and the danger goes with them.
+ *
+ * Even so, this band only ever ASKS. Silently collapsing two things an owner said is a rewrite of
+ * his record, and the whole product is built on him controlling that.
+ */
+export const POSSIBLE_RESTATEMENT = 0.55;
+
+/**
+ * The numbers and names two entries are pinned to.
+ *
+ * Numbers come from anywhere; proper nouns are capitalised tokens EXCLUDING the first word, because
+ * the first word of a sentence is capitalised for grammar rather than because it names anything.
+ * Deliberately crude — it is a veto, not a classifier, and a veto that occasionally fires on nothing
+ * costs a merge that would have been nice to have.
+ */
+export function identifiers(text: string): Set<string> {
+  const raw = String(text ?? '');
+  const out = new Set<string>();
+  for (const n of raw.match(/\d+(?:\.\d+)?/g) ?? []) out.add(n);
+  const words = raw.split(/\s+/);
+  for (let i = 1; i < words.length; i += 1) {
+    const w = words[i].replace(/[^A-Za-z0-9]/g, '');
+    if (w.length > 1 && /^[A-Z]/.test(w)) out.add(w.toLowerCase());
+  }
+  return out;
+}
+
+/**
+ * Do these two entries name DIFFERENT things?
+ *
+ * True only when each side carries an identifier the other lacks — they disagree, rather than one
+ * simply being more specific. That distinction is the whole point:
+ *
+ *   "Lot 91" vs "Lot 442"                    → 91∉B and 442∉A  → CONFLICT, never merged
+ *   "he is selling" vs "selling after 35 yrs" → only B has 35    → no conflict, mergeable
+ *   "Lots 109, 91, 442" vs "Lot 91, 442, 109" → same set         → no conflict
+ *
+ * The middle case is what a restatement usually looks like, so a one-sided rule would have vetoed
+ * most of the merges this file exists to make.
+ */
+export function identifiersConflict(a: string, b: string): boolean {
+  const A = identifiers(a);
+  const B = identifiers(b);
+  if (A.size === 0 || B.size === 0) return false;
+  let aOnly = false;
+  let bOnly = false;
+  for (const x of A) if (!B.has(x)) aOnly = true;
+  for (const x of B) if (!A.has(x)) bOnly = true;
+  return aOnly && bOnly;
+}
+
 export function isNearDuplicate(a: string, b: string): boolean {
+  if (identifiersConflict(a, b)) return false;
   return containment(a, b) >= NEAR_DUPLICATE;
+}
+
+/**
+ * Alike enough to ask about, not alike enough to act on.
+ *
+ * Strictly below `NEAR_DUPLICATE`, so a pair is either merged or surfaced and never both.
+ */
+export function isPossibleRestatement(a: string, b: string): boolean {
+  if (identifiersConflict(a, b)) return false;
+  const score = containment(a, b);
+  return score >= POSSIBLE_RESTATEMENT && score < NEAR_DUPLICATE;
+}
+
+/**
+ * For each entry, the first surviving entry it might be restating — or nothing.
+ *
+ * Returns a map keyed by the LATER item, because the owner is shown "this may be the same as
+ * something you said before": pointing forward would ask him about an entry he has not reached.
+ */
+export function possibleRestatements<T>(
+  items: T[],
+  key: (item: T) => string,
+  text: (item: T) => string,
+): Map<string, string> {
+  const pairs = new Map<string, string>();
+  for (let i = 0; i < items.length; i += 1) {
+    for (let j = 0; j < i; j += 1) {
+      if (isPossibleRestatement(text(items[i]), text(items[j]))) {
+        pairs.set(key(items[i]), key(items[j]));
+        break;
+      }
+    }
+  }
+  return pairs;
 }
 
 /**

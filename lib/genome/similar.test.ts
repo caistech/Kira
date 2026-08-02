@@ -8,7 +8,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { containment, dropRestatements, isNearDuplicate, restatementCluster, NEAR_DUPLICATE } from './similar';
+import { NEAR_DUPLICATE, POSSIBLE_RESTATEMENT, containment, dropRestatements, identifiers, identifiersConflict, isNearDuplicate, isPossibleRestatement, possibleRestatements, restatementCluster } from './similar';
 
 // Verbatim from the QA account — the three that made the export carry six entries for two facts.
 const SELLING_A = 'The owner is considering selling the business after running it for 35 years but has not told anyone yet.';
@@ -88,4 +88,65 @@ describe('degenerate input cannot merge anything', () => {
       expect(isNearDuplicate(a, b)).toBe(false);
     },
   );
+});
+
+describe('the identifier guard (what makes lowering the threshold safe)', () => {
+  // THE PAIR THAT MADE LOWERING UNSAFE. Different sites, different money — and near-identical
+  // precisely BECAUSE the only difference is the number.
+  it('never merges two different lots, however alike the words are', () => {
+    const a = 'Managing modular site delivery for Lot 91 including approvals and delivery schedule';
+    const b = 'Managing modular site delivery for Lot 442 including approvals and delivery schedule';
+    expect(containment(a, b)).toBeGreaterThan(NEAR_DUPLICATE);
+    expect(identifiersConflict(a, b)).toBe(true);
+    expect(isNearDuplicate(a, b)).toBe(false);
+    expect(isPossibleRestatement(a, b)).toBe(false);
+  });
+
+  it('does not veto when one entry is merely more specific', () => {
+    expect(identifiersConflict('He is considering selling the business', 'He is considering selling after 35 years')).toBe(false);
+  });
+
+  it('does not veto when both name the same things in a different order', () => {
+    expect(identifiersConflict('Lots 109, 91 and 442 are active', 'Active projects are Lot 91, 442 and 109')).toBe(false);
+  });
+
+  it('ignores a leading capital, which is grammar rather than a name', () => {
+    expect(identifiers('Delivery is scheduled').has('delivery')).toBe(false);
+    expect(identifiers('The Geraldton site is delayed').has('geraldton')).toBe(true);
+  });
+});
+
+describe('the surface band (lowered, but it asks rather than acts)', () => {
+  // The real pair the file previously documented as uncatchable, at containment 0.58.
+  const a = 'The owner prefers to keep control over when and how sensitive communications are sent';
+  const b = 'The owner prefers to maintain strict control over communications and approvals';
+
+  it('reaches the restatement that the merge threshold cannot', () => {
+    const score = containment(a, b);
+    expect(score).toBeGreaterThanOrEqual(POSSIBLE_RESTATEMENT);
+    expect(score).toBeLessThan(NEAR_DUPLICATE);
+    expect(isPossibleRestatement(a, b)).toBe(true);
+  });
+
+  // Merged or surfaced, never both — otherwise an entry could be removed AND queried.
+  it('never overlaps the merge band', () => {
+    const x = 'He is considering selling the business after thirty five years';
+    const y = 'He is considering selling the business after thirty five years and has told nobody';
+    expect(isNearDuplicate(x, y)).toBe(true);
+    expect(isPossibleRestatement(x, y)).toBe(false);
+  });
+
+  it('leaves genuinely unrelated entries alone', () => {
+    expect(isPossibleRestatement('Commercial jobs are priced at cost plus 18 percent', 'Public liability insurance renews in March')).toBe(false);
+  });
+
+  it('points each entry BACKWARDS at the earlier one it may restate', () => {
+    const items = [
+      { id: 'first', text: a },
+      { id: 'second', text: b },
+    ];
+    const pairs = possibleRestatements(items, (i) => i.id, (i) => i.text);
+    expect(pairs.get('second')).toBe('first');
+    expect(pairs.has('first')).toBe(false);
+  });
 });

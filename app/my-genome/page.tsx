@@ -281,6 +281,19 @@ export default async function MyGenome() {
                               {PRIVATE_REASON_LABEL[e.privateReason]}.
                             </p>
                           )}
+                          {/* ASKED, NOT ACTED ON.
+                              Above the merge threshold a restatement is collapsed automatically. In
+                              the band below it two entries are alike enough to be worth asking about
+                              and not alike enough to act on — a tester found two of his three facts
+                              saying the same thing in different words — so he is asked rather than
+                              having his own record quietly rewritten. Remove is right there if the
+                              answer is yes; nothing happens if he ignores it. */}
+                          {e.possibleRestatementOf && (
+                            <p className="text-xs text-stone-500 mt-0.5">
+                              This may be another way of saying something you already told Kira. If it
+                              is, remove whichever one reads worse — she will keep the other.
+                            </p>
+                          )}
                           {/* On the FILED entries too, not only the unsorted ones. The sentence the
                               tester wanted to take back — "considering selling, has not told anyone"
                               — was a filed entry, so a Remove that only reached the loose notes
