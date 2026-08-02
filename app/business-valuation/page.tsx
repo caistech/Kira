@@ -388,20 +388,26 @@ export default function BusinessValuationPage() {
    * a link pointing at the wrong page — never a claim about him.
    *
    * Read off `window` rather than through `useSearchParams`, which would oblige a Suspense boundary
-   * around a thousand-line client page to answer a question this small.
+   * around a thousand-line client page — and this page is statically prerendered, so that boundary
+   * would cost the public funnel's first paint to answer a question this small.
    *
-   * A LAZY INITIALISER, NOT AN EFFECT — and it does not risk a hydration mismatch, for a reason
-   * specific to this page rather than a general one. The initialiser returns `false` on the server
-   * and possibly `true` on the client, which is normally exactly how a mismatch is made. It is safe
-   * here because the only thing that reads this value is `ResultView`, and at hydration `stepIndex`
-   * is still -1 (the intro): the answers are restored from the device in an effect that has not run
-   * yet, so nothing this value affects exists in the DOM at the moment the two renders are compared.
+   * ⚠️ IT MUST BE AN EFFECT, NOT A LAZY `useState` INITIALISER. It shipped as an initialiser and was
+   * WRONG IN PRODUCTION — a naive tester walked the whole flow and got the sales copy and a price
+   * quote, with `?from=app` sitting in the address bar the entire time.
    *
-   * If this page ever renders the result on first paint, this must go back to an effect.
+   * The reason is client-side navigation, not hydration. The dashboard links here with `<Link>`, so
+   * the App Router RENDERS THIS COMPONENT BEFORE IT COMMITS THE NEW URL: at initialiser time
+   * `window.location.search` is still the *dashboard's*, which is empty. By the time anyone looks at
+   * the address bar it is correct, which is what makes the bug so convincing — the parameter is
+   * visibly there and the code that reads it visibly ran.
+   *
+   * An effect runs after commit, so the URL is settled by the time it looks. The state starts false
+   * and corrects on the first tick; nothing reads it until the result screen, eleven answers later.
    */
-  const [returningToApp] = useState(
-    () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('from') === 'app',
-  );
+  const [returningToApp, setReturningToApp] = useState(false);
+  useEffect(() => {
+    setReturningToApp(new URLSearchParams(window.location.search).get('from') === 'app');
+  }, []);
 
   const planHref = returningToApp ? '/dashboard' : '/plan';
 
