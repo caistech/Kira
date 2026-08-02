@@ -374,7 +374,36 @@ export default function BusinessValuationPage() {
     storeValuation({ inputs: answers as ValuationInputs, currency, firstName: firstName.trim() || undefined });
   }, [isResult, answers, currency, firstName]);
 
-  const planHref = '/plan';
+  /**
+   * Did an owner who is ALREADY INSIDE the product send himself here?
+   *
+   * The dashboard invites a straight-in signup — someone who joined on a broker's word rather than
+   * on the strength of a number — to set a baseline he never had. Without this he finishes the
+   * eleven questions and is quoted a monthly price under a button that sells him the product he is
+   * already paying for, which reads either as a second bill or as a page that has no idea who he is.
+   *
+   * A QUERY PARAM RATHER THAN AUTH. This page is deliberately public and auth-unaware (see the file
+   * header), and making it read a session to change one link would hand it a dependency it has
+   * avoided on purpose. The param is a hint about where he came from, and being wrong about it costs
+   * a link pointing at the wrong page — never a claim about him.
+   *
+   * Read off `window` rather than through `useSearchParams`, which would oblige a Suspense boundary
+   * around a thousand-line client page to answer a question this small.
+   *
+   * A LAZY INITIALISER, NOT AN EFFECT — and it does not risk a hydration mismatch, for a reason
+   * specific to this page rather than a general one. The initialiser returns `false` on the server
+   * and possibly `true` on the client, which is normally exactly how a mismatch is made. It is safe
+   * here because the only thing that reads this value is `ResultView`, and at hydration `stepIndex`
+   * is still -1 (the intro): the answers are restored from the device in an effect that has not run
+   * yet, so nothing this value affects exists in the DOM at the moment the two renders are compared.
+   *
+   * If this page ever renders the result on first paint, this must go back to an effect.
+   */
+  const [returningToApp] = useState(
+    () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('from') === 'app',
+  );
+
+  const planHref = returningToApp ? '/dashboard' : '/plan';
 
   const progress = isResult ? 100 : Math.round(((stepIndex + 1) / (total + 1)) * 100);
 
@@ -734,7 +763,7 @@ export default function BusinessValuationPage() {
         )}
 
         {/* RESULT */}
-        {isResult && result && <ResultView result={result} currency={currency} planHref={planHref} firstName={firstName.trim()} matchedSector={String(answers.industry ?? "")} typedSector={industryQuery.trim()} onChangeSector={() => setStepIndex(0)} />}
+        {isResult && result && <ResultView result={result} currency={currency} planHref={planHref} firstName={firstName.trim()} matchedSector={String(answers.industry ?? "")} typedSector={industryQuery.trim()} onChangeSector={() => setStepIndex(0)} returningToApp={returningToApp} />}
       </main>
 
       {/* The "Ask Kira" floating widget was REMOVED from this flow on 2026-07-27.
@@ -760,6 +789,7 @@ function ResultView({
   matchedSector,
   typedSector,
   onChangeSector,
+  returningToApp = false,
 }: {
   result: ReturnType<typeof computeValuation>;
   currency: string;
@@ -768,6 +798,8 @@ function ResultView({
   matchedSector?: string;
   typedSector?: string;
   onChangeSector?: () => void;
+  /** He is already a customer: don't sell, and don't quote him a price he is already paying. */
+  returningToApp?: boolean;
 }) {
   // APPROXIMATE, on the result screen. See formatMoneyApprox: eleven category answers and a sector
   // median cannot resolve a business to the dollar, and "$1,094,292" claims they can on the one
@@ -961,10 +993,13 @@ function ResultView({
         <div className="grad-genome w-14 h-14 rounded-2xl flex items-center justify-center text-white mx-auto mb-5">
           <Brain className="h-7 w-7" />
         </div>
-        <h2 className="font-display text-2xl font-bold text-stone-800 mb-3">Start building your business's memory</h2>
+        <h2 className="font-display text-2xl font-bold text-stone-800 mb-3">
+          {returningToApp ? "That's your starting point" : "Start building your business's memory"}
+        </h2>
         <p className="text-stone-600 max-w-xl mx-auto mb-7 leading-relaxed">
-          Kira interviews you the way a smart buyer would — capturing the operating knowledge in your head into a
-          living Business Genome. It's how you close the gap: a business worth more, and one you can actually hand over.
+          {returningToApp
+            ? "Kira will ask whether this one is yours the next time you open her, and then it becomes the figure everything from here is measured against. From that point on you close the gap by talking to her — she captures the operating knowledge in your head as you go."
+            : "Kira interviews you the way a smart buyer would — capturing the operating knowledge in your head into a living Business Genome. It's how you close the gap: a business worth more, and one you can actually hand over."}
         </p>
 
         {/* HIS PRICE, HERE, where he was told it would be.
@@ -975,7 +1010,10 @@ function ResultView({
             Nothing was blocking it: priceForGap() is pure, the gap is already computed on this
             screen, and /plan calls the same function. It is framed as a fraction of the gap because
             that is the honest justification and it only works while the gap is still on screen. */}
-        {!noEarnings && (
+        {/* Not to someone who is already paying. Quoting a customer the monthly fee again, under a
+            button labelled as though he has not started, is the "does this product know who I am"
+            failure — and for a 66-year-old bracing for a second charge it is worse than that. */}
+        {!noEarnings && !returningToApp && (
           <p className="text-stone-700 max-w-xl mx-auto mb-7 text-lg">
             For your business that comes to{' '}
             <span className="font-bold text-stone-900">
@@ -991,7 +1029,7 @@ function ResultView({
           href={planHref}
           className="grad-coral text-white font-display font-bold px-8 py-4 rounded-full text-lg inline-flex items-center gap-2 min-h-[52px] shadow-lg shadow-pink-200 hover:opacity-95"
         >
-          Start building your Business Genome <ArrowRight className="h-5 w-5" />
+          {returningToApp ? 'Back to Kira' : 'Start building your Business Genome'} <ArrowRight className="h-5 w-5" />
         </a>
         <div className="mt-5 flex items-center justify-center gap-5 text-sm">
           <button onClick={() => window.print()} className="text-stone-500 hover:text-stone-800 inline-flex items-center gap-1.5 min-h-[44px]">

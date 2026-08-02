@@ -5,6 +5,7 @@ import { canSend } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
 import { createServiceClient } from '@/lib/supabase/server';
 import { formatMoney, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
+import { shouldInviteBaseline } from '@/lib/valuation/baseline-invite';
 import { readTaskLedger } from '@/lib/kira/swarm/open-tasks';
 
 export const metadata = { title: 'Overview · Kira' };
@@ -102,6 +103,10 @@ export default async function DashboardPage({
   const val = valuation as Valuation | null;
   const money = (n: number) => formatMoney(n, val?.currency || DEFAULT_CURRENCY);
 
+  // Two decisions, not one condition — see lib/valuation/baseline-invite.ts, where they are pinned
+  // by tests because both read as tidy-uppable.
+  const showBaselineInvite = shouldInviteBaseline(list);
+
   // WHAT IS WAITING ON HIM, on his own screen.
   //
   // Ray found 39 open items on the OPERATOR's page, several "4 days ago · nobody has looked",
@@ -179,6 +184,11 @@ export default async function DashboardPage({
           </Link>
         </section>
       )}
+
+      {/* NO BASELINE AT ALL — the straight-in signup.
+          Gated on the ROW, not on the gap: a valuation that computed to zero is still a baseline he
+          gave us, and telling that owner he has not done this yet would be a plain falsehood. */}
+      {!val && showBaselineInvite && <NoBaselineYet />}
 
       {val && val.gap > 0 && (
         <GapDashboard valuation={val} money={money} talkHref={talkHref} isWelcome={isWelcome} firstName={user?.first_name as string | undefined} />
@@ -292,6 +302,57 @@ function journeyLabel(journey: string): string {
     coach: 'Your coach',
   };
   return map[journey] ?? (journey ? `Kira — ${journey}` : 'Kira');
+}
+
+/**
+ * The straight-in signup's way to a baseline.
+ *
+ * WHY THIS EXISTS. Both writers of `business_valuations` originate from the eleven questions — one
+ * through Stripe checkout metadata, one through the device handoff that `ClaimStoredValuation`
+ * offers. An owner who signs up WITHOUT ever running them therefore has no row, and the dashboard
+ * simply omitted the gap block: no figure, no explanation, and nothing anywhere on his screen
+ * suggesting the thing existed. He has not been told anything false; he has been told nothing.
+ *
+ * That is the shape the register calls INERT RATHER THAN BROKEN, and it is worse than broken because
+ * it looks like it is working. Two things were quietly lost with it: his own reason for being here,
+ * and the origin every later movement is measured from — so an introducer watching a referral sees
+ * permanent blanks in a column that is supposed to be the proof the product works.
+ *
+ * AND IT IS THE BROKER CHANNEL THAT PRODUCES IT. `/r/[token]` stamps the attribution cookie and
+ * drops the visitor on the home page, so a client who signs up on his broker's word rather than on
+ * the strength of a number is exactly the person who arrives with nothing.
+ *
+ * AN INVITATION, NOT A GATE. §4.1 decides the baseline eventually BLOCKS, as onboarding block 1 —
+ * but that is C3, it is gated on the area model, and turning the dashboard into a wall today would
+ * trap every existing owner behind eleven questions to fix a problem none of them has.
+ *
+ * NO CONFIDENTIALITY CLAIM HERE, deliberately. The obvious reassuring line — "this is not shared
+ * with anyone" — is not true for a referred client: an introducer holds `view_status` and sees the
+ * movement, by design. The fix is to not make the claim rather than to make a comfortable version
+ * of it.
+ */
+function NoBaselineYet() {
+  return (
+    <section className="mb-10 rounded-2xl border-2 border-violet-200 bg-violet-50 p-6 sm:p-8">
+      <h2 className="text-xl font-bold text-stone-900">Start with where the business stands today</h2>
+      <p className="mt-2 max-w-prose text-base leading-relaxed text-stone-700">
+        Kira doesn&apos;t have a starting point for the business yet. Eleven questions — what it turns
+        over, what it earns, how much of it runs through you — and you&apos;ll see what it&apos;s worth
+        now, what it could be worth running without you, and the difference between the two.
+      </p>
+      <p className="mt-3 max-w-prose text-base leading-relaxed text-stone-700">
+        That figure becomes the starting point everything from here is measured against, and it stays
+        fixed once it&apos;s set — so it&apos;s worth doing before you get too far. You can stop
+        part-way and come back; your answers stay on this device while you do.
+      </p>
+      <Link
+        href="/business-valuation?from=app"
+        className="mt-5 inline-flex min-h-[44px] items-center rounded-full bg-stone-900 px-6 py-3 text-base font-semibold text-white hover:bg-stone-800"
+      >
+        Answer the eleven questions
+      </Link>
+    </section>
+  );
 }
 
 function GapDashboard({
