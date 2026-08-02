@@ -44,6 +44,7 @@ import {
 import { kiraRecordRefusalToolDef } from '@/lib/kira/refusal-tool-def.mjs';
 import { isUidToolUrl } from '@/lib/kira/uid-tools.mjs';
 import { parkedOtherBusinesses } from '@/lib/kira/other-businesses';
+import { forgetParkedEntityLeaks } from '@/lib/kira/entity-sweep';
 
 // Kira's real tables mapped onto the canonical TableNames contract. The reconcile
 // migration adds the columns the handlers need (agent_id, anon_session_id, processed_at)
@@ -156,6 +157,12 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
       if (memory.errors.length) {
         console.error('[kira/convai] memory pipeline reported:', memory.errors.join('; '));
       }
+
+      // The distil paraphrases, so a fact about another company can arrive here in words the
+      // exclusion list never matched. The trigger parks the row; this takes the semantic copy back
+      // out, because parking it in one store while publishing it to the other is the guard being
+      // technically satisfied and practically absent. See lib/kira/entity-sweep.ts.
+      await forgetParkedEntityLeaks(userId, KIRA_CONVAI_TABLES.memory);
 
       // File the new facts into the Genome NOW, while the call that produced them just ended.
       //
