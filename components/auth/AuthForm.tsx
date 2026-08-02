@@ -16,7 +16,7 @@
 // longer Kira's to maintain. title/subtitle are accepted for call-site compatibility but the
 // canonical renders its own mode header.
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   AuthForm as CanonicalAuthForm,
   type AuthExtraField,
@@ -119,9 +119,36 @@ export function AuthForm({
   variant = 'user',
   askReferralSource = false,
 }: AuthFormProps) {
-  // SSR-safe: build the browser client once on the client. The canonical accepts a possibly-null
-  // client and handles it internally.
+  // SSR-safe: build the browser client once on the client.
   const supabaseClient = useMemo(() => (typeof window === 'undefined' ? null : createClient()), []);
+
+  // ⚠️ DO NOT RENDER THE CANONICAL UNTIL THERE IS A CLIENT.
+  //
+  // "The canonical accepts a possibly-null client and handles it internally" was true and not good
+  // enough: what it does with a null client is render a DEVELOPER ERROR — "AuthForm is missing a
+  // Supabase client. Pass createBrowserClient from @supabase/ssr…" — and because the client can only
+  // be built in the browser, that error is what the SERVER renders. It sits in the HTML of /login and
+  // is replaced when hydration lands.
+  //
+  // On a fast machine that is a blink. A tester on an ordinary connection watched it: "A man who is
+  // nervous about whether this thing is real sees a red error message full of code on the sign-in
+  // page and closes the tab. He does not report it." That is the first screen a broker-referred
+  // owner ever sees.
+  //
+  // So the pre-hydration paint is a quiet placeholder of roughly the right shape instead. The real
+  // fix belongs in the package — a shared auth component should never render developer text to an
+  // end user — but that is a publish plus twenty-four consumer bumps, and this is the screen.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted || !supabaseClient) {
+    return (
+      <div className="space-y-4" aria-busy="true" aria-label="Loading the sign-in form">
+        <div className="h-11 rounded-lg bg-stone-100" />
+        <div className="h-11 rounded-lg bg-stone-100" />
+        <div className="h-11 rounded-full bg-stone-200" />
+      </div>
+    );
+  }
 
   const admin = variant === 'admin';
 

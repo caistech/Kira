@@ -370,6 +370,19 @@ export default async function MyGenome() {
                 {g.unsorted.slice(0, 10).map((e) => (
                   <li key={e.id} className="text-stone-700">
                     · {e.content}
+                    {/* THE SAME MARKER THE FILED ENTRIES CARRY.
+                        It was on the sections and not here, and the copy under the download buttons
+                        promises the handover document "leaves out anything marked YOURS ONLY above".
+                        A tester looked for that marking and found none — because the entries it
+                        applies to were sitting in this block, unmarked. The promise pointed at a
+                        label the page never printed, which is the same defect as the export filter
+                        being attached to one collection instead of to the document. */}
+                    {e.privateReason && (
+                      <p className="text-xs font-medium text-violet-700 mt-0.5">
+                        Yours only — kept out of the handover document, because it touches on{' '}
+                        {PRIVATE_REASON_LABEL[e.privateReason]}.
+                      </p>
+                    )}
                     <RedactEntry id={e.id} />
                   </li>
                 ))}

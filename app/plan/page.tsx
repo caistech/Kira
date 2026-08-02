@@ -53,6 +53,7 @@ export default function PlanPage() {
     return () => { cancelled = true; };
   }, []);
   const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     // sessionStorage first — that is where the valuation page now parks it, so the owner's turnover
@@ -297,12 +298,44 @@ export default function PlanPage() {
                   <li key={i} className="flex items-start gap-2.5 text-sm"><Check className="h-4 w-4 text-violet-500 mt-0.5 flex-shrink-0" /> {f}</li>
                 ))}
               </ul>
+              {/* CONSEQUENCE BEFORE THE CLICK (§9), and it needs saying loudest while billing is OFF.
+                  A tester pressed "Start now — free while in beta" and landed, in one click with no
+                  warning, on a Stripe card form. "A man who has just been told 'no card is charged'
+                  is now being asked for a card with no warning… I'd have stopped there in real
+                  life." The next screen asks for a card either way, so the button has to say so. */}
+              {confirming && (
+                <div className="mb-3 rounded-2xl border-2 border-stone-300 bg-white p-4 text-left">
+                  <p className="font-display font-bold text-stone-900">
+                    The next screen asks for your card.
+                  </p>
+                  <p className="mt-1 text-sm text-stone-600 leading-relaxed">
+                    {billingLive
+                      ? `It is saved, not charged. Your first payment is ${price(model.quote.monthly)} ${tax} at the end of your first month, and we email you three days before it.`
+                      : 'Nothing is charged — billing is not switched on yet. Stripe still needs the details to set the account up, and we will email you before anything is ever billed. Because billing is off, Stripe will show a "Sandbox" badge on that page; that is our test mode, not a fake payment page.'}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      onClick={startCheckout}
+                      disabled={loading}
+                      className="grad-coral text-white font-display font-bold px-6 py-3 rounded-full inline-flex items-center gap-2 min-h-[48px] disabled:opacity-60"
+                    >
+                      {loading ? <><Loader2 className="h-5 w-5 animate-spin" /> Starting…</> : <>Continue to Stripe <ArrowRight className="h-5 w-5" /></>}
+                    </button>
+                    <button
+                      onClick={() => setConfirming(false)}
+                      className="rounded-full border border-stone-300 bg-white px-6 py-3 font-semibold text-stone-700 min-h-[48px]"
+                    >
+                      Not yet
+                    </button>
+                  </div>
+                </div>
+              )}
               <button
-                onClick={startCheckout}
+                onClick={() => setConfirming(true)}
                 disabled={loading}
                 className="grad-coral text-white font-display font-bold px-8 py-4 rounded-full text-lg inline-flex items-center gap-2 min-h-[52px] shadow-lg shadow-pink-200 w-full justify-center disabled:opacity-60"
               >
-                {loading ? <><Loader2 className="h-5 w-5 animate-spin" /> Starting…</> : <>{billingLive ? 'Start now' : 'Start now — free while in beta'} <ArrowRight className="h-5 w-5" /></>}
+                {billingLive ? 'Start now' : 'Start now — free while in beta'} <ArrowRight className="h-5 w-5" />
               </button>
               {error && <p className="text-rose-600 text-sm mt-3">{error}</p>}
               <p className="mt-4 text-sm text-stone-500">

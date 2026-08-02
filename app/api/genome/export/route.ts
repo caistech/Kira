@@ -84,12 +84,47 @@ export async function GET(request: Request) {
   const subject = identity ? displayName(identity) : owner;
 
   if (format === 'json') {
-    return new NextResponse(JSON.stringify({ exportedAt: new Date().toISOString(), owner, ...g }, null, 2), {
+    // "EVERYTHING WE HOLD" HAS TO MEAN EVERYTHING WE HOLD.
+    //
+    // This exported the derived Genome, which is what SURVIVES classification and de-duplication —
+    // so on a real account it handed back 2 entries while the operator console listed 12 of the same
+    // owner's facts. A tester found both and was blunt about it: "the export button labelled
+    // 'everything we hold' hands me two of twelve, and the ten it withholds include the four copies
+    // of my secret. If I ever compared the two I'd never trust the product again."
+    //
+    // The label was not the problem to fix. This file is HIS, it is the one he keeps if he stops
+    // paying us, and the withheld rows are things we hold about him — chit-chat and software notes
+    // filed `none`, and restatements the Genome collapses. Softening the sentence would have made a
+    // true statement about a smaller promise; including the rows keeps the promise we made.
+    //
+    // The buyer's document is unaffected: that is `format=md`, and it filters through `buyerView`.
+    const { data: everything } = await svc
+      .from('kira_memory')
+      .select('id, content, created_at, importance, genome_section, genome_about, genome_headline, genome_private_reason, genome_owner_dependent, confirmed_at, active, parked_reason')
+      .eq('user_id', appUser.id)
+      .order('created_at', { ascending: false });
+
+    return new NextResponse(
+      JSON.stringify(
+        {
+          exportedAt: new Date().toISOString(),
+          owner,
+          ...g,
+          // Named so the two are not confused: `sections`/`unsorted` are the Genome as the product
+          // renders it; this is the underlying record it was derived from, including what the
+          // Genome leaves out and why.
+          everythingHeld: everything ?? [],
+        },
+        null,
+        2,
+      ),
+      {
       headers: {
         'Content-Type': 'application/json',
         'Content-Disposition': `attachment; filename="business-genome-${stamp}.json"`,
+        },
       },
-    });
+    );
   }
 
   const lines: string[] = [

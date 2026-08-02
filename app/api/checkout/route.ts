@@ -10,6 +10,7 @@
 // lifecycle. The PRICE stays here - it is Kira's business logic, not the package's.
 
 import { createSubscriptionCheckoutSession } from '@caistech/subscription-billing';
+import { taxSuffix } from '@/lib/valuation/currency';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getStripe, METER_EVENT_NAME, PRICE_LOOKUP_PREFIX } from '@/lib/billing';
@@ -81,7 +82,18 @@ export async function POST(request: NextRequest) {
         currency: currency.code,
         unitAmount: Math.round(quote.monthly * 100),
         interval: 'month',
-        productName: `Kira Business Plan — ${quote.label}`,
+        // THE TAX QUALIFIER TRAVELS ONTO THE CHECKOUT PAGE.
+      //
+      // Every price surface in the product carries "+ GST" except the one that actually takes the
+      // money: Stripe rendered "A$999.00 per unit" with no qualifier anywhere on the page. A tester
+      // flagged it as the single place the number matters, and he is right — this is the figure a
+      // business buyer reads as the amount leaving his account.
+      //
+      // It goes in the PRODUCT NAME because Stripe renders that beside the amount; the alternative
+      // is Stripe Tax, which is a real configuration decision rather than a copy fix. The suffix
+      // follows the buyer's currency (taxSuffix), so it says GST for an Australian and VAT for
+      // someone in London instead of hardcoding the local word.
+      productName: `Kira Business Plan — ${quote.label} (${taxSuffix(currencyCode)})`,
         productDescription:
           'Your always-on AI partner: talk to Kira and she builds your business systems.',
       },
