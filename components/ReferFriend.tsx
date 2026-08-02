@@ -58,7 +58,7 @@ export default function ReferFriend({ userId, className = '' }: ReferFriendProps
       {/* Trigger Button - subtle but visible */}
       <button
         onClick={() => setIsOpen(true)}
-        className={`flex items-center gap-2 text-sm text-gray-500 hover:text-kira-coral transition-colors ${className}`}
+        className={`flex items-center gap-2 text-sm text-gray-500 hover:text-kira-600 transition-colors ${className}`}
       >
         <Gift className="w-4 h-4" />
         <span>Know someone who'd love Kira? Share the link</span>
@@ -99,8 +99,8 @@ export default function ReferFriend({ userId, className = '' }: ReferFriendProps
               /* Form State */
               <>
                 <div className="text-center mb-6">
-                  <div className="w-12 h-12 bg-kira-coral/10 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <Gift className="w-6 h-6 text-kira-coral" />
+                  <div className="w-12 h-12 bg-kira-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <Gift className="w-6 h-6 text-kira-600" />
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-1">
                     Share Kira with a friend
@@ -122,7 +122,7 @@ export default function ReferFriend({ userId, className = '' }: ReferFriendProps
                       value={formData.yourName}
                       onChange={(e) => setFormData(prev => ({ ...prev, yourName: e.target.value }))}
                       placeholder="Dennis"
-                      className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-kira-coral/50 focus:border-kira-coral transition"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-kira-600/50 focus:border-kira-600 transition"
                     />
                   </div>
 
@@ -137,7 +137,7 @@ export default function ReferFriend({ userId, className = '' }: ReferFriendProps
                       value={formData.yourEmail}
                       onChange={(e) => setFormData(prev => ({ ...prev, yourEmail: e.target.value }))}
                       placeholder="you@example.com"
-                      className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-kira-coral/50 focus:border-kira-coral transition"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-kira-600/50 focus:border-kira-600 transition"
                     />
                   </div>
 
@@ -152,7 +152,7 @@ export default function ReferFriend({ userId, className = '' }: ReferFriendProps
                       value={formData.friendEmail}
                       onChange={(e) => setFormData(prev => ({ ...prev, friendEmail: e.target.value }))}
                       placeholder="friend@example.com"
-                      className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-kira-coral/50 focus:border-kira-coral transition"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-kira-600/50 focus:border-kira-600 transition"
                     />
                   </div>
 
@@ -165,7 +165,7 @@ export default function ReferFriend({ userId, className = '' }: ReferFriendProps
                   <button
                     type="submit"
                     disabled={status === 'sending'}
-                    className="w-full bg-kira-coral text-white py-3 rounded-lg font-medium hover:bg-opacity-90 transition flex items-center justify-center gap-2 disabled:opacity-70"
+                    className="w-full bg-kira-600 text-white py-3 rounded-lg font-medium hover:bg-kira-700 transition flex items-center justify-center gap-2 disabled:opacity-70"
                   >
                     {status === 'sending' ? (
                       <>

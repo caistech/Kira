@@ -35,7 +35,7 @@ Three consequences, and they outrank aesthetic preference every time:
 |---|---|
 | **Direction** | Green-forward. Green stays the brand colour; it is renamed honestly and given a compliant ramp. |
 | **Neutrals** | The existing **warm** greys are kept. Warm suits an older reader and is the one part of the current identity that was never broken. |
-| **Type** | **Lexend** for display, **Inter** for body. Lexend is designed for reading proficiency — chosen for the ICP, not for fashion. |
+| **Type** | **Inter throughout, for now.** Hierarchy from weight and size. **Lexend for display is the one OPEN decision** — see §4. |
 | **Density** | Spacious. 8pt grid. |
 | **Motion** | Subtle, CSS-only, no new dependency, always `prefers-reduced-motion`-aware. |
 
@@ -93,17 +93,24 @@ tokens may be used in a component; a raw hex in a component is a defect the vali
 
 | Role | Face | Size | Notes |
 |---|---|---|---|
-| Display | **Lexend** 600 | `clamp(1.75rem, 4vw, 2.75rem)` | Page and section titles |
-| Heading | Lexend 600 | 1.25–1.5rem | |
+| Display | Inter 600 *(Lexend proposed)* | `clamp(1.75rem, 4vw, 2.75rem)` | Page and section titles |
+| Heading | Inter 600 | 1.25–1.5rem | |
 | Body | **Inter** 400 | **17px** | One notch above the 16px floor, deliberately, for this ICP |
 | Small | Inter 400 | 15px | Never below 15px anywhere in the product |
 
 **No `font-size` below 15px exists in this system.** If a layout needs 12px to fit, the layout is wrong.
 Line length capped at `65ch` for prose. Line height 1.6 for body.
 
-⚠️ Lexend is the one *new* thing here. If you want zero new dependencies, keep Inter everywhere and
-build hierarchy from weight and size alone — but then delete the `display`/`body` aliases rather than
-pointing all three at Inter, which is what made the current config dishonest.
+⚠️ **The open decision: Lexend for display.** It is designed for reading proficiency, which is exactly
+this ICP's problem, and it is the one *new* dependency this system would add. It is **not applied**,
+deliberately: adding a second face changes every heading in the product, and that is a visual break
+during a live tester round.
+
+**And the `display`/`body` aliases stay pointing at Inter, which needs saying plainly.** The original
+plan was to delete them — until a grep found **256 usages**, making removal a breaking change rather
+than a cleanup. So all three aliases resolve to one face *by recorded decision* rather than by
+accident, and the config says so at the point of definition. When Lexend lands, `display` becomes true
+and 256 call sites gain a real hierarchy for free — which is the argument for leaving them alone now.
 
 ---
 

@@ -24,7 +24,7 @@ export function CorporateFooter({ productName, extraLinks = [], theme = 'light' 
         <div className="flex flex-col gap-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-[#22c55e] rounded flex items-center justify-center">
+              <div className="w-6 h-6 bg-kira-600 rounded flex items-center justify-center">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 2L2 7l10 5 10-5-10-5z" />
                   <path d="M2 17l10 5 10-5" />
