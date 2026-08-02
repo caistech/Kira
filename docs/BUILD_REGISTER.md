@@ -9,6 +9,14 @@
 > not when it is *built*. Kira's recurring failure mode is a correct edit that is silently defeated
 > downstream, so "shipped" and "working" are separate columns on purpose.
 >
+> **The rule that stops it becoming a graveyard** *(operator, 2026-08-02)*: **close items one at a
+> time, and close them NOW unless something genuinely blocks them.** If an item surfaces mid-session
+> and nothing depends on it, resolve it rather than adding a row — recording is a cost, not progress,
+> and a queued item that keeps being deferred never closes. B12 was found while closing B1, filed,
+> and then closed in the same session under this rule: twenty minutes, and it removed a live defect
+> from a real conversation path. Only a genuine dependency (the `Blocked by` column) justifies
+> queuing. **One theme per session** — that is what makes closing one at a time affordable.
+>
 > **Sources swept:** `OPEN_ITEMS.md`, `NEXT_SESSION.md`, `GENOME_BUYER_FORMAT.md` §8,
 > `naive-tester-reports/2026-08-01-ray/ray.md`, the project memory files, a live audit of the
 > ElevenLabs fleet, the prod database, and a real export pulled from the synthetic QA identity.
@@ -49,7 +57,7 @@ Shape decided in `GENOME_BUYER_FORMAT.md` (six ✅ decisions). Build items in de
 | ID | Item | Type | Sev | Blocked by | Detail |
 |---|---|---|---|---|---|
 | ~~**B1**~~ | ~~`confirmed` count rendered nowhere~~ | — | — | — | ✅ **CLOSED 2026-08-02 (`b47ff7c`)** — see *Closed* below. |
-| **B12** | She can ask him to confirm a fact that will never appear in his Genome | BUG | 3 | — | Found while closing B1: the one real confirmation in prod sits on a row classified `genome_section: 'none'`, so it is filtered out of the Genome entirely. The confirmation is real and the fact it confirms is invisible. If `facts_to_confirm` offers `none`-classified rows, she spends conversation turns — the scarcest thing here — confirming facts that cannot ever count on the verifiable axis. **Not yet investigated**: check whether the offer query filters on `genome_section`. |
+| ~~**B12**~~ | ~~She asks him to confirm facts the Genome throws away~~ | — | — | — | ✅ **CLOSED 2026-08-02 (`fe200fe`)** — see *Closed* below. |
 | **B2** | Nine-area model does not exist in code | MISS | 2 | — | `derive.ts` still ships the original six sections. **Gates B3–B6 and C1–C3.** |
 | **B3** | `only-you` retired as a section, becomes the per-area axis | MISS | 2 | B2 | Evidence it is urgent: in the QA export **5 of 6 sections are empty and everything landed in `only-you`**; on the red-team account it holds 115 of 233 classified rows. The taxonomy is functioning as five sections plus a bucket. |
 | **B4** | Deactivation — she proposes, he confirms, both recorded | MISS | 2 | B2 | §4. Without it there is no denominator, so every percentage after it is indefensible. |
@@ -199,6 +207,7 @@ question this file exists to answer, and a tick with no evidence behind it is ho
 
 | ID | Closed | Commit | What was observed (not what was edited) |
 |---|---|---|---|
+| **B12** | 2026-08-02 | `fe200fe` | `POST /api/kira/webhooks/facts_to_confirm?uid=<QA>` against the live deployment returned exactly two facts, and both handles resolve to `genome_section: 'only-you'` when checked against the database. The seven `none` rows now excluded are all about the SOFTWARE, not the business — *"The owner expects the assistant to act as a right hand"*, *"The owner authorizes the assistant to search connected…"* — which is what she would previously have read back to a 66-year-old for his handover document. Before the fix: 13 offerable rows, 7 of them `none`. The `neq`-drops-NULL claim in the code comment was verified against Postgres (`(NULL <> 'none') IS NULL` → true), not assumed. Test asserts the filter and is mutation-proven. |
 | **B1** | 2026-08-02 | `b47ff7c` | Against the live deployment, as the QA identity: `/my-genome` rendered *"2 have been read back to you and you agreed"* with two rows temporarily confirmed, the per-entry line *"Read back to you and confirmed on 2 August 2026"* appeared and **disappeared again on revert**, the zero state read *"Kira has not read any of these back to you yet…"*, and the Markdown export carried both *"(stated 1 August 2026; read back to the owner and confirmed 2 August 2026)"* and the zero-state closing paragraph. The two temporary confirmations were set on the **synthetic QA account only** and reverted in the same script; QA rows carrying `confirmed_at` afterwards: **0**. |
 
 ---
