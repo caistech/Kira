@@ -20,7 +20,7 @@ import { createServiceClient } from '@/lib/supabase/server';
 // decides what the owner and the buyer actually see. See OwnerEntry.privateReason.
 import { ownerPrivateReason, PRIVATE_REASONS, type PrivateReason } from './private';
 import { dropRestatements, possibleRestatements } from './similar';
-import { GENOME_AREAS, areaFor, type AreaKey } from './areas';
+import { GENOME_AREAS, LEGACY_SECTION_MAP, areaFor, type AreaKey } from './areas';
 
 /**
  * What the note is about.
@@ -189,6 +189,13 @@ export interface OwnerGenome {
 }
 
 const SECTION_KEYS = GENOME_SECTIONS.map((s) => s.key) as string[];
+
+/** A stored key, resolved to a current area — carrying legacy keys forward. See the call site. */
+function resolveSection(stored: string): SectionKey | 'unsorted' {
+  if (SECTION_KEYS.includes(stored)) return stored as SectionKey;
+  const forwarded = LEGACY_SECTION_MAP[stored as keyof typeof LEGACY_SECTION_MAP];
+  return forwarded ?? 'unsorted';
+}
 
 const CLASSIFY_SYSTEM = `
 You are filing one note into a small business's OPERATING MANUAL — the document its owner would hand
@@ -559,7 +566,20 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
       content: String(r.content ?? ''),
       capturedAt: String(r.created_at),
       importance: (r.importance as number) ?? null,
-      section: (SECTION_KEYS.includes(String(r.genome_section)) ? r.genome_section : 'unsorted') as SectionKey | 'unsorted',
+      // LEGACY KEYS RESOLVE FORWARD, at read time.
+      //
+      // The nine-area model renamed the section keys, and the reviewed re-classification of the
+      // existing rows has not run yet. Without this, every row still filed `work-in` / `delivery` /
+      // `suppliers` / `obligations` falls through to `unsorted` — so an owner's Genome collapses into
+      // one undifferentiated pile the moment the model widens, and the areas he is told about all
+      // read as empty while his facts sit in a heap underneath them.
+      //
+      // §3 calls the nine "a widening, not a rewrite", and five of the six map straight across. Doing
+      // it here means the widening is free and the re-classification stays what it should be: a
+      // reviewed pass over the rows that genuinely need a judgement, not a migration everything is
+      // blocked on. `only-you` is deliberately absent from the map — it becomes the per-row axis, and
+      // those rows need the operator's eye rather than an automatic destination.
+      section: resolveSection(String(r.genome_section)),
       source:
         r.source_conversation_id && spokenOn.has(String(r.source_conversation_id))
           ? {

@@ -30,6 +30,24 @@ import { getBusinessIdentity } from '@/lib/business-identity/store';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+/**
+ * Everything in the Genome that may travel in the buyer's document.
+ *
+ * EXPORTED AND PURE so the guarantee can be tested rather than trusted. `export.test.ts` asserts
+ * that nothing carrying a `privateReason` survives this, across BOTH collections — which is the
+ * assertion that was missing when the leak happened.
+ */
+export function buyerView<E extends { privateReason: unknown }, S extends { entries: E[] }>(g: {
+  sections: S[];
+  unsorted: E[];
+}): { sections: S[]; unsorted: E[] } {
+  const exportable = (e: E) => !e.privateReason;
+  return {
+    sections: g.sections.map((s) => ({ ...s, entries: s.entries.filter(exportable) })),
+    unsorted: g.unsorted.filter(exportable),
+  };
+}
+
 export async function GET(request: Request) {
   const authUser = await getAuthUser();
   if (!authUser) return NextResponse.json({ error: 'Sign in first' }, { status: 401 });
@@ -116,7 +134,22 @@ export async function GET(request: Request) {
   // merged once in deriveOwnerGenome. Read here, never re-derived — a second opinion computed at
   // this call site is the one that ends up disagreeing with the marker the owner was shown on his
   // own page, and then he cannot audit what he was promised he could.
-  const publicSections = g.sections.map((s) => ({ ...s, entries: s.entries.filter((e) => !e.privateReason) }));
+  // ⚠️ APPLIED TO EVERY COLLECTION, ONCE — not per-section.
+  //
+  // This filtered `sections` and nothing else, and `unsorted` is also written into the document
+  // further down. That was survivable while unsorted was a rare leftover. It stopped being
+  // survivable the moment the nine-area model renamed the section keys: every row still carrying a
+  // legacy key (`only-you`, `work-in`, `delivery`…) now resolves to `unsorted`, so the collection
+  // that bypassed the filter became the collection holding most of the Genome — and "the owner is
+  // considering selling and has not told anyone" walked back into the handover document, carrying
+  // `privateReason: 'exit-intent'` the whole way.
+  //
+  // The filter was never wrong. It was attached to one collection instead of to the document, which
+  // is the same shape as the chrome fix that was attached to /chat while sign-in moved to /talk.
+  // `exportable` is now the single gate, and `export.test.ts` asserts that NOTHING carrying a
+  // privateReason appears anywhere in the rendered output — so the next new collection cannot
+  // reintroduce this by simply not being thought about.
+  const { sections: publicSections, unsorted: publicUnsorted } = buyerView(g);
 
   // Counted over what the document ACTUALLY SHOWS, not over everything held. Reporting "6 of 6
   // traceable" under a document displaying two entries is the kind of number that is technically
@@ -151,8 +184,8 @@ export async function GET(request: Request) {
     }
   }
 
-  if (g.unsorted.length > 0) {
-    lines.push('## Recorded, not yet filed', '', ...g.unsorted.map((e) => `- ${e.content}`), '');
+  if (publicUnsorted.length > 0) {
+    lines.push('## Recorded, not yet filed', '', ...publicUnsorted.map((e) => `- ${e.content}`), '');
   }
 
   lines.push(
