@@ -105,9 +105,9 @@ export function DemoPlayer({
     : 'min-h-[44px] px-5 rounded-full font-display font-semibold';
 
   return (
-    <div className="rounded-3xl border border-amber-200 bg-white overflow-hidden">
+    <div className="rounded-3xl border border-kira-line bg-white overflow-hidden">
       {/* Where we are, in time — the axis of this demo is elapsed time, not steps. */}
-      <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-amber-100 bg-amber-50/60">
+      <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-kira-line bg-kira-mist">
         <span className={`font-display font-bold ${big ? 'text-lg' : ''}`}>{beat.when}</span>
         <span className="text-sm text-stone-500">{i + 1} of {beats.length}</span>
       </div>
@@ -121,7 +121,7 @@ export function DemoPlayer({
         {beat.figure && (
           <div className="mb-5">
             <p className="font-display font-bold text-4xl sm:text-5xl leading-none"
-               style={{ background: 'linear-gradient(135deg,#8b5cf6,#f472b6)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>
+               style={{ background: 'linear-gradient(135deg,#15803D,#166534)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>
               {beat.figure.value}
             </p>
             <p className="text-stone-500 mt-2">{beat.figure.label}</p>
@@ -134,9 +134,9 @@ export function DemoPlayer({
               <span className="text-sm uppercase tracking-wide text-stone-400 font-semibold">{mode === 'auto' ? 'On the page, not in your head' : 'On the page, not in his head'}</span>
               <span className="font-display font-bold text-2xl">{beat.coverage}%</span>
             </div>
-            <div className="h-2 w-full bg-amber-100 rounded-full mt-2 overflow-hidden">
+            <div className="h-2 w-full bg-kira-50 rounded-full mt-2 overflow-hidden">
               <div className="h-full rounded-full transition-all duration-700"
-                   style={{ width: `${beat.coverage}%`, background: 'linear-gradient(135deg,#fb7185,#f472b6)' }} />
+                   style={{ width: `${beat.coverage}%`, background: 'linear-gradient(135deg,#15803D,#166534)' }} />
             </div>
           </div>
         )}
@@ -149,14 +149,14 @@ export function DemoPlayer({
           <a
             href={beat.cta.href}
             className={`mt-6 inline-flex items-center justify-center text-white font-display font-bold rounded-full ${big ? 'min-h-[60px] px-9 text-xl' : 'min-h-[52px] px-7 text-lg'}`}
-            style={{ background: 'linear-gradient(135deg,#fb7185,#f472b6)' }}
+            style={{ background: 'linear-gradient(135deg,#15803D,#166534)' }}
           >
             {beat.cta.label} →
           </a>
         )}
 
         {beat.stillOpen && beat.stillOpen.length > 0 && (
-          <div className="mt-5 rounded-2xl bg-amber-100/70 px-4 py-4">
+          <div className="mt-5 rounded-2xl bg-kira-50 px-4 py-4">
             <p className="font-semibold text-stone-800">Still only in his head</p>
             <ul className="mt-2 space-y-1.5 text-stone-700">
               {beat.stillOpen.map((g) => <li key={g}>· {g}</li>)}
@@ -167,15 +167,15 @@ export function DemoPlayer({
 
       {/* Controls — words, never icons alone. An icon-only button is invisible to anyone who does
           not already know what it means, and this audience does not. */}
-      <div className="flex flex-wrap items-center gap-3 px-5 py-4 border-t border-amber-100 bg-amber-50/40">
+      <div className="flex flex-wrap items-center gap-3 px-5 py-4 border-t border-kira-line bg-kira-mist">
         {mode === 'auto' ? (
-          <button onClick={() => setPlaying((p) => !p)} className={`${btn} grad-coral text-white`} style={{ background: 'linear-gradient(135deg,#fb7185,#f472b6)' }}>
+          <button onClick={() => setPlaying((p) => !p)} className={`${btn} grad-coral text-white`} style={{ background: 'linear-gradient(135deg,#15803D,#166534)' }}>
             {playing ? 'Pause' : i === 0 ? 'Start' : 'Continue'}
           </button>
         ) : (
           <>
             <button onClick={prev} disabled={i === 0} className={`${btn} border border-stone-300 disabled:opacity-40`}>Back</button>
-            <button onClick={next} disabled={i + 1 >= beats.length} className={`${btn} text-white disabled:opacity-40`} style={{ background: 'linear-gradient(135deg,#fb7185,#f472b6)' }}>Next</button>
+            <button onClick={next} disabled={i + 1 >= beats.length} className={`${btn} text-white disabled:opacity-40`} style={{ background: 'linear-gradient(135deg,#15803D,#166534)' }}>Next</button>
           </>
         )}
 
@@ -183,7 +183,7 @@ export function DemoPlayer({
           {sound ? 'Sound off' : 'Hear Kira'}
         </button>
         {!src && sound && <span className="text-sm text-stone-500">No audio for this step yet.</span>}
-        {blocked && <span className="text-sm text-amber-700">Your browser blocked the sound — press Hear Kira again.</span>}
+        {blocked && <span className="text-sm text-kira-700">Your browser blocked the sound — press Hear Kira again.</span>}
 
         {i > 0 && (
           <button onClick={() => { setI(0); setPlaying(false); }} className="text-stone-500 underline underline-offset-4 min-h-[44px]">

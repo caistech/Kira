@@ -40,18 +40,46 @@
 // 17px, contrast is high, and nothing bounces.
 
 import React from 'react';
+import { VoiceWidget } from '@caistech/elevenlabs-convai/react';
 
 import { OWNER_FAQ } from '@/lib/faq';
 import { LandingDemo } from '@/components/LandingDemo';
 import { PRICE_TIERS } from '@/lib/valuation/pricing';
 import { formatPrice, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 
+// The PUBLIC, no-account agent — the same one /start uses. A landing page visitor has no session
+// and must not need one: the whole product claim is that you only ever talk to her, and until now
+// there was nothing on any public page you could talk to. Ray's walkthrough recorded that as a
+// FAIL, and he was right — "Hear Kira" plays a pre-recorded mp3, which is a recording, not an agent.
+//
+// It is the CANONICAL @caistech/elevenlabs-convai widget, not the raw CDN <elevenlabs-convai>
+// embed still on /start. That embed is why voice was pulled from /business-valuation rather than
+// restored — the note there says reinstating it would mean adopting the canonical component first.
+// This adopts it.
+const SETUP_KIRA_AGENT_ID = process.env.NEXT_PUBLIC_SETUP_KIRA_AGENT_ID;
+
 const NAV = [
   { href: '#how-it-works', label: 'How it works' },
+  // "See a real one" rather than "What you get". Ray called /genome the most convincing thing on
+  // the site and nearly never opened it, because "What you get" reads as a feature list and he
+  // skipped it on the way past. It is also in the hero now, as a second door.
+  { href: '/genome', label: 'See a real one' },
   { href: '#pricing', label: 'Pricing' },
-  { href: '/genome', label: 'What you get' },
-  { href: '/advisors', label: 'Advisors' },
   { href: '/about', label: 'About' },
+];
+
+// ADVISORS IS NOT IN THE OWNER'S MENU. It tells brokers "you introduce the client; you earn while
+// they stay" — and the owner is the one reading this page. Ray clicked it from the top nav and
+// said: "I'm the client. I've just read a page, written for my broker, that explains he earns a
+// trailing fee for sending me here." It stays reachable, in the footer, where the audience that
+// wants it will look for it.
+const FOOTER_LINKS = [
+  { href: '/about', label: 'About' },
+  { href: '#how-it-works', label: 'How it works' },
+  { href: '#pricing', label: 'Pricing' },
+  { href: '/advisors', label: 'For advisors' },
+  { href: '/privacy', label: 'Privacy' },
+  { href: '/terms', label: 'Terms' },
 ];
 
 /** The three steps. A LIST, deliberately — they happen in order, and a row of cards denies that. */
@@ -92,10 +120,16 @@ export function LandingNew() {
         @media (prefers-reduced-motion: reduce) { .ln-link { transition: none; } }
       `}</style>
 
-      {/* NAV — text only. No gradient-ringed avatar, no pill badge. */}
+      {/* NAV — the avatar stays. Removing it was my call and it was the wrong one: she is a person
+          the owner is deciding whether to talk to, and a wordmark on its own makes this a piece of
+          software. The gradient RING is what went (it was amber->pink->purple); the face is the
+          product. */}
       <header className="sticky top-0 z-50 border-b border-kira-line bg-kira-surface/90 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <a href="/" className="flex min-h-[44px] items-center gap-3">
+            <span className="block h-9 w-9 shrink-0 overflow-hidden rounded-full ring-1 ring-kira-line">
+              <img src="/female_avatar.jpeg" alt="Kira" className="h-full w-full object-cover" />
+            </span>
             <span className="text-[21px] font-semibold tracking-tight text-kira-dark">Kira</span>
             <span className="hidden text-[15px] text-kira-soft sm:inline">by Corporate AI Solutions</span>
           </a>
@@ -146,11 +180,17 @@ export function LandingNew() {
         )}
       </header>
 
-      {/* HERO — left-aligned, one statement, one action. No badge, no portrait, no blobs. */}
-      <section className="mx-auto max-w-5xl px-6 pb-16 pt-20 lg:pt-28">
-        <p className="mb-6 text-[15px] uppercase tracking-[0.14em] text-kira-soft">
-          For owners whose business still runs on them
-        </p>
+      {/* HERO — left-aligned, one statement, two doors. The portrait is back: this is a person you
+          decide whether to talk to, and the page that sells her should show her. */}
+      <section className="mx-auto max-w-5xl px-6 pb-16 pt-16 lg:pt-24">
+        <div className="mb-8 flex items-center gap-4">
+          <span className="block h-16 w-16 shrink-0 overflow-hidden rounded-full ring-1 ring-kira-line lg:h-20 lg:w-20">
+            <img src="/female_avatar.jpeg" alt="Kira" className="h-full w-full object-cover" />
+          </span>
+          <p className="text-[15px] uppercase tracking-[0.14em] text-kira-soft">
+            For owners whose business still runs on them
+          </p>
+        </div>
 
         <h1 className="max-w-[18ch] text-[40px] font-semibold leading-[1.08] tracking-[-0.02em] text-kira-dark lg:text-[56px]">
           You spent thirty years building it.
@@ -171,15 +211,26 @@ export function LandingNew() {
           the business can be sold with. Most owners start this before they&apos;ve told anyone.
         </p>
 
-        <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3">
+        {/* TWO DOORS, not one. Ray wanted to see the thing before typing anything into it, and the
+            only route to /genome was a text link on the pricing page — two steps past the point he
+            had already decided whether to bother. */}
+        <div className="mt-10 flex flex-wrap items-center gap-4">
           <a
             href="/business-valuation"
             className="ln-link inline-flex min-h-[52px] items-center rounded-md bg-kira-600 px-7 text-[17px] font-medium text-white hover:bg-kira-700"
           >
             Find out in 3 minutes
           </a>
-          <span className="text-[15px] text-kira-soft">Free · no sign-up · an indicative valuation on the spot.</span>
+          <a
+            href="/genome"
+            className="ln-link inline-flex min-h-[52px] items-center rounded-md border border-kira-line bg-white px-7 text-[17px] font-medium text-kira-dark hover:border-kira-600 hover:text-kira-600"
+          >
+            See a real one
+          </a>
         </div>
+        <p className="mt-4 text-[15px] text-kira-soft">
+          Free · no sign-up · an indicative valuation on the spot.
+        </p>
       </section>
 
       {/* THE NUMBERS — a rule-separated row, not three gradient cards. */}
@@ -401,19 +452,28 @@ export function LandingNew() {
             </div>
 
             <div className="flex flex-wrap gap-x-8 text-[15px] text-kira-on-dark">
-              {[
-                { href: '/about', label: 'About' },
-                { href: '#how-it-works', label: 'How it works' },
-                { href: '#pricing', label: 'Pricing' },
-                { href: '/privacy', label: 'Privacy' },
-                { href: '/terms', label: 'Terms' },
-              ].map((l) => (
+              {FOOTER_LINKS.map((l) => (
                 <a key={l.href} href={l.href} className="ln-link flex min-h-[44px] items-center hover:text-white">
                   {l.label}
                 </a>
               ))}
             </div>
           </div>
+
+          {/* THE VOICE AGENT — public, no account, no session required.
+              `autoOpen` shows her greeting and a one-tap start rather than grabbing the microphone
+              on load, which is the right posture for a suspicious 66-year-old arriving cold.
+              `textFallback` means a visitor with no mic (or who will not grant one) still gets a
+              conversation instead of a dead button — degrade, don't fake. */}
+          {SETUP_KIRA_AGENT_ID && (
+            <VoiceWidget
+              agentId={SETUP_KIRA_AGENT_ID}
+              placement="floating"
+              autoOpen
+              textFallback
+              title="Ask Kira anything — no account needed"
+            />
+          )}
 
           <div className="mt-12 border-t border-kira-charcoal pt-8 text-[15px] leading-[1.6] text-kira-on-dark-muted">
             <p>Global Buildtech Australia Pty Ltd · ABN 54 672 395 685 · trading as Corporate AI Solutions</p>
