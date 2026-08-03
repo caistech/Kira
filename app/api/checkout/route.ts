@@ -138,6 +138,27 @@ export async function POST(request: NextRequest) {
       subscriptionMetadata: { kira_journey: 'business', quoted_monthly: String(quote.monthly) },
       allowPromotionCodes: true,
       billingAddressCollection: 'auto',
+      // THE FIXED FIGURE, BESIDE THE PAY BUTTON.
+      //
+      // Everything else on this page is Stripe's and cannot be changed: "Price varies", "billed
+      // monthly based on usage", "A$0.00 due today". All three are true — an arrears subscription is
+      // priced against a Billing Meter, so the amount genuinely is not known until the month closes
+      // — and all three read, to a suspicious 66-year-old at the moment he hands over a card, as a
+      // business that will not tell him what it charges. He said so: the card screen is where he
+      // stopped.
+      //
+      // productName and productDescription cannot answer it. Stripe substitutes its own subtitle for
+      // metered prices, and refuses to edit a Product it auto-created — which is why a tax-suffix fix
+      // sat inert for a week. custom_text is the one surface left that is ours.
+      //
+      // Kept to the number and the timing. It is not a place for terms.
+      customText: {
+        submit: {
+          message:
+            `${formatPrice(quote.monthly, currencyCode)} each month. You are charged after the month ` +
+            `has finished, never in advance — cancel before then and that month is on us.`,
+        },
+      },
     });
 
     return NextResponse.json({ url: session.url });
