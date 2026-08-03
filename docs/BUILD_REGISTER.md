@@ -210,6 +210,75 @@ could not be settled from source and say so rather than guessing.
 J3 and J7 need a live authenticated pass; J6's remaining half needs a browser. None of them should be
 marked done on a reading, which is the rule this section exists to honour.
 
+---
+
+## K. 2026-08-04 — the open list, numbered and prioritised
+
+Written because the day's findings were reported one at a time as they were hit and never
+consolidated, which is exactly the failure this register exists to prevent. Everything below is
+either OPEN or was closed today; nothing is carried from chat without being stated here.
+
+**Standing fact that sets the priority:** Stripe is **LIVE** (`{"live":true}`, `sk_live_` in the live
+slot, real `cs_live_` sessions minted). Anything that misleads or exposes a paying customer outranks
+everything else.
+
+**Also established today, and it changes how the rest reads:** there are exactly TWO stored
+valuations — the QA synthetic account and Dennis's own. **No customer has ever come through the
+funnel.** An earlier note in this session called `7f1c4e2f` "a real owner"; it is Dennis. Every claim
+about what a customer would experience is inference from design, not observation.
+
+### P0 — would damage a paying customer
+
+| # | Item | Type | State | Detail |
+|---|---|---|---|---|
+| **K1** | Buyer handover carries Kira's PRIVATE notes | BUG | **OPEN** | The document includes the owner's resistance to standing approval and his stated priorities. It goes to a buyer's advisor, against an explicit promise on the privacy page that the handover "leaves out your own position". Found by the authenticated walkthrough. |
+| **K2** | Manual ABN field accepts a fake ABN | BUG | **OPEN** | `99 999 999 999` passes — length-validated only — while the ABR lookup directly above it works. The fake then travels into the handover. |
+| **K3** | Kira's own meta-notes leak into the Genome | BUG | **OPEN (smaller than first reported)** | Measured: the `about=software → none` filter already hides 14/24 rows on the QA account and 96/150 on Dennis's. The defect is the handful that escape into a real area (e.g. a connection note filed under `systems`), not wholesale contamination. The specific row behind the live `systems` card is still unidentified. |
+
+### P1 — credibility with the buyer this product is written for
+
+| # | Item | Type | State | Detail |
+|---|---|---|---|---|
+| **K4** | Four visual identities | DEBT | **OPEN** | Landing, valuation, checkout and login each look like a different product. Ray: "I can't tell if I'm still on the same website." Needs a design decision, not a fix. |
+| **K5** | `/genome` paints slowly | BUG | **OPEN, unexplained** | It server-renders 3,935 characters, so the handoff's "move `'use client'` down" diagnosis was wrong. Cause unknown; invisible to an HTML fetch. |
+| **K6** | Two competing scores | DEBT | **OPEN** | "Transferability 32/100" on the valuation vs "On the page 57%" in the Genome. Both are called "the number to watch". |
+| **K7** | No debt field | MISS | **OPEN** | "Roughly what do you owe?" then "after debt, about $X to you." The only number the owner actually cares about. |
+| **K8** | Nothing asks what the broker already said | MISS | **OPEN** | Every one of these owners has had that conversation. Engaging with it is the difference between being understood and being sold to. |
+| **K9** | Voice text box takes 8–13s when the connection stalls | DEBT | **OPEN** | Enormously better than never (which is what it was), but an "or type instead" offered up front beats any timer. |
+
+### P2 — verification owed
+
+| # | Item | Type | State | Detail |
+|---|---|---|---|---|
+| **K10** | Signup never verified end to end | PROVE | **OPEN** | `recover` returns 200 and `otp` throttles (proving the mailer sends), but signup itself was not exercised because it creates a real account. One manual signup closes it. |
+| **K11** | Share gate still closed | PROVE | **OPEN** | No naive-tester PASS has ever been recorded against any deployment. |
+| **K12** | Genome baseline never seen on mobile | PROVE | **OPEN** | Verified rendering at desktop on the QA account only; 375px unchecked. |
+
+### P3 — portfolio / infrastructure
+
+| # | Item | Type | State | Detail |
+|---|---|---|---|---|
+| **K13** | `@caistech/report-generator` emits CORRUPT PDFs on Linux | BUG | **OPEN** | `bad XRef entry`. Ruled out: version drift, a read-before-flush race, and the Node version (raising CI 20→24 made it WORSE). Cause is the platform. Whole suite skipped in CI, declared not deleted. Producing valid PDFs is that package's entire job. |
+| **K14** | Other voice products still carry the old widget | DEBT | **OPEN** | Singify, BucketLyst, ExecutorAI keep the emoji launcher and the error-only text fallback until each bumps `@caistech/elevenlabs-convai` to ≥0.12.1. |
+| **K15** | `single-statement` check not built | MISS | **OPEN** | The last of the six mechanised checks. Would have caught the pricing-block-vs-FAQ contradiction and ExecutorAI's three simultaneous commercial models. |
+
+### Operator only — nobody else can do these
+
+| # | Item | Detail |
+|---|---|---|
+| **K16** | **Gareth has not been told his valuation was deleted.** Real person, $4.26M gap, and the model has now changed underneath it as well. He can re-run in three minutes; he should not find out by looking. |
+| **K17** | **The valuations backup is still in a temp directory** — `valuations-backup-2026-08-03.json`, containing real turnover and profit. Third day. Temp directories get cleaned. |
+
+### Closed today
+
+Auth 500s on signup/reset/magic-link (the Resend key in Supabase had diverged) · blank `/plan`
+`/login` `/signup` · the voice agent being a chatbot (wrong transport — now canonical signed-URL
+WebSocket, in the page flow, with the avatar) · the microphone emoji · doubled `+ GST + GST` ·
+15px secondary text · the dashboard's three-different-numbers gap · the valuation starting at 4–6x
+for a business entirely in the owner's head · nine empty Genome areas.
+
+---
+
 ## The sequence this implies
 
 Derived from the dependency columns, not from preference.
