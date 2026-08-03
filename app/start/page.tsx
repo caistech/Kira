@@ -288,14 +288,14 @@ export default function StartPage() {
               <img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" />
             </div>
             <div className="text-left">
-              <h1 className="text-2xl font-bold text-white">Meet Kira</h1>
-              <p className="text-stone-400 text-sm">Your friendly guide</p>
+              <h1 className="text-2xl font-bold text-white">Kira</h1>
+              <p className="text-stone-400 text-sm">Your part-time general manager</p>
             </div>
           </div>
 
           <h2 className="text-3xl font-bold text-white mb-2">
             {selectedJourney ? (
-              selectedJourney === 'personal' ? "Let's talk about life stuff" : "Let's talk about work stuff"
+              selectedJourney === 'personal' ? "Let's talk about life stuff" : "Tell her how the business actually runs"
             ) : (
               "What brings you here today?"
             )}
@@ -340,10 +340,10 @@ export default function StartPage() {
                 <div>
                   <p className="text-amber-200 font-medium mb-1">How it works:</p>
                   <ol className="text-amber-200/70 text-sm space-y-1 list-decimal list-inside">
-                    <li>Kira will start talking - just listen and respond naturally</li>
-                    <li>Tell her what you are trying to figure out</li>
-                    <li>She will create a brief for you to review</li>
-                    <li>The Review Framework button will turn green when ready</li>
+                    <li>Kira starts talking — just answer as you would to a person</li>
+                    <li>Tell her how the work gets done, and what only you know</li>
+                    <li>She writes it up for you to check before anything is kept</li>
+                    <li>The button below turns green when there is something to read</li>
                   </ol>
                 </div>
               </div>

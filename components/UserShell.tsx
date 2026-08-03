@@ -115,7 +115,10 @@ export async function UserShell({
           each page remembering to leave a gap for a button it does not render. Sized past the
           button's 56px plus its 20px offset. */}
       <div className="pb-28">{children}</div>
-      {/* Always-there one-tap mic — Siri-simple access from anywhere in the portal. */}
+      {/* Always-there one-tap mic — Siri-simple access from anywhere in the portal.
+          TalkFab hides ITSELF on the pages that already are the conversation (see the component):
+          the decision lives there because the FAB is the thing that knows where it points, and this
+          shell is a server component that cannot read the path anyway. */}
       <TalkFab />
     </PortalShell>
   );
