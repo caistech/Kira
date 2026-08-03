@@ -50,6 +50,33 @@ export function buyerView<E extends { privateReason: unknown }, S extends { entr
   };
 }
 
+/**
+ * The valuation figures, rounded the way every screen shows them.
+ *
+ * `approxNumber` mirrors `formatMoneyApprox`'s rule — 3 significant figures — so the JSON, the
+ * markdown and the screen cannot disagree. Returned as an object to be spread AFTER `...g`, which
+ * is what makes it an override rather than a second, competing set of fields.
+ */
+export function approxNumber(n: number): number {
+  const abs = Math.abs(n);
+  if (abs < 10_000) return Math.round(n);
+  const magnitude = Math.pow(10, Math.floor(Math.log10(abs)) - 2);
+  return Math.round(n / magnitude) * magnitude;
+}
+
+function approxFigures(g: { worthToday: number | null; gap: number | null }) {
+  const out: Record<string, unknown> = {};
+  if (g.worthToday != null) {
+    out.worthToday = approxNumber(g.worthToday);
+    out.worthTodayDisplayed = formatMoneyApprox(g.worthToday);
+  }
+  if (g.gap != null) {
+    out.gap = approxNumber(g.gap);
+    out.gapDisplayed = formatMoneyApprox(g.gap);
+  }
+  return out;
+}
+
 export async function GET(request: Request) {
   const authUser = await getAuthUser();
   if (!authUser) return NextResponse.json({ error: 'Sign in first' }, { status: 401 });
@@ -139,6 +166,19 @@ export async function GET(request: Request) {
           exportedAt: new Date().toISOString(),
           owner,
           ...g,
+          // ⚠️ THE FIGURES ARE ROUNDED HERE TOO, AND THAT IS THE POINT.
+          //
+          // `...g` carried them raw, so this file said $1,094,292 while every screen and the
+          // handover document said $1,090,000 — a difference a tester noticed and was right to.
+          // The product's most persuasive paragraph explains WHY it rounds: the number comes from
+          // eleven multiple-choice answers, so digits beyond the third are arithmetic, not
+          // knowledge. Printing them to the dollar in the attachment contradicts the argument the
+          // document makes about itself, in the file he forwards to his accountant.
+          //
+          // Rounded to the same 3 significant figures as `formatMoneyApprox`, and each figure is
+          // accompanied by the string exactly as it appeared on screen, so nothing has to be
+          // re-derived to check the two agree.
+          ...approxFigures(g),
           // Named so the two are not confused: `sections`/`unsorted` are the Genome as the product
           // renders it; this is the underlying record it was derived from, including what the
           // Genome leaves out and why.

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { buyerView } from '@/app/api/genome/export/route';
+import { approxNumber, buyerView } from '@/app/api/genome/export/route';
+import { formatMoney, formatMoneyApprox } from '@/lib/valuation/currency';
 
 /**
  * THE ASSERTION THAT WAS MISSING.
@@ -46,5 +47,42 @@ describe('buyerView', () => {
     const out = buyerView<E, S>({ sections: [section([open_('a')])], unsorted: [open_('b')] });
     expect(out.sections[0].entries).toHaveLength(1);
     expect(out.unsorted).toHaveLength(1);
+  });
+});
+
+/**
+ * THE FIGURES ON THE ATTACHMENT MATCH THE FIGURES ON THE SCREEN.
+ *
+ * The JSON export spread the derived genome verbatim, so it carried $1,094,292 while every screen
+ * and the handover document said $1,090,000. A tester noticed, and he was right to: the product's
+ * most persuasive paragraph explains WHY it rounds — the figure comes from eleven multiple-choice
+ * answers, so digits past the third are arithmetic rather than knowledge. Printing them to the
+ * dollar in the file he forwards to his accountant contradicts the argument the document makes
+ * about itself.
+ *
+ * `approxNumber` is the numeric half of `formatMoneyApprox`, and these pin them to the same rule so
+ * the two cannot drift apart again.
+ */
+describe('approxNumber', () => {
+  it('rounds to the three significant figures the screen shows', () => {
+    expect(approxNumber(1_094_292)).toBe(1_090_000);
+    expect(approxNumber(982_431)).toBe(982_000);
+    expect(approxNumber(1_286_802)).toBe(1_290_000);
+  });
+
+  it('agrees with formatMoneyApprox, which is the whole point', () => {
+    for (const n of [1_094_292, 982_431, 1_286_802, 47_500, 220_000]) {
+      expect(formatMoneyApprox(n)).toBe(formatMoney(approxNumber(n)));
+    }
+  });
+
+  it('leaves small figures alone — rounding a $4,200 asset to $4,200 is not an improvement', () => {
+    expect(approxNumber(4_200)).toBe(4_200);
+    expect(approxNumber(9_999)).toBe(9_999);
+  });
+
+  it('is safe on zero and negatives', () => {
+    expect(approxNumber(0)).toBe(0);
+    expect(approxNumber(-1_094_292)).toBe(-1_090_000);
   });
 });
