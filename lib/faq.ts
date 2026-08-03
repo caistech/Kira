@@ -62,7 +62,7 @@ export const OWNER_FAQ: FaqItem[] = [
     // I'd pick the explanation and drop the number." We kept the number — a nav item called Pricing
     // that shows no price reads as evasion to exactly this buyer — so the sentence that contradicted
     // it had to go instead. The bands ARE the price list; what is not fixed is which one he lands in.
-    a: "The valuation is completely free — no sign-up, no card. If you then want Kira to help close the gap, her monthly fee is set to the size of that gap: a small fraction of the value you stand to unlock, and a fraction of what the same work costs from a person. The bands are shown up front, and you see your own figure on screen before you decide anything — which band you land in depends on your gap, not on what we think you'll pay. You're never invoiced for the month you're in: each month is billed once it has finished, and if you cancel, that month is on us.",
+    a: "The valuation is completely free — no sign-up, no card. If you then want Kira to help close the gap, her monthly fee is set by the size of your business — the annual profit you tell us, not the gap we calculate. That distinction matters: the tool that works out what your business is worth has nothing to gain from the number being bigger. The bands are shown up front, and you see your own figure on screen before you decide anything. You're never invoiced for the month you're in: each month is billed once it has finished, and if you cancel, that month is on us.",
   },
   {
     q: 'Why is the price different for different businesses?',
@@ -133,7 +133,7 @@ export const ADVISOR_FAQ: FaqItem[] = [
   },
   {
     q: 'What do I actually get paid?',
-    a: "10% of what each owner you introduce pays us, every month, for as long as they keep paying. Not a one-off finder's fee — while the subscription runs, you earn on it. Commission follows collection: an owner's first month is invoiced once it has finished, so your first payment follows theirs. And while we are in beta, payments are switched off entirely — nothing is being collected from anyone yet, so nothing is being paid out yet either.",
+    a: "10% of what each owner you introduce pays us, every month, for as long as they keep paying. Not a one-off finder's fee — while the subscription runs, you earn on it. Commission follows collection: an owner's first month is invoiced once it has finished, so your first payment follows theirs.",
   },
   {
     q: 'When and how am I paid?',
