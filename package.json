@@ -41,7 +41,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@caistech/portfolio-gate": "^0.13.0",
+    "@caistech/portfolio-gate": "^0.13.1",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
