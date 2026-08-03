@@ -196,3 +196,55 @@ jobs:
             exit 0
           fi
           "$BIN"
+
+      # First paint — does the page a visitor lands on SAY anything before the JavaScript arrives?
+      #
+      # The sibling of the route smoke test above, and it exists because that one cannot see this:
+      # /plan, /login and /signup all answered 200, on the expected commit, with no redirect, while
+      # serving a header, a footer and SIXTEEN characters of content. A tester timed fifteen seconds
+      # of white on the page that asks for a card. Every status-code assertion in this file was green
+      # over it, correctly — they ask whether the page RESPONDS, this asks whether it says anything.
+      #
+      # BLOCKING, not warning-only. Unlike the static audits above there is no migration backlog to
+      # drain: it judges what production serves right now, and a blank page is not a style nit.
+      - name: First paint has content (pages marked @public-route)
+        run: |
+          BIN=node_modules/.bin/portfolio-gate-audit-first-paint
+          if [ ! -x "$BIN" ]; then
+            echo "::warning title=First paint NOT verified::@caistech/portfolio-gate in this repo predates the first-paint audit (needs >=0.12.0). Blank-then-appear pages are not being checked. Bump the dependency to enable it."
+            exit 0
+          fi
+          "$BIN" --base-url "$PORTFOLIO_GATE_PREVIEW_URL"
+
+      # Playwright, for the input-response audit below only. Installed as a separate step so a
+      # failure here reads as "the browser did not install" rather than "the widget is broken" —
+      # two very different messages to whoever opens the red build.
+      - name: Install Chromium (for the input-response audit)
+        run: |
+          if [ -x node_modules/.bin/portfolio-gate-audit-input-response ] && [ -x node_modules/.bin/playwright ]; then
+            npx playwright install --with-deps chromium
+          else
+            echo "Skipping browser install — input-response audit or playwright not present."
+          fi
+
+      # Input response — type into it, submit, and assert something comes back.
+      #
+      # The voice-agent audit in `audit-all` above is, in its own words, a PRESENCE check. Two
+      # products shipped past it the same day with a widget that rendered perfectly and did nothing:
+      # this one ate a buyer's question and fired zero network requests. "Launcher x 2, panel x 1 —
+      # the voice agent is live" was reported off two true numbers that meant nothing.
+      #
+      # Reports a RATE, not a verdict: this widget answers ~14 times in 20, so a single-run check
+      # passes about a third of the time and would be switched off within a week of flaking.
+      #
+      # ⚠️ IT REALLY SUBMITS, against the URL below, on every run. Only pages marked @accepts-input
+      # are driven, and that marker means "junk may be submitted here forever". Never mark signup,
+      # password-reset or contact forms.
+      - name: Input gets a response (pages marked @accepts-input)
+        run: |
+          BIN=node_modules/.bin/portfolio-gate-audit-input-response
+          if [ ! -x "$BIN" ]; then
+            echo "::warning title=Input response NOT verified::@caistech/portfolio-gate in this repo predates the input-response audit (needs >=0.13.0). A control that renders and swallows what is typed into it is not being checked. Bump the dependency to enable it."
+            exit 0
+          fi
+          "$BIN" --base-url "$PORTFOLIO_GATE_PREVIEW_URL"
