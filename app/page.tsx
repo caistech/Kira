@@ -1,4 +1,13 @@
 // @public-route
+// @accepts-input open=".convai-btn"
+//
+// `.convai-btn` is the BUTTON. `.convai-launch` is the wrapper div around it and clicking that
+// reveals nothing — confirmed against the live DOM, after the catalog's "`.convai-launch` /
+// `.convai-btn`" was read as interchangeable and was not.
+//
+// The assistant box is safe to submit junk into: it answers from /api/kira/ask and writes nothing
+// to a person's Genome. Do NOT add this marker to /signup or the auth pages — the audit really
+// submits, on every push, against production.
 // The landing page is a SWITCH between two real, maintained designs.
 //
 // WHY. The classic page was found by a design review to read as a competent, CONSISTENT
