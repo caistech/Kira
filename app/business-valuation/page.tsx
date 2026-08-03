@@ -43,7 +43,7 @@ import {
   type ValuationInputs,
 } from '@/lib/valuation/model';
 import { SECTOR_MULTIPLES } from '@/lib/valuation/sde-multiples';
-import { priceForGap } from '@/lib/valuation/pricing';
+import { priceForProfit } from '@/lib/valuation/pricing';
 import { formatMoney, formatMoneyApprox, formatPrice, getCurrency, CURRENCIES, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { synonymGroup, synonymSector } from '@/lib/valuation/industry-synonyms';
 import { storeValuation, VALUATION_HANDOFF_KEY } from '@/lib/valuation/share';
@@ -879,7 +879,7 @@ export default function BusinessValuationPage() {
         )}
 
         {/* RESULT */}
-        {isResult && result && <ResultView result={result} currency={currency} planHref={planHref} firstName={firstName.trim()} matchedSector={String(answers.industry ?? "")} typedSector={industryQuery.trim()} onChangeSector={() => setStepIndex(0)} returningToApp={returningToApp} />}
+        {isResult && result && <ResultView result={result} annualProfit={Number(answers.annualProfit) || 0} currency={currency} planHref={planHref} firstName={firstName.trim()} matchedSector={String(answers.industry ?? "")} typedSector={industryQuery.trim()} onChangeSector={() => setStepIndex(0)} returningToApp={returningToApp} />}
       </main>
 
       {/* The "Ask Kira" floating widget was REMOVED from this flow on 2026-07-27.
@@ -899,6 +899,7 @@ export default function BusinessValuationPage() {
 
 function ResultView({
   result,
+  annualProfit,
   currency,
   planHref,
   firstName,
@@ -908,6 +909,8 @@ function ResultView({
   returningToApp = false,
 }: {
   result: ReturnType<typeof computeValuation>;
+  /** What the owner REPORTED. The price band comes from this, never from result.gap. */
+  annualProfit: number;
   currency: string;
   planHref: string;
   firstName?: string;
@@ -1123,9 +1126,10 @@ function ResultView({
             He finished the valuation and there was no price on the results page at all — he had to
             click a third CTA to find it, which for a buyer already braced for a bait-and-switch is
             the worst possible place to withhold a number.
-            Nothing was blocking it: priceForGap() is pure, the gap is already computed on this
-            screen, and /plan calls the same function. It is framed as a fraction of the gap because
-            that is the honest justification and it only works while the gap is still on screen. */}
+            Nothing was blocking it: the price function is pure and /plan calls the same one.
+            It is no longer framed as a fraction of the gap: the band comes from the profit HE
+            reported, not from the gap WE computed, and quoting the share here would re-imply the
+            link that change exists to break. */}
         {/* Not to someone who is already paying. Quoting a customer the monthly fee again, under a
             button labelled as though he has not started, is the "does this product know who I am"
             failure — and for a 66-year-old bracing for a second charge it is worse than that. */}
@@ -1133,11 +1137,9 @@ function ResultView({
           <p className="text-stone-700 max-w-xl mx-auto mb-7 text-lg">
             For your business that comes to{' '}
             <span className="font-bold text-stone-900">
-              {formatPrice(priceForGap(result.gap).monthly, currency)} a month
+              {formatPrice(priceForProfit(annualProfit, result.gap).monthly, currency)} a month
             </span>
-            {priceForGap(result.gap).fractionWorthQuoting
-              ? ` — about ${priceForGap(result.gap).fractionOfGapPct} a year of what you stand to unlock.`
-              : '.'}{' '}
+            {'.'}{' '}
             You are never invoiced for the month you are in.
           </p>
         )}

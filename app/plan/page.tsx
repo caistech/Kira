@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { computeValuation } from '@/lib/valuation/model';
 import { formatMoneyApprox, formatPrice, taxSuffix, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
-import { priceForGap } from '@/lib/valuation/pricing';
+import { priceForProfit } from '@/lib/valuation/pricing';
 import { billingCopy } from '@/lib/billing/copy';
 import {
   decodeValuationParam,
@@ -111,7 +111,7 @@ export default function PlanPage() {
   const model = useMemo(() => {
     if (!payload) return null;
     const result = computeValuation(payload.inputs);
-    const quote = priceForGap(result.gap);
+    const quote = priceForProfit(payload.inputs.annualProfit, result.gap);
     return { result, quote };
   }, [payload]);
 

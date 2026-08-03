@@ -17,7 +17,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getStripe, METER_EVENT_NAME, PRICE_LOOKUP_PREFIX } from '@/lib/billing';
 import { getCurrency, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { computeValuation, type ValuationInputs } from '@/lib/valuation/model';
-import { priceForGap } from '@/lib/valuation/pricing';
+import { priceForProfit } from '@/lib/valuation/pricing';
 
 // Derive the redirect base from the REQUEST origin so a checkout started on localhost returns to
 // localhost (test) and one from prod returns to prod (live) - never a cross-environment bounce.
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     // Recompute the gap here - the price must not be forgeable by the client.
     const result = computeValuation(inputs);
-    const quote = priceForGap(result.gap);
+    const quote = priceForProfit(inputs.annualProfit, result.gap);
     const currency = getCurrency(currencyCode);
     const base = baseUrl(request);
 

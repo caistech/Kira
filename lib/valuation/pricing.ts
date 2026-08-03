@@ -38,8 +38,34 @@
 // the floor is to answer "roughly what does this cost", not to invite band-shopping before there is
 // a gap to size the band against. (Decided 2026-08-01.)
 
+// ─────────────────────────────────────────────────────────────────────────────
+// THE BAND IS CHOSEN BY REPORTED PROFIT, NOT BY THE GAP WE CALCULATE.
+//
+// It used to be the gap. That made the same tool both the author of the number and the beneficiary
+// of it being large, and the FAQ said so out loud — "a bigger gap means more for her to unlock, so
+// the bands move with it." A tester in the exact ICP found it in about ninety seconds:
+//
+//   "I now have a number I like, that you've told me not to rely on, from a company that gets paid
+//    more if the number is bigger."
+//
+// He arrived already primed — a broker had told him his business was worth less than he thought —
+// so the valuation coming back ABOVE the broker's figure made it less credible, not more, because
+// the incentive explained why it would. That is the whole product's central artefact losing its
+// standing, and no amount of methodology honesty elsewhere recovers it.
+//
+// It also removed the quiet pressure behind the model overclaiming (register A1-A4: the multiples
+// exceed their own cited source). When a bigger number earns more, a model that drifts upward is
+// never the thing anyone questions.
+//
+// SDE rather than turnover, deliberately: a $5M-turnover contractor on 4% margin cannot pay what a
+// $2M one on 25% can, and profit is the figure this buyer respects. The load-bearing property is
+// not which figure it is — it is that the owner STATES it and we do not COMPUTE it. Self-reporting
+// is a real exposure (understate the profit, get a cheaper band) and it is the same exposure the
+// valuation already carries on the same field, so it adds nothing new.
+// ─────────────────────────────────────────────────────────────────────────────
+
 export interface PriceTier {
-  /** Lower bound of the gap band (inclusive). */
+  /** Lower bound of the annual profit / SDE band (inclusive), as reported by the owner. */
   min: number;
   /** Monthly price in the owner's currency. */
   monthly: number;
@@ -50,9 +76,9 @@ export interface PriceTier {
 export const PRICE_TIERS: PriceTier[] = [
   { min: 0, monthly: 499, label: 'Starter' },
   { min: 250_000, monthly: 999, label: 'Growth' },
-  { min: 1_000_000, monthly: 1999, label: 'Scale' },
-  { min: 3_000_000, monthly: 3499, label: 'Enterprise' },
-  { min: 7_000_000, monthly: 4999, label: 'Legacy' },
+  { min: 750_000, monthly: 1999, label: 'Scale' },
+  { min: 2_000_000, monthly: 3499, label: 'Enterprise' },
+  { min: 5_000_000, monthly: 4999, label: 'Legacy' },
 ];
 
 export interface PriceQuote {
@@ -71,12 +97,19 @@ export interface PriceQuote {
   fractionWorthQuoting: boolean;
 }
 
-/** Pick the price band for a given gap and return the quote. */
-export function priceForGap(gap: number): PriceQuote {
+/**
+ * Pick the price band from the owner's REPORTED annual profit (SDE), and quote it.
+ *
+ * `gap` is still accepted, and is used for nothing except the descriptive fraction below — so a
+ * surface can still say what a year costs relative to what is on the table WITHOUT that
+ * relationship setting the price. Reading is not pricing.
+ */
+export function priceForProfit(annualProfit: number, gap = 0): PriceQuote {
+  const p = Math.max(0, annualProfit || 0);
   const g = Math.max(0, gap || 0);
   let tier = PRICE_TIERS[0];
   for (const t of PRICE_TIERS) {
-    if (g >= t.min) tier = t;
+    if (p >= t.min) tier = t;
   }
   const annual = tier.monthly * 12;
   const fractionOfGap = g > 0 ? annual / g : 0;
