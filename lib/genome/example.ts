@@ -179,6 +179,88 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
     stillOnlyInYourHead: [],
   },
   {
+    // ADDED 2026-08-03 with `assets` and `systems`. The example showed SIX areas after the model
+    // moved to NINE, so the one page a buyer looks at to see what he is paying for asserted a shape
+    // the product had abandoned — and the three it omitted are precisely the ones a due-diligence
+    // list starts with. `areas.test.ts` pins GENOME_AREAS at 9; nothing pinned this file to it.
+    key: 'people',
+    title: 'Who does the work',
+    question: 'Who is critical, how long have they been with you, and who would leave on announcement?',
+    coverage: 61,
+    entries: [
+      {
+        title: 'Two of the nine are load-bearing, and only one has a contract',
+        detail:
+          'The leading hand has been here 19 years and runs the two-man maintenance crew without being asked. He has no written agreement and no restraint. The office manager has both.',
+        confidence: 'confirmed',
+        capturedFrom: 'Conversation, 22 April',
+      },
+      {
+        title: 'Apprentice pipeline is deliberate, not accidental',
+        detail:
+          'Two apprentices at any time, taken from the same TAFE campus, on a rotation the owner set up after a bad hire in 2019.',
+        confidence: 'captured',
+        capturedFrom: 'Conversation, 22 April',
+      },
+    ],
+    stillOnlyInYourHead: [
+      'Which of the nine would follow the leading hand if he left',
+      'What the owner would pay to keep him through a sale',
+    ],
+  },
+  {
+    key: 'assets',
+    title: 'What the business owns',
+    question: 'What do you own, what do you lease, and what is held in your own name?',
+    coverage: 44,
+    entries: [
+      {
+        title: 'Four vans owned outright, one on finance until 2027',
+        detail:
+          'Service history is with the mechanic, not on file. The financed van is the newest and the only one under warranty.',
+        confidence: 'captured',
+        capturedFrom: 'Conversation, 6 May',
+      },
+      {
+        title: 'The yard is leased from a family trust the owner controls',
+        detail:
+          'Related-party lease, three years to run, currently under market. A buyer inherits the rate only if the lease transfers — which has never been tested.',
+        confidence: 'confirmed',
+        capturedFrom: 'Conversation, 6 May',
+      },
+    ],
+    stillOnlyInYourHead: [
+      'Which plant is near end of life and what replacing it costs',
+      'Whether the yard lease survives a change of control',
+    ],
+  },
+  {
+    key: 'systems',
+    title: 'What is run by them, and what they can tell you',
+    question: 'Where do your records live, who can reach them, and what is written down?',
+    coverage: 38,
+    entries: [
+      {
+        title: 'Jobs are scheduled in a whiteboard photo, sent nightly',
+        detail:
+          'The owner photographs the yard whiteboard each evening and sends it to the crew. There is no job-management system; the photo is the schedule.',
+        confidence: 'confirmed',
+        capturedFrom: 'Conversation, 13 May',
+      },
+      {
+        title: 'Accounts are in Xero; everything else is in the owner\'s email',
+        detail:
+          'The bookkeeper has Xero access. Quotes, variations and supplier agreements live in a personal inbox nobody else can search.',
+        confidence: 'confirmed',
+        capturedFrom: 'Documents + conversation, 13 May',
+      },
+    ],
+    stillOnlyInYourHead: [
+      'Which supplier agreements exist in writing and where they are',
+      'The pricing spreadsheet\'s formulas, which only the owner can explain',
+    ],
+  },
+  {
     // WAS 'Things only you know'. That stopped being a section when the nine-area model made
     // owner-dependence a per-fact AXIS instead of a place — it had become a bucket holding half the
     // Genome. Both entries below are about CUSTOMERS, which is where they belong, and they are also

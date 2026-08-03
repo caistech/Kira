@@ -33,8 +33,8 @@ export default function GenomePage() {
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Outfit:wght@400;500;600;700&display=swap');
         .font-display { font-family: 'Outfit', sans-serif; }
         .font-body { font-family: 'DM Sans', sans-serif; }
-        .grad-genome { background: linear-gradient(135deg,#a78bfa,#8b5cf6 60%,#f472b6); }
-        .grad-coral { background: linear-gradient(135deg,#fb7185,#f472b6); }
+        .grad-genome { background: linear-gradient(135deg,#16A34A,#15803D 60%,#166534); }
+        .grad-coral { background: linear-gradient(135deg,#15803D,#166534); }
       `}</style>
 
       <header className="sticky top-0 z-40 bg-amber-50/85 backdrop-blur border-b border-amber-200/60">
