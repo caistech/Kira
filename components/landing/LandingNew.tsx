@@ -140,21 +140,21 @@ export function LandingNew() {
               <img src="/female_avatar.jpeg" alt="Kira" className="h-full w-full object-cover" />
             </span>
             <span className="text-[21px] font-semibold tracking-tight text-kira-dark">Kira</span>
-            <span className="hidden text-[15px] text-kira-soft sm:inline">by Corporate AI Solutions</span>
+            <span className="hidden text-[16px] sm:text-[15px] text-kira-soft sm:inline">by Corporate AI Solutions</span>
           </a>
 
           <nav className="hidden items-center gap-7 md:flex">
             {NAV.map((item) => (
-              <a key={item.href} href={item.href} className="ln-link text-[15px] text-kira-charcoal hover:text-kira-600">
+              <a key={item.href} href={item.href} className="ln-link text-[16px] sm:text-[15px] text-kira-charcoal hover:text-kira-600">
                 {item.label}
               </a>
             ))}
-            <a href="/login" className="ln-link flex min-h-[44px] items-center text-[15px] text-kira-charcoal hover:text-kira-600">
+            <a href="/login" className="ln-link flex min-h-[44px] items-center text-[16px] sm:text-[15px] text-kira-charcoal hover:text-kira-600">
               Sign in
             </a>
             <a
               href="/business-valuation"
-              className="ln-link flex min-h-[44px] items-center rounded-md bg-kira-600 px-4 text-[15px] font-medium text-white hover:bg-kira-700"
+              className="ln-link flex min-h-[44px] items-center rounded-md bg-kira-600 px-4 text-[16px] sm:text-[15px] font-medium text-white hover:bg-kira-700"
             >
               Value my business
             </a>
@@ -196,7 +196,7 @@ export function LandingNew() {
           <span className="block h-16 w-16 shrink-0 overflow-hidden rounded-full ring-1 ring-kira-line lg:h-20 lg:w-20">
             <img src="/female_avatar.jpeg" alt="Kira" className="h-full w-full object-cover" />
           </span>
-          <p className="text-[15px] uppercase tracking-[0.14em] text-kira-soft">
+          <p className="text-[16px] sm:text-[15px] uppercase tracking-[0.14em] text-kira-soft">
             For owners whose business still runs on them
           </p>
         </div>
@@ -237,7 +237,7 @@ export function LandingNew() {
             See a real one
           </a>
         </div>
-        <p className="mt-4 text-[15px] text-kira-soft">
+        <p className="mt-4 text-[16px] sm:text-[15px] text-kira-soft">
           Free · no sign-up · an indicative valuation on the spot.
         </p>
       </section>
@@ -245,7 +245,7 @@ export function LandingNew() {
       {/* THE NUMBERS — a rule-separated row, not three gradient cards. */}
       <section className="border-y border-kira-line bg-white">
         <div className="mx-auto max-w-5xl px-6 py-14">
-          <p className="text-[15px] text-kira-soft">A real plumbing business, run through the actual calculator</p>
+          <p className="text-[16px] sm:text-[15px] text-kira-soft">A real plumbing business, run through the actual calculator</p>
 
           <div className="mt-8 grid gap-8 sm:grid-cols-3">
             {[
@@ -254,7 +254,7 @@ export function LandingNew() {
               { label: 'Captured', value: '$1.02M', accent: true },
             ].map((f) => (
               <div key={f.label} className="border-l-2 border-kira-line pl-5">
-                <p className="text-[15px] uppercase tracking-[0.1em] text-kira-soft">{f.label}</p>
+                <p className="text-[16px] sm:text-[15px] uppercase tracking-[0.1em] text-kira-soft">{f.label}</p>
                 <p
                   className={`mt-2 text-[34px] font-semibold tracking-tight ${
                     f.accent ? 'text-kira-600' : 'text-kira-dark'
@@ -341,7 +341,7 @@ export function LandingNew() {
           >
             What&apos;s my business worth?
           </a>
-          <p className="mt-3 text-[15px] text-kira-soft">
+          <p className="mt-3 text-[16px] sm:text-[15px] text-kira-soft">
             Retiring, selling, or planning succession — start here.
           </p>
         </div>
@@ -390,7 +390,7 @@ export function LandingNew() {
           See the number. Then decide.
         </h2>
 
-        <p className="mt-8 text-[15px] uppercase tracking-[0.1em] text-kira-soft">Plans run from</p>
+        <p className="mt-8 text-[16px] sm:text-[15px] uppercase tracking-[0.1em] text-kira-soft">Plans run from</p>
         <p className="mt-2 text-[44px] font-semibold tracking-tight text-kira-dark">
           {floorPrice}
           <span className="text-[21px] font-normal text-kira-soft"> to {ceilingPrice} /month</span>
@@ -420,7 +420,7 @@ export function LandingNew() {
           >
             What&apos;s my business worth?
           </a>
-          <p className="mt-3 text-[15px] text-kira-soft">
+          <p className="mt-3 text-[16px] sm:text-[15px] text-kira-soft">
             Free · no sign-up · your indicative valuation in 3 minutes.
           </p>
         </div>
@@ -462,7 +462,7 @@ export function LandingNew() {
               </a>
             </div>
 
-            <div className="flex flex-wrap gap-x-8 text-[15px] text-kira-on-dark">
+            <div className="flex flex-wrap gap-x-8 text-[16px] sm:text-[15px] text-kira-on-dark">
               {FOOTER_LINKS.map((l) => (
                 <a key={l.href} href={l.href} className="ln-link flex min-h-[44px] items-center hover:text-white">
                   {l.label}
@@ -503,7 +503,7 @@ export function LandingNew() {
             <div
               role="status"
               aria-live="polite"
-              className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-sm rounded-md border border-kira-line bg-white px-4 py-3 text-[15px] leading-[1.5] text-kira-dark shadow-lg sm:left-auto sm:right-6 sm:mx-0"
+              className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-sm rounded-md border border-kira-line bg-white px-4 py-3 text-[16px] sm:text-[15px] leading-[1.5] text-kira-dark shadow-lg sm:left-auto sm:right-6 sm:mx-0"
             >
               {askState === 'sending' && 'Sending your question…'}
               {askState === 'sent' && (
@@ -525,7 +525,7 @@ export function LandingNew() {
             </div>
           )}
 
-          <div className="mt-12 border-t border-kira-charcoal pt-8 text-[15px] leading-[1.6] text-kira-on-dark-muted">
+          <div className="mt-12 border-t border-kira-charcoal pt-8 text-[16px] sm:text-[15px] leading-[1.6] text-kira-on-dark-muted">
             <p>Global Buildtech Australia Pty Ltd · ABN 54 672 395 685 · trading as Corporate AI Solutions</p>
             <p className="mt-1">76-84 Brunswick Street, Fortitude Valley QLD 4006</p>
           </div>
