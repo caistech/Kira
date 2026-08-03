@@ -1181,22 +1181,29 @@ function ResultView({
           terms, working capital, or how long you&apos;ve been trading, all of which a buyer will price.
         </p>
         <p>
-          <strong className="text-stone-700">Where the multiples come from.</strong> Sector medians are
-          BizBuySell&apos;s 2025 US small-business sale data — ~9,500 closed deals, market average ~2.5× SDE.
-          There is no equivalent Australian dataset at this granularity: the AIBB&apos;s transaction database
-          is members-only, and published Australian guides give broad EBITDA ranges across around two dozen
-          industries rather than per-sector SDE medians. Australian broker resources draw on the same US data
-          for that reason. We use it as an <strong className="text-stone-700">indicative benchmark, not an
-          Australian market quote</strong> — the sector shape travels well; the absolute number should be
-          checked against local evidence before anyone acts on it.
+          <strong className="text-stone-700">Where the range comes from.</strong> Not a dataset — the two
+          numbers either side of a deal will actually agree to.{' '}
+          <strong className="text-stone-700">The bottom is 1.5×.</strong> Below about eighteen months of
+          profit a seller doesn&apos;t sell; he keeps working it, because handing over a business he could
+          simply continue to run isn&apos;t worth that.{' '}
+          <strong className="text-stone-700">The top is 5×.</strong> No buyer pays more than four or five
+          years of profit for a business this size, and he only reaches the top when three things are true
+          at once: it is well run, he can take it over without you, and he believes he can add his own spin
+          and lift the margins. Miss one and he is not at the top of the range.
         </p>
         <p>
-          <strong className="text-stone-700">And this is a floor, not a ceiling.</strong> The band above is
-          what the sale data supports for a business of this size in this sector, and nothing more. A real
-          sale can land above it — a sector in demand, a buyer who wants your customer list or your
-          licences, a competitor buying to remove you. What we are claiming is only the direction:{' '}
-          <strong className="text-stone-700">the better systemised you are, the more attractive you become
-          — to more buyers, and on better terms.</strong>
+          <strong className="text-stone-700">Which is why the questions are weighted the way they are.</strong>{' '}
+          Half the score is whether a buyer can take it over at all — because if it stops when you stop, he
+          isn&apos;t buying a business, he&apos;s buying a job, and there is no price for that above your
+          equipment. Three tenths is whether the earnings survive the handover: locked-in revenue and clients
+          who aren&apos;t only yours. The last fifth is the upside he thinks he can add, weighted least
+          because a buyer discounts his own optimism and won&apos;t pay you today for improvements he intends
+          to make himself. Sector figures inform the commentary, not the number.
+        </p>
+        <p>
+          <strong className="text-stone-700">This is what the rubric supports and nothing more.</strong> A
+          real sale can land above it — a sector in demand, a buyer who wants your licences, a competitor
+          buying to remove you.
         </p>
         <p>
           An indicative estimate for guidance only, adjusted for size, owner-dependence, recurring revenue,

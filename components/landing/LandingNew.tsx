@@ -56,7 +56,10 @@ import { formatPrice, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 // embed still on /start. That embed is why voice was pulled from /business-valuation rather than
 // restored — the note there says reinstating it would mean adopting the canonical component first.
 // This adopts it.
-const SETUP_KIRA_AGENT_ID = process.env.NEXT_PUBLIC_SETUP_KIRA_AGENT_ID;
+//
+// The agent id is no longer read on the client. It used to be passed straight to the widget as a
+// public `agentId`, which is the WebRTC path — the one that fails in production. The signed URL is
+// minted server-side by /api/kira/start, so the id now lives only on the server, where it belongs.
 
 const NAV = [
   { href: '#how-it-works', label: 'How it works' },
@@ -240,6 +243,72 @@ export function LandingNew() {
         <p className="mt-4 text-[16px] sm:text-[15px] text-kira-soft">
           Free · no sign-up · an indicative valuation on the spot.
         </p>
+      </section>
+
+      {/* MEET HER — the voice agent, in the page flow, in the shape the rest of the portfolio uses.
+
+          THIS WAS A CORNER POPUP ON A RAW agentId, AND BOTH HALVES WERE WRONG.
+
+          Shape: `placement="floating"` put a launcher in the corner that opened a panel over the
+          page — it covered the one paragraph explaining what makes her different, and it framed the
+          product's centrepiece as a support-chat bubble. `inline` is the canonical embedded shape
+          (avatar → transcript → begin), in the flow, which is what every other voice surface in the
+          portfolio uses.
+
+          Transport: the widget was handed a public `agentId`, which connects over WEBRTC — and that
+          is what has been failing in production. Measured with a working microphone: the token
+          request returns 200, a LiveKit room is created, then the data channel errors and the
+          session drops to "Not connected". A visitor therefore never got a voice agent; they got
+          the text fallback, i.e. a chatbot, which is not what this product is.
+
+          `getSignedUrl` is the canonical path and connects over WEBSOCKET instead. Kira's own
+          authenticated /chat/[agentId] has always used it. `GET /api/kira/start` mints a signed URL
+          for the SAME agent with no session at all — verified live: the socket opens and the agent
+          sends `conversation_initiation_metadata`. The authless canonical route already existed;
+          the landing simply was not using it.
+
+          `textFallback` stays as the honest degrade for a visitor with no microphone — but it is
+          now the exception rather than, in practice, the product. */}
+      <section className="border-y border-kira-line bg-kira-mist">
+        <div className="mx-auto max-w-5xl px-6 py-14">
+          <h2 className="text-[27px] font-semibold tracking-tight text-kira-dark lg:text-[34px]">
+            Talk to her before you decide anything
+          </h2>
+          <p className="ln-measure mt-3 text-[17px] leading-[1.65] text-kira-charcoal">
+            No account, no card, nothing saved to your business. Ask her what she does, how the
+            valuation works, or who can see what you tell her. If you would rather type, you can.
+          </p>
+
+          <div className="mt-8">
+            <VoiceWidget
+              placement="inline"
+              avatarUrl="/female_avatar.jpeg"
+              coachName="Kira"
+              transcript
+              textFallback
+              title="Ask Kira anything — no account needed"
+              getSignedUrl={async () => {
+                const r = await fetch('/api/kira/start?journey=business');
+                if (!r.ok) throw new Error(`could not start a conversation (${r.status})`);
+                const { signedUrl } = await r.json();
+                return signedUrl as string;
+              }}
+              onTextFallbackSubmit={async (text) => {
+                setAskState('sending');
+                try {
+                  const r = await fetch('/api/kira/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: text }),
+                  });
+                  setAskState(r.ok ? 'sent' : 'error');
+                } catch {
+                  setAskState('error');
+                }
+              }}
+            />
+          </div>
+        </div>
       </section>
 
       {/* THE NUMBERS — a rule-separated row, not three gradient cards. */}
@@ -471,33 +540,9 @@ export function LandingNew() {
             </div>
           </div>
 
-          {/* THE VOICE AGENT — public, no account, no session required.
-              `autoOpen` shows her greeting and a one-tap start rather than grabbing the microphone
-              on load, which is the right posture for a suspicious 66-year-old arriving cold.
-              `textFallback` means a visitor with no mic (or who will not grant one) still gets a
-              conversation instead of a dead button — degrade, don't fake. */}
-          {SETUP_KIRA_AGENT_ID && (
-            <VoiceWidget
-              agentId={SETUP_KIRA_AGENT_ID}
-              placement="floating"
-              autoOpen
-              textFallback
-              title="Ask Kira anything — no account needed"
-              onTextFallbackSubmit={async (text) => {
-                setAskState('sending');
-                try {
-                  const r = await fetch('/api/kira/ask', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ question: text }),
-                  });
-                  setAskState(r.ok ? 'sent' : 'error');
-                } catch {
-                  setAskState('error');
-                }
-              }}
-            />
-          )}
+          {/* The voice agent moved OUT of the footer and up into its own section after the hero —
+              see "MEET HER" above. A corner popup in the footer was the wrong shape for the thing
+              the whole page is selling. */}
 
           {askState !== 'idle' && (
             <div

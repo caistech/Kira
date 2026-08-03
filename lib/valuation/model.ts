@@ -89,18 +89,29 @@ export interface ValuationResult {
 
 // --- Sub-score maps (0 = worst / least transferable, 1 = best) -------------------------------
 
+// Every question has a WORST answer (0), a MEDIAN answer, and an OPTIMUM (1). The median is not
+// automatically 0.5: it sits where a buyer's confidence actually sits when he hears that answer,
+// and for most of these that is below the midpoint, because a half-answer to "can it run without
+// you?" reassures a buyer far less than a full one.
+
 const OWNER_DEPENDENCE_SCORE: Record<OwnerDependence, number> = {
-  i_am_the_business: 0,
-  heavily_involved: 0.33,
-  mostly_runs: 0.7,
-  fully_managed: 1,
+  i_am_the_business: 0, //  he is buying a job
+  heavily_involved: 0.2, // "I could step back a bit" — a buyer hears no real change
+  mostly_runs: 0.65, //     the first answer that makes him believe a handover is possible
+  fully_managed: 1, //      he can own it without working in it
 };
-const SYSTEMS_SCORE: Record<Systems, number> = { in_my_head: 0, some: 0.5, documented_team: 1 };
+// Deliberately below the midpoint: half-documented is far nearer to nothing than to documented,
+// because a buyer cannot tell which half is missing until he owns it.
+const SYSTEMS_SCORE: Record<Systems, number> = { in_my_head: 0, some: 0.4, documented_team: 1 };
+// "Some" recurring revenue genuinely de-risks the first year, so this one sits at the midpoint.
 const RECURRING_SCORE: Record<RecurringRevenue, number> = { none: 0, some: 0.5, strong: 1 };
-const CONCENTRATION_SCORE: Record<ClientConcentration, number> = { concentrated: 0, moderate: 0.5, diversified: 1 };
-const PROFIT_TREND_SCORE: Record<ProfitTrend, number> = { declining: 0, flat: 0.4, growing: 0.75, growing_strongly: 1 };
-const MARGIN_TREND_SCORE: Record<MarginTrend, number> = { shrinking: 0, stable: 0.5, improving: 1 };
-const CLIENT_TREND_SCORE: Record<ClientTrend, number> = { shrinking: 0, stable: 0.5, expanding: 1 };
+// Moderate concentration is a real improvement on a business leaning on two or three accounts.
+const CONCENTRATION_SCORE: Record<ClientConcentration, number> = { concentrated: 0, moderate: 0.55, diversified: 1 };
+// FLAT IS NOT HALF-GOOD. A buyer paying for upside wants a line going up; flat earns him nothing to
+// leverage and declining actively frightens him, so the median answer scores low rather than middling.
+const PROFIT_TREND_SCORE: Record<ProfitTrend, number> = { declining: 0, flat: 0.35, growing: 0.75, growing_strongly: 1 };
+const MARGIN_TREND_SCORE: Record<MarginTrend, number> = { shrinking: 0, stable: 0.45, improving: 1 };
+const CLIENT_TREND_SCORE: Record<ClientTrend, number> = { shrinking: 0, stable: 0.45, expanding: 1 };
 
 // --- Factor weights (sum = 10, so readiness = weighted sum / 10) ------------------------------
 
@@ -115,9 +126,30 @@ const CLIENT_TREND_SCORE: Record<ClientTrend, number> = { shrinking: 0, stable: 
  *
  * Format: date of the change + a counter for same-day revisions.
  */
-export const MODEL_VERSION = '2026-08-03.1';
+export const MODEL_VERSION = '2026-08-04.1';
 
-const WEIGHTS = { ownerDependence: 3, systems: 2, recurringRevenue: 2, clientConcentration: 1.5, growth: 1.5 } as const;
+/**
+ * THE RUBRIC. Ten points, split across the three questions a buyer is actually asking.
+ *
+ *   CAN I TAKE IT OVER?     ownerDependence 3.0 + systems 2.0 = 5.0
+ *     Half of everything, because it is the gate rather than a factor. A business that stops when
+ *     the owner stops is not a business a buyer can own; he is bidding for equipment and a customer
+ *     list. Owner-dependence outweighs systems because documentation without a team that can act on
+ *     it still leaves him buying a job — the paperwork helps him, it does not replace the person.
+ *
+ *   WILL THE EARNINGS LAST? recurringRevenue 1.75 + clientConcentration 1.25 = 3.0
+ *     He is buying next year's profit, not last year's. Locked-in revenue is worth more than spread
+ *     revenue because it survives the handover: contracts renew whether or not the new owner has the
+ *     relationship. Concentration is the same risk one step removed — three big clients who know the
+ *     seller personally is a discount, and both of those are risks the seller can genuinely reduce.
+ *
+ *   CAN I MAKE IT BETTER?   growth 2.0
+ *     The upside that takes a good business to the TOP of the range rather than the middle of it.
+ *     Smallest of the three deliberately: a buyer discounts his own optimism, and he will not pay
+ *     today for improvements he intends to make himself. It is also the one thing on this list the
+ *     seller cannot fix by writing things down, which is why it is scored but not claimable.
+ */
+const WEIGHTS = { ownerDependence: 3, systems: 2, recurringRevenue: 1.75, clientConcentration: 1.25, growth: 2 } as const;
 const TOTAL_WEIGHT =
   WEIGHTS.ownerDependence + WEIGHTS.systems + WEIGHTS.recurringRevenue + WEIGHTS.clientConcentration + WEIGHTS.growth;
 
@@ -147,8 +179,88 @@ const TOTAL_WEIGHT =
 // documentation is worth roughly half a turn to a turn, showing up mostly as a discount NOT TAKEN
 // and a shorter due diligence. Operator decision 2026-08-03: 0.75, the middle of that.
 
-/** Total turns of SDE multiple attributable to transferability, floor to ceiling. */
-const TRANSFERABILITY_SPREAD = 0.75;
+/**
+ * THE 2026-08-04 CORRECTION — why the floor is now absolute.
+ *
+ * The 08-03 rework fixed the overclaim (A1-A4) by centring on the sector median and letting
+ * transferability move you only 0.75 turns around it. That was right about ONE thing and wrong
+ * about the other, and the wrong half produced this:
+ *
+ *   sector median 6.60x  ->  a business ENTIRELY in the owner's head was valued at 6.22x
+ *   sector median 5.11x  ->  4.74x
+ *   sector median 2.62x  ->  2.33x
+ *
+ * A business nobody but the owner can run was priced a third of a turn below a typical sold
+ * business in its sector. That says total owner-dependence costs 0.375 turns. It costs multiples.
+ *
+ * THE CONFLATION: the sector median is the median of businesses that ACTUALLY SOLD, at average
+ * readiness. A business whose operations live in one man's head is not median — it sits at the
+ * bottom of that distribution or outside it, because the buyer is purchasing a job, not an asset.
+ * Two different quantities had been collapsed into one narrow band:
+ *
+ *   WHERE YOU ARE      — the buyer's discount. Must range widely, from barely-sellable up to the
+ *                        sector's own ceiling. This is not our claim; it is the market's.
+ *   WHAT KIRA MOVES    — modest, and bounded. Documentation is worth a discount NOT TAKEN and a
+ *                        shorter due diligence. It does not turn a 1.5x business into a 5x one;
+ *                        that needs a manager and recurring contracts, which is a different
+ *                        business, not a written-down one.
+ *
+ * So readiness now interpolates from an ABSOLUTE floor to the sector-scaled ceiling, and Kira's
+ * claimed uplift is capped separately. A4's concern — "the transferability score must not BE the
+ * valuation" — is answered not by narrowing the band (which made the number indefensible) but by
+ * bounding the CLAIM while letting today's number tell the truth.
+ *
+ * Operator decision, 2026-08-04: rescore everyone rather than freeze existing snapshots.
+ */
+
+/**
+ * THE BAND IS DERIVED FROM WHAT EACH SIDE WILL ACTUALLY AGREE TO, not from a foreign dataset.
+ *
+ * Every earlier version anchored on the median of US closed sales and then argued about how far to
+ * move from it. That put a number on the page whose defence was "an American website says so",
+ * which is a poor answer to an Australian owner and a worse one to his broker. This is our rubric,
+ * and it derives from the two reservation prices that actually bound a deal:
+ *
+ *   THE SELLER'S FLOOR — 1.5x. Below this he does not sell; he keeps working it. A year and a half
+ *   of profit is not worth handing over a business he could simply continue to run, and no argument
+ *   about market comparables changes that. It is a reservation price, not a computed value, which is
+ *   why it is absolute and does not scale with sector.
+ *
+ *   THE BUYER'S CEILING — 5.0x. No buyer pays more than four or five years of profit for a small
+ *   business, and only reaches the top when THREE things are true at once: it is well run, it is
+ *   easy to take over, and he believes he can add his own spin and lift the margins. Miss any one
+ *   and he is not at the top of the range.
+ *
+ * That last sentence IS the weighting. The three conditions are what the questions measure, and
+ * their relative weight is how much each one governs whether the deal happens at all:
+ *
+ *   CAN I TAKE IT OVER?      5.0 / 10  — the gate. If it cannot run without him, nothing else
+ *                                        matters; there is no price, only an offer for the assets.
+ *   WILL THE EARNINGS LAST?  3.0 / 10  — is he buying a proven income or a hopeful one.
+ *   CAN I MAKE IT BETTER?    2.0 / 10  — the upside that takes a good business to the top of the
+ *                                        range. Real, but the smallest of the three, because a
+ *                                        buyer discounts his own optimism.
+ *
+ * A useful property falls out rather than being tuned in: a well-run, easily transferred business
+ * with flat trend reaches 4.3x — a buyer pays four years of profit for something he can take over
+ * and that keeps earning. Five only comes with the growth story on top. That is the psychology the
+ * band was built from, reproduced by the arithmetic rather than asserted beside it.
+ */
+const SELLER_RESERVATION_FLOOR = 1.5;
+const BUYER_CEILING = 5.0;
+
+/** Kept for the copy layer's "nothing outside a sane range" clamps. */
+const OWNER_DEPENDENT_FLOOR = SELLER_RESERVATION_FLOOR;
+
+/**
+ * The most Kira may claim to add, in turns of SDE, however large the gap to the ceiling.
+ *
+ * This is the whole commercial claim and it is deliberately small — the defensible position is that
+ * documentation is worth roughly half a turn to a turn. Unchanged from the 08-03 decision; what
+ * changed is that it now bounds the CLAIM rather than the whole band.
+ */
+const DOCUMENTATION_UPLIFT = 0.75;
+
 /** Nothing may sit outside the cited source's own range. */
 const SDE_FLOOR = 1.5;
 const SDE_CAP = 6.6;
@@ -270,28 +382,95 @@ export function computeValuation(inputs: ValuationInputs): ValuationResult {
   // The sector median IS the centre — see the constants block. Size moves the centre; transferability
   // moves you within a narrow band around it. Both ends are clamped into the cited source's range, so
   // no input combination can produce a multiple BizBuySell's own data does not support.
-  const centreMultiple = clamp(sdeMultiple * sizeAdjustment(inputs.annualProfit), SDE_FLOOR, SDE_CAP);
-  const floorMultiple = clamp(centreMultiple - TRANSFERABILITY_SPREAD / 2, SDE_FLOOR, SDE_CAP);
-  const ceilingMultiple = clamp(centreMultiple + TRANSFERABILITY_SPREAD / 2, SDE_FLOOR, SDE_CAP);
-  const spread = ceilingMultiple - floorMultiple;
+  // THE BAND: the seller's reservation price up to the buyer's ceiling.
+  //
+  // Size limits how far up the range a business can reach, and only that — it never lifts the floor,
+  // because the seller's "I may as well keep working it" does not soften because the business is
+  // small. A smaller business has fewer buyers, no management layer and worse financing, so the top
+  // of its range is lower however well run it is. Measured, so the numbers here are the real curve
+  // rather than an estimate: $25k profit tops out at 3.75x, $60k at 4.23x, $120k at 4.60x, and from
+  // $250k up the full 5.00x is reachable.
+  //
+  // The sector median is deliberately NOT the anchor any more. It informs the copy — "a typical
+  // business in your sector changes hands around Nx" — where it is useful context, rather than
+  // setting a number whose only defence was a foreign dataset.
+  const floorMultiple = SELLER_RESERVATION_FLOOR;
+  const ceilingMultiple = clamp(
+    BUYER_CEILING * sizeAdjustment(inputs.annualProfit),
+    floorMultiple,
+    BUYER_CEILING,
+  );
+  const spread = Math.max(0, ceilingMultiple - floorMultiple);
 
+  /** Sector context for the copy layer only — never an input to the number above. */
+  const centreMultiple = clamp(sdeMultiple * sizeAdjustment(inputs.annualProfit), SDE_FLOOR, SDE_CAP);
+  void centreMultiple;
+
+  // TODAY is the buyer's discount, and it is allowed to be brutal — that is the honest half.
   const appliedMultipleToday = floorMultiple + readiness * spread;
-  const appliedMultiplePotential = floorMultiple + readinessPotential * spread;
+
+  // POTENTIAL is OUR claim, and it scales with HOW MUCH IS LEFT TO CAPTURE — it is not a flat
+  // maximum handed to everyone.
+  //
+  // This was briefly a hard cap (`min(uncapped, today + 0.75)`), and a dry run against real stored
+  // valuations caught what that does: the cap binds for almost every business, so every owner was
+  // quoted the full three-quarters of a turn whether he had documented nothing or nearly everything.
+  // On the two live rows the claimed gap roughly DOUBLED — and since the monthly price is derived
+  // from the gap, that meant charging more off a lower valuation. Exactly backwards.
+  //
+  // So the claim is proportional: DOCUMENTATION_UPLIFT is what capturing EVERYTHING would be worth,
+  // and a business that has already documented half of it can only be offered the other half. An
+  // owner who has done the work himself should see a smaller number here, not the same one.
+  const captureHeadroom = Math.max(0, readinessPotential - readiness);
+  const claimedUplift = DOCUMENTATION_UPLIFT * captureHeadroom;
+  const appliedMultiplePotential = Math.min(
+    floorMultiple + readinessPotential * spread, // never claim past where the band itself tops out
+    appliedMultipleToday + claimedUplift,
+  );
+
+  /** Turns of multiple this product actually claims to move — the basis for every per-factor uplift. */
+  const claimedSpread = Math.max(0, appliedMultiplePotential - appliedMultipleToday);
 
   const walkAway = round(Math.max(0, inputs.tangibleAssets || 0));
   const today = round(earningsValue(inputs.annualProfit, appliedMultipleToday));
   const potential = round(earningsValue(inputs.annualProfit, appliedMultiplePotential));
   const gap = Math.max(0, potential - today);
 
+  // THE ITEMISED DRIVERS MUST SUM TO THE GAP THEY ITEMISE.
+  //
+  // Each capturable factor gets its SHARE of the claimed gap, not its share of the full band. The
+  // old formula multiplied each factor's weight by the whole spread, which matched the gap only
+  // while the gap WAS the whole spread. Now that the claim is capped, that would over-state every
+  // driver and the column would no longer add up to the headline.
+  //
+  // A tester found precisely this shape on the dashboard — four drivers summing to $138,200 beside
+  // a headline gap of $138,000 and a result page saying $134,000. Three numbers for one figure is
+  // the fastest way to lose a suspicious reader, because it is the one thing he can check with a
+  // calculator.
+  const capturableDelta = Math.max(0, readinessPotential - readiness);
   const factors: ReadinessFactor[] = rawFactors
     .map((f) => {
+      const share = capturableDelta > 0 ? ((1 - f.score) * f.weight) / TOTAL_WEIGHT / capturableDelta : 0;
       const uplift =
         f.capturable && inputs.annualProfit > 0
-          ? round((inputs.annualProfit * ((1 - f.score) * f.weight)) / TOTAL_WEIGHT * spread)
+          ? round(inputs.annualProfit * claimedSpread * share)
           : 0;
       return { ...f, uplift };
     })
     .sort((a, b) => b.uplift - a.uplift);
+
+  // THE LARGEST DRIVER ABSORBS THE ROUNDING, so the column adds up to the headline EXACTLY.
+  //
+  // Rounding five shares independently leaves the sum a dollar or two off the gap, and "near enough"
+  // is the wrong standard here: the reader this product is written for checks the subtraction on a
+  // calculator, said so, and told us that getting a visible two-number sum not-quite-right is worse
+  // than being wrong somewhere he cannot see. The largest driver takes the remainder because a $1
+  // adjustment is invisible against the biggest number and conspicuous against the smallest.
+  const upliftSum = factors.reduce((s, f) => s + f.uplift, 0);
+  const remainder = gap - upliftSum;
+  if (remainder !== 0 && factors.length > 0 && factors[0]!.uplift > 0) {
+    factors[0] = { ...factors[0]!, uplift: factors[0]!.uplift + remainder };
+  }
 
   return {
     sdeMultiple,

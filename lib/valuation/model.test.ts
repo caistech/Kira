@@ -283,12 +283,77 @@ describe('buyer rationale — narrative consistency', () => {
     expect(text).toContain('this reads as an asset, not a job');
   });
 
-  it('leaves every valuation FIGURE untouched — this was a copy fix, not a repricing', () => {
-    // The distinction that made this change safe to ship. Re-weighting the factors would have
-    // re-priced numbers already shown to real people; changing which story is told does not.
+  it('re-prices deliberately — the 2026-08-04 rubric IS a repricing, and was authorised as one', () => {
+    // This test previously asserted 0.1625 readiness under the heading "this was a copy fix, not a
+    // repricing", guarding a change that deliberately moved no numbers. It failed the moment the
+    // rubric was rebuilt, which is exactly what it was for — so it is updated rather than deleted,
+    // and the heading now says what is true.
+    //
+    // The rubric derives from the two reservation prices that bound a real negotiation rather than
+    // from a foreign dataset: a seller will not go below 1.5x (he may as well keep working it) and a
+    // buyer will not exceed 5x (and only reaches it when the business is well run, easy to take
+    // over, AND has upside he can add). Operator decision, 2026-08-04: rescore everyone.
     const owned = computeValuation({ ...base, ownerDependence: 'i_am_the_business' });
-    expect(owned.readiness).toBeCloseTo(0.1625, 4);
+    expect(owned.readiness).toBeCloseTo(0.17875, 4);
     expect(owned.today).toBeGreaterThan(0);
     expect(owned.potential).toBeGreaterThan(owned.today);
+  });
+
+  it('honours both reservation prices — nothing below 1.5x, nothing above 5x', () => {
+    // The two numbers the whole band is derived from. If either is ever breached the rubric has
+    // stopped describing a deal either side would actually sign.
+    const worst = computeValuation({
+      ...base,
+      ownerDependence: 'i_am_the_business',
+      systems: 'in_my_head',
+      recurringRevenue: 'none',
+      clientConcentration: 'concentrated',
+      profitTrend: 'declining',
+      marginTrend: 'shrinking',
+      clientTrend: 'shrinking',
+    });
+    expect(worst.readiness).toBe(0);
+    expect(worst.appliedMultipleToday).toBeCloseTo(1.5, 4);
+
+    const bestPossible = computeValuation({
+      ...base,
+      annualProfit: 500_000,
+      ownerDependence: 'fully_managed',
+      systems: 'documented_team',
+      recurringRevenue: 'strong',
+      clientConcentration: 'diversified',
+      profitTrend: 'growing_strongly',
+      marginTrend: 'improving',
+      clientTrend: 'expanding',
+    });
+    expect(bestPossible.readiness).toBe(1);
+    expect(bestPossible.appliedMultipleToday).toBeCloseTo(5.0, 4);
+  });
+
+  it('reaches 4x for a well-run, easily-transferred business with NO growth story', () => {
+    // The psychology the band was built from, reproduced by the arithmetic rather than asserted
+    // beside it: a buyer pays four years of profit for something he can take over that keeps
+    // earning, and the fifth year only comes with upside he believes he can add.
+    const flatButExcellent = computeValuation({
+      ...base,
+      annualProfit: 500_000,
+      ownerDependence: 'fully_managed',
+      systems: 'documented_team',
+      recurringRevenue: 'strong',
+      clientConcentration: 'diversified',
+      profitTrend: 'flat',
+      marginTrend: 'stable',
+      clientTrend: 'stable',
+    });
+    expect(flatButExcellent.appliedMultipleToday).toBeGreaterThan(4);
+    expect(flatButExcellent.appliedMultipleToday).toBeLessThan(5);
+  });
+
+  it('itemised drivers sum EXACTLY to the gap they itemise', () => {
+    // A tester found four drivers summing to $138,200 beside a headline gap of $138,000 and a
+    // result page saying $134,000. The reader this is written for checks it on a calculator.
+    const r = computeValuation({ ...base, ownerDependence: 'i_am_the_business', systems: 'in_my_head' });
+    const sum = r.factors.reduce((s, f) => s + f.uplift, 0);
+    expect(sum).toBe(r.gap);
   });
 });
