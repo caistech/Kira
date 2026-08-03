@@ -221,8 +221,16 @@ export default async function DashboardPage({
           <p className="mt-1 text-sm text-gray-500">
             A short conversation is all it takes — she asks about the business and starts from there.
           </p>
+          {/* USE talkHref, which this page already computed three lines earlier.
+              Hardcoding /start sent an owner who ALREADY HAS a business agent back to the
+              provisioning flow instead of into his own conversation — past the Exec shape entirely
+              and into "Meet Kira, your friendly guide". Nobody hit it because until today no
+              customer had ever walked this path.
+              ⚠️ An owner with NO agent still lands on /start, because /start IS the provisioning
+              flow (draft -> /setup/draft/[id] -> /api/kira/create -> /chat/[agentId]). That page's
+              generic-helper shape is a separate, larger fix — see K18. */}
           <Link
-            href="/start"
+            href={talkHref}
             className="mt-4 inline-block rounded-lg bg-violet-600 px-5 py-3 text-base font-semibold text-white hover:bg-violet-700"
           >
             Start talking to Kira

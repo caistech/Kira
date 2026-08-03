@@ -262,6 +262,8 @@ about what a customer would experience is inference from design, not observation
 | **K14** | Other voice products still carry the old widget | DEBT | **OPEN** | Singify, BucketLyst, ExecutorAI keep the emoji launcher and the error-only text fallback until each bumps `@caistech/elevenlabs-convai` to ≥0.12.1. |
 | **K15** | `single-statement` check not built | MISS | **OPEN** | The last of the six mechanised checks. Would have caught the pricing-block-vs-FAQ contradiction and ExecutorAI's three simultaneous commercial models. |
 
+| **K18** | `/start` is still the pre-Exec generic helper | DEBT | **OPEN** | "Meet Kira · Your friendly guide · Let's talk about work stuff · Review Framework", on the raw ElevenLabs CDN embed rather than the canonical widget. It is ALSO the provisioning flow (draft → /setup/draft/[id] → /api/kira/create → /chat/[agentId]), so it cannot simply be retired — every brand-new owner passes through it, and the operator walking the real funnel on 2026-08-04 hit it immediately after paying. Rebuilding it onto the Exec shape is the fix; pointing the dashboard at `talkHref` (done) only helps owners who already have an agent. |
+
 ### Operator only — nobody else can do these
 
 | # | Item | Detail |

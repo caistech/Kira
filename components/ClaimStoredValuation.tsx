@@ -33,12 +33,14 @@
 // confirmation that cannot be recognised is just another dialog to dismiss.
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 import { formatMoney } from '@/lib/valuation/currency';
 import { computeValuation } from '@/lib/valuation/model';
 import { clearStoredValuation, readStoredValuation, type ValuationPayload } from '@/lib/valuation/share';
 
 export function ClaimStoredValuation() {
+  const router = useRouter();
   const [payload, setPayload] = useState<ValuationPayload | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -97,6 +99,15 @@ export function ClaimStoredValuation() {
       if (res.ok) {
         clearStoredValuation();
         setPayload(null);
+        // RE-READ THE SERVER, or the page keeps saying he has no baseline.
+        //
+        // The surfaces this mounts on are server components that already rendered with NO
+        // business_valuations row. Clearing local state hides THIS card and nothing else, so the
+        // dashboard carried on showing "Kira doesn't have a starting point for the business yet —
+        // answer the eleven questions" to an owner who had just answered them, paid, and handed
+        // the result over. He is told to redo the one thing he has already done, at the first
+        // screen after checkout.
+        router.refresh();
       }
     } catch {
       /* keep it; the next mount asks again */
