@@ -1,10 +1,50 @@
 // lib/admin/exec.ts
 // The Kira Exec cohort for the operator console (/admin/exec). A Kira Exec user is one who came
 // through the valuation channel — has a business_valuations record — OR (as the funnel matures) is a
-// paid subscriber or an LOI signer. This is the operator-facing view of the #12 tier; it deliberately
-// EXCLUDES the test accounts and personal Kiras that flood the generic Overview.
+// paid subscriber or an LOI signer. This is the operator-facing view of the #12 tier.
+//
+// It excludes OUR OWN accounts — the canonical QA identities and the operator admins — via
+// isNonClientAccount() below. Personal Kiras are excluded structurally rather than by a filter: the
+// cohort is assembled from valuation / LOI / paid signals, so an account that only ever ran a
+// personal Kira never enters it in the first place.
 
 import { createServiceClient } from '@/lib/supabase/server';
+
+/**
+ * Is this account one of OURS rather than a client's?
+ *
+ * The header used to promise "this view excludes test accounts" and nothing did — the query had no
+ * such filter, so the synthetic identities sat in the operator's real cohort and were counted as
+ * clients. A false claim on an operator screen is worse than no claim, because it is the screen you
+ * read numbers off.
+ *
+ * DELIBERATELY CONSERVATIVE. It matches the canonical QA identities by exact address, plus-tagged
+ * addresses on OUR OWN domains, and whoever is in ADMIN_EMAILS. It does NOT pattern-match words like
+ * "test" or "qa" anywhere in an address: a real owner at test@ or a business called QA Plumbing must
+ * never silently vanish from the cohort. Excluding a real client is the worse error of the two —
+ * a stranger in the list is visible, a missing client is not.
+ */
+const OUR_DOMAINS = ['factory2key.com.au', 'corporateaisolutions.com'];
+const QA_TAGS = ['qa', 'qauser', 'qaadmin', 'redteam', 'test'];
+
+export function isNonClientAccount(email: string | null | undefined): boolean {
+  const addr = (email ?? '').trim().toLowerCase();
+  if (!addr) return false;
+
+  // Operator accounts, from the same allowlist that gates /admin.
+  const admins = (process.env.ADMIN_EMAILS ?? '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  if (admins.includes(addr)) return true;
+
+  const [localRaw, domain] = addr.split('@');
+  if (!domain || !OUR_DOMAINS.includes(domain)) return false;
+
+  // Plus-addressed on one of our own domains — dennis+qauser@, dennis+redteam@.
+  const plus = localRaw.split('+')[1];
+  return Boolean(plus && QA_TAGS.includes(plus));
+}
 
 export interface ExecUserRow {
   userId: string;
@@ -63,11 +103,16 @@ export async function getExecUsers(): Promise<ExecUserRow[]> {
       sb.from('kira_memory').select('user_id').in('user_id', userIds).eq('active', true),
     ]);
 
+  // THE EXCLUSION THE HEADER PROMISES. Applied here, on the fetched users, rather than on the id
+  // sets above — the ids come from three tables and only `users` carries the email, so this is the
+  // first point where the question can actually be asked.
+  const clientUsers = (users ?? []).filter((u: any) => !isNonClientAccount(u.email));
+
   const valByUser = new Map((valuations ?? []).map((v: any) => [v.user_id, v]));
   const profByUser = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
   const count = (rows: any[] | null, uid: string) => (rows ?? []).filter((r) => r.user_id === uid).length;
 
-  const rows: ExecUserRow[] = (users ?? []).map((u: any) => {
+  const rows: ExecUserRow[] = clientUsers.map((u: any) => {
     const v: any = valByUser.get(u.id) ?? {};
     const p: any = profByUser.get(u.id) ?? {};
     return {

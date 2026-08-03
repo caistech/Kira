@@ -14,8 +14,10 @@ export default async function ExecAdminPage() {
         <h1 className="text-2xl font-bold text-gray-900">Kira Exec</h1>
         <p className="mt-1 text-base text-gray-600">
           The owner-operators who came through the valuation channel — your real Kira Exec cohort, with
-          their value gap, engagement, documents and memory. This view excludes test accounts and
-          personal Kiras. Open a user&apos;s Kira, or manage what she holds for them.
+          their value gap, engagement, documents and memory. Our own accounts are excluded: the QA
+          identities and the operator admins. Personal Kiras never enter this list, because it is
+          built from valuation, LOI and paid signals. Open a user&apos;s Kira, or manage what she holds
+          for them.
         </p>
       </header>
 
