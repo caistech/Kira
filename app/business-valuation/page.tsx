@@ -1175,6 +1175,17 @@ function ResultView({
           checked against local evidence before anyone acts on it.
         </p>
         <p>
+          <strong className="text-stone-700">And this is a floor, not a ceiling.</strong> The band above is
+          deliberately conservative — it is what the sale data supports for a business of this size in this
+          sector, and nothing more. A real multiple can land well above it: a sector in demand, a buyer who
+          wants your customer list or your licences, a competitor buying to remove you, a quiet year with
+          nothing else for sale. There is no rule that says a business on 1× cannot fetch 3× or 4× when the
+          circumstances are right. What we can say, and all we are saying, is the direction:{' '}
+          <strong className="text-stone-700">the better systemised you are, the more attractive you become
+          — to more buyers, and on better terms.</strong> That is a statement about how buyers behave, not a
+          guarantee about your sale.
+        </p>
+        <p>
           An indicative estimate for guidance only, adjusted for size, owner-dependence, recurring revenue,
           client concentration and growth. Not a formal valuation and not financial advice — real sale prices
           depend on many factors specific to your business and your buyer.

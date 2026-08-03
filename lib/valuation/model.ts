@@ -115,24 +115,48 @@ const CLIENT_TREND_SCORE: Record<ClientTrend, number> = { shrinking: 0, stable: 
  *
  * Format: date of the change + a counter for same-day revisions.
  */
-export const MODEL_VERSION = '2026-07-24.1';
+export const MODEL_VERSION = '2026-08-03.1';
 
 const WEIGHTS = { ownerDependence: 3, systems: 2, recurringRevenue: 2, clientConcentration: 1.5, growth: 1.5 } as const;
 const TOTAL_WEIGHT =
   WEIGHTS.ownerDependence + WEIGHTS.systems + WEIGHTS.recurringRevenue + WEIGHTS.clientConcentration + WEIGHTS.growth;
 
 // --- Multiple-band constants (calibrated to BizBuySell 2025 SDE data) -------------------------
+//
+// ⚠️ REBUILT 2026-08-03. The previous band asserted more than its own cited source supports, and the
+// source is printed on the results page — so a broker checking one multiple against BizBuySell found
+// us above their published range and the whole number lost its standing. Register A1-A4.
+//
+// WHAT WAS WRONG, in one line each:
+//   A1  ceiling = sector x 1.6 + up to 3.0, capped at 8 — above the cited 1.5-6.6 range on size alone.
+//   A2  the size adjustment only ever ADDED. Market practice discounts small businesses 20-30% for
+//       illiquidity; we did the opposite at the top and nothing at the bottom.
+//   A3  it widened the CEILING only, so the GAP — the number the product sells on — grew
+//       super-linearly with profit, overclaiming hardest for the businesses a broker would look at.
+//   A4  applied = floor + readiness x spread, with a spread of 3-6 turns, made the transferability
+//       score BE the valuation rather than sit beside it.
+//
+// THE CORRECTION RESTS ON ONE FACT IN sde-multiples.ts: the sector figure is the median for a
+// TYPICAL business at AVERAGE readiness. It is a CENTRE, not a floor. The old model treated it as a
+// floor and then multiplied, which is where every one of A1-A4 came from.
+//
+// So: centre on the sector median, let transferability move it by SPREAD in total, and let size
+// adjust the centre — moving BOTH ends together, which is what stops the gap ballooning.
+//
+// SPREAD is the whole commercial claim and it is deliberately small. The defensible position is that
+// documentation is worth roughly half a turn to a turn, showing up mostly as a discount NOT TAKEN
+// and a shorter due diligence. Operator decision 2026-08-03: 0.75, the middle of that.
 
-/** A fully owner-dependent business trades at roughly half its sector's average (min 1x SDE). */
-const FLOOR_FACTOR = 0.5;
-const FLOOR_MIN = 1.0;
-/** A top-quality, fully systemised business commands a premium above the sector average. */
-const QUALITY_PREMIUM = 1.6;
-/** Main-street SDE multiples top out here; above this is EBITDA / lower-mid-market territory. */
-const SDE_CAP = 8;
-/** Below this SDE, no size premium; it scales in above it. */
-const SIZE_PREMIUM_ANCHOR = 250_000;
-const SIZE_PREMIUM_MAX = 3;
+/** Total turns of SDE multiple attributable to transferability, floor to ceiling. */
+const TRANSFERABILITY_SPREAD = 0.75;
+/** Nothing may sit outside the cited source's own range. */
+const SDE_FLOOR = 1.5;
+const SDE_CAP = 6.6;
+/** Below this SDE a business is harder to sell — fewer buyers, more key-person risk. */
+const SIZE_ANCHOR = 250_000;
+/** Multiplicative adjustment to the CENTRE. Below the anchor it discounts; above, it adds. */
+const SIZE_ADJ_MIN = 0.75;
+const SIZE_ADJ_MAX = 1.25;
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -142,12 +166,18 @@ function round(n: number): number {
 }
 
 /**
- * Larger businesses earn a size premium (more buyers, less key-person risk, management depth).
- * Scales logarithmically with profit above the anchor, capped.
+ * How a business's SIZE moves its multiple, as a factor on the sector median.
+ *
+ * Both directions, which is the A2 fix: under the anchor it DISCOUNTS (a $120k-SDE business has
+ * fewer buyers, thinner management and worse financing options, and the market prices that), over it
+ * it adds. Applied to the CENTRE so both floor and ceiling move together — that is the A3 fix, and
+ * it is why the gap no longer grows super-linearly with profit.
  */
-function sizePremium(annualProfit: number): number {
-  if (annualProfit <= SIZE_PREMIUM_ANCHOR) return 0;
-  return clamp(Math.log10(annualProfit / SIZE_PREMIUM_ANCHOR) * 2, 0, SIZE_PREMIUM_MAX);
+function sizeAdjustment(annualProfit: number): number {
+  if (annualProfit <= 0) return SIZE_ADJ_MIN;
+  // log10 of the ratio to the anchor: 1/10th the anchor -> -1, 10x the anchor -> +1.
+  const decades = Math.log10(annualProfit / SIZE_ANCHOR);
+  return clamp(1 + decades * 0.25, SIZE_ADJ_MIN, SIZE_ADJ_MAX);
 }
 
 function earningsValue(annualProfit: number, multiple: number): number {
@@ -237,8 +267,12 @@ export function computeValuation(inputs: ValuationInputs): ValuationResult {
   );
 
   // Build the realistic SDE multiple band from the sector median, size and quality.
-  const floorMultiple = Math.max(FLOOR_MIN, sdeMultiple * FLOOR_FACTOR);
-  const ceilingMultiple = Math.min(SDE_CAP, Math.max(floorMultiple + 0.5, sdeMultiple * QUALITY_PREMIUM + sizePremium(inputs.annualProfit)));
+  // The sector median IS the centre — see the constants block. Size moves the centre; transferability
+  // moves you within a narrow band around it. Both ends are clamped into the cited source's range, so
+  // no input combination can produce a multiple BizBuySell's own data does not support.
+  const centreMultiple = clamp(sdeMultiple * sizeAdjustment(inputs.annualProfit), SDE_FLOOR, SDE_CAP);
+  const floorMultiple = clamp(centreMultiple - TRANSFERABILITY_SPREAD / 2, SDE_FLOOR, SDE_CAP);
+  const ceilingMultiple = clamp(centreMultiple + TRANSFERABILITY_SPREAD / 2, SDE_FLOOR, SDE_CAP);
   const spread = ceilingMultiple - floorMultiple;
 
   const appliedMultipleToday = floorMultiple + readiness * spread;
