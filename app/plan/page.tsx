@@ -1,5 +1,7 @@
 'use client';
 
+// @public-route
+
 // app/plan/page.tsx
 //
 // The sales / explainer page. The owner has seen their gap; this page reframes it as the value Kira
@@ -171,6 +173,29 @@ export default function PlanPage() {
           <a href="/business-valuation" className="text-sm text-stone-500 hover:text-pink-500 min-h-[44px] flex items-center">Redo my valuation</a>
         </div>
       </header>
+
+      {/* FIRST PAINT — what the server actually sends, and the only thing on screen until the
+          valuation is read off this device.
+          Before this existed, the server response for /plan carried 164 characters of chrome and
+          SIXTEEN of content (the SayFix widget), because both branches below wait on client state.
+          A tester timed fifteen seconds of white on it: "the page where you ask for my card is not
+          a slow page, it's a broken one, and I have no way to tell the difference." Every status
+          check passed straight over it — 200, right commit, no redirect.
+          `ready` starts false, so this branch IS the server render, and hydration REPLACES it. That
+          is why the copy can live here without stacking a second <h1> on the hero below. */}
+      {!ready && (
+        <main className="max-w-2xl mx-auto px-5 py-24 text-center">
+          <h1 className="font-display text-3xl font-bold text-stone-800 mb-4">
+            Set free what&apos;s locked in your head
+          </h1>
+          <p className="font-body text-lg text-stone-600 leading-relaxed">
+            Kira is the part-time general manager you could never justify hiring. You talk, a few
+            minutes at a time; she listens, works out what you need, and quietly builds the systems
+            that make your business worth more.
+          </p>
+          <p className="text-sm text-stone-500 mt-6">Reading your valuation from this device…</p>
+        </main>
+      )}
 
       {ready && !model && (
         <main className="max-w-2xl mx-auto px-5 py-24 text-center">

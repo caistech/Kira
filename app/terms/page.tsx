@@ -1,3 +1,4 @@
+// @public-route
 // app/terms/page.tsx
 //
 // The Terms. Content lives in lib/terms.ts so this page, the signup checkbox and the recorded

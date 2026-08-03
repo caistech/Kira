@@ -1,5 +1,7 @@
 'use client';
 
+// @public-route
+
 // app/business-valuation/page.tsx
 //
 // The Kira business valuation test - the quantified front door to the Operating Intelligence Layer.

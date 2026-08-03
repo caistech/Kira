@@ -1,5 +1,7 @@
 'use client';
 
+// @public-route
+
 // app/genome/page.tsx
 //
 // The Business Genome, made visible. "We promise, they see."

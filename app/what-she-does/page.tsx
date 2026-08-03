@@ -1,3 +1,4 @@
+// @public-route
 // What Kira does, and what she doesn't — the expectation-setting page.
 //
 // ONE page for both audiences, not two. Two versions of the same truth drift, and an advisor

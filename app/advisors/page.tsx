@@ -1,3 +1,4 @@
+// @public-route
 // app/advisors/page.tsx
 //
 // The front door for brokers, accountants and advisors — the people who already hold the

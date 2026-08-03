@@ -118,6 +118,8 @@ export function AuthForm({
   redirectTo,
   variant = 'user',
   askReferralSource = false,
+  title,
+  subtitle,
 }: AuthFormProps) {
   // SSR-safe: build the browser client once on the client.
   const supabaseClient = useMemo(() => (typeof window === 'undefined' ? null : createClient()), []);
@@ -138,11 +140,25 @@ export function AuthForm({
   // So the pre-hydration paint is a quiet placeholder of roughly the right shape instead. The real
   // fix belongs in the package — a shared auth component should never render developer text to an
   // end user — but that is a publish plus twenty-four consumer bumps, and this is the screen.
+  //
+  // THE PLACEHOLDER MUST CARRY WORDS, not just shapes. It first shipped as three grey bars, which
+  // fixed the developer-error paint and left a different defect behind: the server response for
+  // /login and /signup contained SIXTEEN characters of visible text — the SayFix widget's "Report a
+  // problem" — and nothing else. Every status check passed over it, because the page answers 200
+  // with the right commit and no redirect. `portfolio-gate-audit-first-paint` is the check that
+  // catches it, and this is the fix it caught.
+  //
+  // `title`/`subtitle` are why they are accepted here at all. The canonical renders its own mode
+  // header AFTER hydration, so this copy could not be added to AuthShell without stacking two
+  // headings on the hydrated page — the same defect, moved. Rendering it in THIS branch is safe
+  // precisely because the canonical replaces the branch rather than joining it.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   if (!mounted || !supabaseClient) {
     return (
       <div className="space-y-4" aria-busy="true" aria-label="Loading the sign-in form">
+        {title ? <h1 className="text-2xl font-semibold text-stone-900">{title}</h1> : null}
+        {subtitle ? <p className="text-base text-stone-600">{subtitle}</p> : null}
         <div className="h-11 rounded-lg bg-stone-100" />
         <div className="h-11 rounded-lg bg-stone-100" />
         <div className="h-11 rounded-full bg-stone-200" />

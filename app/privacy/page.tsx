@@ -1,3 +1,4 @@
+// @public-route
 // app/privacy/page.tsx
 //
 // Deliberately the same shape as app/terms/page.tsx — content from lib/privacy.ts, same header,

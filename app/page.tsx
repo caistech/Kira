@@ -1,3 +1,4 @@
+// @public-route
 // The landing page is a SWITCH between two real, maintained designs.
 //
 // WHY. The classic page was found by a design review to read as a competent, CONSISTENT

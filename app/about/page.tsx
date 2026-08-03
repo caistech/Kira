@@ -1,5 +1,7 @@
 "use client";
 
+// @public-route
+
 import React from 'react';
 
 export default function AboutPage() {

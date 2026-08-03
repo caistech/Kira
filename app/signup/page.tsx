@@ -1,3 +1,4 @@
+// @public-route
 import { cookies } from 'next/headers';
 
 import { AuthShell } from '@/components/auth/AuthShell';
