@@ -126,6 +126,22 @@ export function formatPrice(n: number, currencyCode: string = DEFAULT_CURRENCY):
  * Three significant figures, then formatted in the reader's currency. Small figures are left alone:
  * "about $8,000" reads as evasion where "$8,240" is simply the number.
  */
+/**
+ * The NUMERIC half of `formatMoneyApprox` — the same 3-significant-figure rule, as a number.
+ *
+ * Exists so a figure DERIVED from two displayed figures can be derived from what is on screen
+ * rather than from full precision. Rounding three numbers independently and then printing a
+ * subtraction of two of them produces arithmetic that does not tie: $1,020,000 − $874,000 shown
+ * beside a gap of $147,000. A tester with a calculator checked exactly that, and he checked it
+ * BECAUSE the page's own paragraph on precision invited him to.
+ */
+export function approxNumber(n: number): number {
+  const abs = Math.abs(n);
+  if (abs < 10_000) return Math.round(n);
+  const magnitude = Math.pow(10, Math.floor(Math.log10(abs)) - 2);
+  return Math.round(n / magnitude) * magnitude;
+}
+
 export function formatMoneyApprox(n: number, currencyCode: string = DEFAULT_CURRENCY): string {
   const abs = Math.abs(n);
   if (abs < 10_000) return formatMoney(n, currencyCode);

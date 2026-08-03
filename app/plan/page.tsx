@@ -326,7 +326,7 @@ export default function PlanPage() {
                 <div className="mb-3 rounded-2xl border-2 border-stone-300 bg-white p-4 text-left">
                   <p className="font-display font-bold text-stone-900">{copy.confirmTitle}</p>
                   <p className="mt-1 text-sm text-stone-600 leading-relaxed">
-                    {copy.confirmBody(`${price(model.quote.monthly)} ${tax}`)}
+                    {copy.confirmBody(`${money(model.quote.monthly)} ${tax}`)}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
@@ -361,7 +361,7 @@ export default function PlanPage() {
                 .
               </p>
               <p className="text-xs text-stone-400 mt-3">
-                {copy.finePrint(`${price(model.quote.monthly)} ${tax}`)} You set your password and meet Kira right after.
+                {copy.finePrint(`${money(model.quote.monthly)} ${tax}`)} You set your password and meet Kira right after.
               </p>
             </div>
           </section>

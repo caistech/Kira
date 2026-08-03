@@ -498,8 +498,10 @@ export function LandingClassic() {
               <span className="font-body text-2xl font-medium text-stone-500"> to {ceilingPrice} /month</span>
             </p>
             <p className="font-body text-stone-500 text-base mb-8">
-              Which band you land in depends on the size of your gap — you&apos;ll see your own figure
-              after the valuation, before you decide anything.
+              Which band you land in depends on the size of your business — the annual profit you tell
+              us, not the gap we calculate. That distinction is deliberate: the tool that works out what
+              your business is worth has nothing to gain from the number being bigger. You&apos;ll see your
+              own figure after the valuation, before you decide anything.
             </p>
 
             <div className="font-body text-xl text-stone-600 leading-relaxed space-y-4 mb-10">

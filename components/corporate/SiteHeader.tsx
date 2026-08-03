@@ -19,6 +19,7 @@
 // signed-in owner is not a visitor being marketed to, and his chrome is the portal's own.
 
 import { usePathname } from 'next/navigation';
+import { CorporateFooter } from '@/components/corporate/CorporateFooter';
 
 import { CorporateHeader } from '@/components/corporate/CorporateHeader';
 
@@ -29,7 +30,13 @@ import { CorporateHeader } from '@/components/corporate/CorporateHeader';
  * headers, which is visible immediately — the failure of the opposite default (hide unless listed)
  * is a marketing page with no header at all, which nobody notices for weeks.
  */
-const OWN_CHROME = [
+export const OWN_CHROME = [
+  // The LANDING page carries its own header — nav, CTA and the avatar — so the corporate strip on
+  // top of it made TWO stacked headers. A tester counted them: about 130px of chrome before the
+  // headline on a phone, with the corporate logo ghosting through the sticky one on scroll. "It
+  // looks like a build mistake, which is a rough way to open when your whole pitch is we're the
+  // careful ones." Exact match only: '/' must not swallow every route beneath it.
+  '/',
   '/dashboard',
   '/chat',
   '/settings',
@@ -46,4 +53,19 @@ export function SiteHeader() {
   const hasOwnChrome = OWN_CHROME.some((p) => pathname === p || pathname.startsWith(p + '/'));
   if (hasOwnChrome) return null;
   return <CorporateHeader productName="Kira" productAcronym="K" />;
+}
+
+/**
+ * The footer half of the same rule.
+ *
+ * A route in OWN_CHROME supplies its own header AND its own footer — the landing page carries the
+ * legal identity, the link set and a closing CTA — so rendering the corporate one underneath gives
+ * the page two of each. Same list, same test, so the two can never disagree about which routes own
+ * their chrome.
+ */
+export function SiteFooter() {
+  const pathname = usePathname() || '/';
+  const hasOwnChrome = OWN_CHROME.some((p) => pathname === p || pathname.startsWith(p + '/'));
+  if (hasOwnChrome) return null;
+  return <CorporateFooter productName="Kira" />;
 }

@@ -44,7 +44,7 @@ import {
 } from '@/lib/valuation/model';
 import { SECTOR_MULTIPLES } from '@/lib/valuation/sde-multiples';
 import { priceForProfit } from '@/lib/valuation/pricing';
-import { formatMoney, formatMoneyApprox, formatPrice, getCurrency, CURRENCIES, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
+import { approxNumber, formatMoney, formatMoneyApprox, formatPrice, getCurrency, CURRENCIES, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { synonymGroup, synonymSector } from '@/lib/valuation/industry-synonyms';
 import { storeValuation, VALUATION_HANDOFF_KEY } from '@/lib/valuation/share';
 import {
@@ -925,6 +925,20 @@ function ResultView({
   // screen where this buyer decides whether to believe any of it. The walk-away auction range below
   // is left exact because it is already expressed as a range and reads as one.
   const money = (n: number) => formatMoneyApprox(n, currency);
+  /**
+   * THE GAP, DERIVED FROM WHAT IS ON SCREEN.
+   *
+   * Every figure here is rounded to 3 significant figures, and the gap was rounded independently of
+   * the two it is the difference between — so the page showed $1,020,000 and $874,000 above a gap of
+   * $147,000, and $1,020,000 − $874,000 is $146,000. A tester with a calculator caught it, and he
+   * checked precisely BECAUSE the paragraph above earns that scrutiny by explaining why we round.
+   *
+   * It is one thousand on a million and it does not matter what it is: the gap is the number the
+   * whole product is built on, it is printed in the largest type on the page, and it is a
+   * two-number subtraction sitting in plain view. Being not-quite-right there is worse than being
+   * wrong somewhere he cannot check.
+   */
+  const displayedGap = Math.max(0, approxNumber(result.potential) - approxNumber(result.today));
   const noEarnings = result.today === 0 && result.potential === 0;
   const capturable = result.factors.filter((f) => f.capturable && f.uplift > 0);
   const readinessPct = Math.round(result.readiness * 100);
@@ -1048,7 +1062,7 @@ function ResultView({
           {/* The gap headline */}
           <div className="grad-genome rounded-3xl p-7 sm:p-9 text-white shadow-lg">
             <p className="text-white/80 font-medium mb-1">The value locked inside your head right now</p>
-            <p className="font-display text-4xl sm:text-5xl font-bold mb-3">{money(result.gap)}</p>
+            <p className="font-display text-4xl sm:text-5xl font-bold mb-3">{money(displayedGap)}</p>
             <p className="text-white/90 leading-relaxed max-w-xl">
               That's the difference between selling a job and selling an asset. It isn't extra hustle — it's the
               systems, relationships and know-how that today live only in your memory. Capture them into a
@@ -1176,14 +1190,11 @@ function ResultView({
         </p>
         <p>
           <strong className="text-stone-700">And this is a floor, not a ceiling.</strong> The band above is
-          deliberately conservative — it is what the sale data supports for a business of this size in this
-          sector, and nothing more. A real multiple can land well above it: a sector in demand, a buyer who
-          wants your customer list or your licences, a competitor buying to remove you, a quiet year with
-          nothing else for sale. There is no rule that says a business on 1× cannot fetch 3× or 4× when the
-          circumstances are right. What we can say, and all we are saying, is the direction:{' '}
+          what the sale data supports for a business of this size in this sector, and nothing more. A real
+          sale can land above it — a sector in demand, a buyer who wants your customer list or your
+          licences, a competitor buying to remove you. What we are claiming is only the direction:{' '}
           <strong className="text-stone-700">the better systemised you are, the more attractive you become
-          — to more buyers, and on better terms.</strong> That is a statement about how buyers behave, not a
-          guarantee about your sale.
+          — to more buyers, and on better terms.</strong>
         </p>
         <p>
           An indicative estimate for guidance only, adjusted for size, owner-dependence, recurring revenue,

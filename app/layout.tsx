@@ -2,8 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { SayFixWidget } from "@caistech/sayfix-embed";
 import { Inter } from 'next/font/google';
 import './globals.css';
-import { SiteHeader } from '@/components/corporate/SiteHeader';
-import { CorporateFooter } from '@/components/corporate/CorporateFooter';
+import { SiteHeader, SiteFooter } from '@/components/corporate/SiteHeader';
 import { AgentJsonLd } from '@caistech/webmcp-kit/react';
 import { agentConfig } from '@/agent-readiness.config';
 import { RegisterSW } from '@/components/RegisterSW';
@@ -51,7 +50,7 @@ export default function RootLayout({
               The other half of that collision — the "Ask Kira" pill sitting on Next — is gone; see
               the note at the foot of app/business-valuation/page.tsx. */}
           <main className="flex-1">{children}<SayFixWidget repo="kira" /></main>
-          <CorporateFooter productName="Kira" />
+          <SiteFooter />
         </div>
       </body>
     </html>

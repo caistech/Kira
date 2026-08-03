@@ -103,6 +103,15 @@ const STEPS = [
 
 export function LandingNew() {
   const [menuOpen, setMenuOpen] = React.useState(false);
+  /**
+   * What happened to a question typed into the voice widget's text fallback.
+   *
+   * The widget hands the text to `onTextFallbackSubmit` and clears the box either way, so WITHOUT
+   * a handler the question vanishes silently — which is what shipped this morning and what a tester
+   * hit with the single most important question a stranger can ask this product. The widget renders
+   * nothing after the callback, so the acknowledgement has to come from here.
+   */
+  const [askState, setAskState] = React.useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
 
   // Same derivation as the classic page: never type a price that the bands can move underneath.
   const currency = DEFAULT_CURRENCY;
@@ -389,8 +398,10 @@ export function LandingNew() {
 
         <div className="ln-measure mt-8 space-y-4 text-[17px] leading-[1.65] text-kira-charcoal">
           <p>
-            Which band you land in depends on the size of your gap — you&apos;ll see your own figure
-            after the valuation, before you decide anything.
+            Which band you land in depends on the size of your business — the annual profit you tell
+            us, not the gap we calculate. That distinction is deliberate: the tool that works out what
+            your business is worth has nothing to gain from the number being bigger. You&apos;ll see your
+            own figure after the valuation, before you decide anything.
           </p>
           <p>The valuation is free — no sign-up, no card. It shows you the gap in about 3 minutes.</p>
           <p>
@@ -472,7 +483,46 @@ export function LandingNew() {
               autoOpen
               textFallback
               title="Ask Kira anything — no account needed"
+              onTextFallbackSubmit={async (text) => {
+                setAskState('sending');
+                try {
+                  const r = await fetch('/api/kira/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: text }),
+                  });
+                  setAskState(r.ok ? 'sent' : 'error');
+                } catch {
+                  setAskState('error');
+                }
+              }}
             />
+          )}
+
+          {askState !== 'idle' && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-sm rounded-md border border-kira-line bg-white px-4 py-3 text-[15px] leading-[1.5] text-kira-dark shadow-lg sm:left-auto sm:right-6 sm:mx-0"
+            >
+              {askState === 'sending' && 'Sending your question…'}
+              {askState === 'sent' && (
+                <>
+                  <strong className="font-semibold">Got it.</strong> Voice needs a microphone and this
+                  browser has not given one, so your question has gone to a person rather than to Kira.
+                  Dennis reads these himself and will come back to you.
+                </>
+              )}
+              {askState === 'error' && (
+                <>
+                  That did not send. Nothing was lost on your side — email{' '}
+                  <a className="font-medium text-kira-600 underline" href="mailto:dennis@corporateaisolutions.com">
+                    dennis@corporateaisolutions.com
+                  </a>{' '}
+                  and it will reach the same place.
+                </>
+              )}
+            </div>
           )}
 
           <div className="mt-12 border-t border-kira-charcoal pt-8 text-[15px] leading-[1.6] text-kira-on-dark-muted">
