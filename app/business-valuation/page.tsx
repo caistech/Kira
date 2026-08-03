@@ -70,6 +70,26 @@ type Step =
 /** Where in-progress answers are parked so a reload resumes rather than restarting. */
 const PROGRESS_KEY = 'kira_valuation_progress';
 
+/**
+ * A money figure said back in plain words — "2.4 million", "850 thousand".
+ *
+ * Grouping alone ("2,400,000") is still a shape, and the reader this is written for is checking it
+ * on a phone in daylight. One decimal place at most: "2.43 million" is precision he did not give us
+ * and would only invite him to correct a number that is meant to be approximate.
+ */
+export function amountInWords(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return '';
+  if (n >= 1_000_000) {
+    const m = n / 1_000_000;
+    return `${m % 1 === 0 ? m.toFixed(0) : m.toFixed(1)} million`;
+  }
+  if (n >= 1_000) {
+    const k = n / 1_000;
+    return `${k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)} thousand`;
+  }
+  return n.toLocaleString('en-AU');
+}
+
 const STEPS: Step[] = [
   {
     id: 'industry',
@@ -236,12 +256,23 @@ export default function BusinessValuationPage() {
   // avoided. See lib/valuation/persist.ts for the full reasoning, including why this matters to the
   // BASELINE and not just to convenience.
   const [restored, setRestored] = useState(false);
+  /** True when this page load picked up saved answers rather than starting clean. */
+  const [resumed, setResumed] = useState(false);
   useEffect(() => {
     try {
       const saved = loadValuationLocal<{ stepIndex?: number; answers?: Answers; industryQuery?: string; firstName?: string }>(
         PROGRESS_KEY,
       );
       if (saved) {
+        // TELL HIM IT RESUMED. It silently picked up mid-questionnaire with his turnover and profit
+        // still in the browser, and nothing said so: "anyone who opens that tab and presses Back
+        // four times reads them. I'm the man who hasn't told his wife. My bookkeeper uses my office
+        // computer." A resume he did not ask for and was not told about is the leak this product
+        // cannot afford, so it is announced at the moment it happens, with the way out beside it.
+        const hasProgress =
+          (typeof saved.stepIndex === 'number' && saved.stepIndex > 0) ||
+          (saved.answers != null && Object.keys(saved.answers).length > 0);
+        if (hasProgress) setResumed(true);
         if (saved.answers) setAnswers(saved.answers);
         if (typeof saved.industryQuery === 'string') setIndustryQuery(saved.industryQuery);
         // Never restore straight onto the result — recompute by stepping, so a stale partial answer
@@ -557,6 +588,54 @@ export default function BusinessValuationPage() {
                 Clear my answers
               </button>
             </div>
+            {/* THE RESUME, ANNOUNCED. Shown once per load, only when answers were actually
+                restored, and dismissible — a banner that reappears on every question becomes
+                furniture and stops being read. */}
+            {resumed && (
+              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/60 px-4 py-3 text-sm sm:text-base text-stone-700">
+                <p className="leading-relaxed">
+                  Picking up where you left off. Your answers — including turnover and profit — are
+                  saved <strong>in this browser on this device</strong> for {VALUATION_TTL_DAYS} days.
+                  Nothing has been sent anywhere.
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-x-5">
+                  <button
+                    type="button"
+                    onClick={clearAnswers}
+                    className="min-h-[44px] text-sm font-semibold text-stone-800 underline underline-offset-4"
+                  >
+                    Clear them and start fresh
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setResumed(false)}
+                    className="min-h-[44px] text-sm font-medium text-stone-500 underline underline-offset-4"
+                  >
+                    Keep going
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* THE SECTOR, CARRIED FORWARD. The match confirmation lived only on question 1, so a
+                visitor who pressed Next while it was still resolving never saw what he had been
+                matched to — and that match sets the multiple, which sets every figure on the result
+                page. He only found it by pressing Back later, onto a screen he had already left.
+                Now it follows him, with the way to change it. */}
+            {stepIndex > 0 && typeof answers.industry === 'string' && answers.industry.trim() !== '' && (
+              <p className="mt-4 text-sm text-stone-500">
+                Sector: <span className="font-semibold text-stone-700">{answers.industry}</span>
+                {' · '}
+                <button
+                  type="button"
+                  onClick={() => setStepIndex(0)}
+                  className="font-medium underline underline-offset-4 hover:text-stone-700"
+                >
+                  change
+                </button>
+              </p>
+            )}
+
             <h2 className="font-display text-xl sm:text-2xl font-bold text-stone-800 mt-4 mb-2">{step.title}</h2>
             <p className="text-stone-500 text-sm sm:text-base mb-7 leading-relaxed">{step.help}</p>
 
@@ -699,11 +778,28 @@ export default function BusinessValuationPage() {
                   inputMode="numeric"
                   min={0}
                   placeholder={step.placeholder}
-                  value={typeof answers[step.id] === 'number' ? String(answers[step.id]) : ''}
-                  onChange={(e) => setAnswer(step.id, e.target.value === '' ? NaN : Math.max(0, Number(e.target.value)))}
+                  // GROUPED AS HE TYPES. It rendered the raw number, so 2400000 and 240000 are the
+                  // same shape on a phone at arm's length — a fat-fingered zero is a ten-fold error
+                  // with nothing on screen to catch it, and the first he'd know is a valuation out
+                  // by a factor of ten. The placeholder already promised "e.g. 2,000,000"; the
+                  // field just never honoured it. Digits are stripped on the way in, so the commas
+                  // are display only and can never reach the number.
+                  value={typeof answers[step.id] === 'number' ? (answers[step.id] as number).toLocaleString('en-AU') : ''}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/[^\d]/g, '');
+                    setAnswer(step.id, digits === '' ? NaN : Math.max(0, Number(digits)));
+                  }}
                   className="w-full text-lg rounded-2xl border-2 border-amber-200 focus:border-pink-400 focus:outline-none pl-9 pr-4 py-4 min-h-[52px] bg-amber-50/40"
                   autoFocus
                 />
+                {/* Said back in words, because commas alone still read as a shape. "$2.4 million" is
+                    the check a 66-year-old actually performs. */}
+                {typeof answers[step.id] === 'number' && (answers[step.id] as number) > 0 && (
+                  <p className="mt-2 text-base font-medium text-stone-700">
+                    {currencySymbol}
+                    {amountInWords(answers[step.id] as number)}
+                  </p>
+                )}
                 {step.id === 'annualProfit' && (() => {
                   const turnover = typeof answers.turnover === 'number' ? answers.turnover : null;
                   const profit = typeof answers.annualProfit === 'number' ? answers.annualProfit : null;
