@@ -29,8 +29,26 @@ import { createServiceClient } from '@/lib/supabase/server';
  */
 export const METER_EVENT_NAME = 'kira_subscription_month';
 
-/** Namespace for generated Stripe price lookup keys, so bands are reusable and identifiable. */
-export const PRICE_LOOKUP_PREFIX = 'kira';
+/**
+ * Namespace for generated Stripe price lookup keys, so bands are reusable and identifiable.
+ *
+ * ⚠️ BUMPING THIS IS HOW THE CHECKOUT COPY CHANGES, and it is the only way.
+ *
+ * `ensureMeteredPrice` is idempotent on the lookup key — correctly, or every checkout would mint a
+ * new Price. The consequence nobody had written down is that `productName` and `productDescription`
+ * are used ONLY when the Product is first created, and Stripe REFUSES to update a product it
+ * auto-created ("The product was created by Stripe automatically and cannot be updated"). So the
+ * copy on the checkout page is frozen at whatever the first session set, forever.
+ *
+ * That is why a commit adding a tax suffix to the product name on 3 August changed nothing: the
+ * Growth product had existed since 24 July. A tester recorded "no GST anywhere" against a fix that
+ * had shipped and could never apply, and the register carried it as a copy problem for a week.
+ *
+ * Bumping the prefix mints a fresh Price + Product carrying the current copy. Safe while nobody is
+ * subscribed; once someone is, existing subscriptions keep their old price and only NEW checkouts
+ * move — which is the correct behaviour anyway, but means the old band must stay alive.
+ */
+export const PRICE_LOOKUP_PREFIX = 'kira-gst';
 
 /**
  * Statuses that accrue a fee.

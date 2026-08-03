@@ -11,7 +11,7 @@
 
 import { createSubscriptionCheckoutSession } from '@caistech/subscription-billing';
 import { getCurrentAppUser } from '@/lib/auth';
-import { taxSuffix } from '@/lib/valuation/currency';
+import { formatPrice, taxSuffix } from '@/lib/valuation/currency';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getStripe, METER_EVENT_NAME, PRICE_LOOKUP_PREFIX } from '@/lib/billing';
@@ -106,8 +106,22 @@ export async function POST(request: NextRequest) {
       // follows the buyer's currency (taxSuffix), so it says GST for an Australian and VAT for
       // someone in London instead of hardcoding the local word.
       productName: `Kira Business Plan — ${quote.label} (${taxSuffix(currencyCode)})`,
+        // THE FIGURE, IN WORDS, BESIDE THE FIGURE STRIPE RENDERS.
+        //
+        // Putting the tax suffix in the product NAME was the first attempt and it did not work,
+        // because it answers a question the buyer is not asking. He reads the AMOUNT, and for a
+        // metered price Stripe renders "A$999.00 per unit", "based on usage" and "Price varies" —
+        // all three literally true (arrears requires a metered price; see lib/billing/arrears.ts)
+        // and all three alarming to a man deciding whether to hand over a card. A tester recorded
+        // "no GST anywhere" while the suffix was already on screen, in the line-item title.
+        //
+        // The description renders directly beneath the amount, which is where the confusion is, so
+        // it states the fixed monthly plainly and says why "varies" appears at all. This is the fix
+        // available WITHOUT a package change: @caistech/subscription-billing does not accept
+        // `custom_text`, and adding it means a publish plus every consumer bumped. If this proves
+        // insufficient in front of a real buyer, that — or Stripe Tax — is the next step.
         productDescription:
-          'Your always-on AI partner: talk to Kira and she builds your business systems.',
+          `${formatPrice(quote.monthly, currencyCode)} per month, a fixed amount. Billed at the end of each month and never in advance — cancel before it falls due and that month is waived. Stripe shows "based on usage" because that is how end-of-month billing is set up.`,
       },
       // Card captured at signup. `cardAtSignup` defaults true in the package and is stated
       // explicitly because it is a commercial decision, not a default to inherit silently: without
