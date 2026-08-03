@@ -230,9 +230,32 @@ export default async function MyGenome() {
                 </div>
                 <div className="px-5 py-4">
                   {s.entries.length === 0 ? (
-                    /* Honest, not decorative. An empty section is information: it is what he is still
-                       carrying himself, and it is the reason to keep talking to her. */
-                    <p className="text-stone-500">Nothing here yet — this is still only in your head.</p>
+                    /* LOCATED, NOT EMPTY. §3.2's rule, made true on day one.
+                       An authenticated walkthrough found all nine areas blank on a live account,
+                       while the owner's own answers about where his systems live sat unread in the
+                       valuation he completed before paying. This shows him what we already know —
+                       clearly marked as HIS answer rather than something Kira captured, because
+                       presenting a self-report as a captured fact is the same overclaim that put
+                       her own meta-notes in his Genome in the first place.
+                       The old single line — "this is still only in your head" — was also wrong for
+                       four of the nine: an asset register is at the accountant's, not in his head,
+                       and being told otherwise is the confident-wrong that costs trust in the parts
+                       that are right. */
+                    s.baseline ? (
+                      <div className="space-y-2">
+                        <p className="text-stone-700 leading-relaxed">{s.baseline.statement}</p>
+                        <p className="text-xs text-stone-400">
+                          From the answers you gave before signing up — not something Kira has captured yet.
+                          {s.baseline.location === 'head'
+                            ? ' Talk to her and this becomes part of your Genome.'
+                            : ' Show her where it lives and she can bring it in.'}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-stone-500">
+                        Nobody has shown Kira where this lives yet.
+                      </p>
+                    )
                   ) : (
                     <ul className="space-y-3">
                       {s.entries.map((e) => (

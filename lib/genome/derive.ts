@@ -21,6 +21,7 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { ownerPrivateReason, PRIVATE_REASONS, type PrivateReason } from './private';
 import { dropRestatements, possibleRestatements } from './similar';
 import { GENOME_AREAS, LEGACY_SECTION_MAP, areaFor, type AreaKey } from './areas';
+import { deriveBaseline, type AreaBaseline, type BaselineInputs } from './baseline';
 
 /**
  * What the note is about.
@@ -151,6 +152,20 @@ export interface OwnerSection {
    * can actually support.
    */
   coverage: 'empty' | 'thin' | 'building' | 'covered';
+  /**
+   * What the eleven pre-signup answers already say about this area, or null.
+   *
+   * NEVER counted in `coverage` and never mixed into `entries`. A self-reported answer is not a
+   * captured fact, and letting one lift an area out of 'empty' would manufacture progress from a
+   * form the owner filled in before he paid — the same overclaim as the meta-notes that prompted
+   * this, in better clothes. It exists so an area reads as LOCATED rather than blank (§3.2's "no
+   * area is ever empty, only located") and so Kira has an honest place to open a conversation.
+   *
+   * Null for `people` and `compliance`: nothing in the eleven questions speaks to who does what or
+   * to licences and insurance, and inventing a line to avoid a blank is the confident-wrong this
+   * whole model is built to avoid.
+   */
+  baseline: AreaBaseline | null;
 }
 
 export interface OwnerGenome {
@@ -547,7 +562,7 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
 
   const { data: valuation } = await supabase
     .from('business_valuations')
-    .select('readiness, gap, worth_today')
+    .select('readiness, gap, worth_today, inputs')
     .eq('user_id', userId)
     .maybeSingle();
 
@@ -644,11 +659,33 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
       possibleRestatementOf: maybeSame.get(String(r.id)) ?? null,
     }));
 
+  // THE BASELINE — what the eleven pre-signup answers already say about each area.
+  //
+  // §3.2's rule is "no area is ever EMPTY, only LOCATED", and until now nothing made that true on
+  // day one: an authenticated walkthrough found all nine areas blank on a live account while the
+  // owner's own answers about where his systems live sat unread in `business_valuations.inputs`.
+  //
+  // It is deliberately SEPARATE from `entries` and never counted in `coverage`. A self-reported
+  // answer is not a captured fact, and letting one raise an area from "empty" to "thin" would
+  // manufacture progress out of a form the owner filled in before he paid — the same overclaim as
+  // the meta-notes that prompted this, wearing better clothes.
+  const baselines = deriveBaseline((valuation?.inputs ?? null) as BaselineInputs | null);
+  const baselineFor = new Map(baselines.map((b) => [b.area, b]));
+
   const sections: OwnerSection[] = GENOME_SECTIONS.map((s) => {
     const entries = all.filter((e) => e.section === s.key);
     const coverage =
       entries.length === 0 ? 'empty' : entries.length <= 2 ? 'thin' : entries.length <= 5 ? 'building' : 'covered';
-    return { key: s.key, title: s.title, question: s.question, ownerQuestion: s.ownerQuestion, entries, coverage };
+    const baseline = baselineFor.get(s.key) ?? null;
+    return {
+      key: s.key,
+      title: s.title,
+      question: s.question,
+      ownerQuestion: s.ownerQuestion,
+      entries,
+      coverage,
+      baseline,
+    };
   });
 
   return {
