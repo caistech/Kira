@@ -41,7 +41,60 @@ const STATUS_LINE: Record<UnansweredRequestAlert['status'], string> = {
   failed: 'Kira tried this and it failed. She should have been able to do it, so this is a bug.',
 };
 
+/**
+ * THROTTLE. Added 2026-08-03 after this alert exhausted the portfolio's shared Resend daily quota
+ * and took auth email down for EVERY product on the account — nobody could sign up, reset a
+ * password or receive an invite, and the symptom was a bare HTTP 500 "unexpected_failure".
+ *
+ * The trigger was a CI probe submitting text to Kira's public ask endpoint: fifteen runs in half
+ * an hour, three recipients each. But the probe only did accidentally what anyone could do
+ * deliberately — `/api/kira/ask` is PUBLIC and UNAUTHENTICATED, and it mailed every admin on every
+ * call with no dedupe and no cap. That is a denial-of-service on the shared mail quota, reachable
+ * by a stranger with curl, and the blast radius is every other product's ability to log a user in.
+ *
+ * Two limits, both deliberately in-memory:
+ *
+ *   DEDUPE   the same utterance within the window is one alert, not many. "One ask is noise; the
+ *            same ask three times in a week is a decision" — but three times in a MINUTE is a loop.
+ *   CEILING  a hard cap per window regardless of content, so novel-but-automated traffic cannot
+ *            walk past the dedupe by varying its text.
+ *
+ * In-memory means per serverless instance, so the real ceiling is higher than MAX_PER_WINDOW under
+ * fan-out. That is accepted: this is a blast-radius reducer, not an access control. The access
+ * control this really wants is auth on the endpoint, which is a product decision — the endpoint
+ * exists precisely so someone WITHOUT an account can ask.
+ */
+const WINDOW_MS = 10 * 60_000;
+const MAX_PER_WINDOW = 5;
+const recentUtterances = new Map<string, number>();
+let windowStart = 0;
+let sentInWindow = 0;
+
+function throttled(utterance: string): string | null {
+  const now = Date.now();
+  if (now - windowStart > WINDOW_MS) {
+    windowStart = now;
+    sentInWindow = 0;
+    recentUtterances.clear();
+  }
+  const key = utterance.trim().toLowerCase().slice(0, 200);
+  const seen = recentUtterances.get(key);
+  if (seen && now - seen < WINDOW_MS) return 'duplicate within the window';
+  if (sentInWindow >= MAX_PER_WINDOW) return `ceiling of ${MAX_PER_WINDOW} per ${WINDOW_MS / 60000}m reached`;
+  recentUtterances.set(key, now);
+  sentInWindow += 1;
+  return null;
+}
+
 export async function sendUnansweredRequestAlert(alert: UnansweredRequestAlert): Promise<void> {
+  const skip = throttled(alert.utterance);
+  if (skip) {
+    // Logged, never silent: an alert nobody receives and nobody knows was dropped is the same
+    // failure in the other direction. The row is still written by the caller either way.
+    console.warn(`[email] unanswered-request alert suppressed (${skip}):`, alert.utterance.slice(0, 80));
+    return;
+  }
+
   const recipients = adminEmails();
   if (recipients.length === 0) {
     console.warn('[email] ADMIN_EMAILS unset — no one to alert about an unanswered request.');
