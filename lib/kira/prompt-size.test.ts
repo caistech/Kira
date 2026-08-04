@@ -45,7 +45,23 @@ const framework = (journeyType: JourneyType): KiraFramework => ({
 // CHECKING WHAT YOU HAVE GOT RIGHT, THE ADDRESS IS THE ONE THING YOU MUST CHECK, READING THEIR
 // ACCOUNTS) sitting thousands of characters away from the tool it describes. Moving each into its
 // tool's description is the next tranche, and should take this under 15k.
-const BUDGET = { business: 28_000, personal: 12_500 } as const;
+const BUDGET = { business: 36_000, personal: 12_500 } as const;
+
+// ⚠️ THE BUSINESS CEILING WENT BACK UP, from 28,000 to 36,000, and that is not backsliding.
+//
+// Cutting the duplicated tool descriptions took it to 26,681. Restoring four sections the rebuild
+// had silently DELETED off ten live agents — tool honesty, authority, entity separation, typed
+// input — costs 8,741 and brings it to 35,422. Still below the 38,848 it replaced.
+//
+// The number was not met by deleting a control instead. Entity separation is measured at 5-6/6 by
+// the red team; trimming it to satisfy a test would be choosing the metric over the thing the
+// metric is for, and it is precisely the mistake that produced the regression in the first place.
+//
+// Those four are, however, the best remaining candidates for the next tranche — not by deletion but
+// by RELOCATION: entity separation and authority are already enforced in code (the save_memory
+// entity guard, the approval gate), so the prose may be restating a rule the server refuses to
+// break. That is a measurable question — remove, re-run the red team, compare the rate — and it is
+// the only safe way to find out.
 
 describe('prompt budget', () => {
   for (const journey of ['business', 'personal'] as const) {

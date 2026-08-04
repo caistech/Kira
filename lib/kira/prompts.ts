@@ -924,6 +924,24 @@ Don't interview them. One clarifying question at most, then act.
 
 ${capabilityBoundary}
 
+${/* THESE FOUR WERE ONLY EVER APPENDED BY PATCH SCRIPTS, NEVER EMITTED HERE — and rebuilding the
+      prompt from source therefore DELETED them off ten live agents before this line existed.
+
+      That is the exact inverse of the drift being fixed: the old failure was source moving ahead of
+      the agents, this one was the agents holding something source could not reproduce. Both come
+      from the same root — a prompt assembled in two places. If a section matters, the builder emits
+      it; a patch script is not a home.
+
+      Entity separation is the sharpest loss of the four: the red team measures it at 5-6/6, and
+      without it facts about Corporate AI Solutions land in the Factory2Key genome. */ ''}
+${toolHonestySection}
+
+${authoritySection}
+
+${entitySeparationSection}
+
+${typedInputSection}
+
 ${financialsSection}
 
 ${taskLedgerSection}
