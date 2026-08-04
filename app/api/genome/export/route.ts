@@ -32,23 +32,14 @@ import { getBusinessIdentity } from '@/lib/business-identity/store';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/**
- * Everything in the Genome that may travel in the buyer's document.
- *
- * EXPORTED AND PURE so the guarantee can be tested rather than trusted. `export.test.ts` asserts
- * that nothing carrying a `privateReason` survives this, across BOTH collections — which is the
- * assertion that was missing when the leak happened.
- */
-export function buyerView<E extends { privateReason: unknown }, S extends { entries: E[] }>(g: {
-  sections: S[];
-  unsorted: E[];
-}): { sections: S[]; unsorted: E[] } {
-  const exportable = (e: E) => !e.privateReason;
-  return {
-    sections: g.sections.map((s) => ({ ...s, entries: s.entries.filter(exportable) })),
-    unsorted: g.unsorted.filter(exportable),
-  };
-}
+// buyerView MOVED to lib/genome/buyer-view.ts so the renderer can use it without importing a route
+// (which would drag this file's `runtime`/`dynamic` segment config with it). Imported AND
+// re-exported: this file calls it below, and `export { x } from` alone binds nothing in local scope
+// — a break tsc caught and the tests did not, because they import it THROUGH this re-export.
+// Re-exported so every existing caller — including export-filter.test.ts, which holds the
+// guarantee's only test — is untouched.
+import { buyerView } from '@/lib/genome/buyer-view';
+export { buyerView };
 
 /**
  * The valuation figures, rounded the way every screen shows them.
