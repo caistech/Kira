@@ -136,6 +136,27 @@ describe('provenance', () => {
   });
 });
 
+describe('survives conversion into someone else\'s system', () => {
+  it('uses BLOCK elements for the fact and its provenance, not styled spans', () => {
+    // Found by reading the document after it was filed, not by reading the code. These were spans
+    // with `display: block` in the stylesheet — correct in a browser, destroyed on import, because
+    // Google Docs turns a span into an inline run and drops the CSS. Every fact then ran into its
+    // own date: "…Lot 109 in Geraldton.stated 31 July 2026", in the document a buyer opens.
+    const html = renderSingleFile(genome(), 'buyer', meta);
+    expect(html).toContain('<div class="fact">');
+    expect(html).toContain('<div class="src">');
+    expect(html).not.toContain('<span class="fact">');
+    expect(html).not.toContain('<span class="src">');
+  });
+
+  it('never puts a fact and its provenance in the same inline run', () => {
+    // The assertion in the shape of the defect: fact and source adjacent with no block boundary.
+    const html = renderSingleFile(genome(), 'buyer', meta);
+    expect(html).not.toMatch(/cost plus 18%\.<\/span>/);
+    expect(html).toMatch(/cost plus 18%\.<\/div><div class="src">/);
+  });
+});
+
 describe('self-contained', () => {
   it('references nothing external — it must open with no network, without us', () => {
     const html = renderSingleFile(genome(), 'buyer', meta);

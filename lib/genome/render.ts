@@ -97,8 +97,23 @@ function provenance(entry: OwnerEntry, timeZone: string): string {
   return escapeHtml(`${said}${confirmed}`);
 }
 
+/**
+ * BLOCK ELEMENTS, NOT STYLED SPANS — and this was found by reading the filed document, not the code.
+ *
+ * These were two `<span>`s carrying `display: block` in the stylesheet. That renders correctly in a
+ * browser and is destroyed the moment the file is converted: Google Docs imports a span as an inline
+ * run and drops the CSS, so every fact ran straight into its own provenance —
+ *
+ *   "…Lot 109 in Geraldton.stated 31 July 2026"
+ *
+ * — in the document a buyer's accountant actually opens. A `<div>` survives the conversion because
+ * the block-ness is in the ELEMENT rather than in a stylesheet the destination is free to discard.
+ *
+ * The general rule for anything written into someone else's system: presentation that depends on our
+ * CSS is presentation we do not control.
+ */
 function entryHtml(entry: OwnerEntry, timeZone: string): string {
-  return `      <li><span class="fact">${escapeHtml(entry.content)}</span><span class="src">${provenance(entry, timeZone)}</span></li>`;
+  return `      <li><div class="fact">${escapeHtml(entry.content)}</div><div class="src">${provenance(entry, timeZone)}</div></li>`;
 }
 
 /**
@@ -171,7 +186,7 @@ const STYLE = `
     .q { color: #555; font-style: italic; margin: .2em 0 .9em; }
     ul { padding-left: 1.2em; margin: 0; }
     li { margin: 0 0 .85em; }
-    .fact { display: block; }
+    .fact { display: block; }  /* redundant on a div, kept so the intent survives a refactor */
     .src { display: block; color: #666; font-size: .82em; margin-top: .15em; }
     .gap { color: #444; background: #f6f6f4; border-left: 3px solid #ccc; padding: .7em .9em; margin: 0; }
     footer { margin-top: 3.5em; padding-top: 1.2em; border-top: 1px solid #ddd; color: #555; font-size: .85em; }
