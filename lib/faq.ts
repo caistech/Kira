@@ -66,7 +66,15 @@ export const OWNER_FAQ: FaqItem[] = [
   },
   {
     q: 'Why is the price different for different businesses?',
-    a: "Because what Kira is worth to you depends on what's locked in your head. The valuation shows the gap between what your business is worth today and what it's worth captured and transferable; her fee is a small fraction of that per year. A bigger gap means more for her to unlock, so the bands move with it — never the other way around, where you pay the same regardless of what you get out.",
+    // WAS: "A bigger gap means more for her to unlock, so the bands move with it."
+    //
+    // That described the SUPERSEDED gap-based model, and it survived the 2026-08-01 change to
+    // profit-based bands sitting four inches from the answer above, which states the new rule
+    // correctly. So the page said both things at once, and the one it said second is precisely the
+    // incentive problem the change was made to remove — the tool that authors the number also being
+    // paid more when the number is bigger. An owner primed by a broker finds that in ninety seconds;
+    // a broker finds it faster. See lib/valuation/pricing.ts for the decision this now matches.
+    a: "Because what Kira is worth to you depends on what's locked in your head. The valuation shows the gap between what your business is worth today and what it's worth captured and transferable; her fee is a small fraction of that per year. The band itself is set by the profit you report — never by the gap we calculate — so working out a bigger gap can never earn us more.",
   },
   {
     q: 'Why do you need my card before anything is charged?',
