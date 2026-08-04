@@ -51,6 +51,7 @@ const meta: ManualMeta = {
   businessName: 'Factory2Key',
   abn: '54 672 395 685',
   generatedAt: new Date('2026-08-05T00:00:00Z'),
+  timeZone: 'Australia/Perth',
 };
 
 describe('the private filter', () => {
@@ -146,13 +147,13 @@ describe('self-contained', () => {
 
 describe('renderAreas', () => {
   it('returns one document per area, keyed for idempotency', () => {
-    const docs = renderAreas(genome({ sections: [section(), section({ key: 'cash', title: 'Cash', entries: [] })] }), 'buyer');
+    const docs = renderAreas(genome({ sections: [section(), section({ key: 'cash', title: 'Cash', entries: [] })] }), 'buyer', 'Australia/Perth');
     expect(docs.map((d) => d.key)).toEqual(['pricing', 'cash']);
     expect(docs.map((d) => d.entries)).toEqual([1, 0]);
   });
 
   it('uses the owner-facing question on his copy and the buyer wording on theirs', () => {
-    expect(renderAreas(genome(), 'owner')[0].html).toContain('How do you price things?');
-    expect(renderAreas(genome(), 'buyer')[0].html).toContain('How is anything priced?');
+    expect(renderAreas(genome(), 'owner', 'Australia/Perth')[0].html).toContain('How do you price things?');
+    expect(renderAreas(genome(), 'buyer', 'Australia/Perth')[0].html).toContain('How is anything priced?');
   });
 });

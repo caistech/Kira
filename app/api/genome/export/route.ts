@@ -26,7 +26,7 @@ import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { formatMoneyApprox } from '@/lib/valuation/currency';
 import { formatAbn } from '@caistech/abn-lookup';
 
-import { displayName } from '@/lib/business-identity';
+import { displayName, isoDateIn, longDateIn, timeZoneForState } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
 
 export const runtime = 'nodejs';
@@ -82,7 +82,6 @@ export async function GET(request: Request) {
 
   const g = await deriveOwnerGenome(appUser.id);
   const format = new URL(request.url).searchParams.get('format') === 'json' ? 'json' : 'md';
-  const stamp = new Date().toISOString().slice(0, 10);
   const owner = [appUser.first_name, appUser.last_name].filter(Boolean).join(' ') || 'the owner';
 
   // THE DOCUMENT IS ABOUT THE BUSINESS, SO IT IS TITLED TO THE BUSINESS.
@@ -102,6 +101,11 @@ export async function GET(request: Request) {
     console.error('[genome-export] business identity unavailable:', error);
   }
   const subject = identity ? displayName(identity) : owner;
+
+  // HIS clock, not the server's — on Vercel that is UTC, which dated an Australian handover a day
+  // behind for a third of every day. The dates are what make this document evidence.
+  const timeZone = timeZoneForState(identity?.state);
+  const stamp = isoDateIn(timeZone);
 
   if (format === 'json') {
     // "EVERYTHING WE HOLD" HAS TO MEAN EVERYTHING WE HOLD.
@@ -193,7 +197,7 @@ export async function GET(request: Request) {
     // FORMATTED, like every other surface. This printed `ABN 99999999999` — an eleven-digit blob on
     // line two of the document a solicitor reads — while Settings rendered the same value correctly.
     identity?.abn ? `${identity.legal_name} · ABN ${formatAbn(identity.abn)}` : '',
-    `Recorded by ${owner}. Exported ${new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}.`,
+    `Recorded by ${owner}. Exported ${longDateIn(timeZone, new Date())}.`,
     '',
     'This document records how this business actually runs, organised by the questions a buyer&rsquo;s'.replace('&rsquo;', "'") +
       ' advisor asks in due diligence. It was built from ordinary conversations with the owner.',
@@ -273,7 +277,7 @@ export async function GET(request: Request) {
     } else {
       for (const e of s.entries) {
         const said = e.source
-          ? `stated ${new Date(e.source.spokenOn).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}`
+          ? `stated ${longDateIn(timeZone, e.source.spokenOn)}`
           : 'source not recorded';
         // The confirmation is the line a buyer's advisor is actually looking for, so it is stated
         // per entry rather than only totalled at the bottom — a total tells them how much of the
@@ -281,7 +285,7 @@ export async function GET(request: Request) {
         // no "unconfirmed" marker, because labelling every other line would read as a disclaimer
         // over the whole document rather than a distinction within it.
         const confirmed = e.confirmedOn
-          ? `; read back to the owner and confirmed ${new Date(e.confirmedOn).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}`
+          ? `; read back to the owner and confirmed ${longDateIn(timeZone, e.confirmedOn)}`
           : '';
         lines.push(`- ${e.content} *(${said}${confirmed})*`);
       }

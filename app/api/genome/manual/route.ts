@@ -17,7 +17,7 @@ import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { renderSingleFile, type Audience } from '@/lib/genome/render';
-import { displayName } from '@/lib/business-identity';
+import { displayName, isoDateIn, timeZoneForState } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
 
 export const runtime = 'nodejs';
@@ -91,11 +91,16 @@ export async function GET(request: Request) {
     [appUser.first_name, appUser.last_name].filter(Boolean).join(' ') ||
     'This business';
 
-  const stamp = new Date().toISOString().slice(0, 10);
+  // HIS clock, not the server's. On Vercel the server is UTC, which for a third of every day
+  // dated an Australian handover a day behind — in the one document whose value is that its dates
+  // are evidence a buyer's accountant can check.
+  const timeZone = timeZoneForState(identity?.state);
+  const stamp = isoDateIn(timeZone);
   const html = renderSingleFile(genome, audience, {
     businessName,
     abn: identity?.abn ? formatAbn(identity.abn) : null,
     generatedAt: new Date(),
+    timeZone,
   });
 
   return new NextResponse(html, {

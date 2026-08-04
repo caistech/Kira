@@ -15,6 +15,60 @@ import { validateAbn, formatAbn } from '@caistech/abn-lookup';
 export const AU_STATES = ['ACT', 'NSW', 'NT', 'QLD', 'SA', 'TAS', 'VIC', 'WA'] as const;
 export type AuState = (typeof AU_STATES)[number];
 
+/**
+ * Which clock a date should be read in, from the state we already hold.
+ *
+ * THE BUG THIS FIXES, found by pulling the real document off production on 2026-08-05: every date
+ * was rendered on a UTC server with `toLocaleDateString('en-AU')`, so for the EIGHT HOURS between
+ * Perth midnight and UTC midnight — a third of every day — every date in the manual was a day
+ * behind. The filename said 4 August on the 5th.
+ *
+ * That matters more here than anywhere else in the product. The dates are what make the handover
+ * EVIDENCE rather than assertion: "the owner stated this on 3 August" is the line that shortens due
+ * diligence, and an accountant who spots one date disagreeing with his own record stops trusting the
+ * document rather than the date. A manual that raises questions is worse than no manual.
+ *
+ * Derived per owner rather than hardcoded to Perth, because the field is already captured and the
+ * mapping is eight values — and it stays correct the day there is a Sydney client.
+ *
+ * THE FALLBACK IS SYDNEY, and it is a considered guess rather than a right answer: most Australians
+ * are on that clock, so it is wrong for the fewest owners. What matters is that it is never UTC,
+ * which is wrong for ALL of them.
+ */
+const STATE_TIME_ZONE: Record<AuState, string> = {
+  ACT: 'Australia/Sydney',
+  NSW: 'Australia/Sydney',
+  NT: 'Australia/Darwin',
+  QLD: 'Australia/Brisbane',
+  SA: 'Australia/Adelaide',
+  TAS: 'Australia/Hobart',
+  VIC: 'Australia/Melbourne',
+  WA: 'Australia/Perth',
+};
+
+export const DEFAULT_TIME_ZONE = 'Australia/Sydney';
+
+export function timeZoneForState(state: string | null | undefined): string {
+  const key = String(state ?? '').trim().toUpperCase();
+  return STATE_TIME_ZONE[key as AuState] ?? DEFAULT_TIME_ZONE;
+}
+
+/**
+ * "2026-08-05" in the owner's own clock — for filenames and stamps.
+ *
+ * `toISOString().slice(0, 10)` is the idiom that caused the bug; `en-CA` is the locale that formats
+ * as YYYY-MM-DD, so this is the same shape read on the right day.
+ */
+export function isoDateIn(timeZone: string, when: Date = new Date()): string {
+  return when.toLocaleDateString('en-CA', { timeZone });
+}
+
+/** "3 August 2026" in the owner's own clock — the form the handover states facts in. */
+export function longDateIn(timeZone: string, value: string | Date): string {
+  const d = value instanceof Date ? value : new Date(value);
+  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric', timeZone });
+}
+
 export interface BusinessIdentityInput {
   legalName: string;
   abn: string;

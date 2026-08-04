@@ -23,6 +23,7 @@
 // on, and a promise that depends on a CDN is not one.
 
 import { buyerView } from './buyer-view';
+import { longDateIn } from '@/lib/business-identity';
 import type { OwnerGenome, OwnerEntry, OwnerSection } from './derive';
 
 /** Who the document is for. The difference is not cosmetic — see `renderAreas`. */
@@ -45,6 +46,14 @@ export interface ManualMeta {
   abn: string | null;
   /** When the document was produced. Passed in rather than read from the clock, so output is testable. */
   generatedAt: Date;
+  /**
+   * The owner's own clock, from his state — see `timeZoneForState`.
+   *
+   * REQUIRED rather than defaulted, because the default that was there implicitly was the server's,
+   * and on Vercel that is UTC. For a third of every day that put every date in an Australian
+   * handover a day behind — in the one document whose value is that its dates are evidence.
+   */
+  timeZone: string;
 }
 
 /**
@@ -67,11 +76,6 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
-/** "3 March 2026" — the form the markdown export already uses, so the two artefacts cannot disagree. */
-function longDate(value: string | Date): string {
-  const d = value instanceof Date ? value : new Date(value);
-  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
-}
 
 /**
  * The provenance line under an entry.
@@ -85,16 +89,16 @@ function longDate(value: string | Date): string {
  * "unconfirmed" marker on the others: labelling every remaining line would read as a disclaimer over
  * the document rather than a distinction within it.
  */
-function provenance(entry: OwnerEntry): string {
-  const said = entry.source ? `stated ${longDate(entry.source.spokenOn)}` : 'source not recorded';
+function provenance(entry: OwnerEntry, timeZone: string): string {
+  const said = entry.source ? `stated ${longDateIn(timeZone, entry.source.spokenOn)}` : 'source not recorded';
   const confirmed = entry.confirmedOn
-    ? `; read back to the owner and confirmed ${longDate(entry.confirmedOn)}`
+    ? `; read back to the owner and confirmed ${longDateIn(timeZone, entry.confirmedOn)}`
     : '';
   return escapeHtml(`${said}${confirmed}`);
 }
 
-function entryHtml(entry: OwnerEntry): string {
-  return `      <li><span class="fact">${escapeHtml(entry.content)}</span><span class="src">${provenance(entry)}</span></li>`;
+function entryHtml(entry: OwnerEntry, timeZone: string): string {
+  return `      <li><span class="fact">${escapeHtml(entry.content)}</span><span class="src">${provenance(entry, timeZone)}</span></li>`;
 }
 
 /**
@@ -110,7 +114,7 @@ function entryHtml(entry: OwnerEntry): string {
  * business to a buyer by omission. "Still carried by the owner alone" is the honest line and it is
  * also the sales argument.
  */
-export function renderAreas(genome: OwnerGenome, audience: Audience): RenderedDocument[] {
+export function renderAreas(genome: OwnerGenome, audience: Audience, timeZone: string): RenderedDocument[] {
   const view =
     audience === 'buyer'
       ? buyerView<OwnerEntry, OwnerSection>({ sections: genome.sections, unsorted: genome.unsorted })
@@ -126,7 +130,7 @@ export function renderAreas(genome: OwnerGenome, audience: Audience): RenderedDo
       `      <p class="q">${escapeHtml(audience === 'owner' ? section.ownerQuestion : section.question)}</p>`,
       section.entries.length === 0
         ? '      <p class="gap">Nothing recorded here yet. This is still carried by the owner alone.</p>'
-        : `      <ul>\n${section.entries.map(entryHtml).join('\n')}\n      </ul>`,
+        : `      <ul>\n${section.entries.map((e) => entryHtml(e, timeZone)).join('\n')}\n      </ul>`,
       '    </section>',
     ].join('\n'),
   }));
@@ -140,7 +144,7 @@ export function renderAreas(genome: OwnerGenome, audience: Audience): RenderedDo
         '    <section class="area" id="unfiled">',
         '      <h2>Recorded, not yet filed</h2>',
         '      <p class="q">Said, kept, and not yet placed in an area.</p>',
-        `      <ul>\n${view.unsorted.map(entryHtml).join('\n')}\n      </ul>`,
+        `      <ul>\n${view.unsorted.map((e) => entryHtml(e, timeZone)).join('\n')}\n      </ul>`,
         '    </section>',
       ].join('\n'),
     });
@@ -187,7 +191,7 @@ const STYLE = `
  * product, in the direction of disclosure.
  */
 export function renderSingleFile(genome: OwnerGenome, audience: Audience, meta: ManualMeta): string {
-  const docs = renderAreas(genome, audience);
+  const docs = renderAreas(genome, audience, meta.timeZone);
   const title = audience === 'buyer' ? 'Operating manual' : 'Operating manual — your copy';
 
   const shown = docs.reduce((n, d) => n + d.entries, 0);
@@ -213,7 +217,7 @@ export function renderSingleFile(genome: OwnerGenome, audience: Audience, meta: 
   <h1>${escapeHtml(meta.businessName)}</h1>
   <p class="meta">
     ${escapeHtml(title)}${meta.abn ? ` &middot; ABN ${escapeHtml(meta.abn)}` : ''}<br>
-    Prepared ${escapeHtml(longDate(meta.generatedAt))} &middot;
+    Prepared ${escapeHtml(longDateIn(meta.timeZone, meta.generatedAt))} &middot;
     <strong>${shown}</strong> entries across <strong>${filled}</strong> of <strong>${docs.length}</strong> areas
   </p>
   ${banner}
