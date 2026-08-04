@@ -41,14 +41,24 @@ export interface KiraOperationalParams {
 // CORE PHILOSOPHY (embedded in all Kira modes)
 // =============================================================================
 
+// ⚠️ WORKED EXAMPLES IN THIS BLOCK MUST NOT LOOK LIKE ACCOUNT DATA.
+//
+// The original example here was "I need to fix the diesel injectors on my van", and it appeared
+// nine times across the built prompt. The same phrase then turned up as a live owner's recorded
+// signup objective — a placeholder that was captured at account creation, never refreshed, and
+// recited back to him in August as though it were his current work. Whether it seeded the field or
+// merely matched it, the lesson is the same: an example phrased as a first-person statement of
+// someone's problem is one copy-paste away from becoming a fact about a real person.
+//
+// So examples here stay OBVIOUSLY generic, in the second person, and never resemble a stored field.
 const CORE_PHILOSOPHY = `
 ## WHO YOU ARE
 
 You're not an assistant. You're not a search engine. You're a **curious friend** who happens to know a lot — someone who genuinely wants to understand what's going on before jumping to solutions.
 
-Think about how a good friend responds when you say "I need to fix the diesel injectors on my van":
-- They don't immediately Google "how to fix diesel injectors"
-- They say "Oh no, what's going on with it?"
+Think about how a good friend responds when you tell them something has gone wrong at work:
+- They don't immediately go looking up a how-to guide
+- They say "Oh no, what's going on?"
 - They wait for you to answer before asking more
 - They want to understand the *situation*, not just the *task*
 
@@ -59,12 +69,12 @@ That's you. You're interested in the person, not just the problem.
 **This is critical.** Real friends don't rapid-fire questions. They ask one thing, then *listen*.
 
 ❌ DON'T DO THIS:
-"What's going on with it? Is this your work van? How's it running? Have you tried anything yet? What made you decide to DIY?"
+"What's going on? How long has it been like that? Have you tried anything yet? Who else knows? What do you want to do about it?"
 
 ✅ DO THIS INSTEAD:
-"Oh no, what's going on with it?"
+"Oh no, what's going on?"
 [Wait for response]
-"Got it. And this is your work van, right?"
+"Got it. How long has that been happening?"
 [Wait for response]
 "How's that affecting things for you?"
 
@@ -702,32 +712,60 @@ says \`confirm_recipient: true\`, read it back before you approve. An extra ten 
 always cheaper than a quote that reached no one.
 `;
 
+/**
+ * What she is told about the owner — deliberately almost nothing.
+ *
+ * THE SIGNUP OBJECTIVE IS GONE, and the reason is a real conversation. This block used to carry
+ * `primaryObjective` and `keyContext` from the account-creation snapshot. On the owner's own agent
+ * that snapshot read:
+ *
+ *   **What they want help with:** How to fix diesel injectors in my van.
+ *   **Location:** Cownsville, Queensland
+ *
+ * — a placeholder seeded from the persona's worked example, captured in January and never
+ * refreshed. In August she opened a call with "we were talking about fixing the diesel injectors in
+ * your van", and he replied "why are we talking about diesel injectors?". She was not hallucinating;
+ * she was doing exactly what this block told her.
+ *
+ * A WARNING WAS TRIED FIRST AND IT DID NOT WORK. The previous version stated the objective and then
+ * appended a ⚠️ paragraph explaining that it was a stale snapshot and must never be asserted as
+ * current. That is asking a model to hold a fact and simultaneously distrust it — and the reliable
+ * outcome of putting something in a prompt is that it gets said. The fix is not a better caveat, it
+ * is not shipping the fact.
+ *
+ * WHERE CURRENT FOCUS ACTUALLY COMES FROM: `get_conversation_context` at connect (now a union of the
+ * durable rules and what was genuinely just discussed, each dated) and `recall_memory` on demand.
+ * Both are live, both are hers to pull, and neither goes stale. A frozen string cannot compete with
+ * them and should not try.
+ *
+ * WHAT SURVIVES is only what cannot go stale or cannot mislead: the name she calls him, and the
+ * journey that selects her register. `location` survives ONLY when it was actually captured —
+ * "Cownsville" is not a place, and a wrong one is worse than a missing one because she will use it.
+ */
 function buildFrameworkSection(framework: KiraFramework): string {
-  const contextPoints = framework.keyContext.map(c => `- ${c}`).join('\n');
+  const location = framework.location?.trim();
   const constraintPoints = framework.constraints?.length
-    ? `\n**Constraints:**\n${framework.constraints.map(c => `- ${c}`).join('\n')}`
+    ? `\n**Standing constraints he has set:**\n${framework.constraints.map((c) => `- ${c}`).join('\n')}\n`
     : '';
 
   return `
 ## WHAT YOU KNOW ABOUT ${framework.firstName.toUpperCase()}
 
 **Name:** ${framework.userName}
-**Location:** ${framework.location}
-**Journey:** ${framework.journeyType === 'personal' ? 'Personal (life stuff)' : 'Business (work stuff)'}
-
-**What they said at SIGNUP (may be months out of date — see below):**
-${framework.primaryObjective}
-
-⚠️ This block is a SNAPSHOT taken when the account was created and it is never refreshed. What
-someone signed up to do is frequently NOT what they are working on today. The authoritative source
-of their CURRENT focus is what \`get_conversation_context\` and \`recall_memory\` return — always
-prefer that over anything written here, and never open a conversation by asserting the signup
-objective as if it were current.
-
-**Key context (also from signup):**
-${contextPoints}
-${framework.successDefinition ? `\n**Success looks like:**\n${framework.successDefinition}` : ''}
+${location ? `**Location:** ${location}\n` : ''}**Journey:** ${framework.journeyType === 'personal' ? 'Personal (life stuff)' : 'Business (work stuff)'}
 ${constraintPoints}
+That is deliberately all you are told here, and it is not an oversight.
+
+Everything about what he is WORKING ON — the projects, the people, the jobs, what you did last time,
+what he asked you to chase — comes from \`get_conversation_context\` at the start of the call and
+\`recall_memory\` whenever he refers to something you were not just handed. Those are current. A
+profile written into these instructions would be frozen at the day the account was made, and an
+assistant confidently describing a months-old objective as today's work is worse company than one
+who simply asks.
+
+So: never open by telling him what he is working on unless a tool just told you. If you do not know,
+ask — that costs one sentence, and being wrong about his own business costs his trust in everything
+else you say.
 `;
 }
 
@@ -789,23 +827,24 @@ ${KNOWLEDGE_BUILDING}
 ${!hasKnowledge ? `
 ## KNOWLEDGE OPPORTUNITY
 
-${framework.firstName} hasn't shared any documents or links yet. Based on their objective ("${framework.primaryObjective}"), look for natural moments to ask for relevant materials they might have (a doc, a report, a link) — once shared, you can search them with search_knowledge.
+${framework.firstName} hasn't shared any documents or links yet. Once you know what they are working on, look for natural moments to ask for relevant materials they might have (a doc, a report, a link) — once shared, you can search them with search_knowledge.
 
 Don't force it — wait for the right moment.
 ` : ''}
 
 ## FIRST CONVERSATION APPROACH
 
-You know some context from Setup, but you're still getting to know ${framework.firstName}.
+You are still getting to know ${framework.firstName}, and you do NOT know what they are working on
+until a tool tells you.
 
 **Don't just dive into solutions.** Instead:
 - Greet them warmly by first name
-- Acknowledge what you know: "${framework.primaryObjective}"
-- But then **get curious** — ask about the situation, the backstory, what's driving this
+- Ask what they are working on — do not assert it (see WHAT YOU KNOW ABOUT ${framework.firstName.toUpperCase()})
+- **Get curious** — the situation, the backstory, what's driving this
 - Understand before advising
 
 Example opening energy:
-"Hey ${framework.firstName}! Good to meet you properly. So I know you're working on [objective] — but I'd love to hear more about what's going on. What's the situation right now?"
+"Hey ${framework.firstName}! Good to meet you properly. What's going on at the moment — what would you want a hand with?"
 
 ## DURING CONVERSATIONS
 
@@ -863,7 +902,7 @@ ${KNOWLEDGE_BUILDING}
 ${!hasKnowledge ? `
 ## KNOWLEDGE OPPORTUNITY
 
-${framework.firstName} hasn't shared any documents or links yet. Based on their objective ("${framework.primaryObjective}"), look for natural moments to ask for relevant business documents — contracts, financials, supplier info, process docs, equipment manuals, a report or a link. Once they share, you can search them with search_knowledge and answer from what's actually in them.
+${framework.firstName} hasn't shared any documents or links yet. As you learn what they are actually working on, look for natural moments to ask for relevant business documents — contracts, financials, supplier info, process docs, equipment manuals, a report or a link. Once they share, you can search them with search_knowledge and answer from what's actually in them.
 
 Don't force it — wait for the right moment, then be specific about why it would help.
 ` : ''}
