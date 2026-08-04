@@ -43,6 +43,8 @@ import {
 } from '@/lib/kira/lookup-tools-def.mjs';
 import { kiraRecordRefusalToolDef } from '@/lib/kira/refusal-tool-def.mjs';
 import { isUidToolUrl } from '@/lib/kira/uid-tools.mjs';
+// THE one tool list. Both provisioning paths read it — see kiraAllTools for what a second copy cost.
+import { toolDefsFor } from '@/lib/kira/tool-manifest.mjs';
 import { parkedOtherBusinesses } from '@/lib/kira/other-businesses';
 import { forgetParkedEntityLeaks } from '@/lib/kira/entity-sweep';
 
@@ -393,10 +395,35 @@ export function kiraDoingTools(baseUrl: string): ConvAITool[] {
  * the handlers resolve the user from `?uid` (falling back to the conversation binding for legacy).
  * The `x-convai-tool-secret` header still gates the routes, so a baked uid is not a bare-param hole.
  */
+/**
+ * Every tool an agent holds — built from the ONE manifest, not from a parallel list here.
+ *
+ * IT WAS A PARALLEL LIST, and it cost the fleet twice. `setAgentTools` REPLACES an agent's tool set,
+ * so whichever provisioning path runs last decides what every agent holds — and a tool missing from
+ * one twin is not skipped, it is REMOVED. The first time, dispatch_task and approve_task were
+ * stripped off ten live agents. The second time was 2026-08-04: exec-reprovision ran this function
+ * while the confirmation pair and the new recall_memory trigger existed only in the manifest, so the
+ * fleet came back with 15 tools instead of 17 and without the trigger the exercise was for.
+ *
+ * The control in place was a comment saying "change one, change both". lib/kira/tool-parity.test.ts
+ * is that comment with teeth; this function no longer needs it, because there is nothing to keep in
+ * step.
+ *
+ * The manifest returns plain defs — no headers, no uid. Everything below is this path's own
+ * decoration and is unchanged.
+ */
 export function kiraAllTools(baseUrl: string, userId?: string): ConvAITool[] {
-  const tools = [...kiraMemoryTools(baseUrl), kiraKnowledgeTool(baseUrl), ...kiraDoingTools(baseUrl)];
+  const secret = requireToolSecret();
+  const tools = toolDefsFor('business', baseUrl) as ConvAITool[];
   for (const t of tools) {
     if (!t.webhook) continue;
+    // The manifest deliberately leaves auth to the caller, because the two paths read the secret
+    // from different places. Applied here for every tool, exactly as the per-tool builders did.
+    t.webhook.headers = {
+      'Content-Type': 'application/json',
+      ...(t.webhook.headers ?? {}),
+      [TOOL_SECRET_HEADER]: secret,
+    };
     // Single-sourced with the re-provision script — see lib/kira/uid-tools.mjs for why.
     const isUidTool = isUidToolUrl(t.webhook.url);
     if (userId && isUidTool) {
