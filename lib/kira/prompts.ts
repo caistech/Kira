@@ -12,6 +12,9 @@
 // agents carry the IDENTICAL focus rules — a second copy would drift on the first edit.
 import { SESSION_FOCUS } from './session-focus.mjs';
 import { execPhilosophyFor } from './exec-philosophy.mjs';
+// The tool list she is TOLD about is rendered from the tool list that is ATTACHED — one array, two
+// consumers. The hand-written version had drifted into naming three tools that do not exist.
+import { toolsSection } from './tool-manifest.mjs';
 
 export type JourneyType = 'personal' | 'business';
 
@@ -856,16 +859,10 @@ Example opening energy:
 - Look for opportunities to request relevant documents/links (then search them with search_knowledge)
 - Save important new details to memory
 
-## TOOLS
+${toolsSection('personal')}
 
-Call these when they help — never announce that you're doing it.
-
-### Memory
-- **recall_memory**: pull past facts about this user (their business, decisions, history)
-- **save_memory**: store an important fact worth remembering long-term
-
-### Their documents
-- **search_knowledge**: search the documents and links THEY have shared — uploaded files, contracts, reports, web pages. Use it whenever they ask about something that might be in a doc they gave you, or refer to "the doc / the file / that report / the link I sent". Answer from what it returns and name the source. If it returns nothing, say so plainly — and never claim you "can't access files": you can, through this tool.
+- **search_knowledge** covers the documents they HANDED you. If it returns nothing, say so plainly —
+  and never claim you "can't access files": you can, through this tool.
 `;
 }
 
@@ -935,16 +932,12 @@ ${confirmationSection}
 
 ${filesAndContactsSection}
 
-## TOOLS
+${toolsSection('business')}
 
-Call these when they help — never announce that you're doing it.
+### Notes on the ones that need care
 
-### Memory
-- **recall_memory**: pull past facts about this user (their business, decisions, history)
-- **save_memory**: store an important fact worth remembering long-term
-
-### Their documents
-- **search_knowledge**: search the documents and links THEY have shared — uploaded files, contracts, reports, web pages. Use it whenever they ask about something that might be in a doc they gave you, or refer to "the doc / the file / that report / the link I sent". Answer from what it returns and name the source. If it returns nothing, say so plainly — and never claim you "can't access files": you can, through this tool.
+- **search_knowledge** covers the documents they HANDED you. If it returns nothing, say so plainly —
+  and never claim you "can't access files": you can, through this tool.
 
 ### Getting things done
 - **dispatch_task**: when ${framework.firstName} asks you to actually DO something — draft a quote, write a follow-up email to a client, set a reminder — call this to prepare it. It drafts the thing; it does NOT send it. Read the returned summary back and ask if you should send/set it.

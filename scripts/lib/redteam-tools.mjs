@@ -13,24 +13,14 @@
 // it is REMOVED from every agent the caller touches — so this list must stay in step with
 // kiraAllTools() in lib/kira/convai.ts, which .mjs cannot import.
 
-import { createConversationTools, CONVAI_TOOL_SECRET_HEADER } from '@caistech/elevenlabs-convai';
+import { CONVAI_TOOL_SECRET_HEADER } from '@caistech/elevenlabs-convai';
 
-import { kiraKnowledgeToolDef } from '../../lib/kira/knowledge-tool-def.mjs';
-import { withEntityClassification } from '../../lib/kira/memory-entity-def.mjs';
-import {
-  kiraKeepDocumentToolDef,
-  kiraLookupContactToolDef,
-  kiraReadDocumentToolDef,
-  kiraSearchDriveToolDef,
-} from '../../lib/kira/lookup-tools-def.mjs';
-import {
-  kiraApproveToolDef,
-  kiraCheckTasksToolDef,
-  kiraDispatchToolDef,
-  kiraFinancialsToolDef,
-} from '../../lib/kira/swarm/doing-tools-def.mjs';
-import { kiraRecordRefusalToolDef } from '../../lib/kira/refusal-tool-def.mjs';
-import { kiraConfirmFactToolDef, kiraFactsToConfirmToolDef } from '../../lib/kira/confirm-tool-def.mjs';
+// THE LIST ITSELF NOW LIVES IN lib/kira/tool-manifest.mjs, and this file only decorates it with the
+// uid and the secret. It moved because the PROMPT needs the same list: its hand-written `## TOOLS`
+// section had drifted into naming three tools that do not exist, which the agent then reaches for
+// and reports to the owner as something she "can't access". One array, two consumers — the prompt
+// can no longer describe a tool that is not attached.
+import { toolDefsFor } from '../../lib/kira/tool-manifest.mjs';
 import { isUidToolUrl } from '../../lib/kira/uid-tools.mjs';
 
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app').replace(/\/$/, '');
@@ -54,33 +44,9 @@ export function buildToolsForUser(userId, journeyType) {
     );
   }
 
-  // platformIdentity MUST match kiraMemoryTools() in lib/kira/convai.ts. Without it, provisioning
-  // quietly reverts an agent to LLM-filled conversation ids — the bug the flag exists to fix.
-  const tools = [
-    // Entity guard applied here, not after: this list is what gets pushed to ElevenLabs for the whole
-    // fleet, and an agent provisioned without the parameter cannot be told apart from one that has it
-    // by looking at the agent. See lib/kira/memory-entity-def.mjs.
-    ...withEntityClassification(createConversationTools(APP_URL, '/api/kira/webhooks', { platformIdentity: true })),
-    kiraKnowledgeToolDef(APP_URL),
-    ...(journeyType === 'business'
-      ? [
-          kiraDispatchToolDef(APP_URL),
-          kiraApproveToolDef(APP_URL),
-          kiraFinancialsToolDef(APP_URL),
-          kiraCheckTasksToolDef(APP_URL),
-          kiraSearchDriveToolDef(APP_URL),
-          kiraReadDocumentToolDef(APP_URL),
-          kiraKeepDocumentToolDef(APP_URL),
-          kiraLookupContactToolDef(APP_URL),
-          kiraRecordRefusalToolDef(APP_URL),
-          // The verifiable axis — she reads a fact back and records what he said. Two tools because
-          // the handle must come from us: a fact id she invented would attach a confirmation to the
-          // wrong fact. See lib/kira/confirm-tool-def.mjs.
-          kiraFactsToConfirmToolDef(APP_URL),
-          kiraConfirmFactToolDef(APP_URL),
-        ]
-      : []),
-  ];
+  // platformIdentity, the entity guard, the doing slice and the confirmation pair all live in the
+  // manifest now — including the reason the confirmation pair is TWO tools rather than a flag.
+  const tools = toolDefsFor(journeyType, APP_URL);
 
   for (const t of tools) {
     if (!t.webhook) continue;
