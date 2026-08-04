@@ -40,7 +40,8 @@ export type PrivateReason =
   | 'not-yet-told'
   | 'personal-circumstances'
   | 'negotiating-position'
-  | 'how-he-feels';
+  | 'how-he-feels'
+  | 'how-he-works';
 
 /**
  * The vocabulary, as an array, so the classifier can validate a model's answer against exactly the
@@ -55,6 +56,7 @@ export const PRIVATE_REASONS = [
   'personal-circumstances',
   'negotiating-position',
   'how-he-feels',
+  'how-he-works',
 ] as const satisfies readonly PrivateReason[];
 
 /** What the owner is shown next to a withheld entry. His words for it, not the enum's. */
@@ -64,6 +66,7 @@ export const PRIVATE_REASON_LABEL: Record<PrivateReason, string> = {
   'personal-circumstances': 'your personal circumstances',
   'negotiating-position': 'what you would accept',
   'how-he-feels': 'how you feel about the business',
+  'how-he-works': 'how you want to work with Kira',
 };
 
 /**
@@ -164,6 +167,34 @@ const RULES: { reason: PrivateReason; pattern: RegExp; ignoreIfTrading?: boolean
     reason: 'how-he-feels',
     pattern:
       /\b(burn(t|ed)?[- ]out|burnout|exhausted|worn out|had enough|sick of|tired of|fed up|over it|losing interest|no longer enjoys?|doesn't enjoy|stress(ed|ful)?\b[^.]{0,20}\b(him|her|owner))\b|\b(desperate|urgent(ly)?|needs? out|can't (keep|carry on|go on))\b/i,
+  },
+  {
+    // HOW HE WANTS TO WORK WITH KIRA — instructions to the assistant, not facts about the business.
+    //
+    // An authenticated walkthrough found these in the buyer handover document, on a page whose
+    // privacy copy promises it "leaves out your own position — your plans, your circumstances, what
+    // you would accept". Measured against the matcher, all three exported with NO reason at all:
+    //
+    //   "prefers to maintain strict control over communications and approvals, explicitly
+    //    disagreeing with sending sensitive emails without prior approval"
+    //   "prefers to give standing approval for sending sensitive communications"
+    //   "reducing owner dependency is his priority"
+    //
+    // Why a buyer must not read them: the first two say how cautious he is and where he will not
+    // delegate, which is negotiating posture wearing operational clothes. The third states his
+    // priority, and a buyer who knows what the vendor is trying to fix knows what to discount.
+    // None of them is a fact about how the business runs, which is the only thing the document is
+    // for.
+    //
+    // Deliberately anchored on the OWNER as the subject plus an approval/permission/priority verb,
+    // rather than on "approval" alone — "the job needs council approval" is an operating fact and
+    // must keep travelling. Placed LAST, deliberately: exit-intent and not-yet-told are the more consequential readings of
+    // a sentence, and a line about "announcing a sale to customers" should tell the owner it was
+    // withheld because it reveals the sale, not because it describes his approval habits. This
+    // catches what nothing else does, which is the gap it was written for.
+    reason: 'how-he-works',
+    pattern:
+      /\b(owner|he|she|they|client|user)\b[^.]{0,40}\b(prefers?|wants?|insists?|requires?|expects?|refus(es?|ing)|declin(es?|ing)|disagree(s|ing)?|authoris(es?|ed)|permits?|allows?)\b[^.]{0,60}\b(approval|approve|permission|sign[- ]off|standing|control over|oversight|before sending|without (telling|asking|checking|prior))\b|\b(reducing|reduce|less|lower)\b[^.]{0,25}\bowner[- ]depend(ence|ency|ent)\b|\b(his|her|their|the owner'?s)\b[^.]{0,20}\b(priority|priorities|main (goal|aim|objective))\b/i,
   },
 ];
 
