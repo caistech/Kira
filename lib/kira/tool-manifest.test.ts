@@ -47,12 +47,25 @@ describe('the prompt cannot name a tool that is not attached', () => {
       expect(phantom).toEqual([]);
     });
 
-    it(`every attached ${journey} tool is described to her`, () => {
+    it(`every attached ${journey} tool is named to her`, () => {
       // The inverse gap is quieter and just as real: a tool she holds but was never told about is
       // one she will not call. recall_memory is the live example of what that costs.
       const { systemPrompt } = getKiraPrompt({ framework: framework(journey) });
       const missing = attachedNames(journey).filter((n) => !systemPrompt.includes(n));
       expect(missing).toEqual([]);
+    });
+
+    it(`does NOT restate tool descriptions in the ${journey} prompt`, () => {
+      // The descriptions are already sent as the tool schema. Restating them cost 15,562 chars —
+      // 39.5% of the prompt — and created a second wording that could silently disagree with the
+      // first. A regression here is the whole 4 August measurement coming back.
+      const section = toolsSection(journey) as string;
+      const longest = Math.max(
+        ...(toolDefsFor(journey, 'https://example.test') as { description?: string }[])
+          .map((t) => String(t.description ?? '').length),
+      );
+      expect(longest).toBeGreaterThan(200); // the descriptions are genuinely long...
+      expect(section.length).toBeLessThan(1_200); // ...and the section does not carry them.
     });
   }
 
@@ -73,9 +86,10 @@ describe('the prompt cannot name a tool that is not attached', () => {
       .find((t) => t.name === 'recall_memory');
     expect(recall?.description).toMatch(/whenever the owner refers to/i);
     expect(recall?.description).not.toMatch(/when you need to remember/i);
-    // And the prompt must carry the SAME wording — two descriptions for one tool is how a prompt and
-    // an agent come to disagree about what it is for.
-    expect(toolsSection('business')).toContain(recall?.description);
+    // The trigger lives ON THE TOOL and only there. It is read at the moment she chooses a tool,
+    // which is the point — three mentions buried in a 775-line prompt did not make her call it.
+    expect(toolsSection('business')).not.toContain(recall?.description);
+    expect(toolsSection('business')).toContain('recall_memory');
   });
 
   it('the business journey attaches strictly more than personal', () => {

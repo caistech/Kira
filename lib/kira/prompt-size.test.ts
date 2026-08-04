@@ -36,7 +36,16 @@ const framework = (journeyType: JourneyType): KiraFramework => ({
 // So these are ceilings at the current measurement plus a little headroom — enough that a genuine
 // new section is possible, small enough that the next one is a decision with a number attached
 // rather than an accretion nobody notices until an owner says she has got worse.
-const BUDGET = { business: 41_000, personal: 15_000 } as const;
+// RATCHETED DOWN 2026-08-04 after `## TOOLS` stopped restating the tool descriptions: 39,427 →
+// 26,681 for business, 13,300 → 11,540 for personal. The ceiling moves with the measurement, so the
+// saving cannot be quietly given back by the next section somebody adds.
+//
+// The remaining fat is known and named: roughly 12k of the business prompt is TOOL-USAGE prose
+// (THEIR FILES AND THEIR CONTACTS, ACCOUNTING FOR WHAT THEY ASKED FOR, BUILDING YOUR KNOWLEDGE BASE,
+// CHECKING WHAT YOU HAVE GOT RIGHT, THE ADDRESS IS THE ONE THING YOU MUST CHECK, READING THEIR
+// ACCOUNTS) sitting thousands of characters away from the tool it describes. Moving each into its
+// tool's description is the next tranche, and should take this under 15k.
+const BUDGET = { business: 28_000, personal: 12_500 } as const;
 
 describe('prompt budget', () => {
   for (const journey of ['business', 'personal'] as const) {
