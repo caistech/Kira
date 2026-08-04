@@ -63,3 +63,8 @@ docs/collaborator-terms/
 # of this repo — committing it would nest a copy of the repo inside itself. vitest already excludes
 # it from test discovery for the same reason.
 .claude/worktrees/
+
+# Fetched Genome artefacts. These are exports of an account's own record — even from a
+# synthetic QA account they are the shape of a thing that must never be committed
+# (PRODUCT_STANDARDS: data exports are treated as PII).
+manual-*.html
