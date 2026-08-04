@@ -23,26 +23,34 @@ const config: Config = {
         // green" cannot exist: the old #22c55e is 2.28:1 on white, which fails even the 3:1 floor
         // for UI components, and the old #4ade80 carried WHITE TEXT on the referral submit button
         // at 1.74:1.
+        // THE VALUES NOW LIVE IN app/tokens.css, and this maps Tailwind's names onto them.
+        //
+        // The class names are unchanged on purpose — `kira-600` and `kira-mist` appear 256 times,
+        // and renaming them in the same change that introduces tokens would make the diff
+        // unreviewable. What changed is where the value comes from: a designer edits ONE file, and
+        // `[data-theme="dark"]` re-points the roles without touching a component.
+        //
+        // rgb(var(--x) / <alpha-value>) rather than the bare var, because Tailwind opacity
+        // modifiers cannot work from a hex string. Six exist today (`ring-kira-600/50`,
+        // `bg-kira-surface/90`, `bg-kira-mist/80`, `border-kira-mist/50`) and they would have
+        // silently rendered wrong.
+        //
+        // Contrast figures stay with the values in tokens.css, where they were computed rather
+        // than estimated.
         kira: {
-          50: '#F0FDF4', //  tint backgrounds ONLY — never a text colour
-          500: '#16A34A', // 3.30:1 on white — large text (>=24px) and UI fills ONLY, never body text
-          600: '#15803D', // 5.02:1 on white — body text, links, and any fill carrying a white label
-          700: '#166534', // 7.13:1 on white — hover/pressed, text needing extra weight
+          50: 'rgb(var(--brand-50) / <alpha-value>)',
+          500: 'rgb(var(--brand-500) / <alpha-value>)',
+          600: 'rgb(var(--brand-600) / <alpha-value>)',
+          700: 'rgb(var(--brand-700) / <alpha-value>)',
 
-          // Warm neutrals — kept deliberately. Warm suits this ICP and these names never lied.
-          dark: '#2D2A26', //     13.67:1 on surface — body text, headings
-          charcoal: '#4A4541', // secondary text
-          soft: '#736B63', //     5.01:1 — CORRECTED from #7D756D, which was 4.34:1 and failed AA
-          mist: '#F5F3F0', //     borders, dividers, inset panels
-          surface: '#FAFAF9', //  page background
-          line: '#E7E3DE', //     hairline rules — one step darker than mist, so a divider is
-          //                      visible on a mist panel instead of disappearing into it
-
-          // Text on a DARK surface (the footer). Added because the ramp above only answers
-          // "what goes on light", and the answer for dark is not simply the same values
-          // inverted — both are contrast-checked against kira-dark, not assumed.
-          'on-dark': '#C9C2BA', //       8.10:1 on kira-dark — body text
-          'on-dark-muted': '#A79F96', // 5.47:1 on kira-dark — legal, secondary
+          dark: 'rgb(var(--neutral-900) / <alpha-value>)',
+          charcoal: 'rgb(var(--neutral-700) / <alpha-value>)',
+          soft: 'rgb(var(--neutral-500) / <alpha-value>)',
+          mist: 'rgb(var(--neutral-100) / <alpha-value>)',
+          surface: 'rgb(var(--neutral-50) / <alpha-value>)',
+          line: 'rgb(var(--neutral-200) / <alpha-value>)',
+          'on-dark': 'rgb(var(--neutral-on-dark) / <alpha-value>)',
+          'on-dark-muted': 'rgb(var(--neutral-on-dark-muted) / <alpha-value>)',
         },
       },
       fontFamily: {

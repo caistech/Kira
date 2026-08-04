@@ -495,6 +495,65 @@ export function LandingNew() {
         </div>
       </section>
 
+      {/* ABOUT — the slot the canonical B2B SaaS wireframe puts between "how it works" and the FAQ,
+          and the one this page did not have.
+
+          IT MATTERS MORE HERE THAN ON A NORMAL SaaS PAGE. The ask is that a man in his sixties tells
+          an assistant how his business really runs, including things he has told nobody — often
+          before he has told his own staff he is selling. "Who is behind this" is not an About-us
+          formality for that reader, it is the question underneath the whole decision, and answering
+          it nowhere is its own answer.
+
+          NAMED, AND SPECIFIC ABOUT WHAT IS SMALL. A broker and a founder both read this page cold
+          this week and independently called it AI-written. Vagueness is what reads that way, so this
+          says who, from where, and what it is not — a one-operator business is a fair thing to
+          weigh, and hiding it would be the thing that costs trust if he found out later.
+
+          NO SOCIAL PROOF HERE, and that is deliberate rather than an omission. The same wireframe
+          asks for it in three places and there is none that can honestly be shown: four invented
+          testimonials were removed from this page on 1 August. An About section that quietly reads
+          as credibility-by-implication would be the same mistake in a longer form. */}
+      <section className="border-t border-kira-line bg-white">
+        <div className="mx-auto max-w-3xl px-6 py-16">
+          <h2 className="text-[27px] font-semibold tracking-tight text-kira-dark lg:text-[34px]">
+            Who is behind this
+          </h2>
+          <div className="ln-measure mt-6 space-y-4 text-[17px] leading-[1.65] text-kira-charcoal">
+            <p>
+              Kira is built by Dennis McMahon at Corporate AI Solutions, in Western Australia. I have
+              spent thirty years in construction, logistics and modular manufacturing — running the
+              businesses, not advising them — and I built the back-office systems for my own as I
+              went, because nobody else was going to.
+            </p>
+            <p>
+              This one started when I looked at buying businesses and kept finding the same problem
+              from the other side of the table. The good ones were good because of the owner. Which
+              is exactly what makes them hard to buy, and what a buyer discounts you for. One
+              developer I work with is eighty, has built a substantial land bank, and none of it is
+              written down anywhere but in his head.
+            </p>
+            <p>
+              It is a small operation and I would rather you knew that than found out later. What you
+              get is direct access to the person who built it, and a product that is still changing
+              in response to what owners tell me. What you do not get is a support desk in another
+              time zone.
+            </p>
+            <p>
+              Your business details stay in your account. They are used to build your Genome and
+              nothing else — not sold, not pooled, not used to train anyone&apos;s model. The{' '}
+              <a href="/privacy" className="text-kira-600 underline underline-offset-2 hover:text-kira-700">
+                privacy policy
+              </a>{' '}
+              says so in plain terms, and{' '}
+              <a href="/terms" className="text-kira-600 underline underline-offset-2 hover:text-kira-700">
+                the terms
+              </a>{' '}
+              are worth two minutes before you start.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* FAQ */}
       <section className="border-t border-kira-line bg-white">
         <div className="mx-auto max-w-3xl px-6 py-16">

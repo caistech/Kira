@@ -1,0 +1,110 @@
+/* ---------------------------------------------------------------------------
+ * DESIGN TOKENS — three layers, one place to change the brand.
+ *
+ * WHY THIS EXISTS NOW, before any palette is chosen. Three people looking at Kira independently
+ * reached the same conclusion in a week: a tester ("I can't tell if I'm still on the same website"),
+ * a founder reviewing it cold ("clearly designed by AI"), and a designer ("colour scheme doesn't
+ * work"). A palette is coming from a person who knows the audience. This file is so that when it
+ * arrives it is an edit to ONE file rather than a hunt through 256 class usages — and so that dark
+ * mode is a re-point rather than a retrofit.
+ *
+ * NOTHING RENDERS DIFFERENTLY TODAY. Every value below is the value that was already live; this
+ * moves them, it does not change them. That is deliberate: a refactor that also restyles cannot be
+ * reviewed, because you cannot tell which change caused what you are looking at.
+ *
+ * THE THREE LAYERS, and why the split earns its keep:
+ *
+ *   PRIMITIVE  raw values with no opinion about use. --brand-600 is a green; it does not know
+ *              whether it is text or a button.
+ *   SEMANTIC   ROLES. --text-body, --surface-page, --border-hairline. Components use ONLY these.
+ *   DARK       re-points the SEMANTIC layer only. Primitives never change between themes, which is
+ *              the whole reason the layers are separate: "what colour is our green" and "what
+ *              colour is body text right now" are different questions and only the second has two
+ *              answers.
+ *
+ * CHANNELS, NOT HEX, because Tailwind opacity modifiers need them: `ring-kira-600/50` compiles to
+ * rgb(var(--brand-600) / 0.5) and cannot work from a hex string. Six such usages exist today, and
+ * discovering that after the migration would mean six invisible-ring bugs.
+ *
+ * CONTRAST FIGURES are carried over from DESIGN.md §3.1 where they were computed rather than
+ * estimated — they are the reason a single "brand green" cannot exist, and they must travel with
+ * the values or the next person picks a shade by eye.
+ * ------------------------------------------------------------------------- */
+
+:root {
+  /* ── PRIMITIVE ─────────────────────────────────────────────────────────────
+   * Named by ROLE-IN-THE-RAMP, not by hue, so a palette change does not turn every
+   * `--green-600` into a lie. Gareth's blue/purple/green decision replaces the VALUES here and
+   * nothing else in the codebase moves.                                                        */
+  --brand-50: 240 253 244; /* tint backgrounds ONLY — never a text colour */
+  --brand-500: 22 163 74; /* 3.30:1 on white — large text (>=24px) + UI fills, never body */
+  --brand-600: 21 128 61; /* 5.02:1 on white — body text, links, fills carrying a white label */
+  --brand-700: 22 101 52; /* 7.13:1 on white — hover/pressed, text needing extra weight */
+
+  /* Warm neutrals. Kept deliberately: warm suits a 60-70yo readership, and unlike the old
+   * coral/peach names these never described a colour they were not. */
+  --neutral-900: 45 42 38; /* 13.67:1 on surface */
+  --neutral-700: 74 69 65;
+  --neutral-500: 115 107 99; /* 5.01:1 — corrected from #7D756D, which failed AA at 4.34:1 */
+  --neutral-200: 231 227 222;
+  --neutral-100: 245 243 240;
+  --neutral-50: 250 250 249;
+  --neutral-on-dark: 201 194 186; /* 8.10:1 on --neutral-900 */
+  --neutral-on-dark-muted: 167 159 150; /* 5.47:1 on --neutral-900 */
+
+  /* ── SEMANTIC ──────────────────────────────────────────────────────────────
+   * What components are allowed to reference. If a component needs a colour that has no role here,
+   * the answer is a new role — not a hex literal, and not reaching past this layer to a primitive. */
+  --text-body: var(--neutral-900);
+  --text-secondary: var(--neutral-700);
+  --text-muted: var(--neutral-500);
+  --text-link: var(--brand-600);
+  --text-on-brand: 255 255 255;
+  --text-on-dark: var(--neutral-on-dark);
+  --text-on-dark-muted: var(--neutral-on-dark-muted);
+
+  --surface-page: var(--neutral-50);
+  --surface-raised: 255 255 255;
+  --surface-inset: var(--neutral-100);
+  --surface-tint: var(--brand-50);
+  --surface-inverse: var(--neutral-900);
+
+  --border-hairline: var(--neutral-200); /* one step darker than inset, so a divider on an inset
+                                          * panel stays visible instead of vanishing into it */
+  --border-strong: var(--neutral-500);
+
+  --action-primary: var(--brand-600);
+  --action-primary-hover: var(--brand-700);
+  --focus-ring: var(--brand-600);
+}
+
+/* ── DARK ────────────────────────────────────────────────────────────────────
+ * OPT-IN ONLY, by design. There is no theme toggle in the product yet, so this is deliberately
+ * bound to [data-theme="dark"] and NOT to prefers-color-scheme: adding the media query would flip
+ * the site to dark for every visitor whose OS is dark, tonight, with nobody having designed it.
+ *
+ * Only ROLES are re-pointed. The values are placeholders in the sense that a designer will tune
+ * them — but the STRUCTURE is the point, and it is the part that is expensive to add later.
+ * ------------------------------------------------------------------------- */
+:root[data-theme='dark'] {
+  --text-body: var(--neutral-on-dark);
+  --text-secondary: var(--neutral-on-dark-muted);
+  --text-muted: var(--neutral-on-dark-muted);
+  --text-link: var(--brand-500); /* the 600 is body-text contrast on WHITE; on a dark surface the
+                                  * lighter step is the readable one — inverting is not symmetric */
+  --text-on-dark: var(--neutral-900);
+  --text-on-dark-muted: var(--neutral-700);
+
+  --surface-page: var(--neutral-900);
+  --surface-raised: 58 54 49;
+  --surface-inset: 74 69 65;
+  --surface-tint: 30 45 36;
+  --surface-inverse: var(--neutral-50);
+
+  --border-hairline: 74 69 65;
+  --border-strong: var(--neutral-500);
+
+  --action-primary: var(--brand-500);
+  --action-primary-hover: var(--brand-600);
+  --focus-ring: var(--brand-500);
+}
