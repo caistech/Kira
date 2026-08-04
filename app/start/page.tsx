@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { Loader2, FileEdit, CheckCircle, Sparkles, Briefcase, ArrowLeft } from 'lucide-react';
+import { VoiceWidget } from '@caistech/elevenlabs-convai/react';
 
 interface Draft {
   id: string;
@@ -67,16 +68,28 @@ export default function StartPage() {
   useEffect(() => {
     if (!SETUP_KIRA_AGENT_ID || !selectedJourney) return;
 
-    if (document.querySelector('script[src*="elevenlabs.io/convai-widget"]')) {
-      setWidgetLoaded(true);
-      return;
-    }
+    // No CDN script to wait for any more — the canonical widget is a React component, bundled.
+    // `widgetLoaded` is kept because the draft poll and the session clock gate on it; it now means
+    // "the conversation surface is mounted" rather than "a third-party script finished loading".
+    setWidgetLoaded(true);
+  }, [selectedJourney]);
 
-    const script = document.createElement('script');
-    script.src = 'https://elevenlabs.io/convai-widget/index.js';
-    script.async = true;
-    script.onload = () => setWidgetLoaded(true);
-    document.body.appendChild(script);
+  /**
+   * The signed URL for the setup conversation — the canonical path, as /chat/[agentId] does it.
+   *
+   * The CDN embed took a public `agent-id`, which connects over WEBRTC, and that is the transport
+   * failing in production with a DataChannel error. GET /api/kira/start?journey= mints a signed
+   * ElevenLabs URL server-side; the widget resolves it fresh at connect time and connects over
+   * WEBSOCKET. Verified live: the socket opens and the agent sends conversation_initiation_metadata.
+   */
+  const getSignedUrl = useCallback(async (): Promise<string> => {
+    const res = await fetch(`/api/kira/start?journey=${selectedJourney ?? 'business'}`);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || 'Could not start the conversation');
+    }
+    const { signedUrl } = await res.json();
+    return signedUrl as string;
   }, [selectedJourney]);
 
   // Set session start time when widget loads
@@ -349,30 +362,32 @@ export default function StartPage() {
               </div>
             </div>
 
-            {/* ElevenLabs Widget with journey context and auto-connect */}
+            {/* THE CANONICAL WIDGET — the migration this page was skipped by.
+                a4f0ee2 ("migrate coach + PubGuard voice onto canonical Morgan VoiceWidget") moved
+                /chat/[agentId] and PubGuard because both were throwing under @elevenlabs/react
+                1.10. /start was not throwing, so it was left on the raw CDN embed it has carried
+                since fbd3507 — `git log -S VoiceWidget` on this file returns nothing. Not a
+                regression; a migration that never happened, which is why it still looked like the
+                pre-Exec product.
+                Follows /chat/[agentId] exactly: a signed URL resolved at connect time over
+                WebSocket, rather than a public agent id over WebRTC — the transport that has been
+                failing in production with a DataChannel error. */}
             <div className="flex justify-center mb-8">
-              {widgetLoaded && SETUP_KIRA_AGENT_ID ? (
-                <elevenlabs-convai
-                  ref={(el: HTMLElement | null) => {
-                    // Capture this session's conversation id so the draft poll can scope to it.
-                    if (el && !el.dataset.kiraConvListener) {
-                      el.dataset.kiraConvListener = '1';
-                      el.addEventListener('conversation-started', (e) => {
-                        const id = (e as CustomEvent).detail?.conversationId;
-                        if (id) setConvId(String(id));
-                      });
-                    }
-                  }}
-                  agent-id={SETUP_KIRA_AGENT_ID}
-                  dynamic-variables={JSON.stringify({ journey_type: selectedJourney })}
-                  auto-connect="true"
-                ></elevenlabs-convai>
-              ) : (
-                <div className="flex items-center gap-2 text-stone-400">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Loading Kira...</span>
-                </div>
-              )}
+              <VoiceWidget
+                placement="inline"
+                avatarUrl="/female_avatar.jpeg"
+                coachName="Kira"
+                transcript
+                autoConnect
+                getSignedUrl={getSignedUrl}
+                /* Replaces the CDN's `conversation-started` DOM listener. The draft poll scopes to
+                   this id, so losing it would let one owner's poll see another's draft — the exact
+                   content-exposure window closed by 264c7b0. */
+                onConnect={(conversationId) => {
+                  if (conversationId) setConvId(String(conversationId));
+                  if (!sessionStartTime) setSessionStartTime(new Date());
+                }}
+              />
             </div>
 
             {/* Review Framework Button */}
@@ -514,17 +529,6 @@ export default function StartPage() {
 }
 
 // TypeScript declaration for ElevenLabs widget
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      'elevenlabs-convai': React.DetailedHTMLProps<
-        React.HTMLAttributes<HTMLElement> & {
-          'agent-id': string;
-          'dynamic-variables'?: string;
-          'auto-connect'?: string;
-        },
-        HTMLElement
-      >;
-    }
-  }
-}
+// The `<elevenlabs-convai>` JSX declaration that used to live here is gone with the CDN embed.
+// Leaving it would advertise a custom element this page no longer renders, and the next person to
+// read it would reasonably conclude the raw embed was still in use.
