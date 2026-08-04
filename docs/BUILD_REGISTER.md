@@ -231,9 +231,34 @@ about what a customer would experience is inference from design, not observation
 
 | # | Item | Type | State | Detail |
 |---|---|---|---|---|
-| **K1** | Buyer handover carries Kira's PRIVATE notes | BUG | **OPEN** | The document includes the owner's resistance to standing approval and his stated priorities. It goes to a buyer's advisor, against an explicit promise on the privacy page that the handover "leaves out your own position". Found by the authenticated walkthrough. |
-| **K2** | Manual ABN field accepts a fake ABN | BUG | **OPEN** | `99 999 999 999` passes — length-validated only — while the ABR lookup directly above it works. The fake then travels into the handover. |
-| **K3** | Kira's own meta-notes leak into the Genome | BUG | **OPEN (smaller than first reported)** | Measured: the `about=software → none` filter already hides 14/24 rows on the QA account and 96/150 on Dennis's. The defect is the handful that escape into a real area (e.g. a connection note filed under `systems`), not wholesale contamination. The specific row behind the live `systems` card is still unidentified. |
+| ~~**K1**~~ | ~~Buyer handover carries Kira's PRIVATE notes~~ | — | ✅ **CLOSED 2026-08-04 (`f8edb7a`)** | New `how-he-works` private reason, anchored on the owner as subject plus an approval/permission/priority verb — never on "approval" alone, so "the Marlow job needs council approval" still travels. Placed last, which the tests caught: first draft claimed a sentence belonging to `exit-intent`. 102 genome tests. |
+| ~~**K2**~~ | ~~Manual ABN field accepts a fake ABN~~ | — | ✅ **CLOSED 2026-08-03 (`3292712`)** — the row was stale when the K-list was written | `validateAbn` (the ABR's own weighted modulus, arithmetic — cannot fail open on an outage) now runs server-side in `app/setup/business/actions.ts:68`, so `99 999 999 999` is rejected before it can reach the handover or a Spam Act footer. ⚠️ **Residual, tracked as K19:** modulus-valid ≠ real. |
+| **K19** | A checksum-valid but non-existent ABN still saves | MISS | **OPEN** | K2's residue. `AbnLookupField` **already reverse-resolves** — `components/AbnLookupField.tsx:77` sends `abn=<11 digits>` and the route returns the registered entity name — but the *manual* `abn` box in `BusinessIdentityForm` bypasses it entirely and is only checksum-checked. Two fields asking for one thing is also a real cost for a 66-year-old. Fix: the manual field runs the same reverse lookup on blur and shows the resolved entity back for confirmation; degrade to the modulus check alone when the ABR is unreachable. |
+| **K3** | Kira's own meta-notes leak into the Genome | BUG | **HALF CLOSED 2026-08-04** | ⚠️ **The earlier diagnosis was wrong and the correction matters** — see K3a/K3b below. |
+
+**K3, measured against production 2026-08-04** (717 active rows, read-only). The register previously
+recorded this as "the `about=software → none` filter already hides 14/24 rows… the defect is the
+handful that escape". That framing implied a leaky guard. **The guard leaks nothing:**
+
+```
+                         visible in Genome    about=assistant/software that leaked
+dennis@factory2key              23                          0
+dennis+redteam@                240                          0
+dennis+qauser@                   2                          0
+```
+
+`derive.ts:782` enforces `about=assistant → section='none'` **in code**, and it has never once been
+wrong. It simply never fires, because the classifier answered `business` or `systems`. **A guard
+cannot catch a verdict that was never reached.** Two distinct defects were wearing one label:
+
+| ID | Item | Type | State | Detail |
+|---|---|---|---|---|
+| **K3a** | Rows sectioned before `genome_about` existed are unreachable by the guard | DEBT | **OPEN** | `genome_about IS NULL` on **7 of 23** visible rows on the real Genome and **233 of 240** on the red-team account — sectioned by the pre-2026-08-02 classifier, which had no `about` concept. They can never be re-asked: `classifyPendingMemories` selects `.is('genome_section', null)`, so a row that already has a section is skipped forever, and `classifyForReview` — the path that would re-ask them — **writes nothing by design and has never been applied.** Mostly benign business facts, which is why this is DEBT and not the P0. Closing it is a reviewed run of the existing review path, and it is the same pass **B16** needs. |
+| ~~**K3b**~~ | ~~The distiller writes Kira's own state in the business's voice~~ | — | ✅ **CLOSED 2026-08-04** | **This is what actually reached a buyer-facing area.** On the real Genome: *"There is an unresolved issue to verify access to the Gmail account to locate contacts like Chris Newton and Roger"* filed `business → **customers**`, and *"Google Contacts is the primary source for email addresses…; other lists are not accessible for this purpose"* filed `systems → systems`. Structural, not careless: the distiller reads a transcript in which Kira was *doing* the task, and her working state comes out in the third person — at which point "access to the Gmail account is unresolved" is grammatically identical to a fact about the business's records. The `systems` category added on 2026-08-02 to stop rank 10 being empty is *verbatim* the shape her connector notes take, so the split widened the aperture; and `derive.ts:790` then promotes `about=systems + section='none'` **into** the systems area — one-way, toward disclosure. **Fix:** the decision moved to the only place that still has the evidence. The distiller tags its own notes `assistant-state` (`lib/kira/memory-extract.ts`), and `classifyPendingMemories` files those `none`/`assistant` **without asking the model at all**. Filed, not deleted — `none` renders in the owner's "everything else you have told me" list, so he can still see it and remove it. The tag rides in `DistilledMemory.tags`, which already survives the canonical save into `kira_memory.tags`, so no `@caistech/elevenlabs-convai` change and no orphaned consumers. Both halves mutation-verified (reverting either turns the tests red); 10 new tests, 468 suite-wide. |
+
+⚠️ **K3b is shipped, not yet observed.** It changes only *new* distils — the two rows named above are
+already sectioned and are K3a's population, not this fix's. Observation is one voice or typed session
+in which Kira hits a connector problem, followed by checking the resulting row is `none`.
 
 ### P1 — credibility with the buyer this product is written for
 
@@ -277,7 +302,13 @@ Auth 500s on signup/reset/magic-link (the Resend key in Supabase had diverged) �
 `/login` `/signup` · the voice agent being a chatbot (wrong transport — now canonical signed-URL
 WebSocket, in the page flow, with the avatar) · the microphone emoji · doubled `+ GST + GST` ·
 15px secondary text · the dashboard's three-different-numbers gap · the valuation starting at 4–6x
-for a business entirely in the owner's head · nine empty Genome areas.
+for a business entirely in the owner's head · nine empty Genome areas · **K1** the handover carrying
+how he wants to work with Kira · the `/setup/business` self-redirect that trapped every brand-new
+owner for thirteen hops · **K3b** the distiller writing Kira's own state as a fact about the business.
+
+**Two rows in this list were stale when it was written** (K1 landed hours later; **K2 had been fixed
+the previous day**). Both were found by re-reading the register against `git log`, not by anyone
+noticing — which is the argument for closing a row in the same change that closes the item.
 
 ---
 

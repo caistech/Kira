@@ -21,6 +21,10 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { ownerPrivateReason, PRIVATE_REASONS, type PrivateReason } from './private';
 import { dropRestatements, possibleRestatements } from './similar';
 import { GENOME_AREAS, LEGACY_SECTION_MAP, areaFor, type AreaKey } from './areas';
+// The tag is defined by the distiller that writes it, and imported rather than restated — the same
+// rule areas.ts is held to. A second hand-written copy of a string this small is precisely how the
+// producing side and the enforcing side come to disagree without either one looking wrong.
+import { ASSISTANT_STATE_TAG } from '@/lib/kira/memory-extract';
 import { deriveBaseline, type AreaBaseline, type BaselineInputs } from './baseline';
 
 /**
@@ -223,6 +227,19 @@ export interface OwnerGenome {
 
 const SECTION_KEYS = GENOME_SECTIONS.map((s) => s.key) as string[];
 
+/**
+ * Does this row's tag set say the distiller marked it as Kira's own state?
+ *
+ * Tolerant of what actually comes back from Postgres — a `text[]` arrives as an array, but a row
+ * written before the column existed, or by a path that stored a bare string, must not throw its way
+ * into a `null` verdict and back onto the retry queue forever. Anything unreadable is simply "not
+ * marked", which routes the row to the classifier exactly as it does today.
+ */
+export function isAssistantState(tags: unknown): boolean {
+  const list = Array.isArray(tags) ? tags : typeof tags === 'string' ? [tags] : [];
+  return list.some((t) => typeof t === 'string' && t.trim().toLowerCase() === ASSISTANT_STATE_TAG);
+}
+
 /** A stored key, resolved to a current area — carrying legacy keys forward. See the call site. */
 function resolveSection(stored: string): SectionKey | 'unsorted' {
   if (SECTION_KEYS.includes(stored)) return stored as SectionKey;
@@ -356,7 +373,7 @@ export async function classifyPendingMemories(userId: string, limit = 50): Promi
 
   const { data: pending } = await supabase
     .from('kira_memory')
-    .select('id, content')
+    .select('id, content, tags')
     .eq('user_id', userId)
     .is('genome_section', null)
     .neq('active', false)
@@ -369,6 +386,35 @@ export async function classifyPendingMemories(userId: string, limit = 50): Promi
   let deferred = 0;
   await Promise.all(
     pending.map(async (m) => {
+      // KIRA'S OWN STATE IS FILED WITHOUT ASKING. The distiller read the transcript and marked this
+      // as a note about herself (lib/kira/memory-extract.ts); the classifier will only ever see the
+      // sentence, by which point "access to the Gmail account is unresolved" is indistinguishable
+      // from a fact about the business's records — which is exactly how it reached the Customers
+      // area of the real Genome.
+      //
+      // Filed `none`, not deleted: `none` is what the owner's "everything else you have told me"
+      // list renders, so he can still see it and remove it, while the buyer's handover never
+      // carries it. Deleting would be the product quietly editing his record.
+      if (isAssistantState(m.tags)) {
+        await supabase
+          .from('kira_memory')
+          .update({
+            genome_section: 'none',
+            genome_headline: '',
+            genome_classified_at: new Date().toISOString(),
+            genome_about: 'assistant',
+            // Privacy is moot on a row that never reaches the buyer, and stamping it keeps this row
+            // out of the re-review queue, which selects on this column being null. Left unstamped it
+            // would be re-proposed for classification forever.
+            genome_private_reason: null,
+            genome_privacy_classified_at: new Date().toISOString(),
+            genome_owner_dependent: null,
+          })
+          .eq('id', m.id);
+        classified += 1;
+        return;
+      }
+
       const verdict = await classifyOne(apiKey, String(m.content ?? ''));
       // null means WE COULD NOT TELL, and the row is left NULL so the next sweep retries it. Writing
       // a guess here is not a cosmetic mistake: 'none' is filtered out of the Genome entirely and is

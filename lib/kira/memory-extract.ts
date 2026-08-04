@@ -9,6 +9,30 @@ import type { MemoryExtractor } from '@caistech/elevenlabs-convai';
 
 const TYPES = ['preference', 'context', 'goal', 'decision', 'followup', 'correction', 'insight'] as const;
 
+/**
+ * The tag a distilled memory carries when it describes KIRA'S OWN STATE rather than the business.
+ *
+ * This is the contract between the only two things that can settle the question, each doing the
+ * half it is actually good at: the distiller DECIDES (it is reading the transcript, so it knows
+ * whether a sentence came from the owner stating a fact or from Kira reporting that she could not
+ * reach his Gmail), and `classifyPendingMemories` ENFORCES (deterministically, with no second
+ * opinion asked).
+ *
+ * WHY THE DECISION HAD TO MOVE HERE. The Genome classifier runs later, on the sentence alone, and
+ * by then the distinction is gone — "access to the Gmail account is unresolved" is grammatically a
+ * fact about the business's records, and the classifier duly filed it under Customers on the real
+ * Factory2Key Genome. Measured 2026-08-04 across 717 active rows: the existing guard
+ * (`about=assistant → section=none`) leaked ZERO rows, because it was never wrong; it simply never
+ * fired, since the classifier had answered `business` or `systems`. A guard cannot catch a verdict
+ * that was never reached, and no amount of prompt-tightening downstream recovers context the
+ * sentence no longer carries.
+ *
+ * It is a tag rather than a new field because `DistilledMemory.tags` already survives the canonical
+ * `handleSaveMemory` into `kira_memory.tags` — so the signal travels the whole way with no change
+ * to `@caistech/elevenlabs-convai` and no orphaned consumers.
+ */
+export const ASSISTANT_STATE_TAG = 'assistant-state';
+
 const SYSTEM = `You distil a coaching / assistant conversation into a few DURABLE memories worth
 remembering about THIS person for future sessions — their preferences, goals, decisions, ongoing
 context, follow-ups, corrections, and insights about how they think or work. Keep ONLY what will
@@ -34,7 +58,47 @@ the wrong feeling. Drop "he said", "he mentioned", "the user wants"; state the f
 
 THE ONE EXCEPTION is a fact genuinely about the person rather than the business — how he prefers to
 work, be contacted, or be spoken to (memoryType "preference"). Write those as "The owner prefers…",
-which is honest about what they are. Never use his name in either case.`;
+which is honest about what they are. Never use his name in either case.
+
+YOUR OWN STATE IS NOT A FACT ABOUT HIS BUSINESS — TAG IT.
+
+Much of this transcript is you DOING something: looking for a contact, opening a document, failing
+to reach an account, asking him to connect a system. Written down in the register above, your own
+working state becomes grammatically indistinguishable from a fact about how the business keeps its
+records — and it is then filed into his handover manual, under Customers or Systems, and read by a
+buyer's advisor:
+
+  YOURS  "There is an unresolved issue to verify access to the Gmail account to locate contacts."
+  YOURS  "Google Contacts is the primary source for email addresses; other lists are not accessible."
+  YOURS  "The business's value cannot be determined without connecting Xero."
+  HIS    "Bank accounts are not reconciled against Xero."        — the BUSINESS's records
+  HIS    "Contracts are kept in a shared Drive folder."          — where records LIVE
+  HIS    "Quotes are tracked in a spreadsheet on his laptop."    — where records LIVE
+
+THE TEST IS WHOSE LIMITATION IT IS. If the sentence would stop being true the moment you were
+connected to something, or if it describes what you searched, found, opened, sent or could not
+reach, it is about YOU. If it would still be true with no assistant involved at all, it is his.
+
+STILL RETURN THESE — you need them so you do not retry next session what already failed — but give
+each one the tag "${ASSISTANT_STATE_TAG}", exactly, as one of its tags. That tag is what keeps it
+out of his handover document; it stays visible to him and he can still remove it. When in doubt
+about a sentence that mentions a tool, ask the test above rather than guessing: a business fact
+wrongly tagged is a line missing from his manual, and an untagged note of yours is a line a buyer
+reads that was never about his business.`;
+
+/**
+ * Cap tags at six, but never at the cost of the one tag that decides where the memory is filed.
+ *
+ * Comparison is trimmed + case-insensitive: the tag is written by a model, and "Assistant-State"
+ * meaning the same thing as "assistant-state" is not a distinction worth losing a guard over. The
+ * stored form is normalised so the enforcement side matches on one spelling.
+ */
+export function keepMarker(tags: string[]): string[] {
+  const cleaned = tags.map((t) => t.trim()).filter(Boolean);
+  const marked = cleaned.some((t) => t.toLowerCase() === ASSISTANT_STATE_TAG);
+  const rest = cleaned.filter((t) => t.toLowerCase() !== ASSISTANT_STATE_TAG);
+  return marked ? [ASSISTANT_STATE_TAG, ...rest.slice(0, 5)] : rest.slice(0, 6);
+}
 
 /**
  * @param otherBusinesses facts already parked as belonging to a DIFFERENT company (see
@@ -147,9 +211,12 @@ itself, and never a standing approval he was refused.`
           ? (m.memoryType as (typeof TYPES)[number])
           : ('context' as const),
         importance: Math.max(1, Math.min(10, Math.round(Number(m.importance)) || 5)),
-        tags: Array.isArray(m.tags)
-          ? (m.tags as unknown[]).filter((t): t is string => typeof t === 'string').slice(0, 6)
-          : [],
+        // THE MARKER SURVIVES THE SLICE. A model that returns seven tags with ours last would
+        // otherwise lose the one tag that carries a consequence — the whole mechanism defeated by
+        // a cap written for tidiness, silently, in the one direction that publishes to a buyer.
+        tags: keepMarker(
+          Array.isArray(m.tags) ? (m.tags as unknown[]).filter((t): t is string => typeof t === 'string') : [],
+        ),
       }))
       .filter((m) => m.content.length > 0)
       .slice(0, 8);
