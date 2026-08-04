@@ -12,10 +12,62 @@
 // Safe to re-run: a persona already on exec is left alone; setAgentTools is idempotent config.
 // Dry-run by default at the route; this module executes what it's asked.
 
-import { getAgent, updateAgent, setAgentTools, setAgentOverrides } from '@caistech/elevenlabs-convai';
+import {
+  getAgent,
+  updateAgent,
+  setAgentTools,
+  setAgentOverrides,
+  conversationContinuityPrompt,
+} from '@caistech/elevenlabs-convai';
 import { createServiceClient } from '@/lib/supabase/server';
-import { upgradeBusinessPersona } from '@/lib/kira/prompts';
+import { getKiraPrompt, upgradeBusinessPersona, type KiraFramework } from '@/lib/kira/prompts';
 import { kiraAllTools } from '@/lib/kira/convai';
+
+const CONTINUITY_MARKER = '## CONVERSATION CONTINUITY';
+
+/**
+ * REBUILD the whole system prompt from source, rather than patching the live one.
+ *
+ * WHY A REBUILD AND NOT MORE PATCHES. Patching is what produced the state this exists to fix. The
+ * live agents were provisioned in January and every correction since has been either an APPEND
+ * (which lands) or a REPLACE keyed to exact text (which silently did not, once the source text was
+ * edited underneath it). The result, measured 2026-08-04: an agent still on the curious-friend
+ * persona, still holding a signup snapshot that said the owner wanted help fixing diesel injectors,
+ * and still being told about three tools that do not exist — while nine other sections were present
+ * and correct. Surgical replacement of each drifted section is more of the same technique that
+ * failed, and it fails the same way the next time a section's wording changes.
+ *
+ * So the prompt becomes a BUILD ARTIFACT: generated from `getKiraPrompt` plus this agent's stored
+ * framework, every time. Anything that must persist has to be reproducible from source, which is the
+ * property that was missing.
+ *
+ * THE ONE THING CARRIED OVER is the canonical continuity block, because it is appended by the
+ * package rather than built by us — dropping it would silently remove the instruction to call
+ * `get_conversation_context` at turn zero, which is the opposite of the fix.
+ */
+function rebuildPrompt(stored: unknown, firstName: string, livePrompt: string): string {
+  const f = (stored ?? {}) as Partial<KiraFramework>;
+  const framework: KiraFramework = {
+    userName: String(f.userName ?? firstName),
+    firstName,
+    // Location and constraints survive; the signup objective deliberately does not reach the prompt
+    // at all any more (see buildFrameworkSection), so passing it here is inert and kept only because
+    // the type requires it.
+    location: String(f.location ?? ''),
+    journeyType: 'business',
+    primaryObjective: String(f.primaryObjective ?? ''),
+    keyContext: Array.isArray(f.keyContext) ? f.keyContext.map(String) : [],
+    successDefinition: f.successDefinition ? String(f.successDefinition) : undefined,
+    constraints: Array.isArray(f.constraints) ? f.constraints.map(String) : undefined,
+  };
+
+  const { systemPrompt } = getKiraPrompt({ framework });
+  // Re-append rather than assume: an agent that never had it should not silently gain it here, and
+  // one that had it must not lose it.
+  return livePrompt.includes(CONTINUITY_MARKER)
+    ? `${systemPrompt}\n\n${conversationContinuityPrompt}`
+    : systemPrompt;
+}
 
 export interface ExecReprovisionResult {
   total: number;
@@ -71,17 +123,31 @@ export async function reprovisionBusinessAgentsForExec(opts: { apply: boolean })
         conversation_config?: { agent?: { prompt?: { prompt?: string } } };
       };
       const currentPrompt = live?.conversation_config?.agent?.prompt?.prompt || '';
-      const { prompt: nextPrompt, changed, reason } = upgradeBusinessPersona(currentPrompt, firstName);
-      if (changed) changes.push(`persona → fractional exec (${reason})`);
-      // AN UNREACHABLE PERSONA IS A FAILURE, NOT A NO-OP, and it must be visible in the result.
-      //
-      // This ran across the fleet repeatedly and reported success every time while the owner's own
-      // agent stayed on the legacy curious-friend persona — because "could not find the block to
-      // replace" and "nothing needed replacing" were the same quiet `changed: false`. Six months.
-      // Counting it as a failure is what makes the next occurrence impossible to miss.
-      if (reason === 'unreachable') {
+
+      // REBUILD, not patch. See rebuildPrompt for why the surgical route is the thing that failed.
+      const nextPrompt = rebuildPrompt(a.framework, firstName, currentPrompt);
+      const changed = nextPrompt.trim() !== currentPrompt.trim();
+
+      if (changed) {
+        changes.push(`prompt rebuilt from source (${currentPrompt.length} → ${nextPrompt.length} chars)`);
+        // Name the defects this specific agent was carrying, so the dry run is reviewable by someone
+        // who has not read the diff. These are the three that were measured live.
+        if (!currentPrompt.includes('## REMOVE A HEADACHE THEY DREAD')) changes.push('  - was on the legacy curious-friend persona');
+        if (/What they want help with/i.test(currentPrompt)) changes.push('  - was carrying a signup snapshot as fact');
+        for (const phantom of ['start_research_session', 'save_finding', 'search_web']) {
+          if (currentPrompt.includes(phantom)) { changes.push(`  - was told about a tool that does not exist: ${phantom}`); }
+        }
+      } else {
+        changes.push('prompt already matches source');
+      }
+
+      // The persona check now only REPORTS — the rebuild has already replaced it. Kept because
+      // `unreachable` on a rebuilt prompt would mean the generator itself stopped emitting the exec
+      // persona, which is worth failing on rather than shipping quietly.
+      const { reason } = upgradeBusinessPersona(nextPrompt, firstName);
+      if (reason !== 'already') {
         result.failed++;
-        changes.push('PERSONA NOT UPGRADED — the legacy block could not be located in the live prompt');
+        changes.push(`REBUILD DID NOT PRODUCE THE EXEC PERSONA (${reason}) — not applied`);
         result.details.push({ agent: a.agent_name, id, changes });
         continue;
       }
