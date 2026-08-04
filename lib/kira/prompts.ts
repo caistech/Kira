@@ -1045,10 +1045,81 @@ const EXEC_PERSONA_FINGERPRINT = '## REMOVE A HEADACHE THEY DREAD';
  * the CORE block can't be found (leave the prompt untouched rather than risk a bad rewrite; the
  * doing tools still attach separately).
  */
-export function upgradeBusinessPersona(livePrompt: string, firstName: string): { prompt: string; changed: boolean } {
-  if (livePrompt.includes(EXEC_PERSONA_FINGERPRINT)) return { prompt: livePrompt, changed: false };
-  const core = CORE_PHILOSOPHY.trim();
-  if (!livePrompt.includes(core)) return { prompt: livePrompt, changed: false };
+export type PersonaUpgrade = {
+  prompt: string;
+  changed: boolean;
+  /**
+   * WHY nothing changed. `already` is success; `matched`/`spanned` say HOW it changed; `unreachable`
+   * is a FAILURE the caller must surface rather than count as a no-op.
+   *
+   * The reason field exists because its absence cost six months. See below.
+   */
+  reason: 'already' | 'matched' | 'spanned' | 'unreachable';
+};
+
+/** The `## ` headings CORE_PHILOSOPHY owns, derived from the constant so they cannot drift apart. */
+function corePhilosophyHeadings(): Set<string> {
+  return new Set(
+    CORE_PHILOSOPHY.split('\n')
+      .filter((l) => l.startsWith('## '))
+      .map((l) => l.trim()),
+  );
+}
+
+/**
+ * Replace the legacy persona by SPAN rather than by exact text.
+ *
+ * THE BUG THIS EXISTS FOR, measured on the live fleet 2026-08-04: the exact-string branch below had
+ * been silently failing since January. `CORE_PHILOSOPHY` was edited in source after the agents were
+ * provisioned — one line, "They say \"Oh no, what's going on with it?\"" against the live agent's
+ * "They say \"Oh no, what's going on? Is this the work van?…\"" — so `livePrompt.includes(core)` was
+ * false forever after, and the function dutifully returned changed=false. Every run reported
+ * success. The owner's agent was still a "curious friend" six months later, still carrying a worked
+ * example about diesel injectors, which it recited to him as his own objective.
+ *
+ * The evidence was unambiguous once looked at: 9 of 11 prompt sections were PRESENT, and the only
+ * two ABSENT were the two that require REPLACING text rather than appending it. Additive patches
+ * landed; replacement patches silently did not.
+ *
+ * So the span is bounded by HEADINGS, which are stable, instead of by body text, which is not: start
+ * at `## WHO YOU ARE` and run to the first `## ` heading that CORE does not own. A sentence edited
+ * inside a section can no longer defeat it.
+ */
+function replacePersonaSpan(livePrompt: string, exec: string): { prompt: string; changed: boolean } {
+  const lines = livePrompt.split('\n');
+  const start = lines.findIndex((l) => l.trim() === '## WHO YOU ARE');
+  if (start === -1) return { prompt: livePrompt, changed: false };
+
+  const owned = corePhilosophyHeadings();
+  let end = -1;
+  for (let i = start + 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (line.startsWith('## ') && !owned.has(line)) { end = i; break; }
+  }
+  // No following section means the persona runs to the end of the prompt, which is not a shape any
+  // built prompt has — refuse rather than truncate everything after it.
+  if (end === -1) return { prompt: livePrompt, changed: false };
+
+  return { prompt: [...lines.slice(0, start), exec, '', ...lines.slice(end)].join('\n'), changed: true };
+}
+
+export function upgradeBusinessPersona(livePrompt: string, firstName: string): PersonaUpgrade {
+  if (livePrompt.includes(EXEC_PERSONA_FINGERPRINT)) {
+    return { prompt: livePrompt, changed: false, reason: 'already' };
+  }
   const exec = execPhilosophyFor(firstName).trim();
-  return { prompt: livePrompt.replace(core, exec), changed: true };
+
+  // Fast path, kept: an untouched agent still matches verbatim, and an exact swap is the safest
+  // edit available. It is now a fast path rather than the only path.
+  const core = CORE_PHILOSOPHY.trim();
+  if (livePrompt.includes(core)) {
+    return { prompt: livePrompt.replace(core, exec), changed: true, reason: 'matched' };
+  }
+
+  const spanned = replacePersonaSpan(livePrompt, exec);
+  if (spanned.changed) return { ...spanned, reason: 'spanned' };
+
+  // NOT a no-op — a failure. The caller must say so out loud; returning a quiet `changed: false`
+  // here is exactly what hid this for six months.
+  return { prompt: livePrompt, changed: false, reason: 'unreachable' };
 }

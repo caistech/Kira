@@ -55,4 +55,45 @@ describe('buildWelcomeBackFirstMessage', () => {
     expect(said).toContain('Wavecrest');
     expect(said).toContain('carry on with that');
   });
+
+  it('does not open on a dangling article — the 4 August sentence, verbatim', () => {
+    // What she actually said: "Right Dennis — last time, you, Dennis, opting to continue
+    // discussing the." Traced: the 140-char cut landed inside the quoted title, leaving one
+    // unbalanced quote, and the dangling-quote rule then removed everything from that quote to the
+    // end — taking the object of the sentence with it. The old gate rejects a trailing word of one
+    // or two letters, and "the" is three.
+    const said = buildWelcomeBackFirstMessage(
+      'Dennis',
+      ctx(
+        'The conversation began with the user, Dennis, opting to continue discussing the "Orchestrator Handover — Lot 442 Earthworks & Services Packet." Dennis then requested the agent locate specific documents.',
+      ),
+    ) ?? '';
+    expect(said).not.toContain('discussing the.');
+    expect(said).not.toMatch(/\b(the|a|an|of|to|with|and|for)\.\s*$/i);
+    // The honest fallback is the correct outcome here, not a repaired sentence.
+    expect(said).toContain('What are we picking up?');
+  });
+
+  it('never opens by describing its own missing data', () => {
+    // "I don't have a clean summary of where we left off" was the first sentence of a real call. It
+    // is honest about the wrong thing — the owner did not ask about our storage, and an assistant
+    // apologising for her own filing before he has spoken is the same leak we removed from the
+    // Genome, arriving by voice.
+    for (const unusable of [
+      'The user was described by the assistant as wanting the user to be reminded.',
+      'The conversation began with the user, Dennis, opting to continue discussing the "Thing."',
+    ]) {
+      const said = buildWelcomeBackFirstMessage('Dennis', ctx(unusable)) ?? '';
+      expect(said.toLowerCase()).not.toContain('summary');
+      expect(said.toLowerCase()).not.toContain("don't have");
+    }
+  });
+
+  it('keeps a short topic that legitimately ends on a content word', () => {
+    // The guard must test grammar, not length: an article at the end means something was cut off,
+    // but a genuinely brief summary ending in a noun has to survive.
+    const said = buildWelcomeBackFirstMessage('Dennis', ctx('The user asked the agent about the earthworks packet.')) ?? '';
+    expect(said).toContain('earthworks packet');
+    expect(said).toContain('carry on with that');
+  });
 });

@@ -71,8 +71,20 @@ export async function reprovisionBusinessAgentsForExec(opts: { apply: boolean })
         conversation_config?: { agent?: { prompt?: { prompt?: string } } };
       };
       const currentPrompt = live?.conversation_config?.agent?.prompt?.prompt || '';
-      const { prompt: nextPrompt, changed } = upgradeBusinessPersona(currentPrompt, firstName);
-      if (changed) changes.push('persona → fractional exec');
+      const { prompt: nextPrompt, changed, reason } = upgradeBusinessPersona(currentPrompt, firstName);
+      if (changed) changes.push(`persona → fractional exec (${reason})`);
+      // AN UNREACHABLE PERSONA IS A FAILURE, NOT A NO-OP, and it must be visible in the result.
+      //
+      // This ran across the fleet repeatedly and reported success every time while the owner's own
+      // agent stayed on the legacy curious-friend persona — because "could not find the block to
+      // replace" and "nothing needed replacing" were the same quiet `changed: false`. Six months.
+      // Counting it as a failure is what makes the next occurrence impossible to miss.
+      if (reason === 'unreachable') {
+        result.failed++;
+        changes.push('PERSONA NOT UPGRADED — the legacy block could not be located in the live prompt');
+        result.details.push({ agent: a.agent_name, id, changes });
+        continue;
+      }
 
       // 2. tool set: memory + knowledge + doing (uid-baked for this owner).
       changes.push('tools → +dispatch_task/approve_task');

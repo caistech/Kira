@@ -79,7 +79,39 @@ function toSpokenTopic(rawTopic: string): string {
   const lastWord = t.split(/\s+/).pop() ?? '';
   if (lastWord.length <= 2 && /^[a-z]+$/i.test(lastWord)) return '';
   if (/\bthe (user|agent|assistant)\b/i.test(t)) return '';
+  if (endsMidSentence(t)) return '';
   return t;
+}
+
+/**
+ * Does this end on a word that cannot end a sentence?
+ *
+ * THE FAILURE THIS CLOSES, heard on a live call: she opened with
+ *
+ *   "Right Dennis — last time, you, Dennis, opting to continue discussing the."
+ *
+ * Traced exactly. The stored topic was "The conversation began with the user, Dennis, opting to
+ * continue discussing the \"Orchestrator Handover — Lot 442 Earthworks & Services Packet.\"" The
+ * 140-character cut landed inside the quoted title, which left ONE unbalanced quote, and the
+ * dangling-quote rule above then removed everything from that quote to the end — taking the object
+ * of the sentence with it. What survived was a clause ending in a bare article.
+ *
+ * The existing gate could not catch it: it rejects a trailing word of one or two letters, and "the"
+ * is three. So the guard was correct in principle and one character short in practice.
+ *
+ * Function words are the right test rather than a longer length limit, because the tell is
+ * GRAMMATICAL, not dimensional — an article, preposition or conjunction at the end means the thing
+ * it introduced was cut off, whatever its length. A content word ending the phrase ("…discussing the
+ * earthworks packet") is a legitimately short summary and must still travel.
+ */
+function endsMidSentence(text: string): boolean {
+  const DANGLING = new Set([
+    'the', 'a', 'an', 'and', 'or', 'but', 'of', 'to', 'in', 'on', 'at', 'for', 'with', 'from',
+    'about', 'into', 'over', 'that', 'this', 'his', 'her', 'their', 'its', 'my', 'your', 'our',
+    'is', 'was', 'were', 'be', 'been', 'as', 'by', 'if', 'so', 'than', 'then', 'via',
+  ]);
+  const last = (text.split(/\s+/).pop() ?? '').toLowerCase().replace(/[^a-z']/g, '');
+  return DANGLING.has(last);
 }
 
 /**
@@ -110,10 +142,20 @@ export function buildWelcomeBackFirstMessage(
   const narration = /\bthe user\b/i.test(cleaned);
   const topic = truncated || narration ? '' : cleaned;
 
-  // Degrade, don't fake: history exists but no usable topic summary → acknowledge the return
-  // honestly and ask, rather than inventing a subject.
+  // Degrade, don't fake — but do not narrate the bookkeeping either.
+  //
+  // WAS: "I know we've talked before, though I don't have a clean summary of where we left off."
+  // Heard on a live call, and it is the FIRST SENTENCE of the session. It is honest about the wrong
+  // thing: the owner did not ask about our summary column, and telling him it is empty describes our
+  // storage rather than his business. He hears an assistant apologising for her own filing before he
+  // has said a word — which is precisely the class of leak we removed from the Genome, arriving by
+  // voice instead.
+  //
+  // The honest content is "we have talked before, and I want to know what we are doing now". That
+  // needs no reference to what we do or do not hold. She still has the recalled memories in context
+  // and can use them the moment he speaks; what she must not do is open by discussing her own gaps.
   if (!topic) {
-    return `Hey ${name} — good to hear from you again. I know we've talked before, though I don't have a clean summary of where we left off. What are we picking up?`;
+    return `Hey ${name} — good to hear from you again. What are we picking up?`;
   }
 
   const gap = context.time_gap_category;

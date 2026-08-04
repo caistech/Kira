@@ -82,6 +82,48 @@ export function normaliseAbn(raw: string): string | null {
 export { formatAbn };
 
 /**
+ * One name off the register, split into the two the record actually needs.
+ *
+ * WHY THIS EXISTS. The ABR's name search (`MatchingNames.aspx`) matches ENTITY names, BUSINESS names
+ * and TRADING names alike — which is what makes it usable, because an owner searches the name he says
+ * out loud, not the one on the trust deed. The consequence is that the thing he picks is frequently
+ * NOT the entity the ABN belongs to. Writing it straight into `legal_name` collapses the very
+ * distinction the two columns exist to hold: the field bound to the ABN ends up holding a trading
+ * name, the Spam Act footer identifies something that is not the entity, and the buyer's handover
+ * names the wrong party — none of which looks wrong on screen, because the name is his.
+ *
+ * `lookupAbn` returns `entityName` alongside the ABN, so the corrected pair costs one call and the
+ * owner never has to know which of his names is which. That is the point: he types the only name he
+ * knows and both fields come back right.
+ *
+ * @param picked      what he chose off the register — an entity, business or trading name
+ * @param entityName  the ABR's entity name for that ABN, or '' when the resolve failed
+ *
+ * DEGRADE, DON'T FAKE: an empty `entityName` means we learned nothing, so his choice stands
+ * unaltered. A failed lookup must never silently downgrade a name he already picked correctly.
+ */
+export function splitRegisteredName(
+  picked: string,
+  entityName: string,
+): { legalName: string; tradingName: string | null } {
+  const chosen = (picked || '').trim();
+  const entity = (entityName || '').trim();
+  if (!entity) return { legalName: chosen, tradingName: null };
+
+  // Compared loosely because the register and the owner disagree about case and spacing constantly,
+  // and "FACTORY2KEY  PTY LTD" is not a different business from "Factory2Key Pty Ltd". A false
+  // difference here would invent a trading name that is really just the entity typed shoutily.
+  const same = normaliseName(chosen) === normaliseName(entity);
+  // The register's spelling wins even when they match, so the footer carries the entity exactly as
+  // the ABR holds it — which is what anyone checking it will compare against.
+  return same ? { legalName: entity, tradingName: null } : { legalName: entity, tradingName: chosen };
+}
+
+function normaliseName(value: string): string {
+  return value.toLowerCase().replace(/[.,]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+/**
  * The address as it appears in the footer, on one line.
  *
  * Composed here rather than stored composed, so the parts stay individually correctable. Country is
