@@ -22,12 +22,76 @@
 import { NextResponse } from 'next/server';
 
 import { sendUnansweredRequestAlert } from '@/lib/email/unanswered-request';
+import { haltState } from '@/lib/kill-switch';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /** Long enough for a real question, short enough that the field is not a paste target. */
 const MAX_LENGTH = 1000;
+
+/**
+ * GET — a signed URL for the PUBLIC landing agent. The voice half of the same public ask surface.
+ *
+ * SEPARATE AGENT FROM `/api/kira/start`, and that is the fix. `/start` mints a URL for the SETUP
+ * agent, whose job is a two-minute intake — name, location, journey, objective, save the draft. The
+ * landing page was calling it, so a sixty-something who clicked "Ask Kira anything" met an agent
+ * whose own prompt says "You are NOT a coach, advisor, or problem-solver. You're an intake form with
+ * a friendly voice", instructed not to explore his problem and to answer questions with "That's
+ * exactly what your Kira is for! Let me just grab your details."
+ *
+ * The page invited a conversation the agent was told to refuse — worse than silence, because silence
+ * reads as a bug and this reads as the product.
+ *
+ * It was also silent: that agent's `first_message` was EMPTY, so it connected and waited for the
+ * visitor to speak. Nothing was ever said, and eight seconds later the text fallback told him his
+ * browser had no microphone, which may not have been true.
+ *
+ * Both routes stay. They are different conversations and now have different agents, so a change to
+ * one cannot silently alter the other.
+ *
+ * NO JOURNEY PARAMETER, unlike `/start`: a visitor asking what this is has not chosen a path yet,
+ * and making him choose one before he can ask a question is the same mistake in miniature.
+ */
+export async function GET() {
+  // Same chokepoint as /start: a signed URL is permission to begin talking, so refusing it stops new
+  // conversations without a redeploy. The reason is not returned — it can carry operator detail.
+  const halt = await haltState('conversations');
+  if (halt.halted) {
+    console.warn('[kira/ask] kill switch refused a landing conversation:', halt.scope);
+    return NextResponse.json({ error: 'Kira is briefly unavailable. Please try again shortly.' }, { status: 503 });
+  }
+
+  const apiKey = process.env.ELEVENLABS_API_KEY;
+  const agentId = process.env.KIRA_LANDING_AGENT_ID;
+
+  // FAIL LOUDLY RATHER THAN FALL BACK TO THE SETUP AGENT. A fallback would be worse than an error:
+  // the page would appear to work while serving the intake agent — precisely the state this exists
+  // to end, and indistinguishable from working when viewed from outside.
+  if (!apiKey || !agentId) {
+    console.error('[kira/ask] ELEVENLABS_API_KEY or KIRA_LANDING_AGENT_ID missing — refusing to fall back.');
+    return NextResponse.json({ error: 'Voice is not configured' }, { status: 500 });
+  }
+
+  try {
+    const res = await fetch(
+      `https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=${encodeURIComponent(agentId)}`,
+      { headers: { 'xi-api-key': apiKey } },
+    );
+    if (!res.ok) {
+      console.error(`[kira/ask] signed URL failed: ${res.status} ${(await res.text()).slice(0, 200)}`);
+      return NextResponse.json({ error: 'Could not start the conversation' }, { status: 502 });
+    }
+    const { signed_url: signedUrl } = (await res.json()) as { signed_url?: string };
+    if (!signedUrl) return NextResponse.json({ error: 'Could not start the conversation' }, { status: 502 });
+
+    // no-store: a signed URL is a short-lived credential and must never sit in a shared cache.
+    return NextResponse.json({ signedUrl }, { headers: { 'Cache-Control': 'no-store' } });
+  } catch (error) {
+    console.error('[kira/ask] signed URL threw:', error);
+    return NextResponse.json({ error: 'Could not start the conversation' }, { status: 502 });
+  }
+}
 
 export async function POST(request: Request) {
   let question = '';

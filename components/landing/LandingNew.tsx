@@ -288,7 +288,12 @@ export function LandingNew() {
               textFallback
               title="Ask Kira anything — no account needed"
               getSignedUrl={async () => {
-                const r = await fetch('/api/kira/start?journey=business');
+                // /api/kira/ask, NOT /start. `start` mints a URL for the SETUP agent — a
+                // two-minute intake whose prompt forbids answering questions ("You're an intake
+                // form with a friendly voice") and whose first_message was empty, so it connected
+                // and said nothing at all. This page invites a conversation; it now reaches an
+                // agent whose job is to have one, with no tools and nothing saved.
+                const r = await fetch('/api/kira/ask');
                 if (!r.ok) throw new Error(`could not start a conversation (${r.status})`);
                 const { signedUrl } = await r.json();
                 return signedUrl as string;
