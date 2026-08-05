@@ -1,3 +1,4 @@
+import { replyToAddress } from './sender';
 // lib/email/resend.ts
 // Email service using Resend for transactional emails
 
@@ -35,6 +36,7 @@ interface SendEmailParams {
 export async function sendEmail({ to, subject, html, text }: SendEmailParams) {
   try {
     const { data, error } = await getResend().emails.send({
+      replyTo: replyToAddress(),
       from: FROM_EMAIL,
       to,
       subject,

@@ -21,7 +21,7 @@ import { createEmailSender } from '@caistech/email-send';
 import { adminEmails } from '@/lib/auth';
 import type { DriftFinding } from '@/lib/kira/redteam-drift';
 
-import { senderIdentityOrNull } from './sender';
+import { senderIdentityOrNull, replyToAddress } from './sender';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app';
 
@@ -120,6 +120,7 @@ export async function sendRedTeamDriftAlert(findings: DriftFinding[]): Promise<s
 
   const sender = senderIdentityOrNull();
   await createEmailSender({ sender }).send({
+    replyTo: replyToAddress(),
     to: recipients,
     subject,
     html,

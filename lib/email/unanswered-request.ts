@@ -21,7 +21,7 @@ import { createEmailSender } from '@caistech/email-send';
 import { adminEmails } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 
-import { senderIdentityOrNull } from './sender';
+import { senderIdentityOrNull, replyToAddress } from './sender';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app';
 
@@ -164,6 +164,7 @@ export async function sendUnansweredRequestAlert(alert: UnansweredRequestAlert):
 
   try {
     await createEmailSender({ sender }).send({
+      replyTo: replyToAddress(),
       to: recipients,
       subject,
       html,

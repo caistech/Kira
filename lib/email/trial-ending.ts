@@ -1,3 +1,4 @@
+import { replyToAddress } from './sender';
 // lib/email/trial-ending.ts
 //
 // The notice that goes out three days before each charge.
@@ -145,6 +146,7 @@ export async function sendTrialEndingEmail({
   const sender = senderIdentity();
 
   return createEmailSender({ sender }).send({
+    replyTo: replyToAddress(),
     to: userEmail,
     subject,
     html,

@@ -1,3 +1,4 @@
+import { replyToAddress } from './sender';
 // lib/email/commercial.ts
 //
 // The send path for COMMERCIAL email — anything the recipient didn't ask for right now: a
@@ -51,6 +52,7 @@ export async function sendCommercialEmail(
   const sendEmail = createEmailSender({ sender, suppressions: suppressionStore() });
 
   return sendEmail.send({
+    replyTo: replyToAddress(),
     to: params.to,
     subject: params.subject,
     html: params.html,

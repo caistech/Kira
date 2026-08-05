@@ -1,3 +1,4 @@
+import { replyToAddress } from './sender';
 // lib/email/introducer-invite.ts
 //
 // The email that opens the channel: a broker's sign-in link plus the referral link they send to
@@ -143,6 +144,7 @@ export async function sendIntroducerInvite({
   const sender = senderIdentity();
 
   return createEmailSender({ sender }).send({
+    replyTo: replyToAddress(),
     to: introducerEmail,
     subject,
     html,

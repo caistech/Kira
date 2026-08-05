@@ -35,4 +35,29 @@ export function senderIdentityOrNull(): SenderIdentity | undefined {
   }
 }
 
+/**
+ * Where a reply goes.
+ *
+ * WHY THIS EXISTS. Kira sends FROM `noreply@updates.corporateaisolutions.com`, because that
+ * subdomain is the only one verified in Resend — the bare apex is not, and sending from it fails
+ * silently at the provider. That is correct and cannot change without a paid Resend plan.
+ *
+ * But it means every email Kira sends arrives from an address that cannot receive one, and no
+ * Reply-To was ever set — so an owner who replies is talking to nothing, and gets either a bounce
+ * or silence. For THIS buyer that is not an edge case: he is sixty-something, he replies to email
+ * rather than clicking through, and "yes, go ahead" or "what is this about?" is exactly what he
+ * would send. Losing it is worse than losing a click, because he believes he has answered.
+ *
+ * So the FROM stays on the verified subdomain and the REPLY goes to a mailbox with a human behind
+ * it — `EMAIL_SENDER_EMAIL`, the same reply-capable address already named in the Spam Act
+ * identification footer. The two are deliberately different addresses doing different jobs;
+ * collapsing them into one is what breaks sending.
+ *
+ * Returns undefined when the identity is unset, so a send degrades to today's behaviour rather
+ * than throwing on a missing env var.
+ */
+export function replyToAddress(): string | undefined {
+  return senderIdentityOrNull()?.email;
+}
+
 export type { SenderIdentity };
