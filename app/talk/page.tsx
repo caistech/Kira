@@ -15,16 +15,32 @@ export default async function TalkPage() {
   if (!appUser) redirect('/login?next=/talk');
 
   const svc = createServiceClient();
-  // The owner's most-recently-used active Kira (fall back to most-recently created).
-  const { data: agent } = await svc
+
+  // A BUSINESS KIRA WINS, ALWAYS — even over a more recently used personal one.
+  //
+  // This used to take the most-recently-used active agent of any kind, while /dashboard picked
+  // `journey_type === 'business'` first. The two disagreed, and the disagreement was not academic:
+  // an owner whose account still held an old personal-journey agent was handed it by /talk, and a
+  // personal Kira carries six memory tools and NONE of the business ones — no email, no Drive, no
+  // contacts.
+  //
+  // What that looks like from his side is the product denying it can do the things he is paying for.
+  // Observed 2026-08-05: she opened "Hey Tom" (a stale first_message from someone else's walkthrough),
+  // then told the owner, correctly for that agent and disastrously for him, that she had no
+  // connection to his Gmail, his Drive or his Xero. She then distilled that denial into his memory
+  // as a fact about his business, where it would have been recalled and repeated indefinitely.
+  //
+  // Ordering, not filtering: an owner who genuinely only has a personal Kira should still reach it.
+  const { data: agents } = await svc
     .from('kira_agents')
-    .select('elevenlabs_agent_id')
+    .select('elevenlabs_agent_id, journey_type')
     .eq('user_id', appUser.id)
     .eq('status', 'active')
     .order('last_conversation_at', { ascending: false, nullsFirst: false })
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .order('created_at', { ascending: false });
+
+  const list = agents ?? [];
+  const agent = list.find((a) => a.journey_type === 'business') ?? list[0];
 
   // RENDERED HERE, not redirected to /chat/<agent id>.
   //
