@@ -310,6 +310,10 @@ in which Kira hits a connector problem, followed by checking the resulting row i
 
 | # | Item | Type | State | Detail |
 |---|---|---|---|---|
+| **K21** | Supabase custom SMTP silently REVERTED to the built-in mailer | BUG | **FIXED 2026-08-05, but the cause is unknown** | Two reset emails, same subject, different senders: **27 Jul from `noreply@updates.corporateaisolutions.com`** (Resend, correct) and **3 Aug from `noreply@mail.app.supabase.io`** (built-in mailer, 2/hr). So it was configured and then undone — this was never a missing setup. Nothing announces it: auth mail keeps flowing, from an address no recipient recognises, at a rate that dies under any real use, and the only symptom is a tester saying "I never got the email" — which reads as their spam filter. Re-applied via the Management API (`smtp.resend.com:465`, sender `Kira`, `rate_limit_email_sent: 30`). **Owed:** find what reverted it (a project pause/restore, a dashboard save, a config sync?) and add `smtp_host` to a periodic check — `PRODUCT_STANDARDS` §9 already requires the auth smoke-test to FAIL, not warn, when email is on the built-in mailer, and nothing enforces that here. Note the trap: `POST /auth/v1/recover` returns **200 regardless** (it deliberately hides whether the address exists), so it cannot be used to verify sending. The authoritative signal is the Resend send log.|
+
+| # | Item | Type | State | Detail |
+|---|---|---|---|---|
 | **K10** | Signup never verified end to end | PROVE | **OPEN** | `recover` returns 200 and `otp` throttles (proving the mailer sends), but signup itself was not exercised because it creates a real account. One manual signup closes it. |
 | **K11** | Share gate still closed | PROVE | **OPEN** | No naive-tester PASS has ever been recorded against any deployment. |
 | **K12** | Genome baseline never seen on mobile | PROVE | **OPEN** | Verified rendering at desktop on the QA account only; 375px unchecked. |
