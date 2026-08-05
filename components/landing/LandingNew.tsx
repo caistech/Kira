@@ -518,6 +518,32 @@ export function LandingNew() {
             <strong className="font-semibold text-kira-dark">never invoiced for the month you are in</strong> — each
             month is billed once it has finished, and if you cancel, that month is on us.
           </p>
+
+          {/* THE STEP-DOWN, stated before he asks for it.
+              Operator decision 2026-08-05: one third, narrow scope (lib/valuation/pricing.ts).
+
+              This is what makes "a project that finishes" a promise rather than a sales line. A
+              product that says its job is to make itself redundant and then bills the same amount
+              forever has told him something he finds out is untrue in month thirteen.
+
+              NO DATE AND NO THRESHOLD, deliberately. "When the manual is built" needs a defensible
+              denominator (register B4) and until that exists a percentage is measured against an
+              unknown total. The shape can be said honestly today; a date cannot.
+
+              THE FORK IS THE HONEST PART. Keeping the manual current genuinely costs less. The
+              assistant does not, and it is worth most at exactly the moment he would be stepping
+              down — so it stays at its own price rather than being folded in and quietly discounted
+              by two thirds forever. */}
+          <p>
+            <strong className="font-semibold text-kira-dark">It is meant to end.</strong> Kira&apos;s
+            job is to get what is in your head onto paper, and when that is done she has largely made
+            herself redundant. It is never quite finished — the business keeps moving and the head
+            refills — but keeping the manual current is a fraction of the work of building it, so
+            it costs a fraction: <strong className="font-semibold text-kira-dark">a third of your
+            band</strong>. If you would rather keep her working day to day, that stays at the rate
+            you are on. We will tell you when you get there; we do not put a date on it, because it
+            depends entirely on how much of the business is still only in your head.
+          </p>
           <p>No gap, no pressure. The number is yours to keep either way.</p>
         </div>
 

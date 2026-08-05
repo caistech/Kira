@@ -102,6 +102,17 @@ export const OWNER_FAQ: FaqItem[] = [
     a: 'No. The AI providers we use are accessed through paid APIs under terms that exclude training on customer data. What you tell Kira stays between you and your business, private and permissioned.',
   },
   {
+    // The question an owner asks himself and rarely asks out loud, so it is answered unprompted.
+    // Operator decision 2026-08-05 — one third, narrow scope; see lib/valuation/pricing.ts for why
+    // the assistant is deliberately NOT folded into the maintain tier.
+    //
+    // Deliberately no date and no threshold: "when the manual is built" needs a defensible
+    // denominator (register B4), and a promise with a timeframe we cannot honour is worse than one
+    // without. The honest answer to "how long" is that it depends on him, which is also true.
+    q: 'Does this go on forever?',
+    a: "No — and it isn't meant to. Kira's job is to get what's in your head onto paper, and once that's largely done she has made herself redundant. It's never completely finished, because the business keeps moving and the head refills, but keeping the manual current is a fraction of the work of building it — so it costs a third of your band. If you'd rather keep her working day to day, drafting and chasing and looking things up, that stays at the rate you're on. We'll tell you when you get there. We don't put a date on it, because it depends entirely on how much of the business is still only in your head.",
+  },
+  {
     q: 'What happens to my data if I cancel?',
     a: 'Everything Kira has captured about your business is exportable at any time. After cancellation we keep it for 30 days in case you come back, then delete it. Export early if you want a copy outside the app.',
   },

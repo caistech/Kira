@@ -126,3 +126,56 @@ export function priceForProfit(annualProfit: number, gap = 0): PriceQuote {
     fractionWorthQuoting,
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// THE MAINTAIN RATE — what it costs once the manual is built.
+//
+// OPERATOR DECISION, 2026-08-05: one third of the build rate, and NARROW in scope.
+//
+// WHY THERE IS A STEP-DOWN AT ALL. Kira is sold as a project that finishes: her extraction job is
+// to make herself redundant. A product that says that and then bills the same amount forever has
+// not made a promise, it has made a sales line — and the owner finds out which one it was in month
+// thirteen. Offering the lower rate BEFORE he asks for it is the thing that makes the whole framing
+// credible, and it costs less than the trust it buys.
+//
+// WHY IT IS NOT FREE. The manual is never finished, because the business keeps moving: new staff,
+// new clients, a changed process, and the head refills. Keeping it current is real work. It is just
+// much less work than building it was, and the price should say so.
+//
+// NARROW, AND THIS IS THE PART THAT IS EASY TO GET WRONG. Maintenance is keeping the MANUAL current
+// — capturing what changed and re-filing it. It is NOT the day-to-day assistant: drafting, chasing,
+// looking things up. That does not get cheaper when the manual is finished, because it was never
+// about the manual, and it is worth MOST at exactly the moment he would be stepping down.
+//
+// So the transition is a fork, not a discount:
+//   "Keep it current for a third — or keep me, at what you're paying now."
+// Both halves are true, one is a step-down and the other is the thing he actually values. Folding
+// the assistant into the maintain tier would cut its price by two thirds forever, by accident.
+//
+// A FRACTION RATHER THAN A FLAT PRICE, because a flat one is wrong at both ends: trivial revenue
+// from a $5M business and still steep for a $250k one. One decision covers all five bands.
+//
+// ⚠️ THE TRIGGER IS NOT DECIDED AND IS NOT HERE. "When the manual is built" needs a defensible
+// denominator — register B4, deactivation — and until that exists a percentage is measured against
+// an unknown total. Nothing in the product may imply a date or a threshold. What may be said is the
+// SHAPE: her job is to make herself redundant, and when she has, this is what it costs.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** One third. The step-down at the transition — see the note above. */
+export const MAINTAIN_FRACTION = 1 / 3;
+
+/**
+ * The maintain price for a band, rounded to whole dollars.
+ *
+ * Rounded DOWN to the nearest whole dollar rather than to a marketing number: $166 is a third of
+ * $499 and $167 is not, and an owner who checks the arithmetic on a promise about paying less
+ * should find it holds exactly.
+ */
+export function maintainPrice(monthly: number): number {
+  return Math.floor(Math.max(0, monthly || 0) * MAINTAIN_FRACTION);
+}
+
+/** The maintain rate for a given reported profit — the same band the build rate came from. */
+export function maintainPriceForProfit(annualProfit: number): number {
+  return maintainPrice(priceForProfit(annualProfit).monthly);
+}
