@@ -320,7 +320,7 @@ export function LandingNew() {
             {[
               { label: 'Walk away', value: '$220k', accent: false },
               { label: 'Today', value: '$582k', accent: false },
-              { label: 'Captured', value: '$1.02M', accent: true },
+              { label: 'Captured', value: '$777k', accent: true },
             ].map((f) => (
               <div key={f.label} className="border-l-2 border-kira-line pl-5">
                 <p className="text-[16px] sm:text-[15px] uppercase tracking-[0.1em] text-kira-soft">{f.label}</p>
@@ -336,7 +336,7 @@ export function LandingNew() {
           </div>
 
           <p className="ln-measure mt-8 text-[17px] leading-[1.65] text-kira-charcoal">
-            The <strong className="font-semibold text-kira-dark">$438k gap</strong> is the knowledge in your head.
+            The <strong className="font-semibold text-kira-dark">$195k gap</strong> is the knowledge in your head.
             Kira helps you capture it.
           </p>
         </div>

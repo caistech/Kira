@@ -282,11 +282,11 @@ export function LandingClassic() {
                 </div>
                 <div className="rounded-2xl bg-gradient-to-br from-kira-50 to-kira-50 border border-kira-mist p-3">
                   <p className="text-sm uppercase tracking-wide text-stone-400 font-semibold">Captured</p>
-                  <p className="font-display font-bold text-kira-600 text-sm mt-1">$1.02M</p>
+                  <p className="font-display font-bold text-kira-600 text-sm mt-1">$777k</p>
                 </div>
               </div>
               <p className="font-body text-center text-sm text-stone-600">
-                The <span className="font-semibold text-kira-600">$438k gap</span> is the knowledge in your head. Kira helps you capture it.
+                The <span className="font-semibold text-kira-600">$195k gap</span> is the knowledge in your head. Kira helps you capture it.
               </p>
             </div>
           </div>
