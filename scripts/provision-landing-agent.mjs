@@ -7,14 +7,15 @@
 // conversation that agent is instructed to refuse. And its first_message was EMPTY, so it connected
 // and waited — nothing was ever spoken, which reads as a broken widget.
 //
-// IDEMPOTENT BY NAME. `findAgentsByName` first: re-running updates the live agent rather than
+// IDEMPOTENT BY AGENT ID (KIRA_LANDING_AGENT_ID). Re-running UPDATES the live agent rather than
 // minting a second one. Provisioning that creates on every run leaves a workspace full of
-// near-identical agents and no way to tell which one production points at.
+// near-identical agents and no way to tell which one production points at — which happened twice
+// here before the id-keyed version existed. See the note below.
 //
 //   node --env-file=.env.local scripts/provision-landing-agent.mjs             # dry run
 //   node --env-file=.env.local scripts/provision-landing-agent.mjs --apply
 
-import { createAgent, updateAgent, findAgentsByName, getAgent, DEFAULT_AGENT_LLM } from '@caistech/elevenlabs-convai';
+import { createAgent, updateAgent, getAgent, DEFAULT_AGENT_LLM } from '@caistech/elevenlabs-convai';
 
 import {
   LANDING_AGENT_NAME,
@@ -27,8 +28,17 @@ const APPLY = process.argv.includes('--apply');
 const apiKey = process.env.ELEVENLABS_API_KEY;
 if (!apiKey) throw new Error('ELEVENLABS_API_KEY missing (vercel env pull .env.local --environment=production)');
 
-const existing = await findAgentsByName(apiKey, LANDING_AGENT_NAME);
-const current = existing?.[0]?.agent_id ?? null;
+// KEYED ON THE ENV VAR, NOT ON A NAME SEARCH — and that correction is the whole reason this comment
+// exists. The first version used `findAgentsByName`, which filters a page-capped list: the workspace
+// has more than 100 agents, so a freshly created one is not in the page and the lookup returns
+// nothing. Every run then CREATED, which is precisely the duplication the note above warns about.
+// It duplicated twice before anyone noticed, because `createAgent` also silently ignored the name
+// (the field is `agentName`, not `name`) so both agents came out called "Agent agent" and neither
+// could ever be found by name again.
+//
+// An id from the environment is deterministic and cannot be defeated by pagination or by a naming
+// bug. Same shape as scripts/provision-discovery-agent.mjs, which already got this right.
+const current = process.env.KIRA_LANDING_AGENT_ID || null;
 
 console.log(`[landing-agent] ${APPLY ? 'APPLY' : 'DRY RUN'}`);
 console.log(`  name          : ${LANDING_AGENT_NAME}`);
@@ -53,7 +63,9 @@ if (!APPLY) {
 }
 
 const config = {
-  name: LANDING_AGENT_NAME,
+  // `agentName`, NOT `name`. The package's ConvAIAgentConfig uses agentName, and passing `name`
+  // is silently ignored — which is how two agents ended up called "Agent agent".
+  agentName: LANDING_AGENT_NAME,
   voiceId: LANDING_VOICE_ID,
   // A public page. Someone will leave the tab open, and an agent that talks to nobody for an hour
   // is a bill rather than a conversation.
@@ -64,6 +76,7 @@ let agentId;
 if (current) {
   await updateAgent(apiKey, current, {
     name: LANDING_AGENT_NAME,
+    agentName: LANDING_AGENT_NAME,
     systemPrompt: LANDING_PROMPT,
     firstMessage: LANDING_FIRST_MESSAGE,
     voiceId: LANDING_VOICE_ID,
@@ -91,6 +104,12 @@ const spoken = String(a.first_message ?? '');
 console.log(`  verified first_message : ${spoken ? `"${spoken.slice(0, 60)}…"` : 'EMPTY — SHE WILL NOT SPEAK'}`);
 console.log(`  verified prompt chars  : ${String(a.prompt?.prompt ?? '').length}`);
 console.log(`  verified tools         : ${(a.prompt?.tools ?? []).length}`);
-if (!spoken) process.exitCode = 1;
+// VERIFY THE NAME TOO. A wrong name is not cosmetic here — it is what made the agent unfindable and
+// caused the duplication, and it produced no error at any point.
+console.log(`  verified name          : ${JSON.stringify(after?.name ?? '')}`);
+if (!spoken) {
+  console.error('  ✗ first_message is EMPTY — she will connect and say nothing.');
+  process.exitCode = 1;
+}
 
 console.log(`\nSet this in Vercel (production + preview):\n  KIRA_LANDING_AGENT_ID=${agentId}`);
