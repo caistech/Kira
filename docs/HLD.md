@@ -106,7 +106,16 @@ auth, and different risk.
                              ▲                                      │
                              └──────────────────────────────────────┘
                                         the loop that IS the product
+        │
+        ▼
+  IT LEAVES  — the manual is written into the owner's OWN storage, or downloaded
+               as one self-contained file that needs no account and no us
 ```
+
+**The last step is the point, and it was missing until 2026-08-05.** Extraction on its own moves
+knowledge out of the owner's head and into *our* database, which for him is a worse place than his
+head because he cannot get it out without us. A migration that never reaches the destination is not
+a migration. See LLD §6A.
 
 The attribution cookie is set at the very first touch and is **never overwritten**. Commission is
 decided by that signed cookie alone — a free-text "how did you hear about us?" answer is recorded
@@ -250,10 +259,22 @@ alone.
 
 Stated rather than omitted.
 
-- **Three product decisions are open**, all needing a call rather than code: whether the valuation
-  band should be capped by owner-dependence (option B re-prices existing numbers), whether the
-  industry field must be a selection, and whether to override the vendor voice-consent text now
-  that the privacy policy reconciles it.
+- **The valuation band decision is CLOSED** (2026-08-03/04): the sector median is a centre rather
+  than a floor, Kira's claimed uplift is bounded at 0.75 turns, and everyone is rescored rather than
+  frozen. It reprices nothing, because `business_valuations` was empty. LLD §6.2.
+- **Two product decisions remain open**, both needing a call rather than code: whether the industry
+  field must be a selection, and whether to override the vendor voice-consent text now that the
+  privacy policy reconciles it.
+- **The step-down trigger is undecided.** The RATE is decided and live — one third of the band,
+  narrow scope, keeping the manual current rather than the day-to-day assistant. *When* it is
+  reached is not, because it needs a defensible denominator (register B4, deactivation): a
+  percentage of an unknown total is not a threshold. No date or timeframe appears anywhere in the
+  product, and a test enforces that.
+- **`sde-multiples.ts` is US data.** An Australian broker independently quoted 1–1.5× for trade
+  businesses. Australian bands by niche are the highest-value outstanding input to the number the
+  whole product sells on.
+- **Nothing is validated by a customer.** Zero stored valuations; one active subscription, the
+  operator's own. Every claim about what an owner experiences is inference from design.
 - **Team admin** (organisations, member roles, invitations) is not built. Kira is one owner per
   account today. This becomes required the moment an account needs a second seat.
 - **PubGuard holds conversation state in process memory**, which is not safe across multiple

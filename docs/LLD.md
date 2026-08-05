@@ -296,7 +296,14 @@ the portfolio-canonical `EMAIL_SENDER_*` variables.
 ## 6. Valuation
 
 `lib/valuation/`: `model.ts` (the computation), `sde-multiples.ts` (sector multiples),
-`pricing.ts` (price from the gap), `share.ts` (the handoff).
+`pricing.ts` (price from **reported profit** — see below), `share.ts` (the handoff).
+
+⚠️ `pricing.ts` used to price from the **gap** and this document said so. It does not any more, and
+the change is deliberate rather than incidental: pricing on the gap made the same tool both the
+author of the number and the beneficiary of it being large. A tester in the ICP found it in about
+ninety seconds — *"a number I like, that you've told me not to rely on, from a company that gets paid
+more if the number is bigger."* The band now comes from the profit the owner **states**; the gap
+appears only as a descriptive fraction.
 
 ### 6.1 The handoff — invariant
 
@@ -314,16 +321,91 @@ their accountant.
   leaking the moment it is opened.
 - Accepted cost: opening `/plan` in a **new tab** loses it and asks for the valuation again.
 
-### 6.2 Known open issue
+### 6.2 The multiple band — resolved 2026-08-03/04
 
-`readiness` is a weighted average (owner-dependence 3, systems 2, recurring 2, concentration 1.5,
-growth 1.5). `i_am_the_business` scores 0, but the other four carry 7 of 10 — so someone who says
-the business collapses without them can still reach the **"high"** band and be told *"a buyer can
-largely see how this business runs without you"*, while the weakness line built from the same
-answer says *"the business runs on you."*
+**This section previously said the re-weighting was unresolved and must not be "fixed" in passing,
+because it would reprice numbers already shown to people. Both halves are now out of date.** It was
+rebuilt, and there were no stored valuations to reprice — `business_valuations` is empty.
 
-**This is unresolved and needs an operator decision**, because the honest fix (re-weighting) is a
-*repricing* of numbers already shown to people. Do not silently "fix" it in passing.
+What was wrong (register A1–A4): the sector median was treated as a **floor** and then multiplied,
+so the ceiling exceeded the cited BizBuySell range on size alone, the size adjustment only ever
+ADDED, and the gap grew super-linearly with profit — overclaiming hardest for exactly the businesses
+a broker would look at.
+
+The correction rests on one fact in `sde-multiples.ts`: **the sector figure is a CENTRE, not a
+floor** — the median of businesses that actually sold, at average readiness. So readiness now
+interpolates from an absolute floor to the sector-scaled ceiling, and two quantities that had been
+collapsed into one narrow band are separated:
+
+| | |
+|---|---|
+| **Where you are** | the buyer's discount. Ranges widely. **Not our claim — the market's.** |
+| **What Kira moves** | `SPREAD = 0.75` turns. Bounded. **Our claim, and deliberately small.** |
+
+Documentation is worth roughly half a turn to a turn, showing up mostly as a discount NOT taken and
+a shorter due diligence. It does not turn a 1.5× business into a 5× one; that needs a manager and
+recurring contracts, which is a different business rather than a written-down one.
+
+`MODEL_VERSION` is stamped on every snapshot. Operator decision 2026-08-04: **rescore everyone**
+rather than freeze existing snapshots.
+
+⚠️ **The landing figures are generated from this model and were left behind by it** — for two days
+the page showed a gap of $438k where the model returned $195k, a 2.25× overstatement, with
+walk-away and today matching to the dollar so nothing looked stale.
+`lib/valuation/landing-example.test.ts` now computes the example and asserts both landing pages
+carry what comes out. **Change the model and that test tells you which page to change.**
+
+⚠️ **`sde-multiples.ts` is US BizBuySell data.** A Finn Group broker independently quoted 1–1.5× for
+Australian trade businesses. Australian bands by niche are the highest-value outstanding input to
+this model, and are a data change rather than a model change.
+
+---
+
+## 6A. The write-back — getting the manual out of us
+
+Added 2026-08-05. Kira is sold as a project that finishes, and her extraction job is to make herself
+redundant. That only means something if the knowledge lands somewhere the business keeps: until this
+existed, every path terminated in our database, which for an owner is a worse place than his own head
+because he cannot get it out without us.
+
+**`lib/genome/render.ts` — pure.** Genome in, documents out. No database, no network, no
+`server-only`, because the two things that must never regress are only testable if the module can be
+called with a literal object:
+
+1. **The private filter** reuses `buyerView` (moved to `lib/genome/buyer-view.ts` so `lib` does not
+   import a route). It is NOT re-implemented — a second copy of a privacy filter is a second thing
+   that can be wrong, and the first cost a handover carrying the owner's negotiating posture.
+2. **Escaping is a security control.** Every string is the owner's own dictated text, in a document
+   he hands to an advisor. Applied at every interpolation including the area key used as an element id.
+
+**Block elements, not styled spans.** Presentation that depends on our CSS is presentation we do not
+control: `<span>` with `display:block` renders correctly in a browser and is destroyed on import to
+Google Docs, which produced *"…Lot 109 in Geraldton.stated 31 July 2026"* in the document a buyer
+opens. Unit tests could not have caught it — the HTML was correct and the loss happened in Google's
+importer.
+
+**Two shapes from one source:** `renderAreas()` (one document per area — for a destination where each
+is separately editable) and `renderSingleFile()` (one self-contained file — for download; nine files
+in a zip is a worse artefact for a 66-year-old and his accountant).
+
+**Three destinations, one of which needs nobody:**
+
+| Path | Route | Notes |
+|---|---|---|
+| Download | `GET /api/genome/manual?audience=owner\|buyer` | **No default audience** — a default guessing "owner" files his position into a folder he then shares. Filename shouts which copy it is, because by the time he attaches it the banner inside is not on screen. |
+| Owner's own storage | `file_manual` tool → `POST {orchestrator}/api/v1/tenants/:id/record` | Kira never learns the destination — that is the anti-lock-in guarantee. See orchestrator `docs/SYSTEM_OF_RECORD_PORT.md`. |
+| Markdown / JSON | `GET /api/genome/export` | The pre-existing export; still there. |
+
+**Idempotency is the caller's, deliberately.** Drive keys on id, not name, and matching on title
+would break the moment the owner renames a document — which he is supposed to be able to do, because
+it is his. So `drive_documents` maps `(user_id, audience, area_key, destination) → ref`. Audience is
+in the key so the two renderings can never collide on one file. **Refs are stored even on a partial
+run** — they are not a record of success, they are what stops the next attempt duplicating what did
+land.
+
+**Two guards, both server-enforced rather than asked for in the prompt** (`file_manual`'s route):
+`audience` must be present, and `approved` must be **literally `true`** — not `!== false`, because an
+absent field means she never asked and the point of the gate is that silence is a no.
 
 ---
 
@@ -338,6 +420,7 @@ Principal tables (`supabase/migrations/` is the **only** canonical location — 
 | Voice + memory | `kira_agents`, `conversations`, `conversation_messages`, `kira_memory`, `kira_logs` |
 | Knowledge | `kira_knowledge`, `kira_knowledge_chunks` (pgvector), `knowledge_files`, `knowledge_urls` |
 | Work | `kira_tasks`, `kira_drafts`, `kira_research_sessions` |
+| Write-back | `drive_documents` (where each area of the manual lives in the owner's own storage — the idempotency map, §6A) |
 | Commercial | `business_valuations`, `beta_trials`, `beta_usage`, `stripe_webhook_events`, `loi_commitments` |
 | Channel | `introducers`, `introducer_magic_links`, `introductions`, `attribution_overrides`, `advisor_enquiries` |
 | Email | `email_logs`, `email_suppressions` |

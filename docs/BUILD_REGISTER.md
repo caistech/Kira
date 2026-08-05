@@ -1,5 +1,39 @@
 # Build register — Kira
 
+> ## L. 2026-08-05 — what closed, and what this day changed
+>
+> **⚠️ SEVERAL ROWS IN THIS FILE WERE STALE AND STEERED AWAY FROM THE CORRECT ACTION.** K1 and K2 were
+> marked open after being fixed; the LLD warned against a valuation re-weighting that had been done
+> two days earlier; the nine-area row said unbuilt when `areas.ts` had shipped it. Found by re-reading
+> the register against `git log`, not by anyone noticing. **Check the code before trusting a row here.**
+>
+> **The reported problem** — "she is drifting, no recollection of the Lot 442 conversation, talking
+> over me" — resolved into three causes, none of them the model. Full account: `docs/DRIFT_AND_GUARDS.md`.
+>
+> | Closed | |
+> |---|---|
+> | Recall showed **10 of 91** memories, importance-ordered; 71 unreachable | union of importance + recency lanes, `none` excluded. Live, verified on the real agent |
+> | Prompt asserted a **January signup snapshot** as fact ("diesel injectors") | removed from the prompt entirely — a caveat had already been tried and failed |
+> | `recall_memory` had **no observable trigger** | rewritten; the description is the enforcement point, not the prompt |
+> | Prompt named **three tools that do not exist** | tool list generated from the attached set; `tool-manifest.mjs` is the one list |
+> | Persona upgrade **silently no-op for six months** | heading-anchored span replace; `unreachable` now counts as a failure |
+> | **K1** handover carried private notes · **K2** fake ABN accepted | both were already fixed; rows were stale |
+> | **A1–A4** valuation overclaim | fixed 08-03/04. Landing carried pre-correction figures for two days — gap overstated **2.25×** — now pinned to the calculator by a test |
+> | **No write path** — everything terminated in our database | renderer → `file_manual` → orchestrator → Drive. **Verified with ten real documents, updated in place on re-run, read back out** |
+>
+> | New / still open | |
+> |---|---|
+> | **B4 deactivation** | now **commercially load-bearing**: the step-down trigger needs its denominator |
+> | **K3a** pre-`genome_about` rows | unreachable by the guard; needs the reviewed re-classification pass |
+> | **K19** checksum-valid but fake ABN | narrower than first written — the manual box is a genuine fallback |
+> | **Owner-copy filing** | only the buyer copy has ever been filed to Drive |
+> | **`sde-multiples.ts` is US data** | an AU broker quoted 1–1.5× for trades; AU bands by niche is the highest-value input outstanding |
+> | **`patch-agent-capabilities.mjs` must NOT be run** | it reorders sections and puts live prompts back out of step with source |
+> | **Nothing is validated by a customer** | zero stored valuations; one active subscription, the operator's own |
+>
+> **Decisions of record now live in `docs/DECISIONS.md`** — the project framing, the ⅓ narrow maintain
+> rate, the valuation band, no-vendor-lock, and the Drive scope default.
+
 > **Every open item, in one place, with what blocks what.** Written 2026-08-02 because the same
 > things kept being raised, agreed, skipped, and rediscovered a fortnight later — usually because
 > they were recorded in a naive-tester report, a memory file, a code comment or a chat message, and
