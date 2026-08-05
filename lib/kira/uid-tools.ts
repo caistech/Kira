@@ -10,6 +10,7 @@ import { normaliseFact } from '@caistech/mnemo';
 import { createServiceClient } from '@/lib/supabase/server';
 import { mnemoAdd } from '@/lib/kira/mnemo';
 import { readTaskLedger } from '@/lib/kira/swarm/open-tasks';
+import { isAssistantCapabilityClaim } from './poison-detect.mjs';
 
 const uidFrom = (req: Request) => new URL(req.url).searchParams.get('uid') || '';
 const json = (status: number, body: unknown) =>
@@ -216,6 +217,45 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
     }
   }
 
+  // A STATEMENT ABOUT HER OWN REACH IS NOT A FACT ABOUT HIS BUSINESS.
+  //
+  // The tag-based path already handles this — memory-extract emits `assistant-state`, derive files
+  // it none/assistant without a model call. It is not firing. Asked point-blank what she could see,
+  // she answered honestly and the distiller tagged the answers **`systems`**, which is one of the
+  // nine real Genome areas — so "the business's Google account is not connected" was filed under the
+  // section a buyer reads to judge whether the business runs without its owner.
+  //
+  // Nine such rows on the synthetic owner in one conversation, four of them near-duplicates of the
+  // same non-fact, found by the self-poisoning probe on its first run. Four more on a real account
+  // the same day.
+  //
+  // It compounds rather than sitting still: recall includes `genome_section IS NULL`, so an
+  // unclassified row is read back to her next session, teaches her the limitation is real, and she
+  // writes it down again. That is the loop this closes.
+  //
+  // A DETERMINISTIC BACKSTOP UNDER THE MODEL'S JUDGEMENT, not a replacement for it. The tag is still
+  // the primary path and still preferred; this catches the case where the model picked a plausible
+  // business tag for a sentence about us. Same shape as the entity guard above, which took entity
+  // separation from 0/3 to 3/3 by refusing to rely on her classifying correctly under pressure.
+  //
+  // STORED, NOT DROPPED — filed to the same sink the tag path uses. She did say it, and `none` is
+  // what the owner's own "everything else you have told me" list renders, so he can see it and
+  // remove it while the buyer's handover never carries it. Deleting would be the product quietly
+  // editing his record.
+  const isOwnCapabilityClaim = isAssistantCapabilityClaim(content);
+  const assistantStateFields = isOwnCapabilityClaim
+    ? {
+        genome_section: 'none' as const,
+        genome_headline: '',
+        genome_about: 'assistant' as const,
+        genome_classified_at: new Date().toISOString(),
+        // Stamped so the row never enters the re-review queue, which selects on these being null.
+        genome_private_reason: null,
+        genome_privacy_classified_at: new Date().toISOString(),
+        genome_owner_dependent: null,
+      }
+    : {};
+
   const { error } = await supabase.from('kira_memory').insert({
     user_id: uid,
     kira_agent_id: agent?.id ?? null,
@@ -224,6 +264,7 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
     content,
     importance,
     source_conversation_id: sourceConversationId,
+    ...assistantStateFields,
     ...(belongsElsewhere
       ? {
           active: false,
