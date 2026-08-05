@@ -19,44 +19,44 @@ import type { AgentReadinessConfig } from "@caistech/webmcp-kit";
 export const agentConfig: AgentReadinessConfig = {
   "name": "Kira",
   "displayName": "Kira — get the business out of your head",
-  "url": "https://kira-rho.vercel.app",
+  "url": "https://kiraexec.com",
   "description":
     "An AI executive who interviews a business owner in ordinary conversation and turns what only he knows into a written, transferable operations manual — the Business Genome. Built for owners in their 60s preparing to sell a business that currently runs on them, where the value locked in the founder's head is exactly what a buyer discounts. Voice-first, because the people who need it least want to type.",
   "applicationCategory": "BusinessApplication",
   "keyPages": [
     {
       "title": "Home",
-      "url": "https://kira-rho.vercel.app/",
+      "url": "https://kiraexec.com/",
       "description":
         "What Kira does: talks to a business owner, writes down how the business actually runs, and turns that into a document a buyer's advisor can read. Plans start at $499 + GST per month."
     },
     {
       "title": "Free business valuation",
-      "url": "https://kira-rho.vercel.app/business-valuation",
+      "url": "https://kiraexec.com/business-valuation",
       "description":
         "A free 3-minute valuation: what the business is worth today, and the value still locked in the owner's head. No sign-up and no card. Kira's monthly fee is set as a small fraction of that gap, so the personalised price appears after the valuation; the floor is $499 + GST per month."
     },
     {
       "title": "An example Business Genome",
-      "url": "https://kira-rho.vercel.app/genome",
+      "url": "https://kiraexec.com/genome",
       "description":
         "A worked example of the deliverable, organised by the questions a buyer's advisor asks — what is documented, and what is still only in the owner's head."
     },
     {
       "title": "What she does",
-      "url": "https://kira-rho.vercel.app/what-she-does",
+      "url": "https://kiraexec.com/what-she-does",
       "description":
         "The work Kira does between conversations: drafting quotes and follow-ups for approval, filing documents, and keeping the Genome current."
     },
     {
       "title": "For advisors and brokers",
-      "url": "https://kira-rho.vercel.app/advisors",
+      "url": "https://kiraexec.com/advisors",
       "description":
         "For business brokers, accountants and advisors with clients approaching an exit: how to introduce Kira to an owner, and what the referral arrangement is."
     },
     {
       "title": "About",
-      "url": "https://kira-rho.vercel.app/about",
+      "url": "https://kiraexec.com/about",
       "description": "The story behind Kira, built by one developer."
     }
   ],
