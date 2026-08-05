@@ -40,6 +40,15 @@ export default async function TalkPage() {
   if (agent?.elevenlabs_agent_id) {
     return <ChatPage agentId={agent.elevenlabs_agent_id as string} />;
   }
-  // No Kira yet — send them to create one.
-  redirect('/start');
+  // NO KIRA YET — the dashboard, not the create flow.
+  //
+  // This used to jump straight to /start, which meant a brand-new owner's first ever screen was a
+  // bare "choose a journey" page: no nav, no context, nothing telling him where he was or what had
+  // happened to the thing he had just paid for. /dashboard is the home screen and already has the
+  // right empty state for exactly this person — the saved-valuation carry-over, the eleven
+  // questions, and a "You haven't met Kira yet" card that offers the conversation.
+  //
+  // It matters most on the PWA, because /talk is the manifest's start_url: tapping the home-screen
+  // icon before an agent exists took him somewhere with no way back.
+  redirect('/dashboard');
 }
