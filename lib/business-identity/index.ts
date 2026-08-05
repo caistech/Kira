@@ -15,6 +15,47 @@ import { validateAbn, formatAbn } from '@caistech/abn-lookup';
 export const AU_STATES = ['ACT', 'NSW', 'NT', 'QLD', 'SA', 'TAS', 'VIC', 'WA'] as const;
 export type AuState = (typeof AU_STATES)[number];
 
+/** Full names and common variants → the code we store. */
+const STATE_ALIASES: Record<string, AuState> = {
+  'australian capital territory': 'ACT',
+  'new south wales': 'NSW',
+  'northern territory': 'NT',
+  queensland: 'QLD',
+  'south australia': 'SA',
+  tasmania: 'TAS',
+  victoria: 'VIC',
+  'western australia': 'WA',
+  // Seen in the wild from address data and from people typing.
+  qld: 'QLD',
+  tas: 'TAS',
+  vic: 'VIC',
+  nsw: 'NSW',
+  act: 'ACT',
+  'w.a.': 'WA',
+  'n.s.w.': 'NSW',
+};
+
+/**
+ * Resolve whatever arrived in the state field to a code, or null.
+ *
+ * THIS EXISTS BECAUSE THE ADDRESS LOOKUP IS INCONSISTENT, not because people type badly.
+ * `@caistech/mapbox` returns `short_code.replace('AU-','')` — "WA" — when Mapbox supplies a short
+ * code, and falls back to the region's plain text — "Western Australia" — when it does not. Both
+ * come out of the same lookup on the same day.
+ *
+ * While the field was a `<select>` that difference was invisible and destructive: "WA" selected the
+ * option, "Western Australia" matched nothing, so the dropdown silently snapped back to "Choose…"
+ * after an address had been picked. The owner had chosen his address, watched suburb and postcode
+ * fill in, and had no reason to look at the third box again.
+ */
+export function normaliseState(input: string | null | undefined): AuState | null {
+  const raw = (input || '').trim();
+  if (!raw) return null;
+  const upper = raw.toUpperCase();
+  if ((AU_STATES as readonly string[]).includes(upper)) return upper as AuState;
+  return STATE_ALIASES[raw.toLowerCase()] ?? null;
+}
+
 /**
  * Which clock a date should be read in, from the state we already hold.
  *
@@ -226,9 +267,10 @@ export function validateBusinessIdentity(input: BusinessIdentityInput): Validati
   const locality = (input.locality || '').trim();
   if (!locality) errors.locality = 'Enter the suburb or town.';
 
-  const state = (input.state || '').trim().toUpperCase();
-  if (!state) errors.state = 'Choose a state.';
-  else if (!(AU_STATES as readonly string[]).includes(state)) errors.state = 'Choose an Australian state or territory.';
+  // Accepts "WA", "wa", or "Western Australia" — see normaliseState for why all three arrive.
+  const state = normaliseState(input.state) ?? '';
+  if (!(input.state || '').trim()) errors.state = 'Enter the state.';
+  else if (!state) errors.state = 'That is not an Australian state or territory — try WA, NSW, VIC and so on.';
 
   const postcode = (input.postcode || '').trim();
   if (!/^\d{4}$/.test(postcode)) errors.postcode = 'Enter a 4-digit postcode.';

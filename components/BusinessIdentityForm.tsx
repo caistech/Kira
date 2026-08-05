@@ -16,7 +16,7 @@
 // two businesses will otherwise look for the button and conclude the product cannot do it.
 
 import { AddressAutocomplete } from '@caistech/corporate-components/address-autocomplete';
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { AbnLookupField } from '@/components/AbnLookupField';
 import { AU_STATES, type BusinessIdentity } from '@/lib/business-identity';
 import { saveBusinessIdentity, type IdentityFormState } from '@/app/setup/business/actions';
@@ -67,6 +67,30 @@ export function BusinessIdentityForm({
   );
   const errors = state?.errors ?? {};
 
+  // WHY A SUMMARY EXISTS AT ALL.
+  //
+  // Every field below already renders its own error, and that was not enough. This form is eleven
+  // fields tall — taller than a phone screen — so the Save button and the field that failed are
+  // rarely visible at the same time. Press Save with an empty business name, and on a phone the
+  // page does not move, nothing near your thumb changes, and the only feedback is red text several
+  // hundred pixels above the fold.
+  //
+  // What that looks like from the outside is a button that does nothing. It was reported as exactly
+  // that — "the form is failing and the edits are not being saved" — by someone who was in fact
+  // being told what was wrong, in a place he could not see. The server was working correctly the
+  // whole time, which is why nothing showed up in the logs: three POSTs, three 200s, no row.
+  //
+  // It lands on the FIRST screen after paying, for an owner in his sixties. A silent button there
+  // is not a papercut.
+  const errorList = Object.entries(errors).filter(([, message]) => Boolean(message)) as [string, string][];
+  const summaryRef = useRef<HTMLDivElement>(null);
+
+  // Move him TO the problem rather than hoping he finds it. Focus, not just scroll — a screen reader
+  // has the identical problem and gets no help from scrolling.
+  useEffect(() => {
+    if (errorList.length) summaryRef.current?.focus();
+  }, [state, errorList.length]);
+
   // Held in state ONLY so a chosen address can fill them. They remain fully editable — a lookup that
   // takes the pen away is worse than no lookup, and rural and new-estate addresses are exactly where
   // Mapbox is weakest and this owner is strongest.
@@ -76,6 +100,26 @@ export function BusinessIdentityForm({
 
   return (
     <form action={formAction} className="space-y-6">
+      {errorList.length ? (
+        <div
+          ref={summaryRef}
+          tabIndex={-1}
+          role="alert"
+          className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 outline-none"
+        >
+          <p className="text-base font-semibold text-rose-800">
+            {errorList.length === 1
+              ? 'One thing needs fixing before this can save:'
+              : `${errorList.length} things need fixing before this can save:`}
+          </p>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-base text-rose-700">
+            {errorList.map(([field, message]) => (
+              <li key={field}>{message}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       {/* ── The entity ─────────────────────────────────────────────────────────────────────── */}
       <div className="space-y-4">
         <AbnLookupField
@@ -164,15 +208,25 @@ export function BusinessIdentityForm({
         </Field>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {/* A FILLED FIELD, NOT A DROPDOWN — for the same reason suburb and postcode are.
+              Picking an address fills all three; making one of them a menu meant the owner chose his
+              address and then still had to operate a select, which is the fiddliest control on a
+              phone and the one this age group least enjoys.
+
+              It was also silently failing. @caistech/mapbox returns "WA" when Mapbox supplies a
+              short code and "Western Australia" when it does not — same lookup, same day. A select
+              can only hold the first; the second matched no option, so the box quietly reverted to
+              "Choose…" after an address had been picked, with suburb and postcode visibly correct
+              either side of it. normaliseState now accepts both, plus anything typed by hand. */}
           <Field label="State" error={errors.state}>
-            <select name="state" value={stateCode} onChange={(e) => setStateCode(e.target.value)} className={INPUT}>
-              <option value="">Choose…</option>
-              {AU_STATES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
+            <input
+              name="state"
+              value={stateCode}
+              onChange={(e) => setStateCode(e.target.value)}
+              autoComplete="address-level1"
+              placeholder="WA"
+              className={INPUT}
+            />
           </Field>
 
           <Field label="Postcode" error={errors.postcode}>
