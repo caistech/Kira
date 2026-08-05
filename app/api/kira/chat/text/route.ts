@@ -38,6 +38,7 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { sweepConversationForRefusals } from '@/lib/kira/refusal-sweep';
 import { parkedOtherBusinesses } from '@/lib/kira/other-businesses';
 import { forgetParkedEntityLeaks } from '@/lib/kira/entity-sweep';
+import { refileAssistantCapabilityClaims } from '@/lib/kira/capability-sweep';
 import { readTaskLedger } from '@/lib/kira/swarm/open-tasks';
 
 export const runtime = 'nodejs';
@@ -337,6 +338,13 @@ export async function POST(req: NextRequest) {
       // correctly and the distil filed a merged sentence six seconds later. The trigger parks the
       // row; this removes the semantic copy. See lib/kira/entity-sweep.ts.
       await forgetParkedEntityLeaks(agent.user_id as string, KIRA_CONVAI_TABLES.memory);
+
+      // The distil is a SECOND WRITER, and the guard on save_memory does not reach it. That was
+      // measured rather than assumed: the write-path guard shipped, and the very next red-team run
+      // still filed six of her own limitations as facts about the business — because
+      // completeConversationMemory inserts straight into the table.
+      const refiled = await refileAssistantCapabilityClaims(agent.user_id as string, KIRA_CONVAI_TABLES.memory);
+      if (refiled) console.log(`[chat/text] re-filed ${refiled} capability claim(s) as assistant state`);
 
 
       // Stamped AFTER the pipeline returns, so a failed run is retried by the next trigger rather

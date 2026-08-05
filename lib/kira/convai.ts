@@ -47,6 +47,7 @@ import { isUidToolUrl } from '@/lib/kira/uid-tools.mjs';
 import { toolDefsFor } from '@/lib/kira/tool-manifest.mjs';
 import { parkedOtherBusinesses } from '@/lib/kira/other-businesses';
 import { forgetParkedEntityLeaks } from '@/lib/kira/entity-sweep';
+import { refileAssistantCapabilityClaims } from '@/lib/kira/capability-sweep';
 
 // Kira's real tables mapped onto the canonical TableNames contract. The reconcile
 // migration adds the columns the handlers need (agent_id, anon_session_id, processed_at)
@@ -165,6 +166,22 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
       // out, because parking it in one store while publishing it to the other is the guard being
       // technically satisfied and practically absent. See lib/kira/entity-sweep.ts.
       await forgetParkedEntityLeaks(userId, KIRA_CONVAI_TABLES.memory);
+
+      // Same reasoning, different contamination: what she wrote about HER OWN reach.
+      //
+      // Asked what she can see, she answers honestly and the distiller files the answers as facts
+      // about the BUSINESS — tagged `systems`, one of the nine real Genome areas, and the one a
+      // buyer reads to judge whether the business runs without its owner.
+      //
+      // BEFORE classifyPendingMemories, deliberately: that call reads `genome_section IS NULL` and
+      // would otherwise hand these to the model, which is precisely how they got a business section
+      // in the first place. Re-filed first, they arrive already inert and are skipped.
+      //
+      // The guard on save_memory does NOT cover this path — completeConversationMemory inserts
+      // straight into the table. Measured, not assumed: the write-path guard shipped and the next
+      // red-team run still filed six.
+      const refiled = await refileAssistantCapabilityClaims(userId, KIRA_CONVAI_TABLES.memory);
+      if (refiled) console.log(`[kira/convai] re-filed ${refiled} capability claim(s) as assistant state`);
 
       // File the new facts into the Genome NOW, while the call that produced them just ended.
       //
