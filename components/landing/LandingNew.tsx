@@ -416,6 +416,45 @@ export function LandingNew() {
         </div>
       </section>
 
+      {/* WHERE IT ENDS UP — added 2026-08-05, the day it became true.
+
+          This is the strongest thing the product does and no public page said it. Everything else
+          here describes capture; capture on its own leaves the knowledge in OUR database, which for
+          an owner is a worse place than his own head because he cannot get it out without us. The
+          answer to "and then what" is the whole argument, and it is also the answer to every
+          enterprise knowledge tool: they index what is already written down, and this is the part
+          that was never written down at all.
+
+          EVERY CLAIM BELOW SHIPPED AND WAS VERIFIED IN A REAL DRIVE, not described from the plan —
+          ten documents filed, a second run updating them in place rather than duplicating, and the
+          result read back out. Nothing here is aspirational, which is the standard this page has to
+          hold to after four invented testimonials came off it in August. */}
+      <section className="border-t border-kira-line bg-white">
+        <div className="mx-auto max-w-5xl px-6 py-16">
+          <h2 className="max-w-[24ch] text-[27px] font-semibold tracking-tight text-kira-dark lg:text-[34px]">
+            And it ends up in your filing cabinet, not ours.
+          </h2>
+          <div className="ln-measure mt-4 space-y-4 text-[17px] leading-[1.65] text-kira-charcoal">
+            <p>
+              What she captures becomes an operating manual — one document per part of the business,
+              written into your own Google Drive. Ask her again in a month and she updates those
+              documents rather than making a second set.
+            </p>
+            <p>
+              There are two versions and they are different files on purpose. Your own copy has
+              everything in it. The handover copy leaves out your plans, your position and anything
+              you have said you are not ready to share — that is the one that is safe to send to an
+              accountant, a broker or a buyer, and every line in it is dated to the day you said it.
+            </p>
+            <p>
+              You can also just download it. It opens in any browser, prints, and needs no account
+              and no login — <span className="font-medium text-kira-dark">including ours</span>. If
+              you stop paying us tomorrow you keep a document that still works.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* PARTNERSHIP — two plain lists. */}
       <section className="border-y border-kira-line bg-white">
         <div className="mx-auto max-w-5xl px-6 py-16">
