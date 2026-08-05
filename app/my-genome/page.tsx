@@ -456,16 +456,33 @@ export default async function MyGenome() {
               They are different files on purpose. The{' '}
               <span className="font-semibold">handover document</span> is the one built to be sent to
               an advisor or a buyer, so it covers the business and leaves out anything marked{' '}
-              <span className="font-semibold text-violet-700">yours only</span> above. The{' '}
-              <span className="font-semibold">raw data</span> is everything we hold, including those —
-              that one is for you.
+              <span className="font-semibold text-violet-700">yours only</span> above.{' '}
+              <span className="font-semibold">Your own copy</span> is the same document with those
+              left in — it says so at the top, and it is not the one to forward. The{' '}
+              <span className="font-semibold">raw data</span> is everything we hold, in a form
+              another system can read.
             </p>
+            {/* HIS OWN COPY WAS NOT AVAILABLE HERE AT ALL, and that is the gap this closes. Both
+                buttons here filtered through the buyer view or handed back raw JSON, so the one
+                thing he could not get was a readable version of his OWN record — the one that
+                includes what he has marked yours-only. He can now.
+
+                The handover button points at the laid-out document rather than the markdown it used
+                to serve. Same job, same filtering, better artefact: his accountant opens it, prints
+                it, and puts it in a file. A .md is a developer's format and this reader is not one.
+                The markdown route still exists for anyone who wants it. */}
             <div className="mt-4 flex flex-wrap gap-3">
               <a
-                href="/api/genome/export?format=md"
+                href="/api/genome/manual?audience=buyer"
                 className="inline-flex items-center min-h-[48px] px-6 rounded-full border border-stone-300 font-display font-semibold"
               >
                 Download the handover document
+              </a>
+              <a
+                href="/api/genome/manual?audience=owner"
+                className="inline-flex items-center min-h-[48px] px-6 rounded-full border border-stone-300 font-display font-semibold"
+              >
+                Download your own copy
               </a>
               <a
                 href="/api/genome/export?format=json"
@@ -474,6 +491,20 @@ export default async function MyGenome() {
                 Download the raw data
               </a>
             </div>
+
+            {/* SAID HERE BECAUSE IT IS NOW TRUE AND NOTHING TELLS HIM. She can write the manual into
+                his own Google Drive — one document per section, updated rather than duplicated when
+                he asks again. It is reachable only by asking her, so a page that does not mention it
+                is a capability nobody discovers.
+
+                Deliberately NOT a button: filing into someone's Drive is approval-gated on purpose,
+                and a one-click version would be the guard removed for convenience. Asking her is the
+                approval. */}
+            <p className="text-stone-600 mt-4 max-w-2xl leading-relaxed">
+              You can also ask Kira to put it in your own Google Drive — she files one document per
+              section into a folder there, and updates them rather than making new ones each time.
+              She will ask which copy you mean first, because the two are not the same file.
+            </p>
           </section>
         </>
       )}
