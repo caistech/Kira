@@ -49,6 +49,7 @@ export async function saveBusinessIdentity(
     postcode: s('postcode'),
     replyEmail: s('reply_email'),
     signOffName: s('sign_off_name'),
+    sendingDomain: s('sending_domain'),
     authorised: formData.get('authorised') === 'on',
   });
 
@@ -116,6 +117,13 @@ export async function saveBusinessIdentity(
       postcode: v.postcode,
       reply_email: v.replyEmail,
       sign_off_name: v.signOffName ?? null,
+      sending_domain: v.sendingDomain ?? null,
+      // NEVER set here. It is set only when Resend reports the domain verified, because an
+      // unverified domain is rejected at send time — the precondition orchestrator/src/contract.ts
+      // states and that was broken by hand on updates.factory2key.com.au, where DNS was published,
+      // the domain was never added to Resend, from_email was set anyway, and every send 403'd after
+      // the agent had already told the owner it was sent.
+      sending_domain_verified_at: null,
       authorised_at: authorisedAt,
     });
   } catch (error) {
@@ -133,6 +141,8 @@ export async function saveBusinessIdentity(
     country: saved.country,
     reply_email: saved.reply_email,
     sign_off_name: saved.sign_off_name,
+    sending_domain: saved.sending_domain,
+    sending_domain_verified_at: saved.sending_domain_verified_at,
     authorised_at: saved.authorised_at,
   });
 

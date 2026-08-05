@@ -15,6 +15,46 @@ import { validateAbn, formatAbn } from '@caistech/abn-lookup';
 export const AU_STATES = ['ACT', 'NSW', 'NT', 'QLD', 'SA', 'TAS', 'VIC', 'WA'] as const;
 export type AuState = (typeof AU_STATES)[number];
 
+/**
+ * Mail providers, not domains anyone can send from.
+ *
+ * These are the addresses this ICP actually uses — a tradesman in his sixties is on bigpond or
+ * optusnet, not a company mail server. Typing one into the sending-domain field is the single most
+ * likely mistake, and it CANNOT be made to work: verifying a domain means publishing DKIM at its
+ * DNS, and Telstra is not going to do that for him.
+ *
+ * Caught at the form so he is told something true and useful, instead of being handed DNS records
+ * he can never publish and discovering weeks later that nothing sends.
+ */
+const FREE_MAIL_DOMAINS = new Set([
+  'gmail.com', 'googlemail.com', 'outlook.com', 'outlook.com.au', 'hotmail.com', 'hotmail.com.au',
+  'live.com', 'live.com.au', 'msn.com', 'yahoo.com', 'yahoo.com.au', 'ymail.com',
+  'bigpond.com', 'bigpond.net.au', 'optusnet.com.au', 'iinet.net.au', 'tpg.com.au',
+  'internode.on.net', 'westnet.com.au', 'dodo.com.au', 'aapt.net.au', 'ozemail.com.au',
+  'icloud.com', 'me.com', 'mac.com', 'aol.com', 'protonmail.com', 'proton.me', 'gmx.com', 'mail.com',
+]);
+
+export function isFreeMailDomain(domain: string): boolean {
+  return FREE_MAIL_DOMAINS.has(normaliseDomain(domain) ?? '');
+}
+
+/**
+ * Whatever he typed → a bare hostname, or null.
+ *
+ * Owners paste what they see in the address bar, so this has to survive `https://`, a `www.`, a
+ * trailing path, a stray space, and an email address pasted into the wrong box.
+ */
+export function normaliseDomain(input: string | null | undefined): string | null {
+  let raw = (input || '').trim().toLowerCase();
+  if (!raw) return null;
+  if (raw.includes('@')) raw = raw.slice(raw.lastIndexOf('@') + 1); // pasted an email address
+  raw = raw.replace(/^[a-z]+:\/\//, '').replace(/^www\./, '');
+  raw = raw.split('/')[0].split('?')[0].split(':')[0].trim();
+  // A real hostname with at least one dot, no underscores, no trailing dot.
+  if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(raw)) return null;
+  return raw;
+}
+
 /** Full names and common variants → the code we store. */
 const STATE_ALIASES: Record<string, AuState> = {
   'australian capital territory': 'ACT',
@@ -120,6 +160,14 @@ export interface BusinessIdentityInput {
   postcode: string;
   replyEmail: string;
   signOffName?: string | null;
+  /**
+   * His own website domain — asked for, never derived from replyEmail.
+   *
+   * Optional, and blank is a supported answer rather than an incomplete one: many owners in this ICP
+   * have no website, and their mail goes out on the portfolio's verified domain carrying their name,
+   * their reply address and their ABN.
+   */
+  sendingDomain?: string | null;
   /** The authority checkbox. Absent or false is a refusal to save, not a default. */
   authorised: boolean;
 }
@@ -137,6 +185,9 @@ export interface BusinessIdentity {
   country: string;
   reply_email: string;
   sign_off_name: string | null;
+  sending_domain: string | null;
+  /** Set only when Resend reports it verified. Until then the sender MUST fall back. */
+  sending_domain_verified_at: string | null;
   authorised_at: string;
   synced_to_orchestrator_at: string | null;
   created_at: string;
@@ -272,6 +323,20 @@ export function validateBusinessIdentity(input: BusinessIdentityInput): Validati
   if (!(input.state || '').trim()) errors.state = 'Enter the state.';
   else if (!state) errors.state = 'That is not an Australian state or territory — try WA, NSW, VIC and so on.';
 
+  // HIS OWN DOMAIN, AND BLANK IS A REAL ANSWER. Many owners in this ICP have no website; theirs is
+  // not an incomplete record, it is one that sends on the portfolio domain carrying their identity.
+  const rawDomain = (input.sendingDomain || '').trim();
+  const sendingDomain = normaliseDomain(rawDomain);
+  if (rawDomain && !sendingDomain) {
+    errors.sendingDomain = "That doesn't look like a web address — something like bobsplumbing.com.au.";
+  } else if (sendingDomain && isFreeMailDomain(sendingDomain)) {
+    // The single most likely wrong answer, and one no amount of DNS can rescue: verifying a domain
+    // means publishing DKIM at its nameservers, and Telstra will not do that for him. Caught here so
+    // he is told something true, rather than handed records he can never publish.
+    errors.sendingDomain =
+      'That is an email provider, not your own web address. Leave it blank if you don’t have a website — Kira will still send for you.';
+  }
+
   const postcode = (input.postcode || '').trim();
   if (!/^\d{4}$/.test(postcode)) errors.postcode = 'Enter a 4-digit postcode.';
 
@@ -297,6 +362,7 @@ export function validateBusinessIdentity(input: BusinessIdentityInput): Validati
       postcode,
       replyEmail,
       signOffName: (input.signOffName || '').trim() || null,
+      sendingDomain,
     },
   };
 }

@@ -28,6 +28,15 @@ export interface UpsertIdentity {
   postcode: string;
   reply_email: string;
   sign_off_name: string | null;
+  /** His own website domain, or null when he has none — both are valid states. */
+  sending_domain: string | null;
+  /**
+   * Only ever written by the Resend verification path, never by the form.
+   *
+   * The orchestrator's from_email must key off this: an unverified domain is REJECTED at send time,
+   * so setting it early does not fail loudly, it fails at the moment an owner is told his mail went.
+   */
+  sending_domain_verified_at: string | null;
   authorised_at: string;
 }
 

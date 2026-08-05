@@ -10,6 +10,7 @@
 // person who actually needs it.
 
 import RequestLinkForm from './RequestLinkForm';
+import { CORPORATE_AI_SOLUTIONS } from '@/components/KiraBranding';
 
 export const metadata = { title: 'Link expired · Kira' };
 
@@ -26,12 +27,16 @@ export default function IntroducerExpiredPage() {
       <RequestLinkForm />
 
       <p className="mt-8 border-t border-gray-200 pt-6 text-sm text-gray-500">
+        {/* A REAL MAILBOX. This said hello@corporateaisolutions.com, which nobody reads — and it sat
+            under the words "a human will sort it out", on the page someone reaches only because they
+            are already locked out. An address that bounces there is worse than no address: it costs
+            the reader their last attempt and tells them the offer of help was decorative. */}
         Still stuck? Email{' '}
         <a
           className="font-medium text-violet-700 underline"
-          href="mailto:hello@corporateaisolutions.com"
+          href={`mailto:${CORPORATE_AI_SOLUTIONS.email}`}
         >
-          hello@corporateaisolutions.com
+          {CORPORATE_AI_SOLUTIONS.email}
         </a>{' '}
         and a human will sort it out.
       </p>

@@ -8,6 +8,7 @@
 import Link from 'next/link';
 
 import { TERMS_SECTIONS, TERMS_UPDATED, TERMS_VERSION } from '@/lib/terms';
+import { CORPORATE_AI_SOLUTIONS } from '@/components/KiraBranding';
 
 export const metadata = {
   title: 'Terms · Kira',
@@ -46,7 +47,16 @@ export default function TermsPage() {
         </div>
 
         <footer className="mt-12 border-t border-gray-200 pt-6 text-sm text-gray-500">
-          <p>Corporate AI Solutions · legal@corporateaisolutions.com</p>
+          {/* legal@ did not exist either, and a dead address on THIS page is a different order of
+              problem: it is where someone writes to exercise a privacy right or dispute a term, and
+              REGULATORY_INCLUSIONS requires the contact on a legal surface to be reachable. A bounce
+              here is a compliance gap, not a typo. */}
+          <p>
+            {CORPORATE_AI_SOLUTIONS.name} ·{' '}
+            <a className="underline" href={`mailto:${CORPORATE_AI_SOLUTIONS.email}`}>
+              {CORPORATE_AI_SOLUTIONS.email}
+            </a>
+          </p>
           <p className="mt-3">
             <Link href="/" className="font-medium text-violet-700 underline">
               Back to Kira

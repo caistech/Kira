@@ -166,6 +166,31 @@ export function BusinessIdentityForm({
           />
         </Field>
 
+        {/* ASKED FOR, NEVER DERIVED FROM THE REPLY ADDRESS.
+            The shortcut is to take the domain off the email he already gave, and it works only for
+            owners who already run their own mail — a minority here. A tradesman replies from
+            bobsplumbing@bigpond.com, and deriving from that yields `bigpond.com`: a domain he does
+            not control and can never verify, because Telstra owns it. He would be handed DNS records
+            that are impossible to publish and no explanation of why nothing sends.
+
+            Optional on purpose. Blank means his mail goes out on our verified domain carrying his
+            name, his reply address and his ABN — weaker on deliverability, and honest. */}
+        <Field
+          label="Your website address"
+          hint="Optional. If you have one, Kira can send from it so your emails come from your own business — leave it blank and she'll still send for you."
+          error={errors.sendingDomain}
+        >
+          <input
+            name="sending_domain"
+            type="text"
+            inputMode="url"
+            autoComplete="url"
+            defaultValue={identity?.sending_domain ?? ''}
+            placeholder="bobsplumbing.com.au"
+            className={INPUT}
+          />
+        </Field>
+
         <Field
           label="Trading name"
           hint="Only if customers know you by a different name to the registered one — a trust, say, trading as something simpler. Leave it blank and we'll use the registered name."

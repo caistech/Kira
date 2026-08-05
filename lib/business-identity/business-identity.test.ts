@@ -40,6 +40,8 @@ function row(overrides: Partial<BusinessIdentity> = {}): BusinessIdentity {
     country: 'Australia',
     reply_email: 'dennis@factory2key.com.au',
     sign_off_name: 'Dennis',
+    sending_domain: null,
+    sending_domain_verified_at: null,
     authorised_at: '2026-07-31T00:00:00.000Z',
     synced_to_orchestrator_at: null,
     created_at: '2026-07-31T00:00:00.000Z',
