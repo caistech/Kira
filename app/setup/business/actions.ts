@@ -67,10 +67,29 @@ export async function saveBusinessIdentity(
   // `validateAbn` is the ABR's own weighted-modulus check from @caistech/abn-lookup — arithmetic, no
   // network, so it cannot fail open on an outage. It catches a typo and a made-up number; it does
   // not prove the business exists, which is what the ABR lookup beside the field is for.
-  if (v.abn && !validateAbn(v.abn)) {
+  // ⚠️ validateAbn RETURNS AN ERROR MESSAGE, OR null WHEN VALID. It is not a predicate, and reading
+  // it as one inverts the check completely:
+  //
+  //     validateAbn('54672395685')  -> null                     (valid)
+  //     validateAbn('99999999999')  -> 'Invalid ABN checksum'    (invalid)
+  //
+  // so `!validateAbn(abn)` was TRUE for every correct ABN. It REJECTED 100% of real businesses, and
+  // nobody could complete setup at all.
+  //
+  // It was not also a hole, and it is worth being precise about that: normaliseAbn already does
+  // `validateAbn(digits) === null`, the correct reading, so a bad checksum is null before this line
+  // runs and validateBusinessIdentity has already refused it. This gate never saw a bad ABN. It was
+  // pure harm — it only ever refused good ones, which is why it survived: an owner told his own ABN
+  // is wrong concludes the FORM is broken, and reports it as that, if at all.
+  //
+  // Kept as a backstop rather than deleted, because it is now correct and it is the line that would
+  // catch normaliseAbn's contract changing underneath it.
+  const abnError = v.abn ? validateAbn(v.abn) : null;
+  if (abnError) {
     return {
       errors: {
-        abn: 'That is not a valid ABN — check the digits. It goes on your handover document and on the bottom of every email Kira sends for you.',
+        // The package says WHICH way it is wrong; passing that through beats a generic line.
+        abn: `${abnError}. It goes on your handover document and on the bottom of every email Kira sends for you.`,
       },
     };
   }

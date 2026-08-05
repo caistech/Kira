@@ -17,8 +17,9 @@
 
 import { AddressAutocomplete } from '@caistech/corporate-components/address-autocomplete';
 import { useActionState, useEffect, useRef, useState } from 'react';
+import { formatAbn } from '@caistech/abn-lookup';
 import { AbnLookupField } from '@/components/AbnLookupField';
-import { AU_STATES, type BusinessIdentity } from '@/lib/business-identity';
+import { type BusinessIdentity } from '@/lib/business-identity';
 import { saveBusinessIdentity, type IdentityFormState } from '@/app/setup/business/actions';
 
 const INPUT =
@@ -94,6 +95,8 @@ export function BusinessIdentityForm({
   // Held in state ONLY so a chosen address can fill them. They remain fully editable — a lookup that
   // takes the pen away is worse than no lookup, and rural and new-estate addresses are exactly where
   // Mapbox is weakest and this owner is strongest.
+  // Controlled so the register can fill it — see the onSelect on AbnLookupField below.
+  const [abn, setAbn] = useState(identity?.abn ? formatAbn(identity.abn) : '');
   const [locality, setLocality] = useState(identity?.locality ?? '');
   const [stateCode, setStateCode] = useState(identity?.state ?? '');
   const [postcode, setPostcode] = useState(identity?.postcode ?? '');
@@ -130,6 +133,16 @@ export function BusinessIdentityForm({
           required
           defaultValue={identity?.legal_name ?? ''}
           inputClassName={INPUT}
+          // SHOW what the register found, don't just submit it. The hidden abn_lookup field was
+          // enough for the server and wrong for the person: he picked his business, read "ABN
+          // 54 672 395 685 · QLD — matched on the business register", and then looked straight at a
+          // box labelled ABN that was still empty with "11 digits" in it. The only reasonable
+          // conclusion is that it did not take.
+          onSelect={(picked) => {
+            setAbn(picked ? formatAbn(picked.abn) : '');
+            // The register knows the entity's state; no reason to make him supply it again.
+            if (picked?.state) setStateCode(picked.state);
+          }}
         />
         {errors.legalName ? (
           <p className="text-sm font-medium text-rose-600" role="alert">
@@ -139,14 +152,15 @@ export function BusinessIdentityForm({
 
         <Field
           label="ABN"
-          hint="Only needed if you couldn't find your business above."
+          hint="Filled in when you pick your business above. Type it yourself if the register didn't find you."
           error={errors.abn}
         >
           <input
             name="abn"
             inputMode="numeric"
             autoComplete="off"
-            defaultValue={identity?.abn ?? ''}
+            value={abn}
+            onChange={(e) => setAbn(e.target.value)}
             placeholder="11 digits"
             className={INPUT}
           />

@@ -43,6 +43,15 @@ interface Props {
   defaultValue?: string;
   /** Tailwind classes for the input, so this fits whichever surface mounts it. */
   inputClassName: string;
+  /**
+   * Told when a register entity is picked, and when a selection is cleared (`null`).
+   *
+   * Exists so a surface can SHOW the matched ABN in its own visible field. Submitting it in a hidden
+   * input is enough for the server and not enough for the person: the owner sees "ABN 54 672 395 685
+   * · QLD — matched on the business register" directly above a box labelled ABN that is still empty,
+   * and reasonably concludes it did not take.
+   */
+  onSelect?: (result: { abn: string; state: string | null } | null) => void;
 }
 
 const DEBOUNCE_MS = 350;
@@ -57,6 +66,7 @@ export function AbnLookupField({
   required,
   defaultValue = '',
   inputClassName,
+  onSelect,
 }: Props) {
   const [query, setQuery] = useState(defaultValue);
   const [results, setResults] = useState<AbrResult[]>([]);
@@ -138,6 +148,7 @@ export function AbnLookupField({
 
   function choose(result: AbrResult) {
     setSelected(result);
+    onSelect?.({ abn: result.abn, state: result.state ?? null });
     setQuery(result.name);
     setOpen(false);
     setResults([]);
@@ -158,7 +169,10 @@ export function AbnLookupField({
           onChange={(event) => {
             setQuery(event.target.value);
             // Rule 2: the ABN belonged to the entity they picked, not to whatever this is now.
-            if (selected) setSelected(null);
+            if (selected) {
+              setSelected(null);
+              onSelect?.(null);
+            }
           }}
           onFocus={() => results.length > 0 && setOpen(true)}
           className={inputClassName}
