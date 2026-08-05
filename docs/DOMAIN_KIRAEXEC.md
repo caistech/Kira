@@ -4,7 +4,22 @@ Registered at Namecheap (order 210254757, 2026-08-05). Namecheap **BasicDNS**
 (`dns1/dns2.registrar-servers.com`), so every record below goes in **Domain List →
 kiraexec.com → Advanced DNS**, not at a nameserver level.
 
-**Status:** Vercel side done. DNS is a paste job. Resend is blocked on a plan limit.
+**Status (2026-08-05): LIVE.** `https://kiraexec.com` serves the app, `www` 308s to the apex, both
+Vercel domains report `misconfigured: false`. Resend stays on `updates.corporateaisolutions.com`
+(decision A below) — `kiraexec.com` carries **no** mail records at all.
+
+Two things the domain switch exposed, both fixed at the same time and neither obvious:
+
+- **Supabase redirect allow-list did not contain the new host.** The domain went live before the
+  allow-list did, so for a window anyone signing in or resetting a password from `kiraexec.com` had
+  their callback rejected. Both hosts are allow-listed now; `site_url` is `https://kiraexec.com`.
+- **Supabase was still on the BUILT-IN MAILER, rate-limited to 2/hour.** Every auth email — password
+  reset, magic link, confirmation — was arriving from a `supabase.io` address with nothing to do
+  with Kira. `PRODUCT_STANDARDS` §9 calls the built-in mailer never-acceptable past a first smoke
+  test, and it was still on. Now `smtp.resend.com:465`, sender `Kira
+  <noreply@updates.corporateaisolutions.com>`, limit 30/hr. This mattered most for the first
+  external tester, who sits behind a corporate mail filter that would have eaten a Supabase-domain
+  message and produced a silent "I never got it".
 
 ---
 
