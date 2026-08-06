@@ -34,6 +34,31 @@ function adminEmails(): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Redirect WITHOUT throwing away the session that was just refreshed.
+ *
+ * THIS IS WHY PEOPLE KEPT HAVING TO LOG IN AGAIN. `getUser()` below refreshes an expired access
+ * token, and Supabase ROTATES the refresh token when it does — the old one stops working after
+ * `security_refresh_token_reuse_interval` (10 seconds on this project). The `set` handler writes the
+ * new pair onto `response`. Returning `NextResponse.redirect(...)` returns a DIFFERENT object, so
+ * those cookies never reach the browser: the token that would have kept him signed in was minted,
+ * consumed, and dropped on the floor. His next request arrives holding a refresh token the server
+ * has already retired, and the only way out is the login form.
+ *
+ * It is invisible from the inside. Nothing errors, nothing logs, and every non-redirecting route
+ * works perfectly — so the people who hit it are exactly the ones being redirected, which on this
+ * product meant anyone who had not finished setup. Reported as "the login is not persisting across
+ * my tabs" (Shah Hussain, 2026-08-06), which is what it looks like from a browser.
+ *
+ * Copying the cookies across is the whole fix. `getAll()` is read at CALL time, not at closure
+ * creation, so it picks up whatever the refresh wrote.
+ */
+function redirectPreservingSession(response: NextResponse, url: URL): NextResponse {
+  const redirect = NextResponse.redirect(url);
+  for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie);
+  return redirect;
+}
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request: { headers: request.headers } });
 
@@ -69,10 +94,10 @@ export async function middleware(request: NextRequest) {
   // Admin routes: auth + allowlist. The login/reset pages stay reachable.
   if (path.startsWith(ADMIN_PREFIX) && !isAdminPublic) {
     if (!user) {
-      return NextResponse.redirect(new URL('/admin/login', request.url));
+      return redirectPreservingSession(response, new URL('/admin/login', request.url));
     }
     if (!adminEmails().includes((user.email || '').toLowerCase())) {
-      return NextResponse.redirect(new URL('/admin/login?error=not_admin', request.url));
+      return redirectPreservingSession(response, new URL('/admin/login?error=not_admin', request.url));
     }
   }
 
@@ -80,7 +105,7 @@ export async function middleware(request: NextRequest) {
   if (path.startsWith(INTRODUCER_PREFIX)) {
     const isIntroducerPublic = INTRODUCER_PUBLIC.some((p) => path === p || path.startsWith(p + '/'));
     if (!isIntroducerPublic && !request.cookies.get(INTRODUCER_SESSION_COOKIE)) {
-      return NextResponse.redirect(new URL('/introducer/expired', request.url));
+      return redirectPreservingSession(response, new URL('/introducer/expired', request.url));
     }
     // Return early: an introducer must never be evaluated against the user or admin rules, and a
     // signed-in operator visiting /introducer gets the introducer view, not a merged one.
@@ -92,7 +117,7 @@ export async function middleware(request: NextRequest) {
     if (!user) {
       const url = new URL('/login', request.url);
       url.searchParams.set('next', path);
-      return NextResponse.redirect(url);
+      return redirectPreservingSession(response, url);
     }
   }
 

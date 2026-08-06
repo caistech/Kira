@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
 import { getCurrentAppUser } from '@/lib/auth';
 import { canSend } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
@@ -53,14 +52,20 @@ export default async function DashboardPage({
   const user = await getCurrentAppUser();
   const svc = createServiceClient();
 
-  // WHO IS KIRA WRITING AS — asked once, before the dashboard, because she cannot send anything
-  // without it and the alternative is his first request being the one that fails.
+  // WHO IS KIRA WRITING AS — asked plainly, on the way past, instead of barring the door.
   //
-  // Gated on the identity being COMPLETE, not on a row existing: the sender refuses a tenant missing
-  // any of entity / ABN / address, so "there is a row" is the easier question and answering it is how
-  // a screen ends up reassuring someone about a send that will be refused.
+  // This was `if (!canSend(identity)) redirect('/setup/business')`, and it was asked BEFORE the
+  // dashboard because she cannot send anything without it. The reasoning was right; the enforcement
+  // was not. `canSend` requires an 11-digit ABN and an Australian state, so the redirect was a door
+  // with no key for any owner outside Australia — sign in, land on a form you cannot complete, and
+  // every route sends you back to it (Shah Hussain, 2026-08-06).
+  //
+  // Still gated on the identity being COMPLETE rather than on a row existing: the sender refuses a
+  // tenant missing any of entity / ABN / address, so "there is a row" is the easier question, and
+  // answering it is how a screen ends up reassuring someone about a send that will be refused.
+  // The difference is what happens on a NO — he now reads it and keeps going.
   const identity = user?.id ? await getBusinessIdentity(user.id) : null;
-  if (user?.id && !canSend(identity)) redirect('/setup/business');
+  const cannotSendYet = Boolean(user?.id) && !canSend(identity);
 
   // Saved here, not held by the system that sends. A real state, and one he must be able to see —
   // he is not trapped in setup over our outage, but he is not told it worked either. The grace
@@ -131,6 +136,35 @@ export default async function DashboardPage({
 
   return (
     <div>
+      {/* THE SETUP PROMPT THAT REPLACED THE SETUP REDIRECT.
+          Same requirement, same `canSend` check, different consequence: he reads it and carries on
+          rather than being held at the door by a form only an Australian business can complete.
+          Placed first so it outranks the unsynced banner below — "you have not told me who you are"
+          precedes "what you told me has not registered yet", and showing both at once would be two
+          amber boxes saying overlapping things.
+          It names the ABN out loud on purpose: for an owner outside Australia that sentence is the
+          whole explanation, and the alternative is him filling the form three times wondering which
+          field is being rejected. */}
+      {cannotSendYet && !identityUnsynced && (
+        <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-5">
+          <p className="text-base font-semibold text-stone-900">
+            Kira can&apos;t send email as you yet — everything else is ready.
+          </p>
+          <p className="mt-1 max-w-prose text-base text-stone-700">
+            She can talk with you, learn your business and draft whatever you need right now. To send
+            anything on your behalf she has to sign it with your business name, ABN and address —
+            Australian law requires that on the bottom of every commercial email, and it identifies
+            you, not us. Takes a minute, and you can do it whenever you like.
+          </p>
+          <Link
+            href="/setup/business"
+            className="mt-3 inline-block min-h-[44px] rounded-full bg-stone-900 px-5 py-3 text-base font-semibold text-white"
+          >
+            Add your business details
+          </Link>
+        </div>
+      )}
+
       {identityUnsynced && (
         <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-5">
           {/* Ray, on day one: "'the sending system doesn't yet' is your plumbing, not my problem,

@@ -37,11 +37,18 @@
 // It survived because nobody had walked it: the QA account and the operator's own account both
 // have a complete identity, so both sail past the redirect that traps everyone else.
 //
-// `requireSetup={false}` is the existing prop, already used by Settings for the same class of
-// reason — a gate must never cover the exit, and here it was covering the entrance too.
+// `requireSetup={false}` was the fix at the time — the existing prop, already used by Settings for
+// the same class of reason: a gate must never cover the exit, and here it was covering the entrance
+// too.
+//
+// ⚠️ THAT PROP NO LONGER EXISTS, because the gate no longer exists (2026-08-06). Opting individual
+// pages out was treating the symptom: the redirect was un-passable for any owner without an
+// Australian ABN, so the trap simply moved to whichever surface had not been opted out yet. The
+// requirement now gates SENDING rather than the product — see `components/UserShell.tsx` and the
+// dashboard banner. This layout keeps its chrome for the original reason above, which still stands.
 
 import { UserShell } from '@/components/UserShell';
 
 export default function SetupLayout({ children }: { children: React.ReactNode }) {
-  return <UserShell requireSetup={false}>{children}</UserShell>;
+  return <UserShell>{children}</UserShell>;
 }
