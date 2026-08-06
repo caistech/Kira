@@ -61,6 +61,77 @@ function parseOutcome(value: unknown): Outcome | null {
  * also the order that makes the Genome improve fastest, since the oldest facts are the ones a buyer
  * would trust least.
  */
+/** One fact she has been given and nobody has checked back with him. */
+export interface UnconfirmedFact {
+  handle: string;
+  fact: string;
+  told_you: string;
+}
+
+/**
+ * The eligibility query, in ONE place, because it now has two callers.
+ *
+ * WHY IT WAS EXTRACTED. `facts_to_confirm` works — probed live against the real owner on 2026-08-07
+ * it returned two facts waiting since 25 July — and in production it has produced ZERO confirmations
+ * ever, because the agent never calls it. That is the same failure as `record_refusal` and the
+ * speculation ban: an instruction that lives only in the prompt is not a rule (DELEGATION_STANDARD
+ * D17).
+ *
+ * So the offer is also handed to her through a tool she DOES call every single conversation —
+ * `get_conversation_context` at turn zero. That is the trick `@caistech/elevenlabs-convai` uses for
+ * the wrap-up warning, for exactly this reason: you cannot make an agent call a new tool, but you
+ * can put something in the return value of one it already calls.
+ *
+ * Two callers, one filter. Duplicating this query is how the standalone tool and the turn-zero offer
+ * would come to disagree about what is eligible — and the exclusions here are load-bearing and
+ * non-obvious (see the comments below on `none` and NULL).
+ */
+export async function unconfirmedFacts(
+  userId: string,
+  opts: { limit?: number; about?: string } = {},
+): Promise<UnconfirmedFact[]> {
+  const supabase = createServiceClient();
+  const about = (opts.about ?? '').trim();
+  let query = supabase
+    .from('kira_memory')
+    .select('id, content, created_at')
+    .eq('user_id', userId)
+    // Never offer a parked fact. It is out of his record, and reading one back would ask him to
+    // confirm something the product has already decided not to assert.
+    .neq('active', false)
+    // SAME RULE, SECOND EXCLUSION — and it was missing until 2026-08-02.
+    //
+    // A row filed as 'none' is chit-chat, a software feature request, or a fact about a different
+    // company, and `deriveOwnerGenome` drops it from the Genome outright. Offering one asks him to
+    // confirm something that can never appear in his handover document and can never count on the
+    // verifiable axis — spending the scarcest thing this product has, a turn of his attention, on a
+    // fact that is already decided against. The single real confirmation in production landed on
+    // exactly such a row, which is how this was found.
+    //
+    // ⚠️ THIS ALSO EXCLUDES UNCLASSIFIED (NULL) ROWS, DELIBERATELY, and the mechanism is worth
+    // knowing before anyone "fixes" it: `neq` renders as `genome_section <> 'none'`, which is NULL —
+    // not true — for a NULL column, so those rows are filtered out too. That is the behaviour we
+    // want. A NULL means the classifier has not run yet, so we cannot say whether the fact will
+    // survive into the Genome; offering it is the same gamble in a different costume. Classification
+    // runs at write time plus an hourly sweep, so the exclusion is brief, and a fact captured minutes
+    // ago is the last thing she should be reading back anyway — the point is re-opening old ground,
+    // which is why the order is oldest-first.
+    .neq('genome_section', 'none')
+    .is('confirmed_at', null)
+    .order('created_at', { ascending: true })
+    .limit(opts.limit ?? OFFER_LIMIT);
+  if (about) query = query.ilike('content', `%${about}%`);
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  return (data ?? []).map((row) => ({
+    handle: String(row.id).slice(0, HANDLE_LENGTH),
+    fact: String(row.content ?? ''),
+    told_you: String(row.created_at ?? '').slice(0, 10),
+  }));
+}
+
 export async function handleFactsToConfirm(req: Request): Promise<Response> {
   const userId = uidFrom(req);
   if (!userId) return json(200, { success: false, error: 'No user identity on this request' });
@@ -74,47 +145,10 @@ export async function handleFactsToConfirm(req: Request): Promise<Response> {
   const about = String(body.about ?? '').trim();
 
   try {
-    const supabase = createServiceClient();
-    let query = supabase
-      .from('kira_memory')
-      .select('id, content, created_at')
-      .eq('user_id', userId)
-      // Never offer a parked fact. It is out of his record, and reading one back would ask him to
-      // confirm something the product has already decided not to assert.
-      .neq('active', false)
-      // SAME RULE, SECOND EXCLUSION — and it was missing until 2026-08-02.
-      //
-      // A row filed as 'none' is chit-chat, a software feature request, or a fact about a different
-      // company, and `deriveOwnerGenome` drops it from the Genome outright. Offering one asks him to
-      // confirm something that can never appear in his handover document and can never count on the
-      // verifiable axis — spending the scarcest thing this product has, a turn of his attention, on
-      // a fact that is already decided against. The single real confirmation in production landed on
-      // exactly such a row, which is how this was found.
-      //
-      // ⚠️ THIS ALSO EXCLUDES UNCLASSIFIED (NULL) ROWS, DELIBERATELY, and the mechanism is worth
-      // knowing before anyone "fixes" it: `neq` renders as `genome_section <> 'none'`, which is NULL
-      // — not true — for a NULL column, so those rows are filtered out too. That is the behaviour we
-      // want. A NULL means the classifier has not run yet, so we cannot say whether the fact will
-      // survive into the Genome; offering it is the same gamble in a different costume. Classification
-      // runs at write time plus an hourly sweep, so the exclusion is brief, and a fact captured
-      // minutes ago is the last thing she should be reading back anyway — the point is re-opening old
-      // ground, which is why the order below is oldest-first.
-      .neq('genome_section', 'none')
-      .is('confirmed_at', null)
-      .order('created_at', { ascending: true })
-      .limit(OFFER_LIMIT);
-    if (about) query = query.ilike('content', `%${about}%`);
-
-    const { data, error } = await query;
-    if (error) throw error;
-
-    const facts = (data ?? []).map((row) => ({
-      handle: String(row.id).slice(0, HANDLE_LENGTH),
-      fact: String(row.content ?? ''),
-      // So she can say "you told me back in March", which is what makes the re-ask feel like care
-      // rather than like a form.
-      told_you: String(row.created_at ?? '').slice(0, 10),
-    }));
+    // ONE FILTER, TWO CALLERS — see `unconfirmedFacts`, which holds the query and the reasons for
+    // each exclusion. `told_you` lets her say "you told me back in March", which is what makes the
+    // re-ask feel like care rather than like a form.
+    const facts = await unconfirmedFacts(userId, { about });
 
     if (facts.length === 0) {
       return json(200, {

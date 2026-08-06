@@ -41,6 +41,34 @@ import { deriveBaseline, type AreaBaseline, type BaselineInputs } from './baseli
  *
  * `software` is still accepted so rows classified before the split keep parsing, and is treated as
  * `assistant` — the conservative read, since that is what the old prompt was mostly catching.
+ *
+ * ⚠️ THE CONSERVATIVE READ HAS A VICTIM, AND IT IS THE CUSTOMER WHOSE BUSINESS IS AI (2026-08-07).
+ *
+ * The prompt used to open "START BY TRYING TO SAY assistant", a thumb on the scale added because the
+ * `about=assistant → none` guard was measured leaking ZERO rows — it was never wrong, it simply never
+ * fired. Tuning a guard for its false-NEGATIVE rate is what produced the false-POSITIVE one.
+ *
+ * Measured on production: of 10 rows captured for shhahhussain@gmail.com since 2026-08-04, SEVEN were
+ * filed `about=assistant` by the model with no `assistant-state` tag from the distiller — and what
+ * they contained was his company:
+ *
+ *     "Minimo is a mini memory infrastructure designed for AI agents and humans within the business."
+ *     "The long memory evaluation benchmark for retrieval is 99.2%, the highest in the world."
+ *     "Shah created Minimo, a memory infrastructure for the AI agent and human."
+ *
+ * His business IS AI memory, so every genuine fact about it trips a classifier hunting for notes
+ * about an assistant. He has three visible Genome entries and the seven discarded are the ones that
+ * matter most. He is evaluating this product for a partnership; if he opens My Genome his own product
+ * is not in it.
+ *
+ * The prompt's own discriminator already exonerated all seven — "would this still be true if this
+ * assistant had never existed?" — and the bias line overrode it whenever the vocabulary looked
+ * AI-shaped. The bias is gone; the test is now the only rule, applied to the SUBJECT of the sentence
+ * rather than to its nouns. `genome-classify-product.test.ts` pins his real sentences.
+ *
+ * THE TAG IS AUTHORITATIVE, THE MODEL'S VERDICT IS NOT. 18 rows carrying `assistant-state` from the
+ * distiller were all correct; the model's unaided `assistant` verdicts produced the seven above. The
+ * distiller knows its own state; the classifier is guessing.
  */
 const ABOUT_VALUES = ['business', 'assistant', 'systems', 'software', 'personal'];
 
@@ -253,13 +281,26 @@ to a buyer. Reply with ONLY a JSON object:
 {"about": "<business|assistant|systems|personal>", "section": "<key>", "headline": "<short lead>",
  "private": "<reason|null>", "owner_dependent": <true|false|null>}
 
-ANSWER "about" FIRST, and START BY TRYING TO SAY "assistant". It decides most of the rest.
+ANSWER "about" FIRST. It decides most of the rest.
 
-assistant HOW THIS ASSISTANT SHOULD BEHAVE, and the answer far more often than it looks. What she may
-          access, what she should or should not send, how she should ask, reminders and task-tracking,
-          drafting on his behalf, uploads, what he wants built next — anything phrased as a
-          want/need/preference ABOUT BEING HELPED. If the sentence would make no sense to someone who
-          had never heard of this assistant, it is "assistant".
+⚠️ THE OWNER'S OWN PRODUCT IS ALWAYS "business" — even when his product is an AI assistant, an agent,
+a memory system, a chatbot or a developer tool. Apply the ONE test below and nothing else. A customer
+who builds AI is describing HIS COMPANY, not describing you, and filing his product as "assistant"
+deletes the most important facts he owns.
+
+  "Minimo is a memory infrastructure for AI agents and humans."   → HIS PRODUCT → business
+  "Our retrieval benchmark is 99.2%, highest without a re-ranker." → HIS METRIC  → business
+  "He created Minimo."                                            → HIS COMPANY → business
+
+THE ONE TEST: would this still be true if this assistant had never existed?
+  YES → it is HIS (business / systems / personal). NO → it is "assistant".
+Apply it to the SUBJECT of the sentence, never to the vocabulary. Words like agent, memory, model,
+prompt, retrieval and assistant are ordinary nouns in a technology business and prove nothing.
+
+assistant HOW THIS ASSISTANT SHOULD BEHAVE. What she may access, what she should or should not send,
+          how she should ask, reminders and task-tracking, drafting on his behalf, uploads, what he
+          wants built next — anything phrased as a want/need/preference ABOUT BEING HELPED BY YOU.
+          It must fail the ONE TEST above: meaningless if this assistant had never existed.
 systems   WHAT THE BUSINESS RUNS ON, and WHERE ITS RECORDS LIVE. Named tools the business itself
           depends on, what is in them, what is NOT in them, how well they are kept. "Bank accounts
           are not synchronised with Xero." "Documents are on Drive but file names are inconsistent."

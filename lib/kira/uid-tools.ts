@@ -10,6 +10,7 @@ import { normaliseFact } from '@caistech/mnemo';
 import { createServiceClient } from '@/lib/supabase/server';
 import { mnemoAdd } from '@/lib/kira/mnemo';
 import { readTaskLedger } from '@/lib/kira/swarm/open-tasks';
+import { unconfirmedFacts } from '@/lib/kira/confirm';
 import { isAssistantCapabilityClaim } from './poison-detect.mjs';
 
 const uidFrom = (req: Request) => new URL(req.url).searchParams.get('uid') || '';
@@ -347,5 +348,56 @@ export async function handleKiraContext(req: Request): Promise<Response> {
     p_user_id: uid,
     p_message_limit: 10,
   });
-  return json(200, { ...(ctx || { has_history: false }), ...openTasks });
+  return json(200, { ...(ctx || { has_history: false }), ...openTasks, ...(await confirmationOffer(uid)) });
+}
+
+/**
+ * ONE FACT TO READ BACK, HANDED TO HER AT TURN ZERO.
+ *
+ * THE PROBLEM THIS SOLVES, measured rather than assumed. `facts_to_confirm` works: probed live
+ * against the real owner on 2026-08-07 it returned two facts waiting since 25 July, the tool is
+ * attached to all ten agents, and the filter is correct. Production confirmations to date: ZERO,
+ * across every account, ever. She simply never calls it.
+ *
+ * That is the third instance of one failure in this codebase — `record_refusal` sits in the prompt
+ * and is often not called; the speculation ban forbids a sentence verbatim and it is still said.
+ * DELEGATION_STANDARD D17 states the rule: an instruction that lives only in the prompt is not a
+ * rule. Writing a better prompt line here would have been the fourth instance.
+ *
+ * So the offer rides in the RETURN VALUE of a tool she cannot avoid calling. `get_conversation_context`
+ * fires at turn zero of every conversation to fetch continuity — she has no way to greet a returning
+ * owner without it. This is the same mechanism `@caistech/elevenlabs-convai` uses to deliver the
+ * wrap-up warning, chosen there for precisely this reason: you cannot make an agent call a new tool,
+ * but you can put something in the return of one it already calls.
+ *
+ * The precedent is also two lines up — `openTasks` is already merged into this response the same way.
+ *
+ * ⚠️ THIS IS A THESIS UNDER TEST, NOT A PROVEN FIX. It makes the offer unavoidable; it does not make
+ * her SAY it. The only evidence that will settle that is a real conversation followed by a non-zero
+ * `confirmed_at`, and until then this is a mechanism with a hypothesis attached. `spoken` carries the
+ * instruction in words rather than as a bare payload, because a structured field she has to decide
+ * what to do with is how `record_refusal` failed.
+ *
+ * ONE fact, never a list: this is an aside inside a greeting, and a queue of things to verify turns
+ * the opening of every conversation into an audit.
+ *
+ * Never fatal. A failure here must not cost him his continuity — arriving with no memory because the
+ * confirmation lookup threw would trade the product's core promise for a nice-to-have.
+ */
+async function confirmationOffer(uid: string): Promise<Record<string, unknown>> {
+  try {
+    const [fact] = await unconfirmedFacts(uid, { limit: 1 });
+    if (!fact) return {};
+    return {
+      to_confirm: fact,
+      spoken:
+        `When it fits naturally — not as the first thing you say — read this back to him and ask if it is still right: ` +
+        `"${fact.fact}" (he told you this on ${fact.told_you}). ` +
+        `Then call confirm_fact with handle ${fact.handle} and what he actually said. ` +
+        `If he corrects it, that correction is the answer — record it rather than arguing for the old version.`,
+    };
+  } catch (error) {
+    console.error('[context] could not read a fact to confirm:', error);
+    return {};
+  }
 }
