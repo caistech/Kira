@@ -8,7 +8,7 @@ them reads as templated to six.
 |---|---|---|---|
 | **Brian Budd** | VIC | Spoke. **Agreed to receive an email.** | **A — warm** |
 | **Russell McVey** | QLD | Voicemail left | **B — voicemail follow** |
-| **Andrew Hahn** | NT | Voicemail left | **B — voicemail follow** |
+| **Andrew Hahn** | NT | Voicemail left → **SMS back, says he'll call** | **NOTHING — wait for the call** |
 | **David Scray** (via Catherine Jones) | WA | Catherine travelling; message left with David | **C — relayed** |
 | **Stephen Wray** | NSW | No outcome recorded | **D — first contact**, or call first |
 | **Yiling Tang** | SA | **"no interest, doesn't need any business solutions for her clients"** | **DO NOT SEND** |
@@ -145,6 +145,37 @@ I've built something that fixes that side of it, but I'd rather know whether it'
 before I say another word about it.
 
 Dennis McMahon · 0402 612 471
+
+---
+
+## Andrew Hahn — he is calling, so send nothing
+
+He answered a voicemail with an SMS saying he will ring. That is a better outcome than any email
+produces, and emailing into it costs more than it gains: it either pre-empts the conversation or
+gives him something to read instead of a reason to call. **Wait.**
+
+**Him specifically.** Northern Territory — a small market of owner-operated trades and service
+businesses, often remote, frequently one person with everything in his head and no succession
+anywhere near. If owner-dependency is the constraint anywhere in the country it is there, which
+makes him a good early read and a bad person to be wrong in front of.
+
+**Open with the moment, not the product.** *"How often does a business come to you that would sell
+fine except everything runs through the owner?"* If he says "constantly", he has made the argument
+himself and nothing needs pitching. If he says "that's not really what kills them up here", that is
+worth more than a yes, and the honest answer is to ask what does.
+
+**Ask, then stop talking:**
+- What actually costs his listings — is it owner-dependency, or price expectations, or finance, or
+  no buyers in the territory at all?
+- His niche bands. Trades, hospitality, transport, services — what does each fetch as a multiple of
+  profit? Simon Crisp offered his unprompted and it is the fix for the model's weakest part.
+- Whether he meets owners early enough to do anything about it, or only once they have decided.
+
+**Do not:** quote a monthly price, put a valuation figure in front of him, or ask him to give
+anything to a client — that last one is what lost Yiling. If he wants to look, he gets an account on
+his own brokerage, never a live listing.
+
+**Then** email — and it is version A, the warm one, not B.
 
 ---
 
