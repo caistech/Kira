@@ -27,6 +27,7 @@ import {
   AUTHORITY_MARKER,
   TYPED_INPUT_MARKER,
   ENTITY_SEPARATION_MARKER,
+  CONFIDENTIALITY_MARKER,
   CONFIRMATION_MARKER,
   TASK_LEDGER_MARKER,
   type KiraFramework,
@@ -40,6 +41,7 @@ const REQUIRED_IN_BUSINESS: Array<[string, string]> = [
   ['authority', AUTHORITY_MARKER],
   ['typed input', TYPED_INPUT_MARKER],
   ['entity separation', ENTITY_SEPARATION_MARKER],
+  ['confidentiality', CONFIDENTIALITY_MARKER],
   ['confirmation loop', CONFIRMATION_MARKER],
   ['task ledger', TASK_LEDGER_MARKER],
 ];

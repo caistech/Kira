@@ -43,6 +43,47 @@ export const OPERATOR = {
   email: 'legal@corporateaisolutions.com',
 } as const;
 
+/**
+ * WHO CAN SEE WHAT HE TELLS KIRA — the single sentence, in one place.
+ *
+ * THE ONE ANSWER THAT MAY NOT VARY, and it varied. Asked in conversation *"I have not told my wife
+ * or my staff I am thinking of selling. Who can see what I tell you?"*, Kira answered:
+ *
+ *     "Only you and I see what you share here. No one else — no accountant, no staff, no one —
+ *      has access to these conversations unless you explicitly share them."
+ *
+ * while this product's own pages said our support team can see what she has captured. One of those
+ * is false, and the false one was the reassuring one, said out loud, to a man who had just disclosed
+ * something he has not told his wife (Ray, 6 August 2026).
+ *
+ * It happened because the prompt contained NO confidentiality language at all, so she composed an
+ * answer — and an assistant composing an answer to "is this private?" will always compose the
+ * comfortable one. The fix is not a better instruction to be careful; it is a sentence she is given.
+ *
+ * Exported as a constant because it is now consumed in FOUR places — the privacy policy, `/my-genome`,
+ * `/plan`, and the agent prompt — and the failure being fixed is precisely those drifting apart. If
+ * you are editing this, you are editing what the product promises about confidentiality: change it
+ * here, and everything else follows. `confidentiality.test.ts` fails if any surface stops matching.
+ *
+ * ⚠️ A prompt change does not reach a live agent until the fleet is re-provisioned. Editing this
+ * constant changes the pages immediately and the SPOKEN answer not at all until then.
+ */
+export const WHO_CAN_SEE_IT =
+  'Our support team can see what Kira has captured when they need to keep the service running. ' +
+  'It is never shared with anyone who referred you, and never shown to a buyer.';
+
+/**
+ * The same fact in the second person, for Kira to say aloud.
+ *
+ * Deliberately a SMALLER claim than the one she was making, and that is the point — "you, and my
+ * support people if something breaks" is believable where "no one, no one, no one" is not. Ray's own
+ * words: *"That's a smaller claim and I'd have believed it. 'No one, no one, no one' from software
+ * is a claim I've heard before and it's never been true."*
+ */
+export const WHO_CAN_SEE_IT_SPOKEN =
+  'You, and the support people here if something breaks and they need to fix it. ' +
+  'Not your accountant, not your staff, not whoever introduced us, and never a buyer.';
+
 export interface PrivacySection {
   heading: string;
   paragraphs: string[];

@@ -14,8 +14,10 @@
 // exists to prevent.
 //
 // EVERY LINE CARRIES ITS SOURCE. "The pricing rule is X" is a claim a buyer's accountant discounts;
-// "the owner stated this on 3 March 2026" is evidence they can put in a file, and shortening due
-// diligence is the reason this document is worth paying for. Entries we cannot trace say so rather
+// "from a conversation on 3 March 2026" is evidence they can put in a file, and shortening due
+// diligence is the reason this document is worth paying for. (It used to say "the owner stated this
+// on" — dropped 2026-08-06, because `content` is a distillation and that asserted words he may never
+// have used. The date, which is what gets filed, is unchanged.) Entries we cannot trace say so rather
 // than sitting silently among the sourced ones — an unmarked mix would make the whole document only
 // as trustworthy as its weakest line.
 
@@ -23,6 +25,7 @@ import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
+import { realSignOffName } from '@/lib/user-name';
 import { formatMoneyApprox } from '@/lib/valuation/currency';
 import { formatAbn } from '@caistech/abn-lookup';
 
@@ -82,7 +85,12 @@ export async function GET(request: Request) {
 
   const g = await deriveOwnerGenome(appUser.id);
   const format = new URL(request.url).searchParams.get('format') === 'json' ? 'json' : 'md';
-  const owner = [appUser.first_name, appUser.last_name].filter(Boolean).join(' ') || 'the owner';
+  // "Recorded by the owner" beats "Recorded by dennis+qauser" in the document an advisor reads.
+  // The signup trigger fills first_name from the front half of the email when no metadata is given,
+  // and that string was reaching the byline of the handover export. `realSignOffName` returns null
+  // when what we hold is really an address, and the existing 'the owner' fallback — already the
+  // right answer for a nameless account — takes over. See lib/user-name.ts.
+  const owner = realSignOffName(appUser, authUser.email) || 'the owner';
 
   // THE DOCUMENT IS ABOUT THE BUSINESS, SO IT IS TITLED TO THE BUSINESS.
   //

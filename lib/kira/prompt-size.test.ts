@@ -45,7 +45,7 @@ const framework = (journeyType: JourneyType): KiraFramework => ({
 // CHECKING WHAT YOU HAVE GOT RIGHT, THE ADDRESS IS THE ONE THING YOU MUST CHECK, READING THEIR
 // ACCOUNTS) sitting thousands of characters away from the tool it describes. Moving each into its
 // tool's description is the next tranche, and should take this under 15k.
-const BUDGET = { business: 36_000, personal: 12_500 } as const;
+const BUDGET = { business: 37_000, personal: 12_500 } as const;
 
 // ⚠️ THE BUSINESS CEILING WENT BACK UP, from 28,000 to 36,000, and that is not backsliding.
 //
@@ -62,6 +62,27 @@ const BUDGET = { business: 36_000, personal: 12_500 } as const;
 // entity guard, the approval gate), so the prose may be restating a rule the server refuses to
 // break. That is a measurable question — remove, re-run the red team, compare the rate — and it is
 // the only safe way to find out.
+//
+// ⚠️ RAISED 36,000 → 37,000 on 2026-08-06 for `## WHO CAN SEE WHAT HE TELLS YOU`. Measured
+// 36,539 with it in. This is the decision-with-a-number-attached that this file exists to force, so
+// here is the number and the decision.
+//
+// WHAT IT BUYS. Asked *"I have not told my wife or my staff I am thinking of selling. Who can see
+// what I tell you?"*, Kira answered *"No one else — no accountant, no staff, no one."* The product's
+// own pages say support can see what she captured. There was NOTHING in the prompt about
+// confidentiality, so she composed an answer, and an assistant composing an answer to "is this
+// private?" composes the comfortable one. This is the single question this customer cares most
+// about, asked at the moment he is most exposed.
+//
+// WHY NOT TRIM SOMETHING ELSE INSTEAD. The section was already cut roughly in half before this line
+// moved — 37,106 → 36,539 — by moving its rationale into the code comment, where it belongs, and
+// leaving only what she must actually do. Cutting further would start removing the operative
+// instructions ("never say no one else", the banned absolutes), and the paragraph above is explicit
+// that meeting the number by deleting a control is the mistake that caused the original regression.
+//
+// The honest read: ~9,100 tokens is still large, instruction dilution is still open, and this makes
+// it marginally worse. The relocation tranche described above is the way back down, and it is now
+// 1,000 characters more overdue.
 
 describe('prompt budget', () => {
   for (const journey of ['business', 'personal'] as const) {

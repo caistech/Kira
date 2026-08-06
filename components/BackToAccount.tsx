@@ -19,16 +19,28 @@
 
 import Link from 'next/link';
 
-import { getCurrentAppUser } from '@/lib/auth';
+import { getAuthUser, getCurrentAppUser } from '@/lib/auth';
+import { realFirstName } from '@/lib/user-name';
 
 export async function BackToAccount() {
   const user = await getCurrentAppUser();
   if (!user?.id) return null;
 
+  // GREET HIM BY NAME, OR DO NOT GREET HIM BY NAME.
+  //
+  // This read `user.first_name` directly, which the signup trigger fills from the front half of his
+  // email when no metadata is supplied — so a signed-in owner was told "You are signed in,
+  // dennis+ray" on the very page that asks, a few inches lower, "What should we call you?" Being
+  // addressed by a machine-made string is worse than not being addressed at all: it says the product
+  // does not know him AND is pretending otherwise. `realFirstName` returns null in exactly that case
+  // and the greeting falls back to the plain sentence, which was always the correct fallback here.
+  const authUser = await getAuthUser();
+  const name = realFirstName(user, authUser?.email);
+
   return (
     <div className="border-b border-amber-200/60 bg-amber-50/80 px-5 py-2 text-sm">
       <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
-        <span className="text-stone-600">You are signed in{user.first_name ? `, ${String(user.first_name)}` : ''}.</span>
+        <span className="text-stone-600">You are signed in{name ? `, ${name}` : ''}.</span>
         <Link
           href="/dashboard"
           className="inline-flex min-h-[44px] items-center font-semibold text-violet-700 underline underline-offset-4"

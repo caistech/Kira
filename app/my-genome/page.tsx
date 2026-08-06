@@ -4,6 +4,7 @@ import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { formatMoney, formatMoneyApprox, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { RedactEntry } from '@/components/RedactEntry';
 import { PRIVATE_REASON_LABEL } from '@/lib/genome/private';
+import { WHO_CAN_SEE_IT } from '@/lib/privacy';
 
 export const dynamic = 'force-dynamic';
 
@@ -189,11 +190,15 @@ export default async function MyGenome() {
               DO NOT restore the absolute wording without first removing operator access to contents.
               The considered version — request, log, and show the owner every look — is the build that
               would earn the original sentence back. */}
+          {/* SINGLE-SOURCED WITH WHAT KIRA SAYS OUT LOUD (lib/privacy.ts WHO_CAN_SEE_IT).
+              This sentence and her spoken answer had drifted apart: she was telling owners "no one
+              else — no accountant, no staff, no one" while this line said the support team can see
+              it. The page was the honest one, which is why the page's words are now the source and
+              the prompt consumes them rather than the reverse. Do not inline it back. */}
           <p className="mt-3 text-base text-stone-600">
             This page is yours. It is never shared with anyone you have referred or been referred by,
             and it is never shown to a buyer — only the handover document is, and that leaves out your
-            own position. Our support team can see what Kira has captured when they need to keep the
-            service running. Anything here can be taken back — use{' '}
+            own position. {WHO_CAN_SEE_IT} Anything here can be taken back — use{' '}
             <span className="font-semibold">Remove</span> on the entry itself.
           </p>
 
@@ -269,11 +274,34 @@ export default async function MyGenome() {
                           <p className={`text-stone-800 leading-relaxed${e.headline ? ' text-sm text-stone-600' : ''}`}>
                             {e.content}
                           </p>
-                          {/* Sourced to the conversation he said it in — the thing that makes this
-                              evidence rather than an assertion when a buyer's accountant reads it. */}
+                          {/* Sourced to the conversation it came out of — the thing that makes this
+                              evidence rather than an assertion when a buyer's accountant reads it.
+
+                              ⚠️ THIS LINE USED TO SAY "You said this on <date>", AND IT WAS A CLAIM WE
+                              CANNOT SUPPORT. `content` is a DISTILLATION of a conversation, not a
+                              quotation — so the strongest true statement is that it came out of a
+                              conversation on that date. "You said this" asserts he uttered it, and
+                              when the distiller writes down its own state instead of his business
+                              the assertion is simply false. Ray, 6 August 2026, on an entry reading
+                              "Xero connection needed for valuation": *"I didn't say that. Nobody said
+                              that... If a machine will put words in my mouth about Xero, I have no
+                              reason to believe it won't do it about my margins."*
+
+                              Four separate walkthroughs reported this label before it was believed
+                              (28 Jul ×2, 31 Jul, 6 Aug). Each earlier round fixed the third-person
+                              VOICE of the content and left the attribution above it untouched,
+                              because the sentence reads as provenance rather than as a claim.
+
+                              The weaker sentence costs nothing: the date, which is what a buyer's
+                              advisor needs, survives intact. And the STRONG claim already exists
+                              directly below and is made only when it is true — `confirmedOn`, "Read
+                              back to you and confirmed". That is the split Ray asked for on 31 July
+                              ("your example distinguishes 'You confirmed this' from 'Captured — not
+                              yet confirmed'"). Do not restore the old wording to make the page sound
+                              more certain; the certainty was the defect. */}
                           <p className="text-xs text-stone-400 mt-1">
                             {e.source
-                              ? `You said this on ${new Date(e.source.spokenOn).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}`
+                              ? `From your conversation on ${new Date(e.source.spokenOn).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}`
                               : `Captured ${new Date(e.capturedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })} — conversation not recorded`}
                           </p>
                           {/* On its own line and in a different colour, because it is a different
