@@ -198,7 +198,7 @@ export default async function DashboardPage({
       {!val && showBaselineInvite && <NoBaselineYet />}
 
       {val && val.gap > 0 && (
-        <GapDashboard valuation={val} money={money} talkHref={talkHref} isWelcome={isWelcome} firstName={user?.first_name as string | undefined} />
+        <GapDashboard valuation={val} money={money} talkHref={talkHref} isWelcome={isWelcome} hasMetKira={list.length > 0} firstName={user?.first_name as string | undefined} />
       )}
 
       {/* ONE KIRA, NOT A LIST.
@@ -215,28 +215,17 @@ export default async function DashboardPage({
         </p>
       </header>
 
-      {list.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center">
-          <p className="text-base text-gray-600">You haven&apos;t met Kira yet.</p>
-          <p className="mt-1 text-sm text-gray-500">
-            A short conversation is all it takes — she asks about the business and starts from there.
-          </p>
-          {/* USE talkHref, which this page already computed three lines earlier.
-              Hardcoding /start sent an owner who ALREADY HAS a business agent back to the
-              provisioning flow instead of into his own conversation — past the Exec shape entirely
-              and into "Meet Kira, your friendly guide". Nobody hit it because until today no
-              customer had ever walked this path.
-              ⚠️ An owner with NO agent still lands on /start, because /start IS the provisioning
-              flow (draft -> /setup/draft/[id] -> /api/kira/create -> /chat/[agentId]). That page's
-              generic-helper shape is a separate, larger fix — see K18. */}
-          <Link
-            href={talkHref}
-            className="mt-4 inline-block rounded-lg bg-violet-600 px-5 py-3 text-base font-semibold text-white hover:bg-violet-700"
-          >
-            Start talking to Kira
-          </Link>
-        </div>
-      ) : (
+      {/* NO SECOND "MEET KIRA" HERE.
+          There used to be a dashed empty-state card in this slot saying "You haven't met Kira yet /
+          A short conversation is all it takes / Start talking to Kira" — and the violet card further
+          down the page says the same thing, warmer, with her face on it and the same talkHref
+          behind the same button. An owner who finished the eleven questions got both, one under the
+          other: two invitations to meet the same person, which reads as the page not knowing what
+          he has already done.
+          The one below wins on every count, so this slot now renders only the agent grid and stays
+          empty when there is nothing to grid. See the conditional copy on that card — it also has to
+          stop saying "Meet Kira" to someone who has been talking to her for months. */}
+      {list.length === 0 ? null : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {list.map((a: Record<string, unknown>) => (
             <Link
@@ -376,12 +365,15 @@ function GapDashboard({
   talkHref,
   isWelcome,
   firstName,
+  hasMetKira,
 }: {
   valuation: Valuation;
   money: (n: number) => string;
   talkHref: string;
   isWelcome: boolean;
   firstName?: string;
+  /** An agent already exists. The card must not say "Meet Kira" to someone who has met her. */
+  hasMetKira: boolean;
 }) {
   const readinessPct = Math.round((valuation.readiness ?? 0) * 100);
   const weeks = [
@@ -455,16 +447,23 @@ function GapDashboard({
           </div>
         </div>
         <div className="flex-1">
-          <h2 className="text-xl font-bold text-gray-900">Meet Kira — she&apos;s ready when you are</h2>
+          {/* THIS CARD RENDERS ALWAYS, so its copy cannot assume he has never met her.
+              Unconditional "Meet Kira — she's ready when you are" was shown to an owner with thirty
+              conversations behind him — the product forgetting him on the one screen whose entire
+              promise is that it doesn't. */}
+          <h2 className="text-xl font-bold text-gray-900">
+            {!hasMetKira ? 'Meet Kira — she’s ready when you are' : 'Kira’s ready when you are'}
+          </h2>
           <p className="mt-1.5 text-gray-600 leading-relaxed">
-            No forms, no setup. Just start talking — about a job, a headache, or how something works. Kira listens,
-            works out what&apos;s needed, and quietly gets it built and remembered. Come back anytime; she picks up where you left off.
+            {!hasMetKira
+              ? 'No forms, no setup. Just start talking — about a job, a headache, or how something works. Kira listens, works out what’s needed, and quietly gets it built and remembered.'
+              : 'Pick up where you left off — she remembers the business and what was still outstanding. A job, a headache, or something you want drafted.'}
           </p>
           <Link
             href={talkHref}
             className="mt-4 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-fuchsia-600 to-pink-500 px-7 py-3.5 text-base font-bold text-white shadow-md hover:opacity-95 min-h-[52px]"
           >
-            Start talking to Kira →
+            {!hasMetKira ? 'Start talking to Kira →' : 'Talk to Kira →'}
           </Link>
         </div>
       </div>
