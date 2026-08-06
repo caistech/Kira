@@ -67,32 +67,48 @@ Raised 2026-08-02 by an external read of the valuation PDF, then confirmed again
 model exceeds its own cited source, and the transferability score *is* the multiple rather than
 sitting beside it.
 
+> ⚠️ **THIS SECTION WAS STALE AND STEERED A SESSION WRONG ON 2026-08-06.** Every row below still
+> read OPEN and cited `MODEL_VERSION = '2026-07-24.1'`; the model was rebuilt 08-03 and the version
+> is `2026-08-04.1`. On that reading I told the operator A7 was the highest-value thing outstanding
+> and that it needed his decision — **it had been decided and executed two days earlier.** Re-verified
+> against the code and against production, row by row, and rewritten below. Same failure class as K1,
+> K2 and the L-header warning; it recurred **within a day of that warning being written**, which is
+> the argument for closing a row in the change that closes the item rather than in a later sweep.
+
 | ID | Item | Type | Sev | Blocks | Detail |
 |---|---|---|---|---|---|
-| **A1** | Multiples inflate above the cited dataset | DEBT | **1** | broker channel | `ceiling = min(8, sector × 1.6 + sizePremium)`. A&E at $3M SDE → 6.67×; hardware at $3M → 7.60×. `sde-multiples.ts` says the BizBuySell range is ~1.5–6.6× *across all sectors*. The model can exceed its own source on size alone. |
-| **A2** | No micro-SME discount; the size adjustment only adds | DEBT | **1** | A1 | `sizePremium = clamp(log10(profit/250k) × 2, 0, 3)` — zero below $250k SDE, never negative. Market practice discounts small businesses 20–30% for illiquidity. We do the opposite at the top and nothing at the bottom. |
-| **A3** | Size premium widens the ceiling only, never the floor | DEBT | **1** | A1 | So the *gap* — the number the product sells on — grows super-linearly with profit. The model overclaims hardest for exactly the businesses big enough for a broker to look at. |
-| **A4** | Transferability score drives the valuation (§6 violation) | DEBT | **1** | Genome buyer view | `applied = floor + readiness × spread`. §6 requires the score never read as a second valuation; it is not a second number, it is the *same* number. A broker who discounts the valuation discounts the scorecard with it. |
-| **A5** | SDE vs EBITDA never disambiguated on screen | DEBT | 2 | — | SDE multiples are *lower* than EBITDA multiples for the same business, so "6.6×" reads better than it is. Nothing on the page says which is which. |
-| **A6** | Walk-away is the raw `tangibleAssets` input | DEBT | 3 | — | `walkAway = inputs.tangibleAssets`, unmodified. Not a modelling error — an asset figure printed beside a going-concern figure with nothing reconciling them. Know this before "fixing" the ratio. |
-| **A7** | Re-weighting re-prices baselines already shown | DEC | **1** | A1–A3 | `MODEL_VERSION = '2026-07-24.1'`, recorded on every snapshot, and those snapshots are the origin the introducer's movement column measures from. Needs a call: bump-and-freeze existing, or re-score everyone. |
-| **A8** | `$7.76M` block renders as washed-out overlapping grey in print/PDF | BUG | 2 | — | Reported from a saved PDF. Unverified whether it is the print stylesheet or a capture artifact. If real, the artifact an owner takes to his accountant is broken. |
+| ~~**A1**~~ | ~~Multiples inflate above the cited dataset~~ | — | — | — | ✅ **CLOSED 2026-08-03 — band rebuilt.** `lib/valuation/model.ts:156–169` names A1–A4 individually as what was wrong and what replaced it. The old `ceiling = min(8, sector × 1.6 + sizePremium)` is gone; the sector figure is now treated as a **CENTRE** (the median of businesses that actually sold, at average readiness) rather than a floor, so the band no longer runs above its own printed source. |
+| ~~**A2**~~ | ~~No micro-SME discount; the size adjustment only adds~~ | — | — | — | ✅ **CLOSED 2026-08-03** with A1 — same rebuild. |
+| ~~**A3**~~ | ~~Size premium widens the ceiling only, never the floor~~ | — | — | — | ✅ **CLOSED 2026-08-03** with A1. Floor and ceiling are now separated quantities (`LLD.md` §6): *where you are* is the buyer's discount and the market's claim, *what Kira moves* is `SPREAD = 0.75` turns and ours. |
+| ~~**A4**~~ | ~~Transferability score drives the valuation (§6 violation)~~ | — | — | — | ✅ **CLOSED 2026-08-03** with A1. The 3–6-turn spread that made the score *be* the valuation is gone; the claim is now **half a turn to a turn**, which is what this register said the defensible number was. |
+| ~~**A5**~~ | ~~SDE vs EBITDA never disambiguated on screen~~ | — | — | — | ✅ **CLOSED** — `lib/valuation/sde-copy.ts` is one canonical definition consumed by the input label, the pre-entry reminder, the worked example and the confirmation note, and **both multiples are labelled `× SDE` on the cards** (`page.tsx:1036`, `:1042`). It also ships `NET_PROFIT_PHRASES_BANNED_IN_SDE_COPY` so a test fails if net-profit wording creeps back — a regression guard on a correctness bug, which is stronger than the fix. ⚠️ **Named residual:** the page says *which* basis it uses; it never says EBITDA multiples are higher for the same business. Whether that comparison is owed is a copy call, not a defect. |
+| **A6** | Walk-away is the raw `tangibleAssets` input | DEBT | 4 ⬇ | — | ⚠️ **HALF CLOSED, and the half that closed is the one that mattered.** In the model `walkAway = round(Math.max(0, inputs.tangibleAssets \|\| 0))` — still book value, deliberately: the 40–60c realisable range is derived **at the page** (`page.tsx:1027–1032`) so no valuation already shown to anyone is re-priced and `MODEL_VERSION` stays untouched. On screen the headline **is** the realisable range with book value stated beneath, and a paragraph now explains why one figure carries a range and two do not (see **H5** — the sector table has one median and no dispersion, so any ± would be invented). So "an asset figure printed beside a going-concern figure with nothing reconciling them" no longer describes the page. ⚠️ **The original warning is now MORE load-bearing, not less:** the 0.4/0.6 derivation lives in the page, so anyone "fixing the ratio" in the model breaks the reconciliation rather than improving it. |
+| ~~**A7**~~ | ~~Re-weighting re-prices baselines already shown~~ | DEC | — | — | ✅ **DECIDED AND EXECUTED 2026-08-04 — rescore everyone**, not bump-and-freeze (`LLD.md:349`). `scripts/rescore-valuations.mjs` exists and ran: **all four production accounts carry a `2026-08-04.1` snapshot**, verified in the 08-06 export. Two also retain their `2026-08-03.1` snapshot, so the older scoring stays readable as what it was — which is the entire reason the version is stamped (`model.ts:118–128`). |
+| **A8** | The gap block renders as washed-out overlapping grey in print/PDF | BUG | 2 | — | **STANDS — and the mechanism is now named rather than guessed.** The row previously said "unverified whether it is the print stylesheet or a capture artifact". It is neither a capture artifact nor a print stylesheet: **`app/business-valuation/page.tsx` has no `@media print` rule at all.** The gap block (`:1065`) is `grad-genome` — white text on a CSS `linear-gradient` **background** — and browsers drop background graphics when printing unless `print-color-adjust: exact` is declared, which it is not anywhere in the page. White text over a dropped background is exactly the reported symptom. `lib/genome/render.ts:193` proves the fix is understood elsewhere in this codebase; the valuation page never got it. ⚠️ The overlap half is not explained from source. ⚠️ Also noted in passing: that block is `#a78bfa/#8b5cf6/#f472b6` (`:467`) — **AI purple and pink, the `DESIGN.md` §7 anti-pattern J4 already removed from `/genome`**, still live on the page an owner takes to his accountant. That is a **K4** data point. |
 
-⚠️ **A1–A4 ARE ALSO A PRICING PROBLEM, not only a credibility one** *(team meeting, 2026-08-02;
-operator-confirmed)*. The monthly rate is *"a dynamic based on a percentage of that gap"*
-(`priceForGap`, live, with the **$499 + GST floor as the base**) — so a model that inflates the gap
-**overcharges**, and a broker who discounts the valuation is disputing the invoice, not just the
-scorecard. That raises **A7 from a scoring question to a billing one**: re-weighting changes what
-existing owners would have been quoted.
+⚠️ **A1–A4 WERE ALSO A PRICING PROBLEM, not only a credibility one** *(team meeting, 2026-08-02;
+operator-confirmed)* — **which is why the 08-04 rescore was the right call and not merely the tidy
+one.** The monthly rate is *"a dynamic based on a percentage of that gap"* (`priceForGap`, live,
+with the **$499 + GST floor as the base**), so a model that inflates the gap **overcharges**, and a
+broker who discounts the valuation is disputing the invoice rather than the scorecard. Freezing the
+old snapshots would have left live quotes standing on a band we had just agreed overclaims.
 
 ✅ **The pricing model is NOT in conflict** — an earlier reading of this register said it was, and
 that was wrong. The gap-derived range on a $499 base **is** the current model and stands; the
 *"budget airline — low charge to get in, the add-ons are enormous"* framing describes the **add-on
 tier above it** (voice humanisation, specialist agents), not a replacement base.
 
-**A1–A4 are one decision, not four fixes.** The defensible claim (documentation is worth roughly
-half a turn to a turn, and mostly shows up as a discount *not taken* and a shorter DD) is about an
-eighth of what the model currently asserts, and it is a claim a broker will nod at.
+**A1–A4 were one decision, not four fixes, and it was taken as one** — rebuilt in a single change on
+08-03. The claim is now what this register said was defensible: documentation is worth roughly half a
+turn to a turn, showing up mostly as a discount *not taken* and a shorter DD. It does not turn a 1.5×
+business into a 5× one — that needs a manager and recurring contracts, which is a different business
+rather than a written-down one.
+
+⚠️ **WHAT IS ACTUALLY OUTSTANDING IN THIS SECTION IS AN INPUT, NOT A MODEL CHANGE.**
+`sde-multiples.ts` is **US BizBuySell data**, and a Finn Group broker independently quoted **1–1.5×
+for Australian trade businesses** — a different world from the US medians the band is calibrated to.
+Australian bands by niche are the highest-value input outstanding, and no amount of re-weighting
+substitutes for them. Everything else here is closed or is **A8** (a print stylesheet).
 
 ---
 
@@ -170,12 +186,15 @@ mistaken for done.
 
 ## F. Billing and go-live
 
-✅ **GOING LIVE IS NOW ONE VARIABLE.** Both blockers below turned out to be already satisfied when
-checked against the live Stripe account (2026-08-03) rather than trusted from this file. Live secret
-key, live webhook signing secret, a registered and enabled live endpoint, and a live portal with
-cancellation disabled are all in place. What remains is setting **`STRIPE_LIVE_MODE=true`** in Vercel
-and redeploying — an operator decision about taking real money, not a build task. `lib/billing/copy.ts`
-makes every sentence on every surface follow that one flag.
+✅ **DONE — KIRA IS LIVE AND TAKING REAL MONEY.** Both blockers below turned out to be already
+satisfied when checked against the live Stripe account (2026-08-03) rather than trusted from this
+file: live secret key, live webhook signing secret, a registered and enabled live endpoint, and a live
+portal with cancellation disabled. **`STRIPE_LIVE_MODE` has since been flipped** — the K-section
+header records `{"live":true}`, `sk_live_` in the live slot and real `cs_live_` sessions minted. This
+section is closed; `lib/billing/copy.ts` makes every sentence on every surface follow that one flag.
+⚠️ **The consequence outranks the rest of this file:** anything that misleads or exposes a paying
+customer is now a live exposure, not a hypothetical one — which is why **K19** (a fake ABN reaching a
+Spam Act footer) sits at P0 despite being an hour of work.
 
 | ID | Item | Type | Sev | Detail |
 |---|---|---|---|---|
@@ -363,11 +382,12 @@ Derived from the dependency columns, not from preference.
 2. ~~**B7** sensitivity filter on the export~~ ✅ **done and observed 2026-08-02**
 3. ~~**D1 + D2** patch the stale agent, resolve the duplicates~~ ✅ **done and observed 2026-08-02** — both were wrong as written; see *Closed*
 4. ~~**C1** give a direct signup a valuation path~~ ✅ **done and observed 2026-08-02** — 10/10 against prod
-5. **A8** confirm whether the PDF render bug is real
+5. **A8** the gap block is invisible in print — cause now identified (no `@media print`, gradient background dropped, white text on white). One rule fixes it.
+6. ~~**K23** does production hold the backup's valuations~~ ✅ **observed 2026-08-06** — it does not, deliberately; **K24** discard decided the same day
 
 **Then — Dennis's calls, which gate the largest builds:**
-6. **A7 / A1–A4** the multiple re-weighting and what happens to existing snapshots
-7. **B2** how the nine areas decompose
+7. ~~**A7 / A1–A4** the multiple re-weighting and what happens to existing snapshots~~ ✅ **rebuilt 08-03, rescore-everyone decided and executed 08-04.** What replaces it in this slot is **AU sector multiples** — a data input, not a decision.
+8. **B2** how the nine areas decompose
 
 **Then — the rubric build, strictly in order:**
 8. B2 → B3 → B4 → B5 → B6, with **B8** (bring the public example into line) landing *before* B6 ships
@@ -382,14 +402,19 @@ for the same reason and are *not* separate from this: speculation is unhelpfulne
 helpfulness's clothes, and *"it looks like everything is already done on that"* is the exact sentence
 that costs the relationship the rest of the plan depends on.
 
-⚠️ **A1–A4 are NOT in the "fine-tune over time" category, despite sitting next to it.** They are not
-imprecision awaiting more data — the model asserts **more than its own cited source supports**, and
-the fix is to claim *less*, which is cheap, needs no clients, and gets smaller rather than better with
-time. Deferring them as calibration is the misreading this note exists to prevent.
+✅ **A1–A4 were NOT in the "fine-tune over time" category, and were not treated as though they were.**
+They were never imprecision awaiting more data — the model asserted **more than its own cited source
+supports**, and the fix was to claim *less*, which was cheap, needed no clients, and got smaller
+rather than better with time. Done 08-03. The note is kept because deferring that class of item as
+calibration is the misreading it was written to prevent, and **the AU-multiples item now sitting in
+its slot IS genuinely in the data category** — the two look alike and are not.
 
 **In parallel, whenever Dennis has a machine with a microphone:** E1, E2, E3.
 
-**Before any paying customer:** F1, F2, G1, G2.
+**Before any paying customer:** ~~F1, F2~~ ✅ *both already satisfied, verified against the live Stripe
+account 08-03 — the rows were wrong*; **G1** ✅ *domain verified*; **G2** — per-tenant sender identity,
+orchestrator half done and observed. Going live is one variable (`STRIPE_LIVE_MODE`), and it is
+already `true`.
 
 ---
 
