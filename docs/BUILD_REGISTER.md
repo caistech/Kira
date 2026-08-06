@@ -318,6 +318,7 @@ in which Kira hits a connector problem, followed by checking the resulting row i
 | **K10** | Signup never verified end to end | PROVE | **OPEN** | `recover` returns 200 and `otp` throttles (proving the mailer sends), but signup itself was not exercised because it creates a real account. One manual signup closes it. |
 | **K11** | Share gate still closed | PROVE | **OPEN** | No naive-tester PASS has ever been recorded against any deployment. |
 | **K12** | Genome baseline never seen on mobile | PROVE | **OPEN** | Verified rendering at desktop on the QA account only; 375px unchecked. |
+| **K23** | Is production actually missing two valuations? | PROVE | **OPEN** | K17's residue, and the only thing standing between the backup and deletion. The backup holds **4** valuations / **5** snapshots; the register's standing position is that production holds **2**. Nobody has read the two tables since, so "production is short by two" is inference from an older note, not an observation — and the opposite result (prod holds all four) would make the backup redundant and deletable today. One read of `business_valuations` + `business_valuation_snapshots` against the four ids in `C:\Users\denni\.kira-backups\README.md` settles it. Attempted 2026-08-06; the command was denied, so this is blocked on Dennis rather than on effort. If prod *is* short: decide restore-or-discard per row — Gareth can re-run in three minutes (K16), so discard may be right, but make it deliberately. |
 
 ### P3 — portfolio / infrastructure
 
@@ -333,8 +334,8 @@ in which Kira hits a connector problem, followed by checking the resulting row i
 
 | # | Item | Detail |
 |---|---|---|
-| **K16** | **Gareth has not been told his valuation was deleted.** Real person, $4.26M gap, and the model has now changed underneath it as well. He can re-run in three minutes; he should not find out by looking. |
-| **K17** | **The valuations backup is still in a temp directory** — `valuations-backup-2026-08-03.json`, containing real turnover and profit. Third day. Temp directories get cleaned. |
+| ~~**K16**~~ | ✅ **CLOSED 2026-08-06** — Dennis has told Gareth. He now knows before looking, which was the whole of it. Original: *"Gareth has not been told his valuation was deleted. Real person, $4.26M gap, and the model has now changed underneath it as well. He can re-run in three minutes; he should not find out by looking."* |
+| ~~**K17**~~ | ✅ **CLOSED 2026-08-06** — moved to `C:\Users\denni\.kira-backups\`, which is **outside every git repo**, with a `README.md` recording what it holds and the condition for deleting it. Verified after the move: both temp paths gone, file parses, record counts unchanged (4 valuations, 5 snapshots). Outside-a-repo rather than a gitignored directory *inside* one, because a `.gitignore` is one edit away from not applying and this is real turnover and profit against real `user_id`s. ⚠️ **Deliberately moved, NOT deleted:** `PRODUCT_STANDARDS` §9 deletes an export *after the restore verifies*, and the restore was never verified — the register's own standing position is that production holds **two** valuations while this file holds **four**, so it is currently the only copy of whatever production is missing. The prod read that would settle it was not run this session. One of the two unidentified rows is Gareth's. Original: *"still in a temp directory — `valuations-backup-2026-08-03.json`, containing real turnover and profit. Third day. Temp directories get cleaned."* |
 
 ### Closed today
 
