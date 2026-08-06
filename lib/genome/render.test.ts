@@ -126,8 +126,38 @@ describe('provenance', () => {
   it('dates each entry, and says so when it cannot', () => {
     const g = genome({ sections: [section({ entries: [entry(), entry({ id: 'e2', content: 'Untraceable.', source: null })] })] });
     const html = renderSingleFile(g, 'buyer', meta);
-    expect(html).toContain('stated 3 March 2026');
+    expect(html).toContain('from a conversation on 3 March 2026');
     expect(html).toContain('source not recorded');
+  });
+
+  it('never claims the owner SAID it — the content is a distillation, not a quotation', () => {
+    // The document used to read "the owner stated this on 3 March 2026". `content` is written by the
+    // post-call distil, so that asserts words he may never have used — and when the distiller wrote
+    // down ITS OWN state instead of his business, the document asserted them anyway. Ray, 6 August
+    // 2026, on an entry about Xero he had never mentioned: "I didn't say that. Nobody said that."
+    //
+    // Reported by four separate walkthroughs before it was believed, because the line reads as
+    // provenance rather than as a claim. This test exists so the stronger wording cannot come back
+    // as a confidence improvement — the confidence WAS the defect.
+    const g = genome({ sections: [section({ entries: [entry()] })] });
+    const html = renderSingleFile(g, 'buyer', meta);
+    expect(html).not.toContain('stated 3 March');
+    expect(html).not.toMatch(/\bowner stated\b/);
+    expect(html).not.toMatch(/\bYou said this\b/);
+  });
+
+  it('still makes the STRONG claim where it is earned — that split is the whole point', () => {
+    // Dropping "stated" is only honest if confirmation still says something stronger. Ray asked for
+    // exactly this on 31 July: "your example distinguishes 'You confirmed this' from 'Captured — not
+    // yet confirmed'." Unconfirmed entries get the weak line; confirmed ones get both.
+    const weak = renderSingleFile(genome({ sections: [section({ entries: [entry()] })] }), 'buyer', meta);
+    const strong = renderSingleFile(
+      genome({ sections: [section({ entries: [entry({ confirmedOn: '2026-03-09T00:00:00Z' })] })] }),
+      'buyer',
+      meta,
+    );
+    expect(weak).not.toContain('read back to the owner');
+    expect(strong).toContain('read back to the owner and confirmed 9 March 2026');
   });
 
   it('states a confirmation, which is the line an advisor looks for', () => {

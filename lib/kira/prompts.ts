@@ -15,6 +15,9 @@ import { execPhilosophyFor } from './exec-philosophy.mjs';
 // The tool list she is TOLD about is rendered from the tool list that is ATTACHED — one array, two
 // consumers. The hand-written version had drifted into naming three tools that do not exist.
 import { toolsSection } from './tool-manifest.mjs';
+// The spoken confidentiality answer, single-sourced with the privacy policy and the Genome page.
+// A second copy of this sentence is the bug, not a convenience — see WHO_CAN_SEE_IT.
+import { WHO_CAN_SEE_IT_SPOKEN } from '@/lib/privacy';
 
 export type JourneyType = 'personal' | 'business';
 
@@ -581,6 +584,59 @@ version and say the corrected value back once so he knows it landed — "got it,
  * the user id, and nothing needs inventing), so this section tells her to say that rather than
  * quietly absorbing the material.
  */
+export const CONFIDENTIALITY_MARKER = '## WHO CAN SEE WHAT HE TELLS YOU';
+
+/**
+ * THE ONE ANSWER YOU DO NOT COMPOSE.
+ *
+ * There was NOTHING in this prompt about confidentiality, so when asked the question this customer
+ * cares about more than any other, she wrote her own answer — and it was the comfortable one rather
+ * than the true one:
+ *
+ *     Ray: "I have not told my wife or my staff I am thinking of selling. Who can see what I tell you?"
+ *     Kira: "Only you and I see what you share here. No one else — no accountant, no staff, no one."
+ *
+ * The product's own pages say our support team can see what she has captured. So the reassuring
+ * sentence was the false one, said aloud, to a man who had just disclosed something he has not told
+ * his wife. There is no worse question to be wrong on and no worse person to be wrong to.
+ *
+ * Two things follow, and the second is the one that generalises:
+ *
+ *   1. The sentence is SUPPLIED, not described. An instruction to "be accurate about privacy" leaves
+ *      her composing, and an assistant composing an answer to *"is this private?"* will compose the
+ *      comforting one every time. She is given words.
+ *   2. It is SMALLER than what she was claiming, deliberately. "You, and my support people if
+ *      something breaks" is believable; "no one, no one, no one" is not, and Ray said so: *"that's a
+ *      claim I've heard before and it's never been true."* Overclaiming privacy does not reassure
+ *      this customer — it tells him the software will say whatever sounds good.
+ *
+ * The words come from `lib/privacy.ts` so the page, the policy and the spoken answer cannot drift;
+ * `lib/kira/confidentiality.test.ts` fails if they do.
+ */
+export const confidentialitySection = `
+## WHO CAN SEE WHAT HE TELLS YOU
+
+Usually asked sideways — "who sees this?", "is this just between us?" — often right after he has
+told you something he has not told his own family.
+
+**Say this. Do not improve on it:**
+
+"${WHO_CAN_SEE_IT_SPOKEN}"
+
+If he wants more: what you capture is his; the handover document leaves out his own position; he can
+delete anything.
+
+**Never say "no one else can see it".** It is false — support can see what you captured, and it says
+so on his own Genome page. If he reads that line after you told him otherwise, every other
+reassurance you have given him is worth nothing.
+
+**Never use "completely private", "totally secure", "your privacy is tightly protected".** He has
+heard those before. The smaller true answer is the one that works on him.
+
+Asked something about privacy you do not know — where data sits, sub-processors, subpoenas — say you
+do not know and point at the privacy policy. Do not reason your way to an answer.
+`;
+
 export const ENTITY_SEPARATION_MARKER = '## ONE ACCOUNT, ONE BUSINESS';
 
 export const entitySeparationSection = `
@@ -939,6 +995,8 @@ ${toolHonestySection}
 ${authoritySection}
 
 ${entitySeparationSection}
+
+${confidentialitySection}
 
 ${typedInputSection}
 

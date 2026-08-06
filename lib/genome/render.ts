@@ -81,16 +81,29 @@ export function escapeHtml(value: string): string {
  * The provenance line under an entry.
  *
  * THIS IS WHY THE DOCUMENT IS WORTH PAYING FOR. "The pricing rule is X" is a claim a buyer's
- * accountant discounts. "The owner stated this on 3 March 2026, read it back and confirmed it on the
- * 9th" is evidence they can put in a file, and shortening due diligence is the product.
+ * accountant discounts. "From a conversation on 3 March 2026, read back to the owner and confirmed
+ * on the 9th" is evidence they can put in a file, and shortening due diligence is the product.
  *
  * Untraceable entries SAY SO rather than sitting silently among the sourced ones — an unmarked mix
  * makes the whole document only as trustworthy as its weakest line. There is deliberately no
  * "unconfirmed" marker on the others: labelling every remaining line would read as a disclaimer over
  * the document rather than a distinction within it.
+ *
+ * ⚠️ THE FIRST HALF USED TO READ "stated <date>", AND IT OVERCLAIMED IN THE ONE ARTEFACT WHERE THAT
+ * MATTERS MOST. `content` is a DISTILLATION of a conversation, not a quotation, so "the owner stated
+ * this" asserts words he may never have used — and when the distiller wrote down its own state
+ * instead of his business, the document asserted them anyway. Matches the screen fix in
+ * `app/my-genome/page.tsx`; the two must never diverge, because the whole point is that the filed
+ * document says what the owner was shown.
+ *
+ * The evidentiary value is UNCHANGED: the date is what an accountant files against, and it survives
+ * word for word. What is dropped is a claim about authorship we were never in a position to make.
+ * The strong claim still exists and is still made — `confirmedOn`, and only when true.
  */
 function provenance(entry: OwnerEntry, timeZone: string): string {
-  const said = entry.source ? `stated ${longDateIn(timeZone, entry.source.spokenOn)}` : 'source not recorded';
+  const said = entry.source
+    ? `from a conversation on ${longDateIn(timeZone, entry.source.spokenOn)}`
+    : 'source not recorded';
   const confirmed = entry.confirmedOn
     ? `; read back to the owner and confirmed ${longDateIn(timeZone, entry.confirmedOn)}`
     : '';
