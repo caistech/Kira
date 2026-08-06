@@ -53,7 +53,80 @@ Get the Australian bands from them first; do not show them arithmetic you alread
 
 ---
 
-## A — Brian Budd (spoke, expecting this)
+## A — Brian Budd (spoke, expecting this) — USE THIS ONE
+
+> **What the call actually was:** Dennis said he had built tools that could help Brian's clients. It
+> was not a sales call and Brian did not agree to a proposal — he agreed to an email about that.
+>
+> So this asks questions and sells nothing. Two reasons, and the second is the one that bites:
+>
+> 1. A pitch here is a different product from the conversation. An alternative draft offered a
+>    $2,500 IM-drafting engagement — good offer, wrong email. He agreed to hear about a tool for
+>    owners and would open a proposal about his own back office. Keep it for the second exchange,
+>    after he has said what his constraint is.
+> 2. **"Tools that could help your clients" is the exact framing Yiling declined.** It asks a broker
+>    to be a channel to people who trust him, which costs him relationship capital and gains him
+>    nothing. Brian took it on a call and she didn't; that is one for one, not a validated line. So
+>    this moves the subject off his clients and onto HIS LISTINGS and HIS FEE, where his interest
+>    already is.
+>
+> Three questions, not five. A busy broker answers three.
+
+**Subject:** Following our call — three questions
+
+Brian,
+
+Thanks for the time yesterday.
+
+Rather than send you a pitch, I'd rather find out whether I'm aiming at the right thing — you'll know
+in about a minute and it would take me months.
+
+What I've built sits with a business owner day to day: it finds his files, drafts his quotes, chases
+what's outstanding, and while it does that it writes down how the business actually runs — his
+pricing, who owns which client relationship, the calls only he makes.
+
+The theory is that this is what costs him a turn on the multiple when he comes to you. But that's my
+theory, and you sell these for a living:
+
+1. When a business disappoints on price, what's usually behind it? Is it that everything runs
+   through the owner, or is that further down the list than I think?
+2. Do you meet owners early enough to do anything about it — a year or two out — or mostly once
+   they've already decided?
+3. In the niches you do most of, what's a business actually fetching as a multiple of profit at the
+   moment? I'm working off US figures wound back, which I don't love.
+
+Answer whichever you can be bothered with. If the answers say I've got it wrong I'd genuinely rather
+know now, and if they say I've got it right I'll show you what it does and you can tell me if it
+would survive contact with a real vendor.
+
+Dennis McMahon
+Corporate AI Solutions · 0402 612 471
+
+---
+
+## A2 — Brian, the paid engagement (HOLD — send after he answers)
+
+> Keep this. It is a good offer and the wrong first email. It becomes the right one the moment he
+> names a constraint you can build against — and if he names IM drafting himself, it writes itself.
+>
+> **Two fixes before it ever goes.** The original asked for his last three information memorandums:
+> he cannot hand those over. They are three clients' financials under an agency agreement and not
+> his to give — the same wall Simon named about his own listings. Ask for **one from a settled sale,
+> or just the shape**, and say you don't need live client material. That signals you understand his
+> obligations, which is worth more than the document.
+>
+> Second: cut the paragraph about document extraction, compliance, security and billing. That is your
+> reason for being cheap, not his reason to care, and it is the same method-before-outcome opening
+> that lost Peter on the services page. "Three weeks, fixed price, off the build" carries it.
+>
+> **The prize is not Brian's build.** It is the same document problem six BBNA brokers have — one
+> tool, one network — which is a distributor shape wearing a consulting hat. Keep that out of email
+> one, because leading with "then you'll help me sell it to your colleagues" makes $2,500 feel like a
+> foot in the door. But it is the reason Brian is worth the week.
+
+---
+
+## A-original — the assertive version (superseded, kept for reference)
 
 **Subject:** Following up — Kira, as promised
 
