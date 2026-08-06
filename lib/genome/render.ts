@@ -174,6 +174,12 @@ export function renderAreas(genome: OwnerGenome, audience: Audience, timeZone: s
  * This document is read by a buyer's accountant or solicitor, printed, and put in a file. It is not
  * a marketing surface. No colour system to go stale, no webfont to fail to load, and a print
  * stylesheet because that is how it will actually be consumed.
+ *
+ * @design-tokens-ok: a standalone HTML document with its own <style> — there is no Tailwind and no
+ * token layer at the far end of it, so `var(--text-body)` would resolve to nothing on the accountant's
+ * screen and to nothing again in print. Same exemption class as lib/email/**, and the same reason:
+ * CSS custom properties do not survive being mailed or printed. The paragraph above is the design
+ * decision; this line is only what makes the checker agree with it.
  */
 const STYLE = `
     :root { color-scheme: light; }

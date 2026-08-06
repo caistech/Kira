@@ -1,6 +1,11 @@
 /* ---------------------------------------------------------------------------
  * DESIGN TOKENS — three layers, one place to change the brand.
  *
+ * @design-tokens-ok: this IS the file the checker sends everything else to. A "no raw colour
+ * literals" rule cannot apply to the definition of the colours. In practice the only hex left in
+ * here is inside the prose — `#7D756D` below is named as the value that FAILED AA and was replaced,
+ * which is exactly the sort of note that must not be deleted to satisfy a grep.
+ *
  * WHY THIS EXISTS NOW, before any palette is chosen. Three people looking at Kira independently
  * reached the same conclusion in a week: a tester ("I can't tell if I'm still on the same website"),
  * a founder reviewing it cold ("clearly designed by AI"), and a designer ("colour scheme doesn't
