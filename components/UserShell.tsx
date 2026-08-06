@@ -15,7 +15,6 @@
 
 import { redirect } from 'next/navigation';
 import { getAuthUser, getCurrentAppUser, isCurrentUserAdmin } from '@/lib/auth';
-import { canSend } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
 import { PortalShell, type NavItem } from '@/components/PortalShell';
 import { TalkFab } from '@/components/TalkFab';
@@ -44,50 +43,41 @@ function shellTitle(identity: { trading_name?: string | null; legal_name?: strin
   return 'Kira';
 }
 
-export async function UserShell({
-  children,
-  /**
-   * Whether this surface enforces first-run setup.
-   *
-   * On for every owner surface, and OFF for Settings — which is the one place he must always be
-   * able to reach, because it holds Sign Out. A gate that also blocks the way out is not an
-   * onboarding step, it is a trap, and the person most likely to hit it is the one who signed up
-   * and changed his mind.
-   */
-  requireSetup = true,
-}: {
-  children: React.ReactNode;
-  requireSetup?: boolean;
-}) {
+/**
+ * THE FIRST-RUN GATE IS GONE, AND IT IS NOT COMING BACK IN THIS SHAPE.
+ *
+ * This wrapper used to redirect to `/setup/business` on every owner surface whenever
+ * `canSend(identity)` was false. `canSend` requires an **11-digit ABN** and an Australian state, so
+ * the gate had no key for anyone outside Australia: sign in, get bounced to a form you cannot
+ * complete, and every route in the product bounces you back to it. Reported by Shah Hussain
+ * (2026-08-06) as "it redirects me to setting up business" — not a loop bug, a locked door.
+ *
+ * It also compounded a second defect: the middleware dropped refreshed auth cookies on every
+ * redirect (see `middleware.ts` → `redirectPreservingSession`), so the people this gate bounced were
+ * the same people losing their session. Two bugs, one symptom, and the gate was feeding the other.
+ *
+ * The requirement itself is real and unchanged — `canSend` still governs SENDING, because the Spam
+ * Act footer identifies the sender and an email with no ABN behind it is not a thing we may send.
+ * What changed is that it now gates the send rather than the product. An owner who never asks Kira
+ * to email anyone never needs to answer it, and one who does is told plainly, on the dashboard,
+ * before he asks.
+ *
+ * ⚠️ If you are re-adding a first-run requirement here, gate it on something every user on earth can
+ * satisfy. An Australian tax identifier is not that.
+ */
+export async function UserShell({ children }: { children: React.ReactNode }) {
   const authUser = await getAuthUser();
   if (!authUser) redirect('/login');
   const appUser = await getCurrentAppUser(); // ensures the bridged users row is resolvable
 
-  // Never fatal. An unreachable identity store means the chrome falls back to "Kira" — the same
-  // screen he saw yesterday — rather than failing the page he was trying to open.
+  // Read only to TITLE the chrome with his business. Never fatal: an unreachable identity store
+  // means the title falls back to "Kira" — the same screen he saw yesterday — rather than failing
+  // the page he was trying to open.
   let identity = null;
-  let identityReadFailed = false;
   try {
     identity = appUser?.id ? await getBusinessIdentity(appUser.id) : null;
   } catch {
     identity = null;
-    identityReadFailed = true;
-  }
-
-  // FIRST RUN, ON EVERY DOOR — not just the dashboard.
-  //
-  // Kira cannot send anything for a business she cannot name (the Spam Act footer identifies the
-  // SENDER), so this is asked once, up front, rather than surfacing as his first request being the
-  // one that silently fails. It lived on /dashboard alone, and sign-in sends an owner with an
-  // active agent straight to /chat — so the person most likely to skip setup was the one furthest
-  // into the product.
-  //
-  // Gated on the identity being COMPLETE rather than on a row existing: the sender refuses a tenant
-  // missing any of entity / ABN / address, and "there is a row" is the easier question whose answer
-  // reassures someone about a send that will be refused. A FAILED READ never redirects — bouncing a
-  // configured owner back through setup because the database hiccuped is its own bug.
-  if (requireSetup && appUser?.id && !identityReadFailed && !canSend(identity)) {
-    redirect('/setup/business');
   }
 
   const isOperator = await isCurrentUserAdmin();

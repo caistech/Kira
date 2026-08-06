@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
 import { describe, it, expect } from 'vitest';
 
 import {
@@ -159,6 +162,52 @@ describe('canSend', () => {
 
   it('does not depend on the sync stamp — that is a different question', () => {
     expect(canSend(row({ synced_to_orchestrator_at: '2026-07-31T01:00:00Z' }))).toBe(true);
+  });
+
+  // THE STEP THAT DID NOT EXIST, AND WHY SHAH'S BUG SHIPPED.
+  //
+  // Every case above asks the same question: does `canSend` return the right answer? It always did.
+  // It returned `false` for Shah Hussain too, and `false` was CORRECT — the founder of Mnemo has no
+  // Australian Business Number and never will, so Kira genuinely cannot sign an Australian
+  // compliance footer as him.
+  //
+  // What nothing in this suite ever asked is what the PRODUCT DOES WITH A FALSE. `UserShell`
+  // redirected to /setup/business on every owner surface, and `app/dashboard` carried its own copy
+  // of the same redirect — so a correct `false` became a locked door: sign in, land on a form you
+  // cannot complete, and every route sends you back to it. The predicate was tested exhaustively
+  // and its consequence was tested nowhere, which is the whole gap.
+  //
+  // It also could not have been caught by USING the product. Both QA identities and the operator's
+  // own account are complete Australian businesses, so every tester and every fixture sails past the
+  // branch that traps a new or foreign owner. `app/setup/layout.tsx` says the same thing about the
+  // thirteen-hop redirect loop found earlier: "it survived because nobody had walked it."
+  //
+  // So the guard has to be about the consequence, and it has to be mechanical.
+  describe('a false must never lock him out of the product', () => {
+    /** The fixture this file never had: a real owner who cannot satisfy the gate, ever. */
+    const nonAustralianOwner = row({ abn: '', state: '', postcode: '', country: 'Pakistan' });
+
+    it('is false for an owner with no ABN — correctly, and this must stay false', () => {
+      // Not a bug to fix by relaxing. The Spam Act footer identifies the SENDER, and an Australian
+      // commercial email with no ABN behind it is not a thing we may send on anyone's behalf.
+      expect(canSend(nonAustralianOwner)).toBe(false);
+    });
+
+    it.each([
+      ['components/UserShell.tsx', 'every authenticated owner surface'],
+      ['app/dashboard/page.tsx', 'the first screen after sign-in'],
+    ])('%s does not redirect to setup on it', (file, _what) => {
+      const source = readFileSync(path.resolve(__dirname, '../..', file), 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/^\s*\/\/.*$/gm, '');
+
+      expect(
+        source,
+        `${file} redirects to /setup/business. canSend() is allowed to be false — an owner outside ` +
+          `Australia can never make it true — so gating a route on it locks him out of everything. ` +
+          `Gate the SEND, and tell him on the page.`,
+      ).not.toMatch(/redirect\(\s*['"`]\/setup\/business/);
+    });
   });
 });
 
