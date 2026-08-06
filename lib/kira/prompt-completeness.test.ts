@@ -73,3 +73,18 @@ describe('the built business prompt is complete', () => {
     }
   });
 });
+
+describe('the surveillance claim she invented once', () => {
+  // K20. The LANDING agent told a visitor "I watch what you do". The word appears in no prompt —
+  // she generated it from capture-adjacent phrasing. Nothing stopped the paid agent doing the same,
+  // and it is the one claim this audience cannot forgive: they are being asked to connect their
+  // email, their files and their accounts. It is also false — she captures what she is TOLD.
+  //
+  // Held back from a pre-emptive fix because it costs a fleet re-provision, which has twice caused a
+  // real regression here (tools stripped 17->15, four prompt sections silently deleted). Folded in
+  // at the 2026-08-06 re-provision, which was happening anyway for the confidentiality section.
+  it('is forbidden in the business prompt', () => {
+    const { systemPrompt } = getKiraPrompt({ framework });
+    expect(systemPrompt).toMatch(/Never say you watch, monitor or observe him/);
+  });
+});
