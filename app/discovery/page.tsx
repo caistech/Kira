@@ -68,6 +68,32 @@ export default function DiscoveryPage() {
           )}
         </div>
 
+        {/* A WAY THROUGH WHEN THE MICROPHONE ISN'T THERE — always shown, not on failure.
+            The widget's own failure state is "Connection problem" with a Mute and an End button,
+            both of which assume a call is happening. No "check your microphone", no "your browser is
+            blocking it", and no way to continue by typing — even though /talk has a working typing
+            box. Ray, 6 August 2026: *"A lot of men my age are on a desktop tower with no microphone
+            at all and don't know it. They will land exactly here."*
+
+            OFFERED UP FRONT RATHER THAN AFTER A FAILURE, deliberately. A man with no microphone
+            should not have to fail first to discover there was another door, and the failure itself
+            is silent enough that he may just conclude the product is broken. The same reasoning the
+            convai widget's text fallback got when its timeout was added: waiting for an error is
+            waiting for something that may never arrive.
+
+            NOT FIXED IN THE PANEL, and that is deliberate too: "Connection problem" is rendered
+            inside @caistech/discovery-agent's DiscoveryWidget. Reaching into a shared component from
+            a consumer is the fork this portfolio's @caistech-first rule exists to prevent, so the
+            panel's own copy is a package change and is recorded as one. This is the honest thing
+            Kira can do from outside it. */}
+        <p className="mt-4 text-base text-stone-600">
+          No microphone, or she can&apos;t hear you?{' '}
+          <Link href="/talk" className="font-semibold text-violet-700 underline underline-offset-4">
+            Type to her instead
+          </Link>
+          {' '}— it is the same conversation, and she remembers it the same way.
+        </p>
+
         <div className="mt-4 flex items-center justify-between text-sm">
           <span className="text-gray-500">
             Stage {stageIdx + 1} of {DISCOVERY_STAGES.length}

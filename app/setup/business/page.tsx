@@ -10,6 +10,7 @@
 import { redirect } from 'next/navigation';
 
 import { getAuthUser, getCurrentAppUser } from '@/lib/auth';
+import { realSignOffName } from '@/lib/user-name';
 import { canSend } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
 import { BusinessIdentityForm } from '@/components/BusinessIdentityForm';
@@ -35,8 +36,11 @@ export default async function BusinessSetupPage({
   // Already done and not deliberately editing — don't make a configured owner walk through it again.
   if (canSend(identity) && !editing) redirect('/dashboard');
 
-  const signOff =
-    [user.first_name, user.last_name].filter(Boolean).join(' ').trim() || user.name || '';
+  // NEVER PRE-FILL THIS FROM AN EMAIL ADDRESS. This box is what goes at the bottom of a quote to his
+  // customer, and it was arriving pre-filled with `dennis+ray` — the front half of the address —
+  // because the signup trigger invents a first name via split_part(email,'@',1) when no metadata is
+  // supplied. A man in a hurry accepts a pre-filled field; he reads an empty one. See lib/user-name.ts.
+  const signOff = realSignOffName(user, authUser.email) ?? '';
 
   return (
     <div className="min-h-screen bg-amber-50 px-5 py-12">

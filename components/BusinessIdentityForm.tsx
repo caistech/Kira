@@ -303,9 +303,15 @@ export function BusinessIdentityForm({
           hint="Your name, as you'd sign an email to a customer."
           error={errors.signOffName}
         >
+          {/* EMPTY IS BETTER THAN WRONG HERE. `defaultSignOffName` is now null-safe (see
+              lib/user-name.ts) and arrives as '' when all we hold is his email address, so the box
+              is blank with a placeholder rather than pre-filled with `dennis+ray`. He skims a
+              filled field and accepts it; he reads an empty one — and this is the string that goes
+              at the bottom of a quote to his customer. */}
           <input
             name="sign_off_name"
             autoComplete="name"
+            placeholder="e.g. Ray Thompson"
             defaultValue={identity?.sign_off_name ?? defaultSignOffName}
             className={INPUT}
           />

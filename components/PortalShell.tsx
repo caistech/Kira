@@ -116,8 +116,21 @@ export function PortalShell({
       {drawerOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/30" onClick={() => setDrawerOpen(false)} />
-          <div className="absolute inset-y-0 left-0 w-72 bg-white shadow-xl">
-            <div className="flex justify-end p-2">
+          {/* FLEX COLUMN, AND THAT IS THE WHOLE FIX.
+              This was a plain block containing the close-button row AND `nav`, which is `h-full`.
+              `h-full` resolves to 100% of the PANEL, so the nav began below the close button and ran
+              past the bottom of the white background by exactly that button's height — putting
+              "Settings", "Sign out" and the account email on top of the page content showing
+              through underneath. Ray, at 375px, 6 August 2026: *"'Sign out' lands directly across
+              'Document the core systems' — two lines of text in the same place, both unreadable.
+              It's the first thing you see when you open the menu on a phone."*
+
+              `min-h-0` on the nav wrapper is load-bearing, not decoration: a flex child's default
+              `min-height: auto` refuses to shrink below its content, which reproduces the same
+              overflow the moment the nav is taller than the screen — a longer item list, or a
+              landscape phone. */}
+          <div className="absolute inset-y-0 left-0 flex w-72 flex-col bg-white shadow-xl">
+            <div className="flex shrink-0 justify-end p-2">
               <button
                 aria-label="Close menu"
                 onClick={() => setDrawerOpen(false)}
@@ -126,7 +139,7 @@ export function PortalShell({
                 <X size={24} />
               </button>
             </div>
-            {nav}
+            <div className="min-h-0 flex-1 overflow-y-auto">{nav}</div>
           </div>
         </div>
       )}

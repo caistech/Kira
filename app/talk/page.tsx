@@ -56,15 +56,37 @@ export default async function TalkPage() {
   if (agent?.elevenlabs_agent_id) {
     return <ChatPage agentId={agent.elevenlabs_agent_id as string} />;
   }
-  // NO KIRA YET — the dashboard, not the create flow.
+  // NO KIRA YET — send him to the flow that MAKES her, which is what he asked for.
   //
-  // This used to jump straight to /start, which meant a brand-new owner's first ever screen was a
-  // bare "choose a journey" page: no nav, no context, nothing telling him where he was or what had
-  // happened to the thing he had just paid for. /dashboard is the home screen and already has the
-  // right empty state for exactly this person — the saved-valuation carry-over, the eleven
-  // questions, and a "You haven't met Kira yet" card that offers the conversation.
+  // HISTORY, because this line has now been wrong in both directions. It once jumped straight to
+  // `/start`, which put a brand-new owner's first ever screen on a bare "choose a journey" page with
+  // no nav and no context. That was fixed by sending him to `/dashboard` instead — and that fix
+  // created the defect below, which is worse, because it is silent.
   //
-  // It matters most on the PWA, because /talk is the manifest's start_url: tapping the home-screen
-  // icon before an agent exists took him somewhere with no way back.
-  redirect('/dashboard');
+  // WHAT RAY HIT (6 August 2026). Every "Talk to Kira" control in the product points HERE: the
+  // floating button on every authenticated page, the My Genome empty state, the Knowledge link. On a
+  // brand-new account there is no `kira_agents` row, so all of them landed him back on the dashboard
+  // he had just left — no message, no error, no explanation. Verified three ways in his walkthrough.
+  //
+  //   "I've made an account, I'm on the screen, and the button that says 'talk to her' reloads the
+  //    page. I'd assume it's broken, and I'd assume the rest is too."
+  //
+  // The product's core action doing nothing on day one is the whole finding. And the underlying
+  // cause is real and bigger than this line: a new owner HAS no agent, because agents are only ever
+  // created by POST /api/kira/create from the draft-approval flow, and `ensureUserAgent` — the
+  // canonical one-agent-per-user orchestration in @caistech/elevenlabs-convai, which exists exactly
+  // so this is not hand-rolled — is called nowhere in this repo. Provisioning on demand is the
+  // deeper fix and it is NOT this change: it creates a real vendor resource on a page load, and it
+  // cannot be verified from here.
+  //
+  // What this change does is stop the dead end and match what the rest of the product already does.
+  // `/dashboard` computes exactly this: `talkHref = businessAgent ? /chat/<id> : '/start?journey=business'`.
+  // So the dashboard's own Talk buttons already lead somewhere that works while `/talk` did not —
+  // one product, two answers, and the FAB was on the losing one. `?journey=business` is what avoids
+  // the bare journey-picker the earlier fix was right to complain about.
+  //
+  // Fixing it HERE rather than in TalkFab is deliberate: the FAB, My Genome and Knowledge all point
+  // at `/talk`, so this is one change instead of three, and the next surface that adds a Talk link
+  // inherits the correct behaviour instead of having to remember.
+  redirect('/start?journey=business');
 }
