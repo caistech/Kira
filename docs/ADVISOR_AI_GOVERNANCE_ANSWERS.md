@@ -75,8 +75,9 @@ Our subprocessors, and what each does: **Supabase** (database), **Vercel** (host
 (email), **Stripe** (payments — card numbers never reach our systems), **ElevenLabs** (the voice
 conversation), and **third-party AI model providers** that generate the assistant's responses.
 **Some process or store data outside Australia, including in the United States and the European
-Union.** We do not offer Australian data residency. That is stated in our privacy policy rather than
-buried in it.
+Union. The primary database — your client's account and everything Kira holds about their business —
+is hosted in Mumbai, India.** We do not offer Australian data residency. That is stated in our
+privacy policy rather than buried in it.
 
 **"Do clients consent to AI processing their data?" (Q6)**
 Yes, at two points. ElevenLabs presents its own consent notice before any voice conversation
