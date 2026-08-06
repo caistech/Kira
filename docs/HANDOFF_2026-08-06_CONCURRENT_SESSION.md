@@ -14,6 +14,30 @@ merge once.
 
 ---
 
+## 0. Read this first if you are touching how work is held, released or reported
+
+**`cais-shared-services/DELEGATION_STANDARD.md`** was written today (2026-08-06, operator-directed)
+and is the canonical agreement covering how work is captured, ordered, **held, released** and
+reported — across Kira *and* the orchestrator. Dennis asked specifically that you have it to review
+and fold into whatever you are contemplating now.
+
+The parts most likely to touch live-bug work:
+
+- **Do, approve and release are three decisions, not one.** A single `approved` flag cannot express
+  "raise it, I've read it, don't send it until Friday" — which is the ordinary case, not the edge.
+- **A hold must acquire a release condition or a review date, enforced in the tool signature.** Not
+  the prompt. The reasoning is `record_refusal`: it sits in the prompt with an explicit instruction
+  and is often simply not called. Anything you fix today by adding prompt text will fail the same way.
+- **Captured ≠ confirmed.** A term we stated and the counterparty has not answered must not be
+  recorded as agreed.
+- **Every distilled rule names its enforcement point**, or is marked as judgement — so the standard
+  reports its own coverage.
+
+§0 of that document is the extractable block for the agent prompt. **Extract it, do not retype it** —
+the tool list and prompt are already single-sourced with parity tests for exactly this reason.
+
+---
+
 ## 1. Ownership — do not edit these, they are mid-flight in the other session
 
 `app/my-genome/page.tsx` · `app/plan/page.tsx` · `lib/privacy.ts` · `lib/kira/prompts.ts` ·
