@@ -101,7 +101,7 @@ export const PRIVACY_SECTIONS: PrivacySection[] = [
     heading: 'Who we share it with',
     paragraphs: [
       'Only the providers that run the service, and only as far as they need it: Supabase (database), Vercel (hosting), Resend (email), Stripe (payments), ElevenLabs (the voice conversation), and the AI model providers that generate Kira\'s responses.',
-      'Some of these process or store data outside Australia, including in the United States and the European Union. We choose providers that commit to protecting it, but that transfer is worth knowing about.',
+      'Some of these process or store data outside Australia, including in the United States and the European Union. Your account and everything Kira holds about your business sits in our database in Mumbai, India — that is where the primary copy lives. We choose providers that commit to protecting it, but that transfer is worth knowing about.',
       'We will disclose information if the law requires it. We will not hand it over because someone asked nicely.',
     ],
   },
