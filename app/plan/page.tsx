@@ -379,7 +379,22 @@ export default function PlanPage() {
                 {copy.cta} <ArrowRight className="h-5 w-5" />
               </button>
               {error && <p className="text-rose-600 text-sm mt-3">{error}</p>}
-              <p className="mt-4 text-sm text-stone-500">
+              {/* A DOOR THAT ISN'T A CARD FORM.
+                  Ray, 7 August, having read the whole pricing argument and accepted it: "I am not
+                  putting a card in before I have seen the thing work. I am sixty-six and thinking
+                  about selling and I have not told my wife." He went round the back via Sign in →
+                  "Need an account? Sign up" — two clicks and a bit of nerve — and said plainly that
+                  most cautious buyers would not find it. For THIS audience, wanting to look first is
+                  the normal case, not the objection. The account, the dashboard and a working Kira
+                  already exist behind it; we simply were not offering them. */}
+              <p className="mt-4 text-sm text-stone-600">
+                Rather look around first?{' '}
+                <a href="/signup" className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500">
+                  Create an account without a card
+                </a>{' '}
+                and come back when you&apos;re ready.
+              </p>
+              <p className="mt-3 text-sm text-stone-500">
                 Before you decide:{' '}
                 <a href="/what-she-does" className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500">
                   what she does, and what she doesn&apos;t
