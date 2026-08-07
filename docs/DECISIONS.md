@@ -131,3 +131,54 @@ else — and avoids Google's restricted-scope verification and third-party secur
 privilege, write-capable and least paperwork is a rare alignment.
 
 Changed while exactly **one** owner was connected, on `full`, so nobody was affected.
+
+---
+
+## 6. The channel is part of the task, not a delivery detail
+
+**Decided 2026-08-07.** Not yet built — this is the shape the first ingest slice must produce.
+
+The Betta Roads follow-up to Paul — *is "next Friday" the 7th or the 14th?* — was scoped as "draft a
+question and send it", and the send silently meant **email**, because email is the channel that
+exists. Look at what the relationship actually runs on: Paul answers from `bettaroadswa@icloud.com`,
+signs off *"This message has been sent from my mobile phone"*, and his replies are two lines long. A
+one-line question about a date is an **SMS**. Putting it in his inbox is the wrong channel for the
+message and slower than the right one.
+
+So the output carries the channel and the reason for it:
+
+> *"This should go to Paul by text, not email — he replies from his phone and this is a one-line
+> question. Draft ready."*
+
+She drafts, names the channel, and **holds**. The operator sends it from his own phone.
+
+**Why this shape rather than building the connector.** It tests the three capabilities the slice is
+actually for — ingest, ambiguity detection, and the dispatch→approve→release loop that has never
+completed once — while deferring WhatsApp/SMS entirely. And it stops the first slice teaching her the
+habit that everything is an email, which would then have to be untaught.
+
+⚠️ **A message she cannot send is not a failure state.** "Drafted, wrong channel for me to send, here
+it is" is a completed task. Anything that treats an unsendable channel as an error will quietly push
+every message back onto email, which is the defect this decision exists to prevent.
+
+## 7. WhatsApp — recommendation on the table, NOT yet decided
+
+Recorded so it stops being re-analysed. Full analysis: `CAPTURED_ASKS.md` §2, 2026-07-31.
+
+**The recommendation, unactioned for a week:** do not put his mobile number at risk — for this ICP the
+number **is** the business. Split the ask: **ingest and read** to capture what was agreed; **outbound
+client messaging on Meta Cloud API with a separate business number**.
+
+The two routes fail differently, which is the whole decision. **Unipile as-me** sends from his
+existing number into his real chats, and extends a shared package we already own — but it holds a
+WhatsApp Web session, outside Meta's terms, with a real risk of the number being **banned**. **Meta
+Cloud API** is official, but needs a dedicated number that can no longer be used in the normal
+WhatsApp app, business verification, and pre-approved templates outside a 24-hour reply window.
+
+This is the "never risk an asset that IS the business" rule in `CONNECTOR_POLICY.md` §A meeting a
+real ask. **Operator decision outstanding.**
+
+⚠️ **Also unrecorded anywhere: the wider social set.** Facebook, X, and the rest were raised and never
+captured — `CAPTURED_ASKS.md` covers email, WhatsApp, phone, Drive and attachments, and mentions
+LinkedIn only incidentally via `@caistech/unipile-channels`. That is a gap in the record, not a
+decision that went the other way.
