@@ -24,6 +24,7 @@ import {
 import { bindWorkspaceWebhook, setAllowlist, standardAllowlist, setAgentTools, setAgentOverrides, DEFAULT_AGENT_LLM } from '@caistech/elevenlabs-convai';
 import { kiraAllTools, conversationContinuityPrompt } from '@/lib/kira/convai';
 import { buildProfileBriefing } from '@/lib/kira/discovery-schema';
+import { formatMoneyApprox } from '@/lib/valuation/currency';
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app';
@@ -398,6 +399,101 @@ export async function POST(req: NextRequest) {
         }
       } catch (e: any) {
         console.error('[kira/create] profile briefing seed failed (non-fatal):', e?.message ?? e);
+      }
+    }
+
+    /* ---------------- Seed her with what he just told us ---------------------------------- */
+    //
+    // "THIS IS OUR FIRST CONVERSATION" — the worst sentence in the product, and the cause is half a
+    // design.
+    //
+    // Ray, 7 August, having answered eleven questions, typed thirty-five years of history and "I
+    // haven't told my staff or my family" into a screen headed CREATE MY KIRA, and pressed the
+    // button. His first question to her was what she already knew. She said: "I don't have any
+    // details about your business yet. This is our first conversation." The landing page promises
+    // the opposite twice.
+    //
+    // WHY. `buildFrameworkSection` deliberately keeps the brief OUT of the prompt, and that decision
+    // is correct — a profile baked in at signup freezes on the day the account was made, which is
+    // how an agent came to describe a months-old objective as today's work. The section says so, and
+    // points at the replacement: "everything about what he is WORKING ON comes from
+    // get_conversation_context and recall_memory."
+    //
+    // Nothing ever wrote it there. The prompt correctly defers to memory and memory is empty. So the
+    // fix is not to re-bake it into the prompt — it is to finish the half that was designed and
+    // never built, which is also what the /start retirement decision says: let it persist through
+    // the memory tools rather than a provisioning-time prompt, so it stays updatable as the business
+    // changes.
+    //
+    // Non-fatal throughout: a failed seed must never cost him the agent he just paid for and waited
+    // eight seconds to meet.
+    if (savedAgent?.id) {
+      const seeds: Array<{ content: string; tags: string[]; importance: number }> = [];
+
+      // What he typed, in his words. `primary_objective` is the paragraph from the brief form.
+      const brief = String(draft.primary_objective ?? '').trim();
+      if (brief) {
+        seeds.push({
+          content: `What he said he wants to work on, in his own words when he set me up: ${brief}`,
+          tags: ['setup_brief', 'owner'],
+          importance: 9,
+        });
+      }
+      for (const point of (draft.key_context ?? []) as string[]) {
+        const text = String(point ?? '').trim();
+        if (text) seeds.push({ content: text, tags: ['setup_brief', 'owner'], importance: 8 });
+      }
+      const success = String(draft.success_definition ?? '').trim();
+      if (success) {
+        seeds.push({
+          content: `What he said good looks like: ${success}`,
+          tags: ['setup_brief', 'owner'],
+          importance: 8,
+        });
+      }
+
+      // The valuation he ran before signing up. He watched the product compute it and put it on his
+      // own dashboard; being asked to UPLOAD it to her is the version of this that reads worst.
+      try {
+        const { data: val } = await supabase
+          .from('business_valuations')
+          .select('worth_today, worth_potential, gap, industry')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (val) {
+          seeds.push({
+            content:
+              `His own valuation, from the eleven questions he answered before signing up` +
+              `${val.industry ? ` (${val.industry})` : ''}: worth today ${formatMoneyApprox(Number(val.worth_today) || 0)}, ` +
+              `worth once his knowledge is captured ${formatMoneyApprox(Number(val.worth_potential) || 0)}, ` +
+              `so the gap is ${formatMoneyApprox(Number(val.gap) || 0)}. ` +
+              `These are HIS figures from HIS answers — never ask him to send them to me.`,
+            tags: ['valuation', 'owner'],
+            importance: 9,
+          });
+        }
+      } catch (e: any) {
+        console.error('[kira/create] valuation seed lookup failed (non-fatal):', e?.message ?? e);
+      }
+
+      if (seeds.length) {
+        try {
+          await supabase.from('kira_memory').insert(
+            seeds.map((s) => ({
+              user_id: user.id,
+              kira_agent_id: savedAgent.id,
+              memory_type: 'context',
+              content: s.content,
+              importance: s.importance,
+              tags: s.tags,
+            })),
+          );
+          await log(supabase, requestId, 'setup_brief_seed', 'success', undefined, { count: seeds.length });
+        } catch (e: any) {
+          console.error('[kira/create] setup brief seed failed (non-fatal):', e?.message ?? e);
+        }
       }
     }
 

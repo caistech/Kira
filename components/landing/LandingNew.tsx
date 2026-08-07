@@ -155,6 +155,18 @@ export function LandingNew() {
             <a href="/login" className="ln-link flex min-h-[44px] items-center text-[16px] sm:text-[15px] text-kira-charcoal hover:text-kira-600">
               Sign in
             </a>
+            {/* THE FREE DOOR, ON THE FRONT PAGE.
+                It existed and was reachable only by clicking Sign in and spotting "Need an account?
+                Sign up" at the bottom of the login box — two clicks and a bit of nerve, behind the
+                door for people who already have an account. Ray, 7 August: "I am not putting a card
+                in before I have seen the thing work", so he went round the back. Most cautious
+                buyers will not find it. The only door the page pointed at led to a payment screen. */}
+            <a
+              href="/signup"
+              className="ln-link flex min-h-[44px] items-center text-[16px] sm:text-[15px] text-kira-charcoal hover:text-kira-600"
+            >
+              Create an account
+            </a>
             <a
               href="/business-valuation"
               className="ln-link flex min-h-[44px] items-center rounded-md bg-kira-600 px-4 text-[16px] sm:text-[15px] font-medium text-white hover:bg-kira-700"
@@ -178,7 +190,7 @@ export function LandingNew() {
 
         {menuOpen && (
           <div className="border-t border-kira-line bg-kira-surface px-6 py-2 md:hidden">
-            {[...NAV, { href: '/login', label: 'Sign in' }].map((item) => (
+            {[...NAV, { href: '/login', label: 'Sign in' }, { href: '/signup', label: 'Create an account' }].map((item) => (
               <a
                 key={item.href}
                 href={item.href}

@@ -4,6 +4,7 @@ import { canSend } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
 import { createServiceClient } from '@/lib/supabase/server';
 import { formatMoney, formatMoneyApprox, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
+import { displayedFigures } from '@/lib/valuation/displayed';
 import { shouldInviteBaseline } from '@/lib/valuation/baseline-invite';
 import { readTaskLedger } from '@/lib/kira/swarm/open-tasks';
 
@@ -410,6 +411,11 @@ function GapDashboard({
   hasMetKira: boolean;
 }) {
   const readinessPct = Math.round((valuation.readiness ?? 0) * 100);
+  // Every valuation figure on this screen comes from here, rounded once and mutually consistent.
+  const figures = displayedFigures(
+    { worthToday: valuation.worth_today, worthPotential: valuation.worth_potential, gap: valuation.gap },
+    valuation.currency || DEFAULT_CURRENCY,
+  );
   const weeks = [
     { w: 'Week 1', t: 'Capture the essentials', b: "Kira learns how the business really runs — the things only you know — just by talking." },
     { w: 'Week 2', t: 'Document the core systems', b: 'Your pricing, processes and playbook get written down and made repeatable, without you writing a word.' },
@@ -423,10 +429,17 @@ function GapDashboard({
         <p className="text-white/80 font-medium">
           {isWelcome ? `Welcome${firstName ? `, ${firstName}` : ''} — I'm Kira. This is your` : 'Your'} Business Value Gap
         </p>
-        <p className="text-4xl sm:text-5xl font-bold mt-1">{money(valuation.gap)}</p>
+        {/* ONE SET OF FIGURES, ROUNDED ONCE — see lib/valuation/displayed.ts.
+            This block previously rendered the STORED gap beside the two rounded figures it is
+            supposedly the difference of, so it read "$271,000 — the difference between $1,570,000
+            and $1,840,000", which is $270,000. A tester with a calculator caught it, and he checked
+            precisely because the result page had earned that scrutiny by explaining why it rounds.
+            `displayedFigures` derives the gap FROM the rounded pair, so the sentence is true by
+            construction. Never call money() on a valuation figure here again. */}
+        <p className="text-4xl sm:text-5xl font-bold mt-1">{figures.gapText}</p>
         <p className="text-white/90 max-w-2xl mt-3 leading-relaxed">
-          That&apos;s the value locked in your head today — the difference between {money(valuation.worth_today)} (a business that needs you)
-          and {money(valuation.worth_potential)} (one that runs without you). We close it together, a conversation at a time.
+          That&apos;s the value locked in your head today — the difference between {figures.todayText} (a business that needs you)
+          and {figures.potentialText} (one that runs without you). We close it together, a conversation at a time.
         </p>
         <div className="mt-4 inline-flex items-center gap-2 text-sm bg-white/15 rounded-full px-4 py-1.5">
           Transferability today: {readinessPct}/100 — we grow this every week
