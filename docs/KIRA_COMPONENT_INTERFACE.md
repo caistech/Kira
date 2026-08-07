@@ -164,9 +164,19 @@ See `docs/legal/NDA_REVIEW_2026-08-08.md` for the clause-level analysis of the d
 Every artefact below is committed to `github.com/caistech/Kira`, a private GBTA repository whose
 entire history (489 commits at issue) contains **no third-party human author**.
 
-Dates are attested by GitHub server-side, and the commits carry **verified cryptographic
-signatures** (`verification.verified: true` via the GitHub API), so authorship and timestamp are not
-merely locally asserted.
+Dates are recorded by GitHub server-side. The two load-bearing provenance commits below —
+`a5d1ecf28` and `c766f86e4` — additionally carry **verified cryptographic signatures**
+(`verification.verified: true` via the GitHub API), because they were created server-side by GitHub
+when the pull requests merged. Authorship and timestamp for those two are therefore not merely
+locally asserted.
+
+**Stated precisely, because a claim this document makes is a claim diligence will test:** the commit
+that *publishes* this specification is a local commit and is **not** cryptographically signed. Its
+date rests on GitHub's server-side record of the commit and of the push of tag
+`interface-spec-v1.0.0`, which is good evidence but weaker than a signature. The evidence that
+matters for priority is the 25 and 27 July material below, which is signed. Registering an SSH
+signing key on the GitHub account, and signing subsequent versions of this specification, would close
+that gap and is recommended before this document is relied on in a negotiation.
 
 | Artefact | First committed | Commit | Merged (server-attested, UTC) |
 |---|---|---|---|
