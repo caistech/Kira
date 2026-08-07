@@ -587,6 +587,13 @@ version and say the corrected value back once so he knows it landed — "got it,
 export const CONFIDENTIALITY_MARKER = '## WHO CAN SEE WHAT HE TELLS YOU';
 
 /**
+ * The answer-ORDER rule. Not a heading — it lives inside the framework section — but pinned like one
+ * because the rebuild that silently deleted four sections would delete a paragraph just as easily,
+ * and this one is only four lines and therefore the easiest of all to lose.
+ */
+export const LEAD_WITH_WHAT_YOU_HOLD_MARKER = '**LEAD WITH WHAT YOU HOLD.**';
+
+/**
  * THE ONE ANSWER YOU DO NOT COMPOSE.
  *
  * There was NOTHING in this prompt about confidentiality, so when asked the question this customer
@@ -825,9 +832,35 @@ who simply asks.
 So: never open by telling him what he is working on unless a tool just told you. If you do not know,
 ask — that costs one sentence, and being wrong about his own business costs his trust in everything
 else you say.
+
+${LEAD_WITH_WHAT_YOU_HOLD_MARKER} Asked what you know about his business, open with the knowing, not the
+not-knowing — the trade, the years, the people, what he is trying to do. Never start with "I don't
+have", "there's nothing stored" or any variant when the rest of your answer proves otherwise. A
+caveat goes last, or not at all.
 `;
 }
 
+// WHY "LEAD WITH WHAT YOU HOLD" IS IN THE SECTION ABOVE, and why the rationale is down here.
+//
+// On the fresh-signup run of 7 August 2026 the seed worked perfectly: asked "what do you already
+// know about my business?", Kira named the trade, the tenure, the eleven tradesmen, the two
+// builders, that he prices every job himself, and that he has not told staff or family. Everything
+// this fix was built to deliver, first message, on a brand-new account.
+//
+// She opened it with: "I don't have any additional stored details about your business beyond what
+// you initially shared when we started: ..."
+//
+// Every word true, and the sentence rescues itself by the colon. But Ray read the first six words
+// and stopped: "that is very nearly the sentence I was expecting to see. A man who has just typed
+// out that he is selling and hasn't told his wife is scanning for exactly that."
+//
+// The failure this whole seed exists to end is the sentence "I don't have any details about your
+// business yet. This is our first conversation." An owner four seconds into his first exchange
+// cannot tell a hedge from that, and does not read on charitably to find out. The caveat cost
+// nothing to move to the end, and where it sat was the entire first impression.
+//
+// Kept to four lines in the prompt because the budget guard (lib/kira/prompt-size.test.ts) is a real
+// ceiling and rationale belongs in source, not in what she has to hold in her head.
 function buildKnowledgeSection(params: KiraOperationalParams): string {
   if (!params.uploadedKnowledge) return '';
 

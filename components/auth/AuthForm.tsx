@@ -162,6 +162,15 @@ export function AuthForm({
         <div className="h-11 rounded-lg bg-stone-100" />
         <div className="h-11 rounded-lg bg-stone-100" />
         <div className="h-11 rounded-full bg-stone-200" />
+        {/* SAY IT IS LOADING, IN WORDS HE CAN READ.
+            The grey bars fixed the blank paint and left the interpretation open. Ray, on the fresh
+            signup: "the heading and the footer were there, and the fields arrived a couple of
+            seconds later. Not long, but on the screen where you ask for a password it reads as
+            broken rather than slow." Skeleton bars are a convention for people who have seen
+            skeleton bars; a 66-year-old sees three grey rectangles where a form should be. The
+            aria-label above already said this — to a screen reader only, which is the one visitor
+            who was never confused. */}
+        <p className="text-sm text-stone-500">Loading the secure form&hellip;</p>
       </div>
     );
   }

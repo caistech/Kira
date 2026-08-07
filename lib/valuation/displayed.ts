@@ -33,7 +33,7 @@
 // Two implementations of "how we round money" is the same fork that produced the four-value gap;
 // the export route's copy should be deleted in favour of this import. Recorded rather than done, so
 // it is a decision and not a drive-by change to the export contract.
-import { approxNumber, formatMoneyApprox, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
+import { approxNumber, formatMoney, formatMoneyApprox, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 
 export interface RawFigures {
   worthToday: number;
@@ -80,4 +80,63 @@ export function displayedFigures(raw: RawFigures, currency: string = DEFAULT_CUR
     gapText: formatMoneyApprox(gap, currency),
     walkAwayText: walkAway == null ? null : formatMoneyApprox(walkAway, currency),
   };
+}
+
+export interface DisplayedUplift {
+  /** The rounded uplift to show. The set of these sums EXACTLY to the displayed gap. */
+  uplift: number;
+  /** The exact string to render. Never re-format it — see the warning below. */
+  upliftText: string;
+}
+
+/**
+ * The itemised parts of the gap, rounded so they add up to the gap actually printed above them.
+ *
+ * WHY THIS EXISTS. The model already reconciles the raw uplifts — `computeValuation` sums them and
+ * puts any remainder onto the largest factor, so in full precision they equal the gap exactly. The
+ * result page then rounded each one INDEPENDENTLY for display, which breaks that guarantee, because
+ * a sum of rounded numbers is not the rounded sum:
+ *
+ *     73,800 + 61,500 + 26,900 + 17,300 = 179,500     under a headline reading $180,000
+ *
+ * Ray added them up. He does that because the page above has just explained, honestly, why it
+ * rounds — which earns exactly the scrutiny it then fails. His words: "It isn't a big error. It is
+ * the kind of small error that makes a man check the big ones."
+ *
+ * This is the SAME class of defect as the four-value gap this module was written for, one level
+ * down: rounding applied per call site rather than once over the whole set. So it is fixed the same
+ * way — the page asks for the set, and the set is consistent by construction.
+ *
+ * THE REMAINDER GOES ON THE LARGEST, deliberately, because that is what `computeValuation` already
+ * does with the raw remainder. Two different reconciliation rules for the same quantity would be a
+ * fork of the arithmetic, and spreading a few hundred dollars across every line would move numbers
+ * he has no way to check instead of the one line best able to absorb it.
+ *
+ * ⚠️ RENDER `upliftText`, NOT `formatMoneyApprox(uplift)`. The reconciled figure carries the
+ * remainder, so it is no longer guaranteed to sit at 3 significant figures — passing it back through
+ * the approximate formatter would re-round it and reintroduce the very gap this closes.
+ */
+export function displayedUplifts<T extends { uplift: number }>(
+  factors: readonly T[],
+  displayedGap: number,
+  currency: string = DEFAULT_CURRENCY,
+): Array<T & DisplayedUplift> {
+  const rounded = factors.map((f) => approxNumber(Number(f.uplift) || 0));
+  const sum = rounded.reduce((total, n) => total + n, 0);
+  const remainder = displayedGap - sum;
+
+  // Largest by rounded value — the line with the most room to carry the difference unnoticed.
+  let largest = -1;
+  for (let i = 0; i < rounded.length; i += 1) {
+    if (rounded[i]! > 0 && (largest === -1 || rounded[i]! > rounded[largest]!)) largest = i;
+  }
+  if (remainder !== 0 && largest !== -1) {
+    rounded[largest] = Math.max(0, rounded[largest]! + remainder);
+  }
+
+  return factors.map((f, i) => ({
+    ...f,
+    uplift: rounded[i]!,
+    upliftText: formatMoney(rounded[i]!, currency),
+  }));
 }
