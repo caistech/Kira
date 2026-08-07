@@ -28,6 +28,51 @@ import { computeValuation, MODEL_VERSION } from '../lib/valuation/model.ts'
 
 const APPLY = process.argv.includes('--apply')
 
+/**
+ * WHY THE OWNER'S NUMBER MOVED — one entry per MODEL_VERSION, and the script REFUSES to run without
+ * the current one.
+ *
+ * This was a single hardcoded string, written for the 2026-08-04 rubric and still saying so on
+ * 2026-08-08 — by which point it was not merely stale but BACKWARDS. It read "derived from the two
+ * reservation prices rather than from US sale medians"; the 08-08 change went back TO sector
+ * medians, corroborated ones. Applying the rescore would have stamped every owner's permanent
+ * history with a description of the previous change, asserting the opposite of what happened.
+ *
+ * The reason is the only part of a rescue like this that a human ever reads. A snapshot row with
+ * good numbers and a wrong explanation is worse than no snapshot, because it is quoted back with
+ * confidence — and it survives precisely because nobody re-reads a string that already existed.
+ *
+ * So: keyed by version, and a missing key is a HARD STOP rather than a default. Whoever bumps
+ * MODEL_VERSION next cannot rescore until they have written down what changed, which is the smallest
+ * possible mechanism that makes remembering unnecessary.
+ */
+const RESCORE_REASONS = {
+  '2026-08-04.1':
+    'Rescored onto the 2026-08-04 rubric. The range is now derived from the two reservation ' +
+    'prices a deal is bounded by — a seller will not go below 1.5x, a buyer will not exceed 5x ' +
+    'and only reaches it for a business that is well run, transferable and has upside — rather ' +
+    'than from US sale medians. Same answers, re-read against a stricter rubric.',
+  '2026-08-08.1':
+    'Rescored onto the 2026-08-08 rubric. The range now runs from your own sector\'s floor to its ' +
+    'ceiling rather than one band shared by every industry, so what a business like yours actually ' +
+    'changes hands for sets both ends. Australian published guidance on the same earnings basis ' +
+    'corroborates those sector figures: a plumbing business is quoted locally at 2.0x on the tools ' +
+    'and 3.5x once it runs without the owner, and the model now reproduces that range instead of ' +
+    'pricing every trade against the same universal band. Two limits still apply on top — below ' +
+    'about 1.5x an owner keeps working the business rather than sell it, and no buyer pays more ' +
+    'than five years of profit for a small one. Same answers, re-read.',
+}
+
+const RESCORE_REASON = RESCORE_REASONS[MODEL_VERSION]
+if (!RESCORE_REASON) {
+  console.error(
+    `No rescore reason recorded for MODEL_VERSION ${MODEL_VERSION}.\n` +
+      `Add one to RESCORE_REASONS in this script before rescoring — it is written into every\n` +
+      `owner's valuation history and is the only part of it a person reads.`,
+  )
+  process.exit(2)
+}
+
 function env(name) {
   try {
     const line = readFileSync('.env.local', 'utf8')
@@ -129,11 +174,7 @@ for (const row of rows) {
     sde_multiple: next.sdeMultiple,
     readiness: next.readiness,
     readiness_potential: next.readinessPotential,
-    reason:
-      'Rescored onto the 2026-08-04 rubric. The range is now derived from the two reservation ' +
-      'prices a deal is bounded by — a seller will not go below 1.5x, a buyer will not exceed 5x ' +
-      'and only reaches it for a business that is well run, transferable and has upside — rather ' +
-      'than from US sale medians. Same answers, re-read against a stricter rubric.',
+    reason: RESCORE_REASON,
   })
   if (snapErr) console.log(`    snapshot insert failed: ${snapErr.message}`)
 }
