@@ -261,9 +261,20 @@ const OWNER_DEPENDENT_FLOOR = SELLER_RESERVATION_FLOOR;
  */
 const DOCUMENTATION_UPLIFT = 0.75;
 
-/** Nothing may sit outside the cited source's own range. */
-const SDE_FLOOR = 1.5;
-const SDE_CAP = 6.6;
+// SDE_FLOOR (1.5) and SDE_CAP (6.6) — the cited source's own range — were REMOVED on 2026-08-07.
+// They clamped `centreMultiple`, a size-adjusted sector median that was computed, immediately
+// `void`ed, and used by nothing. Dead since the 08-04 rewrite made the band absolute.
+//
+// Deleted rather than left harmless because of what it implied to a reader: live code multiplying
+// the sector median by the size adjustment reads as though the foreign dataset still feeds the
+// number, which is the exact claim the 08-04 rewrite exists to retire. An auditor reads the code
+// before the comment above it.
+//
+// The band it guarded is 1.5x–5.0x, already inside 1.5–6.6, so the clamp could never bind. Sector
+// context still reaches the copy layer as the RAW `sdeMultiple` on the result (see the return),
+// which is what "a typical business in your sector changes hands around Nx" needs — unadjusted, and
+// never an input to the valuation.
+
 /** Below this SDE a business is harder to sell — fewer buyers, more key-person risk. */
 const SIZE_ANCHOR = 250_000;
 /** Multiplicative adjustment to the CENTRE. Below the anchor it discounts; above, it adds. */
@@ -401,10 +412,6 @@ export function computeValuation(inputs: ValuationInputs): ValuationResult {
     BUYER_CEILING,
   );
   const spread = Math.max(0, ceilingMultiple - floorMultiple);
-
-  /** Sector context for the copy layer only — never an input to the number above. */
-  const centreMultiple = clamp(sdeMultiple * sizeAdjustment(inputs.annualProfit), SDE_FLOOR, SDE_CAP);
-  void centreMultiple;
 
   // TODAY is the buyer's discount, and it is allowed to be brutal — that is the honest half.
   const appliedMultipleToday = floorMultiple + readiness * spread;
