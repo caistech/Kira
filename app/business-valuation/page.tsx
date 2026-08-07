@@ -47,6 +47,7 @@ import {
 import { SECTOR_MULTIPLES } from '@/lib/valuation/sde-multiples';
 import { priceForProfit } from '@/lib/valuation/pricing';
 import { approxNumber, formatMoney, formatMoneyApprox, formatPrice, getCurrency, CURRENCIES, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
+import { displayedFigures, displayedUplifts } from '@/lib/valuation/displayed';
 import { synonymGroup, synonymSector } from '@/lib/valuation/industry-synonyms';
 import { storeValuation, VALUATION_HANDOFF_KEY } from '@/lib/valuation/share';
 import {
@@ -940,9 +941,18 @@ function ResultView({
    * two-number subtraction sitting in plain view. Being not-quite-right there is worse than being
    * wrong somewhere he cannot check.
    */
-  const displayedGap = Math.max(0, approxNumber(result.potential) - approxNumber(result.today));
+  // Derived in ONE place now (lib/valuation/displayed.ts) rather than here, because the dashboard
+  // and /plan needed the identical derivation and each had grown its own — which is how one figure
+  // came to have four values.
+  const displayedGap = displayedFigures({ worthToday: result.today, worthPotential: result.potential }, currency).gap;
   const noEarnings = result.today === 0 && result.potential === 0;
-  const capturable = result.factors.filter((f) => f.capturable && f.uplift > 0);
+  // Reconciled against `displayedGap` so the itemised lines add up to the headline above them —
+  // they were rounded independently and came out $500 short. Render `upliftText`, never re-format.
+  const capturable = displayedUplifts(
+    result.factors.filter((f) => f.capturable && f.uplift > 0),
+    displayedGap,
+    currency,
+  );
   const readinessPct = Math.round(result.readiness * 100);
   const rationale = buildBuyerRationale(result);
 
@@ -1112,7 +1122,7 @@ function ResultView({
                       <p className="text-sm text-stone-600 mt-1 leading-relaxed">{f.reason}</p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className="font-display font-bold text-lg text-pink-600">+{money(f.uplift)}</p>
+                      <p className="font-display font-bold text-lg text-pink-600">+{f.upliftText}</p>
                       <p className="text-sm text-stone-400">once captured</p>
                     </div>
                   </div>

@@ -30,6 +30,7 @@ import {
   CONFIDENTIALITY_MARKER,
   CONFIRMATION_MARKER,
   TASK_LEDGER_MARKER,
+  LEAD_WITH_WHAT_YOU_HOLD_MARKER,
   type KiraFramework,
 } from './prompts';
 
@@ -44,6 +45,7 @@ const REQUIRED_IN_BUSINESS: Array<[string, string]> = [
   ['confidentiality', CONFIDENTIALITY_MARKER],
   ['confirmation loop', CONFIRMATION_MARKER],
   ['task ledger', TASK_LEDGER_MARKER],
+  ['lead with what you hold', LEAD_WITH_WHAT_YOU_HOLD_MARKER],
 ];
 
 const framework: KiraFramework = {

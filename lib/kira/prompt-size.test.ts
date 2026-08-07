@@ -45,7 +45,7 @@ const framework = (journeyType: JourneyType): KiraFramework => ({
 // CHECKING WHAT YOU HAVE GOT RIGHT, THE ADDRESS IS THE ONE THING YOU MUST CHECK, READING THEIR
 // ACCOUNTS) sitting thousands of characters away from the tool it describes. Moving each into its
 // tool's description is the next tranche, and should take this under 15k.
-const BUDGET = { business: 37_000, personal: 12_500 } as const;
+const BUDGET = { business: 37_300, personal: 12_500 } as const;
 
 // ⚠️ THE BUSINESS CEILING WENT BACK UP, from 28,000 to 36,000, and that is not backsliding.
 //
@@ -83,6 +83,26 @@ const BUDGET = { business: 37_000, personal: 12_500 } as const;
 // The honest read: ~9,100 tokens is still large, instruction dilution is still open, and this makes
 // it marginally worse. The relocation tranche described above is the way back down, and it is now
 // 1,000 characters more overdue.
+//
+// ⚠️ RAISED 37,000 → 37,300 on 2026-08-07 for "LEAD WITH WHAT YOU HOLD" in the framework section.
+// Measured 37,155 with it in — the rule itself is 356 characters, and the previous ceiling had 201
+// of headroom, so this is 300 bought for a four-line instruction.
+//
+// WHAT IT BUYS. The fresh-signup run proved the memory seed works: first message on a brand-new
+// account, she named the trade, the tenure, the eleven tradesmen, the two builders, and that he had
+// not told staff or family. She opened it with "I don't have any additional stored details about
+// your business beyond what you initially shared when we started: ..." — true, and rescued by the
+// colon, and read by the owner as very nearly the exact sentence the seed was built to eliminate.
+// Ordering, not content: the caveat cost nothing to move and it was the whole first impression.
+//
+// WHY NOT TRIM SOMETHING ELSE INSTEAD. It was already trimmed — the first draft ran 940 characters
+// and its rationale now sits in a comment in prompts.ts, leaving only what she must do. Cutting
+// further removes the operative clause (the banned openings), which is the delete-a-control mistake
+// this file names twice above.
+//
+// This is the second 300-1,000 character raise in two days. Both were controls found by a live
+// owner walkthrough, both were justified, and the trend is the point: the relocation tranche is
+// now the only thing that brings this down, and every raise makes it more overdue rather than less.
 
 describe('prompt budget', () => {
   for (const journey of ['business', 'personal'] as const) {
