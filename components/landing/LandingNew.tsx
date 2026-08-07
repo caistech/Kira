@@ -336,8 +336,8 @@ export function LandingNew() {
           <div className="mt-8 grid gap-8 sm:grid-cols-3">
             {[
               { label: 'Walk away', value: '$220k', accent: false },
-              { label: 'Today', value: '$582k', accent: false },
-              { label: 'Captured', value: '$777k', accent: true },
+              { label: 'Today', value: '$684k', accent: false },
+              { label: 'Captured', value: '$879k', accent: true },
             ].map((f) => (
               <div key={f.label} className="border-l-2 border-kira-line pl-5">
                 <p className="text-[16px] sm:text-[15px] uppercase tracking-[0.1em] text-kira-soft">{f.label}</p>

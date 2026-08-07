@@ -55,8 +55,18 @@ describe('the landing example matches the calculator', () => {
   it('produces the walk-away and today figures the page is built around', () => {
     // If these drift the example itself has moved, and the test below would silently start
     // asserting a different business.
+    //
+    // ⚠️ `today` MOVED $582k -> $684k on 2026-08-08 with the sector-scaled band (MODEL_VERSION
+    // 2026-08-08.1), and this is the one edit in the file that is legitimate to make. The business
+    // is unchanged — same plumber, same $325k SDE, same $220k of gear, still entirely in his head —
+    // and `walkAway` is untouched, which is the check that it is the same business.
+    //
+    // What moved is what the market pays him: 1.79x -> 2.10x. Under the flat band an owner-dependent
+    // plumbing business was priced BELOW anything Australian guidance describes (published floor
+    // 2.0x, "on the tools, one residential builder"). The overclaim at the top of the band had a
+    // matching under-claim at the bottom, and this example was sitting in it.
     expect(short(v.walkAway)).toBe('$220k');
-    expect(short(v.today)).toBe('$582k');
+    expect(short(v.today)).toBe('$684k');
   });
 
   for (const page of PAGES) {

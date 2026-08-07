@@ -313,7 +313,14 @@ describe('buyer rationale — narrative consistency', () => {
       clientTrend: 'shrinking',
     });
     expect(worst.readiness).toBe(0);
-    expect(worst.appliedMultipleToday).toBeCloseTo(1.5, 4);
+    // ⚠️ UPDATED 2026-08-08 with the sector-scaled band. This used to assert EXACTLY 1.5x, which was
+    // a property of the flat band rather than the invariant the test is named for. The floor is now
+    // the SECTOR's floor — for HVAC (2.8 median) that is 2.1 — and 1.5x is the hard guard UNDER it,
+    // binding only where a sector is cheap enough to fall through. The invariant survives; the
+    // equality was incidental, and re-asserting it would have meant reverting the change.
+    expect(worst.appliedMultipleToday).toBeGreaterThanOrEqual(1.5);
+    expect(worst.appliedMultipleToday).toBeCloseTo(worst.floorMultiple, 4);
+    expect(worst.floorMultiple).toBeCloseTo(2.8 * 0.75, 4);
 
     const bestPossible = computeValuation({
       ...base,
@@ -327,13 +334,39 @@ describe('buyer rationale — narrative consistency', () => {
       clientTrend: 'expanding',
     });
     expect(bestPossible.readiness).toBe(1);
-    expect(bestPossible.appliedMultipleToday).toBeCloseTo(5.0, 4);
+    // Same correction at the top end: 5.0x is the hard buyer ceiling OVER the sector ceiling, not
+    // the number every perfect business reaches. A perfect HVAC business reaches its own sector's
+    // top (~4.06x at $500k), which is inside the 2.5-4.0x published AU range for trades. Only a
+    // sector whose median is rich enough pushes into the 5.0x cap.
+    expect(bestPossible.appliedMultipleToday).toBeLessThanOrEqual(5.0);
+    expect(bestPossible.appliedMultipleToday).toBeCloseTo(bestPossible.ceilingMultiple, 4);
+
+    // The hard cap still binds where the sector is rich enough to reach it.
+    const richSector = computeValuation({
+      ...base,
+      industry: 'Medical Billing', // 4.41 median -> 4.41 x 1.35 = 5.95, above the cap
+      annualProfit: 500_000,
+      ownerDependence: 'fully_managed',
+      systems: 'documented_team',
+      recurringRevenue: 'strong',
+      clientConcentration: 'diversified',
+      profitTrend: 'growing_strongly',
+      marginTrend: 'improving',
+      clientTrend: 'expanding',
+    });
+    expect(richSector.appliedMultipleToday).toBeCloseTo(5.0, 4);
   });
 
-  it('reaches 4x for a well-run, easily-transferred business with NO growth story', () => {
+  it('reaches near the top of its OWN sector for a well-run business with no growth story', () => {
     // The psychology the band was built from, reproduced by the arithmetic rather than asserted
-    // beside it: a buyer pays four years of profit for something he can take over that keeps
-    // earning, and the fifth year only comes with upside he believes he can add.
+    // beside it: a buyer pays close to the top of the sector for something he can take over that
+    // keeps earning, and the last stretch only comes with upside he believes he can add.
+    //
+    // ⚠️ RENAMED AND REBASED 2026-08-08. It asserted "> 4x" flat, which under the sector-scaled band
+    // asks a 2.8x-median trade business to price like a 4.4x medical-billing business. The property
+    // being tested is that excellence-without-growth gets MOST of the way up, not that every sector
+    // shares one destination — so it is now expressed as a fraction of that sector's own ceiling.
+    // For HVAC this lands ~3.84x against a published AU trades range of 2.5-4.0x.
     const flatButExcellent = computeValuation({
       ...base,
       annualProfit: 500_000,
@@ -345,8 +378,12 @@ describe('buyer rationale — narrative consistency', () => {
       marginTrend: 'stable',
       clientTrend: 'stable',
     });
-    expect(flatButExcellent.appliedMultipleToday).toBeGreaterThan(4);
-    expect(flatButExcellent.appliedMultipleToday).toBeLessThan(5);
+    const share = flatButExcellent.appliedMultipleToday / flatButExcellent.ceilingMultiple;
+    expect(share).toBeGreaterThan(0.9);
+    expect(share).toBeLessThan(1);
+    // And it stays inside what Australian guidance says a top trade business fetches.
+    expect(flatButExcellent.appliedMultipleToday).toBeGreaterThan(2.5);
+    expect(flatButExcellent.appliedMultipleToday).toBeLessThan(4.0);
   });
 
   it('itemised drivers sum EXACTLY to the gap they itemise', () => {

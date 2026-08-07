@@ -278,11 +278,11 @@ export function LandingClassic() {
                 </div>
                 <div className="rounded-2xl bg-kira-mist border border-kira-mist p-3">
                   <p className="text-sm uppercase tracking-wide text-stone-400 font-semibold">Today</p>
-                  <p className="font-display font-bold text-stone-800 text-sm mt-1">$582k</p>
+                  <p className="font-display font-bold text-stone-800 text-sm mt-1">$684k</p>
                 </div>
                 <div className="rounded-2xl bg-gradient-to-br from-kira-50 to-kira-50 border border-kira-mist p-3">
                   <p className="text-sm uppercase tracking-wide text-stone-400 font-semibold">Captured</p>
-                  <p className="font-display font-bold text-kira-600 text-sm mt-1">$777k</p>
+                  <p className="font-display font-bold text-kira-600 text-sm mt-1">$879k</p>
                 </div>
               </div>
               <p className="font-body text-center text-sm text-stone-600">

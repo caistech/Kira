@@ -126,7 +126,7 @@ const CLIENT_TREND_SCORE: Record<ClientTrend, number> = { shrinking: 0, stable: 
  *
  * Format: date of the change + a counter for same-day revisions.
  */
-export const MODEL_VERSION = '2026-08-04.1';
+export const MODEL_VERSION = '2026-08-08.1';
 
 /**
  * THE RUBRIC. Ten points, split across the three questions a buyer is actually asking.
@@ -248,6 +248,25 @@ const TOTAL_WEIGHT =
  */
 const SELLER_RESERVATION_FLOOR = 1.5;
 const BUYER_CEILING = 5.0;
+
+/**
+ * The sector median's endpoints, as fractions of the median itself.
+ *
+ * The median is the middle of businesses that ACTUALLY SOLD, at average readiness. These place the
+ * bottom and the top of that distribution around it — the "on the tools, one client" end and the
+ * "manager-run, contracted, owner off the tools" end.
+ *
+ * Calibrated against published Australian ranges rather than chosen: 0.75/1.35 on plumbing's 2.62
+ * gives 1.97-3.54 where AU guidance says 2.0-3.5, and on electrical's 2.94 gives 2.21-3.97 where it
+ * says 2.5-4.0. `au-evidence.test.ts` pins that fit, so moving either ratio without re-reading the
+ * evidence fails the suite.
+ *
+ * ⚠️ Hospitality is the known soft spot: coffee shops land 1.71-3.08 against a published 1.5-2.5,
+ * because AU hospitality carries lease risk the US median does not price. Recorded, not tuned away —
+ * a per-family correction needs better data than a broker guide.
+ */
+const SECTOR_FLOOR_RATIO = 0.75;
+const SECTOR_CEILING_RATIO = 1.35;
 
 /** Kept for the copy layer's "nothing outside a sane range" clamps. */
 const OWNER_DEPENDENT_FLOOR = SELLER_RESERVATION_FLOOR;
@@ -402,15 +421,51 @@ export function computeValuation(inputs: ValuationInputs): ValuationResult {
   // rather than an estimate: $25k profit tops out at 3.75x, $60k at 4.23x, $120k at 4.60x, and from
   // $250k up the full 5.00x is reachable.
   //
-  // The sector median is deliberately NOT the anchor any more. It informs the copy — "a typical
-  // business in your sector changes hands around Nx" — where it is useful context, rather than
-  // setting a number whose only defence was a foreign dataset.
-  const floorMultiple = SELLER_RESERVATION_FLOOR;
-  const ceilingMultiple = clamp(
-    BUYER_CEILING * sizeAdjustment(inputs.annualProfit),
-    floorMultiple,
+  // ⚠️ THE BAND IS SECTOR-SCALED AGAIN, 2026-08-08. Read this before changing either ratio.
+  //
+  // From 08-04 to 08-08 the band was UNIVERSAL — 1.5x to 5.0x for every sector alike, scaled only by
+  // profit. That was a deliberate escape from anchoring on US medians whose only defence was "an
+  // American website says so". It bought defensibility at the door and gave away the thing the
+  // sector question is for: at $300k SDE a well-run cafe and a well-run medical-billing business
+  // were both shown 4.68x — $1,405,500 — while the screen told the owner his sector set the
+  // multiple. It did not. Sector fed nothing.
+  //
+  // WHAT CHANGED IS THE EVIDENCE, not the appetite (lib/valuation/au-evidence.ts). Australian
+  // sources publishing on an SDE basis corroborate the US sector medians rather than contradicting
+  // them — plumbing 2.62 against a published AU 2.0-3.5, electrical 2.94 against 2.5-4.0,
+  // restaurants 2.26 against 1.5-2.5. The premise that sent us looking (a broker's "1-1.5x for AU
+  // trades") is not supported on this basis anywhere. So the fix for data we could not defend was
+  // never "use no data" — it was corroborated data.
+  //
+  // And the AU plumbing source describes its range in exactly this model's terms:
+  //
+  //   "on the tools, one residential builder"           -> anchored at 2.0x
+  //   "five vans, never touches a wrench, strata work"  -> buyers happily pay 3.5x
+  //
+  // A sector floor and a sector ceiling with transferability interpolating between them: our shape,
+  // independently arrived at by an Australian broker. A FLAT band cannot reproduce that, because it
+  // has discarded the sector before it starts.
+  //
+  // THE RATIOS ARE CALIBRATED TO REPRODUCE PUBLISHED RANGES, and au-evidence.test.ts fails if they
+  // drift out: 0.75 x 2.62 = 1.97 and 1.35 x 2.62 = 3.54, against a published 2.0-3.5.
+  //
+  // Two guards survive from the universal band because their reasoning is sector-independent:
+  //   SELLER_RESERVATION_FLOOR — below ~1.5x he does not sell, he keeps working it. That argument
+  //     does not soften because his sector is cheap, so it is a hard floor under the sector floor.
+  //   BUYER_CEILING — no buyer pays more than four or five years of profit for a small business,
+  //     however rich the sector median. A hard cap over the sector ceiling.
+  //
+  // Size still limits how far UP the range a business can reach and never lifts the floor: a smaller
+  // business has fewer buyers, no management layer and worse financing.
+  const sectorFloor = Math.max(SELLER_RESERVATION_FLOOR, sdeMultiple * SECTOR_FLOOR_RATIO);
+  const sectorCeiling = Math.min(
     BUYER_CEILING,
+    sdeMultiple * SECTOR_CEILING_RATIO * sizeAdjustment(inputs.annualProfit),
   );
+  // A cheap sector at a small size can push the scaled ceiling under the hard floor. Order them
+  // rather than let `spread` go negative and invert the whole band.
+  const floorMultiple = Math.min(sectorFloor, sectorCeiling);
+  const ceilingMultiple = Math.max(sectorFloor, sectorCeiling);
   const spread = Math.max(0, ceilingMultiple - floorMultiple);
 
   // TODAY is the buyer's discount, and it is allowed to be brutal — that is the honest half.

@@ -49,13 +49,15 @@ describe('AU cross-check of the US sector table', () => {
   });
 });
 
-describe('the FLAT band against Australian evidence', () => {
-  // ⚠️ THESE TESTS RECORD A KNOWN DIVERGENCE. They are not asserting the model is right; they pin
-  // the size of the gap so it cannot widen unnoticed while the decision is open.
+describe('the SECTOR-SCALED band against Australian evidence', () => {
+  // ⚠️ REWRITTEN 2026-08-08, hours after being written. These began as three tests PINNING a known
+  // divergence — the universal 1.5–5.0 band could not match sector-specific AU endpoints — and the
+  // divergence is precisely what the sector-scaled band then closed. They now assert the fix.
   //
-  // The model's band is universal — 1.5× floor to 5.0× ceiling, scaled only by profit size, with no
-  // sector input at all since 2026-08-04. Australian sources describe sector-SPECIFIC endpoints. For
-  // a well-run business in a low-multiple sector the two disagree materially.
+  // Recorded rather than quietly replaced, because "the test I wrote to describe the bug now fails"
+  // is the one moment where it is easy to edit an assertion until it passes and call it verified.
+  // The band changed on evidence; these changed to follow it, and each still fails if the fit to
+  // published Australian guidance is lost.
   const wellRun = (industry: string, annualProfit: number): ValuationInputs => ({
     industry,
     annualProfit,
@@ -69,25 +71,48 @@ describe('the FLAT band against Australian evidence', () => {
     clientTrend: 'stable',
   });
 
-  it('a well-run café is valued above the top of the published AU hospitality range', () => {
-    const r = computeValuation(wellRun('Coffee Shops', 300_000));
-    const auCeiling = 2.5;
-    expect(r.appliedMultipleToday).toBeGreaterThan(auCeiling);
-    // Pinned so the divergence cannot grow silently. ~4.7× against an AU ceiling of 2.5×.
-    expect(r.appliedMultipleToday).toBeLessThan(5.01);
-  });
-
-  it('a well-run plumbing business is valued above the top of the published AU plumbing range', () => {
+  it('a well-run plumbing business now lands INSIDE the published AU plumbing range', () => {
+    // The headline result. Was 4.68× against a published ceiling of 3.5×; now ~3.46×, inside
+    // 2.0–3.5× — a top-of-market plumbing business, which is exactly what these inputs describe.
     const r = computeValuation(wellRun('Plumbing', 300_000));
-    expect(r.appliedMultipleToday).toBeGreaterThan(3.5);
+    expect(r.appliedMultipleToday).toBeGreaterThan(2.0);
+    expect(r.appliedMultipleToday).toBeLessThanOrEqual(3.5);
   });
 
-  it('sector currently changes NOTHING in the number — the divergence has one cause', () => {
-    // Identical financials, wildly different sectors, identical valuation. This is why the flat band
-    // cannot match sector-specific AU evidence: it has thrown the sector away before it starts.
+  it('an owner-dependent trade business lands at the bottom of the AU range, not below it', () => {
+    // The other end of the same published sentence: "on the tools, one residential builder →
+    // anchored at 2.0×". Under the flat band this owner was shown 1.5×, BELOW anything AU guidance
+    // describes — the overclaim had a matching under-claim nobody had looked for.
+    const onTheTools = computeValuation({
+      ...wellRun('Plumbing', 300_000),
+      ownerDependence: 'i_am_the_business',
+      systems: 'in_my_head',
+      recurringRevenue: 'none',
+      clientConcentration: 'concentrated',
+      profitTrend: 'declining',
+      marginTrend: 'shrinking',
+      clientTrend: 'shrinking',
+    });
+    expect(onTheTools.appliedMultipleToday).toBeGreaterThanOrEqual(1.9);
+    expect(onTheTools.appliedMultipleToday).toBeLessThan(2.2);
+  });
+
+  it('sector now drives the number — the question is no longer inert', () => {
+    // Identical financials, different sectors, materially different valuations. Under the flat band
+    // these were IDENTICAL while the screen told the owner his sector set the multiple.
     const cafe = computeValuation(wellRun('Coffee Shops', 300_000));
     const billing = computeValuation(wellRun('Medical Billing', 300_000));
-    expect(cafe.today).toBe(billing.today);
-    expect(cafe.sdeMultiple).not.toBe(billing.sdeMultiple);
+    expect(billing.today).toBeGreaterThan(cafe.today);
+    expect(billing.today / cafe.today).toBeGreaterThan(1.4);
+  });
+
+  it('hospitality remains ABOVE the published AU ceiling — the known soft spot, pinned', () => {
+    // Honest residual. A well-run café lands ~3.05× against a published AU 1.5–2.5×. Sector scaling
+    // cut it from 4.68× but did not close it: AU hospitality carries lease risk and thin margins the
+    // US median does not price, and a per-family correction needs better data than a broker guide.
+    // Pinned so it cannot widen unnoticed, and so it is never mistaken for solved.
+    const r = computeValuation(wellRun('Coffee Shops', 300_000));
+    expect(r.appliedMultipleToday).toBeGreaterThan(2.5);
+    expect(r.appliedMultipleToday).toBeLessThan(3.2);
   });
 });
