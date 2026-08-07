@@ -49,7 +49,7 @@
 > | **K3a** pre-`genome_about` rows | unreachable by the guard; needs the reviewed re-classification pass |
 > | **K19** checksum-valid but fake ABN | narrower than first written — the manual box is a genuine fallback |
 > | **Owner-copy filing** | only the buyer copy has ever been filed to Drive |
-> | **`sde-multiples.ts` is US data** | an AU broker quoted 1–1.5× for trades; AU bands by niche is the highest-value input outstanding |
+> | ~~**`sde-multiples.ts` is US data**~~ | ✅ **RESOLVED 2026-08-08 — and the premise was wrong.** AU sources publishing on an **SDE basis** corroborate the US medians: plumbing 2.62 vs a published AU 2.0–3.5, electrical 2.94 vs 2.5–4.0, restaurants 2.26 vs 1.5–2.5. The 1–1.5× quote is on a different basis (EBIT/net profit after a market salary) — the same SDE-vs-EBITDA confusion as A5, arriving from outside. The real defect was the **flat band**, now sector-scaled. See `lib/valuation/au-evidence.ts`. |
 > | **`patch-agent-capabilities.mjs` must NOT be run** | it reorders sections and puts live prompts back out of step with source |
 > | **Nothing is validated by a customer** | zero stored valuations; one active subscription, the operator's own |
 >
@@ -410,7 +410,7 @@ Derived from the dependency columns, not from preference.
 6. ~~**K23** does production hold the backup's valuations~~ ✅ **observed 2026-08-06** — it does not, deliberately; **K24** discard decided the same day
 
 **Then — Dennis's calls, which gate the largest builds:**
-7. ~~**A7 / A1–A4** the multiple re-weighting and what happens to existing snapshots~~ ✅ **rebuilt 08-03, rescore-everyone decided and executed 08-04.** What replaces it in this slot is **AU sector multiples** — a data input, not a decision.
+7. ~~**A7 / A1–A4** the multiple re-weighting~~ ✅ **rebuilt 08-03, rescored 08-04, and SECTOR-SCALED 08-08** (`MODEL_VERSION 2026-08-08.1`, all 6 stored valuations rescored — every one an internal account). The AU-multiples slot is **closed, not deferred**: the evidence reversed the premise (see the row above). Residuals, both recorded and pinned by tests rather than outstanding work: hospitality still lands ~3.05× against a published AU 1.5–2.5× (AU lease risk is not in a US median), and Bars/Pubs 2.86 sits outside that range. Better data means AIBB membership — not worth buying until a broker actually challenges a figure.
 8. **B2** how the nine areas decompose
 
 **Then — the rubric build, strictly in order:**
