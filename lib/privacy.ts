@@ -24,9 +24,9 @@
 // caveat as lib/terms.ts.
 
 /** Bump on any material change. Mirrors TERMS_VERSION so the two can be reasoned about together. */
-export const PRIVACY_VERSION = '2026-07-27.1';
+export const PRIVACY_VERSION = '2026-08-08.1';
 
-export const PRIVACY_UPDATED = '27 July 2026';
+export const PRIVACY_UPDATED = '8 August 2026';
 
 /**
  * The operator. Canonical portfolio identity (portfolio-manifest.yaml `shared:` +
@@ -121,6 +121,37 @@ export const PRIVACY_SECTIONS: PrivacySection[] = [
       'That memory belongs to your account alone. Each account has its own assistant, and one user\'s memory is never visible to another.',
       'The voice conversation itself is processed by ElevenLabs, which is why they ask for your consent before a call starts. That notice is theirs and it is accurate: they are a third party processing what you say, in order to understand and reply to it.',
       'You can ask us to delete what Kira remembers without closing your account. Everything else in Kira keeps working; she simply starts again.',
+    ],
+  },
+  {
+    // The Privacy Act's automated-decision transparency requirement (APP 1.7/1.8, from the
+    // POLA Act 2024) commences 10 December 2026 and asks a privacy policy to describe the
+    // kinds of personal information used in automated decisions, the kinds of decisions
+    // made, and broadly how the process works — where a decision could reasonably be
+    // expected to significantly affect the individual's rights or interests.
+    //
+    // WE PROBABLY DO NOT MEET THAT THRESHOLD, and this section exists anyway. The rule
+    // targets decisions an organisation makes ABOUT a person that change what they can have
+    // — credit refused, an application screened out, a claim declined. Everything Kira works
+    // out is about the owner's own business, shown to the owner, and grants or denies him
+    // nothing. That is a different shape.
+    //
+    // But the product asks a man for his turnover, his profit, and often that he has not
+    // told his staff or his family — the policy says two sections up that this is the most
+    // sensitive information most owners will type into anything. Staying quiet about what
+    // the automation decides, on the grounds that a threshold is arguably not met, is
+    // trading on a technicality with exactly the reader least inclined to extend credit.
+    //
+    // The last paragraph is the one that matters and it is the reason this is cheap to say:
+    // nothing automated here decides anything about his access, his price or his standing.
+    heading: 'What Kira works out on her own',
+    paragraphs: [
+      'Software makes some judgements here without a person looking, so it is worth saying plainly what they are.',
+      'The valuation is arithmetic. Your turnover, your profit and your answers about how the business runs go into a published formula, and the same answers always produce the same figure. No AI model is involved in the number, and nobody reviews it before you see it — which is also why it is an estimate and not an offer.',
+      'The Genome scores how much of your business is written down rather than held in your head. That score is derived from what has been captured, not from any opinion about you.',
+      'What Kira remembers is chosen automatically. After a conversation she writes a short summary of what mattered and keeps that, rather than the whole exchange. You can read it and you can have it deleted.',
+      'The handover document is filtered automatically. Anything that reads as your position rather than how the business runs — what you intend, what you would accept, who you have not told — is withheld from the buyer copy. The filter is deliberately over-cautious: it would rather hold back a business detail you can add by hand than let through something that costs you money at the table.',
+      'None of this decides anything about you. No automated process here sets your price, grants or refuses you access, ranks you against another customer, or reports on you to anyone. If that ever changes, this section changes with it, before it ships.',
     ],
   },
   {
