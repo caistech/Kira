@@ -66,12 +66,38 @@ export async function POST(request: NextRequest) {
         console.error('[api/onboarding/complete] createUser failed:', createErr);
         return NextResponse.json({ error: 'Could not create account' }, { status: 500 });
       }
-      // Existing account: find it and set the chosen password so they can sign in.
-      const { data: list } = await svc.auth.admin.listUsers({ page: 1, perPage: 200 });
-      const existing = list?.users.find((u) => u.email?.toLowerCase() === email);
-      if (existing) {
-        await svc.auth.admin.updateUserById(existing.id, { password, email_confirm: true });
-      }
+
+      // THE EMAIL ALREADY HAS AN ACCOUNT. WE CHANGE NOTHING AND STOP.
+      //
+      // This branch used to find that account and set the password the caller had just typed. The
+      // email comes from `session.customer_details.email` — typed into Stripe's checkout form and
+      // never verified as belonging to whoever paid. So the sequence was: start a checkout, enter
+      // someone else's address, complete it (arrears means $0 is due today, on your own card),
+      // take `session_id` out of the success URL, POST any password. Their account, and their
+      // Genome, was then yours.
+      //
+      // On a product whose whole proposition is that an owner tells it things he has not told his
+      // staff or his family, that is the worst defect this codebase can carry. Found 2026-08-08
+      // while walking the paid path; the branch was confirmed to execute (against our own account
+      // and our own session — never against anyone else's).
+      //
+      // Nothing else is mutated either, deliberately. The valuation upsert below is keyed on
+      // `user_id` with onConflict, so letting an unverified caller through would let them overwrite
+      // a real owner's baseline; and writing `stripe_subscription_id` would detach the subscription
+      // he is actually paying for. Both are vandalism rather than disclosure, but neither is ours
+      // to risk on an unproven identity.
+      //
+      // The legitimate case this leaves is an existing owner who paid while signed out. He is NOT
+      // stuck: he signs in, or resets his password by email — which is the proof of ownership this
+      // endpoint cannot obtain and must not fake. His subscription is attached by the Stripe
+      // webhook and, failing that, by an operator from the log line below, which is why it carries
+      // the session id.
+      console.warn(
+        `[api/onboarding/complete] existing account for a completed checkout — nothing mutated. ` +
+          `session=${session_id} email=${email}. If this is a genuine repeat purchase, attach the ` +
+          `subscription by hand; if it is not, it is an attempted takeover and the account is safe.`,
+      );
+      return NextResponse.json({ ok: true, existing: true, email }, { status: 200 });
     }
 
     // The auth trigger (handle_new_auth_user) links/creates the public.users row by email.

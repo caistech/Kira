@@ -58,6 +58,20 @@ export default function OnboardingPage() {
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || 'Onboarding failed');
 
+      // THIS EMAIL ALREADY HAD AN ACCOUNT, so the server set no password (see the route — it used
+      // to, and that was an account-takeover path). Signing in with what he just typed would fail
+      // with a bare "Invalid login credentials", which is the least useful thing we could tell him.
+      // Send him to sign in, where forgot-password is one click away and proves ownership by email.
+      if (data.existing) {
+        setBusy(false);
+        setError(
+          'You already have an account with this email. Your payment is recorded — sign in with ' +
+            'your existing password, or use "Forgot password" if you need to reset it.',
+        );
+        setTimeout(() => window.location.assign('/login?next=/start%3Fjourney%3Dbusiness%26from%3Dpaid'), 4000);
+        return;
+      }
+
       // Account exists + confirmed; sign in.
       const supabase = createClient();
       const { error: signInErr } = await supabase.auth.signInWithPassword({ email: data.email, password });
