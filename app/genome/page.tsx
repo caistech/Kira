@@ -17,7 +17,11 @@
 
 import { useState } from 'react';
 import { ArrowRight, Check, FileText, Lock, ShieldCheck } from 'lucide-react';
-import { EXAMPLE_GENOME, EXAMPLE_BUSINESS, overallCoverage, type Confidence } from '@/lib/genome/example';
+import { EXAMPLE_GENOME, EXAMPLE_BUSINESS, exampleTransferability, type Confidence, type CoverageBand } from '@/lib/genome/example';
+
+// The bar is a VISUAL for the band, not a measurement. Four fixed widths, so nothing on screen
+// implies a precision the band does not carry.
+const BAND_WIDTH: Record<CoverageBand, number> = { covered: 90, building: 60, thin: 30, empty: 6 };
 
 const CONFIDENCE_LABEL: Record<Confidence, string> = {
   confirmed: 'You confirmed this',
@@ -27,7 +31,7 @@ const CONFIDENCE_LABEL: Record<Confidence, string> = {
 
 export default function GenomePage() {
   const [open, setOpen] = useState<string | null>(EXAMPLE_GENOME[0].key);
-  const overall = overallCoverage();
+  const overall = exampleTransferability();
 
   return (
     <div className="min-h-screen bg-amber-50 text-stone-800 font-body">
@@ -66,8 +70,12 @@ export default function GenomePage() {
         </section>
 
         <section className="grad-genome rounded-3xl p-8 text-white">
-          <p className="text-white/80 font-medium">On the page, not in your head</p>
-          <p className="font-display text-5xl font-bold mt-1">{overall}%</p>
+          {/* ONE METRIC, ONE SCALE, ONE NAME — see exampleTransferability().
+              This said "On the page, not in your head" over a percentage that exists nowhere in the
+              product, while the valuation and My Genome both show "Transferability /100". Two
+              numbers, both captioned as the one that matters. */}
+          <p className="text-white/80 font-medium">Transferability — the number that moves</p>
+          <p className="font-display text-5xl font-bold mt-1">{overall}<span className="text-3xl font-semibold text-white/70">/100</span></p>
           <p className="text-white/90 max-w-xl mt-4 leading-relaxed">
             This is the number that moves. Every conversation fills in a little more, and the parts still
             carried in one person&apos;s memory are named rather than glossed over — because those are exactly
@@ -89,14 +97,18 @@ export default function GenomePage() {
                     <span className="font-display font-bold text-lg block">{s.title}</span>
                     <span className="text-sm text-stone-500">{s.question}</span>
                   </span>
+                  {/* The product's own four bands, not a percentage it never produces. */}
                   <span className="flex-shrink-0 text-right">
-                    <span className="font-display font-bold text-xl">{s.coverage}%</span>
+                    <span className="font-display font-bold text-xl capitalize">{s.coverage}</span>
                     <span className="block text-xs text-stone-400">documented</span>
                   </span>
                 </button>
 
                 <div className="h-1.5 w-full bg-amber-100">
-                  <div className="h-full grad-coral" style={{ width: `${s.coverage}%` }} />
+                  <div
+                    className="h-full grad-coral"
+                    style={{ width: `${BAND_WIDTH[s.coverage]}%` }}
+                  />
                 </div>
 
                 {isOpen && (
