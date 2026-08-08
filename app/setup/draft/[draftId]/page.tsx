@@ -53,7 +53,16 @@ export default function DraftReviewPage() {
   const [authEmail, setAuthEmail] = useState<string | null>(null); // signed-in account (locks the field)
   const [emailError, setEmailError] = useState<string | null>(null); // Email validation error
   const [location, setLocation] = useState('');
-  const [journeyType, setJourneyType] = useState<'personal' | 'business'>('personal');
+  // BUSINESS, ALWAYS. The personal journey is deprecated (app/start/page.tsx resolves every
+  // ?journey= to business), and this page was the last surface still able to produce a personal
+  // agent — it defaulted to 'personal' and only corrected itself once the draft fetch returned.
+  //
+  // That is not cosmetic. A personal Kira carries the six memory tools and NONE of the eighteen
+  // business ones: no email, no Drive, no contacts. On 2026-08-05 a personal agent told a paying
+  // owner she had no connection to his Gmail, his Drive or his Xero, and then distilled that denial
+  // into his memory as a fact about his business (app/talk/page.tsx). A paying owner must not be
+  // able to reach that state by mis-tapping, and must not reach it because a fetch was slow.
+  const [journeyType, setJourneyType] = useState<'personal' | 'business'>('business');
   const [primaryObjective, setPrimaryObjective] = useState('');
   const [keyContext, setKeyContext] = useState<string[]>([]);
   const [successDefinition, setSuccessDefinition] = useState('');
@@ -77,7 +86,10 @@ export default function DraftReviewPage() {
         // Initialize form with draft data
         setUserName(data.user_name);
         setLocation(data.location);
-        setJourneyType(data.journey_type);
+        // NOT read from the draft, deliberately. A draft created before the personal journey was
+        // deprecated still carries journey_type='personal', and honouring it here would resurrect
+        // exactly the agent shape this page no longer offers. The state is initialised to
+        // 'business' above and stays there.
         setPrimaryObjective(data.primary_objective);
         setKeyContext(data.key_context || []);
         setSuccessDefinition(data.success_definition || '');
@@ -359,34 +371,12 @@ export default function DraftReviewPage() {
             />
           </div>
 
-          {/* Journey Type */}
-          <div className="bg-stone-900/50 border border-stone-700/50 rounded-2xl p-6">
-            <label className="text-stone-400 font-medium mb-3 block">Journey Type</label>
-            <div className="flex gap-4">
-              <button
-                type="button"
-                onClick={() => setJourneyType('personal')}
-                className={`flex-1 py-3 px-4 rounded-xl border transition-all ${
-                  journeyType === 'personal'
-                    ? 'bg-amber-400/20 border-amber-400/50 text-amber-400'
-                    : 'bg-stone-800/50 border-stone-600/30 text-stone-400 hover:border-stone-500'
-                }`}
-              >
-                🌟 Personal
-              </button>
-              <button
-                type="button"
-                onClick={() => setJourneyType('business')}
-                className={`flex-1 py-3 px-4 rounded-xl border transition-all ${
-                  journeyType === 'business'
-                    ? 'bg-amber-400/20 border-amber-400/50 text-amber-400'
-                    : 'bg-stone-800/50 border-stone-600/30 text-stone-400 hover:border-stone-500'
-                }`}
-              >
-                💼 Business
-              </button>
-            </div>
-          </div>
+          {/* JOURNEY TYPE — no longer a choice.
+              The toggle that stood here offered 🌟 Personal beside 💼 Business on a product that is
+              business-only. Removed rather than disabled: a greyed-out option still tells an owner
+              there is a version of this he is not getting, and there isn't one. `journeyType` is
+              pinned to 'business' in state and still travels in the create payload below, so the
+              API contract is unchanged. */}
 
           {/* Primary Objective */}
           <div className="bg-stone-900/50 border border-stone-700/50 rounded-2xl p-6">

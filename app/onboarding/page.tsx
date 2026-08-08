@@ -58,11 +58,46 @@ export default function OnboardingPage() {
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || 'Onboarding failed');
 
-      // Account exists + confirmed; sign in and open the dashboard.
+      // THIS EMAIL ALREADY HAD AN ACCOUNT, so the server set no password (see the route — it used
+      // to, and that was an account-takeover path). Signing in with what he just typed would fail
+      // with a bare "Invalid login credentials", which is the least useful thing we could tell him.
+      // Send him to sign in, where forgot-password is one click away and proves ownership by email.
+      if (data.existing) {
+        setBusy(false);
+        setError(
+          'You already have an account with this email. Your payment is recorded — sign in with ' +
+            'your existing password, or use "Forgot password" if you need to reset it.',
+        );
+        setTimeout(() => window.location.assign('/login?next=/start%3Fjourney%3Dbusiness%26from%3Dpaid'), 4000);
+        return;
+      }
+
+      // Account exists + confirmed; sign in.
       const supabase = createClient();
       const { error: signInErr } = await supabase.auth.signInWithPassword({ email: data.email, password });
       if (signInErr) throw signInErr;
-      window.location.assign('/dashboard?welcome=1');
+
+      // STRAIGHT INTO SETTING HER UP, not onto the dashboard.
+      //
+      // Paying does not create an agent — /api/onboarding/complete makes the account, links the
+      // users row, writes the valuation and stops. Agents are only ever created from an approved
+      // draft (POST /api/kira/create), so an owner who lands on /dashboard has no Kira, and the
+      // dashboard's "Talk to Kira" button silently falls back to /start (dashboard:107). Walked
+      // 2026-08-08 on a real payment: kira_agents = 0 rows.
+      //
+      // Every previous attempt at this fixed the ROUTING — which door the button opens — and the
+      // door was never the problem: there was nothing behind any of them. So the paid path now
+      // leads INTO the flow that makes her, and the fallback stops being how anyone gets there.
+      //
+      // Deliberately NOT `ensureUserAgent` at this point, though it is the canonical one-agent-per-
+      // user call and is used nowhere in this repo. Two reasons: an agent provisioned here has no
+      // brief, so she would know nothing about his business on the first screen he sees after
+      // paying — and the seeded first message is the thing that made the 2026-08-07 fresh-signup
+      // test pass, where she named his trade, his 35 years and his two builders. And
+      // /api/kira/create makes a NEW agent per draft (create/route.ts:11), so provisioning here
+      // would hand him a second one the moment he finished the brief — the duplicate-agent state
+      // D2 recorded, where which agent an owner gets is decided by a name collision.
+      window.location.assign('/start?journey=business&from=paid');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
       setBusy(false);
@@ -97,7 +132,11 @@ export default function OnboardingPage() {
             <h1 className="font-display text-2xl font-bold text-center mb-2">You&apos;re in. Let&apos;s meet Kira.</h1>
             <p className="text-stone-600 text-center mb-6">
               {summary?.email ? <>Your account is <strong>{summary.email}</strong>. </> : null}
-              Set a password and Kira will open your Business Value Gap dashboard.
+              {/* Says where he is actually going. This promised the dashboard while the button
+                  below now opens the setup conversation — a small lie, told at the one moment he
+                  is deciding whether this thing is straight with him. */}
+              Set a password and you&apos;ll meet Kira — a short conversation so she learns how the
+              business runs. Your dashboard is waiting behind it.
             </p>
             <form onSubmit={finish} className="space-y-4">
               <PasswordInput
