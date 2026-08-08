@@ -11,10 +11,10 @@
 
 import { createSubscriptionCheckoutSession } from '@caistech/subscription-billing';
 import { getCurrentAppUser } from '@/lib/auth';
-import { formatPrice, taxSuffix } from '@/lib/valuation/currency';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getStripe, METER_EVENT_NAME, PRICE_LOOKUP_PREFIX } from '@/lib/billing';
+import { formatCheckoutPrice, gstApplies, gstTaxRateIds } from '@/lib/billing/tax';
 import { getCurrency, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { computeValuation, type ValuationInputs } from '@/lib/valuation/model';
 import { priceForProfit } from '@/lib/valuation/pricing';
@@ -51,6 +51,14 @@ export async function POST(request: NextRequest) {
     const quote = priceForProfit(inputs.annualProfit, result.gap);
     const currency = getCurrency(currencyCode);
     const base = baseUrl(request);
+
+    // GST, and the words about GST, from ONE decision. `gstApplies` is true only when an Australian
+    // rate is configured for this Stripe mode AND the buyer is being quoted in AUD, so the copy
+    // below cannot promise a tax the session does not carry. See lib/billing/tax.ts for why that is
+    // the whole design rather than a convenience.
+    const taxRateIds = gstTaxRateIds(currencyCode);
+    const taxed = gstApplies(currencyCode);
+    const priceLabel = formatCheckoutPrice(quote.monthly, currencyCode);
 
     // A gap of zero (or loss-making) has no captured value to price against - send them back.
     if (result.gap <= 0) {
@@ -94,18 +102,19 @@ export async function POST(request: NextRequest) {
         currency: currency.code,
         unitAmount: Math.round(quote.monthly * 100),
         interval: 'month',
-        // THE TAX QUALIFIER TRAVELS ONTO THE CHECKOUT PAGE.
+        // THE TAX QUALIFIER TRAVELS ONTO THE CHECKOUT PAGE — AND IS NOW TRUE.
       //
-      // Every price surface in the product carries "+ GST" except the one that actually takes the
-      // money: Stripe rendered "A$999.00 per unit" with no qualifier anywhere on the page. A tester
-      // flagged it as the single place the number matters, and he is right — this is the figure a
-      // business buyer reads as the amount leaving his account.
+      // Every price surface in the product carried "+ GST" except the one that actually takes the
+      // money, so this line was added to put the qualifier where the figure is. It was still a
+      // claim: there was no tax rate anywhere in the system, and the invoice would have carried no
+      // GST at all. `taxRateIds` below is the half that makes the sentence real, and `taxed` is
+      // what stops it being printed when it is not.
       //
-      // It goes in the PRODUCT NAME because Stripe renders that beside the amount; the alternative
-      // is Stripe Tax, which is a real configuration decision rather than a copy fix. The suffix
-      // follows the buyer's currency (taxSuffix), so it says GST for an Australian and VAT for
-      // someone in London instead of hardcoding the local word.
-      productName: `Kira Business Plan — ${quote.label} (${taxSuffix(currencyCode)})`,
+      // It goes in the PRODUCT NAME because Stripe renders that beside the amount. The qualifier is
+      // only ever "+ GST" here — not `taxSuffix`, which follows the buyer's currency and would say
+      // "+ VAT" to someone quoted in pounds, naming a tax we are not registered to collect and do
+      // not add to the session.
+      productName: `Kira Business Plan — ${quote.label}${taxed ? ' (+ GST)' : ''}`,
         // THE FIGURE, IN WORDS, BESIDE THE FIGURE STRIPE RENDERS.
         //
         // Putting the tax suffix in the product NAME was the first attempt and it did not work,
@@ -120,8 +129,24 @@ export async function POST(request: NextRequest) {
         // available WITHOUT a package change: @caistech/subscription-billing does not accept
         // `custom_text`, and adding it means a publish plus every consumer bumped. If this proves
         // insufficient in front of a real buyer, that — or Stripe Tax — is the next step.
+        // ⚠️ THIS ONLY REACHES BANDS WHOSE STRIPE PRODUCT DOES NOT EXIST YET. `ensureMeteredPrice`
+        // is idempotent on the lookup key, and Stripe refuses to update a Product it auto-created,
+        // so the description is frozen at whatever the FIRST session for a band set — see the
+        // PRICE_LOOKUP_PREFIX note in lib/billing/arrears.ts, which exists because a tax-suffix fix
+        // sat inert for a week and was recorded as a copy problem the whole time.
+        //
+        // The Growth band already exists under `kira-gst`, so the new GST sentence will NOT appear
+        // there. That is deliberate rather than overlooked: the prefix is NOT bumped for this, because
+        // the sentence is no longer the thing doing the work. With a real tax rate attached, Stripe
+        // renders the GST line itself, on the page and on every invoice — which is better evidence
+        // than a sentence claiming it. Bands not yet minted get the fuller wording for free.
+        //
+        // `productName` above is byte-identical to what it was for a taxed AUD checkout, so nothing
+        // is silently diverging from the frozen Product either.
         productDescription:
-          `${formatPrice(quote.monthly, currencyCode)} per month, a fixed amount. Billed at the end of each month and never in advance — cancel before it falls due and that month is waived. Stripe shows "based on usage" because that is how end-of-month billing is set up.`,
+          `${priceLabel} per month, a fixed amount.` +
+          (taxed ? ' GST is added at checkout and shown on every invoice.' : '') +
+          ` Billed at the end of each month and never in advance — cancel before it falls due and that month is waived. Stripe shows "based on usage" because that is how end-of-month billing is set up.`,
       },
       // Card captured at signup. `cardAtSignup` defaults true in the package and is stated
       // explicitly because it is a commercial decision, not a default to inherit silently: without
@@ -155,10 +180,17 @@ export async function POST(request: NextRequest) {
       customText: {
         submit: {
           message:
-            `${formatPrice(quote.monthly, currencyCode)} each month. You are charged after the month ` +
-            `has finished, never in advance — cancel before then and that month is on us.`,
+            `${priceLabel} each month` +
+            (taxed ? ', plus GST' : '') +
+            `. You are charged after the month has finished, never in advance — cancel before then ` +
+            `and that month is on us.`,
         },
       },
+      // THE 10% ITSELF. Without this the three sentences above are decoration: the session is
+      // created, the card is taken, the subscription runs, and no invoice it ever generates carries
+      // GST. Applied as subscription default tax rates by the package, so RENEWALS are taxed too
+      // and not just the first invoice.
+      taxRateIds,
     });
 
     return NextResponse.json({ url: session.url });
