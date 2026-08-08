@@ -97,10 +97,14 @@ export default function GenomePage() {
                     <span className="font-display font-bold text-lg block">{s.title}</span>
                     <span className="text-sm text-stone-500">{s.question}</span>
                   </span>
-                  {/* The product's own four bands, not a percentage it never produces. */}
+                  {/* The product's own four bands, not a percentage it never produces.
+                      ⚠️ The sub-label "documented" used to sit under a percentage, where it read
+                      correctly ("78% documented"). Under a band it produced "Empty / documented" on
+                      the same card — a page contradicting itself on one line, which is exactly what
+                      a tester reported hours after this shipped. The band IS the statement; it does
+                      not need a noun under it. */}
                   <span className="flex-shrink-0 text-right">
                     <span className="font-display font-bold text-xl capitalize">{s.coverage}</span>
-                    <span className="block text-xs text-stone-400">documented</span>
                   </span>
                 </button>
 

@@ -46,7 +46,22 @@ export function CorporateFooter({ productName, extraLinks = [], theme = 'light' 
               </span>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-4 text-sm">
-              <a href="https://www.corporateaisolutions.com" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[44px] items-center hover:text-slate-900 transition-colors">corporateaisolutions.com</a>
+              {/* NOT A LINK, deliberately, until the domain is fixed.
+                  corporateaisolutions.com AND www.corporateaisolutions.com both serve a certificate
+                  issued to `*.ingress-earth.ewp.live` (the host's wildcard — the domain is parked at
+                  63.250.43.128, Dreamscape, not Vercel). A browser puts a full red "Your connection
+                  is not private" interstitial in front of it, and behind that it 404s.
+                  Verified by openssl 2026-08-08.
+
+                  This sat in the footer of EVERY page. A tester doing exactly what a cautious buyer
+                  does — checking who he is about to hand his turnover to — got a security warning
+                  from the company name at the bottom of the page. His words: "that is the single most
+                  expensive broken thing on this site, because it converts a cautious bloke doing his
+                  homework into a closed tab with no message and no clue for you that it happened."
+
+                  The name still identifies the operator, which is what the footer is for. Restore the
+                  anchor the day the certificate is valid — not before. */}
+              <span className="inline-flex min-h-[44px] items-center">corporateaisolutions.com</span>
               {VENDOR.calendly && (
                 <>
                   <span className="hidden sm:inline opacity-30">|</span>
