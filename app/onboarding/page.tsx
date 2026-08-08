@@ -118,7 +118,11 @@ export default function OnboardingPage() {
             <h1 className="font-display text-2xl font-bold text-center mb-2">You&apos;re in. Let&apos;s meet Kira.</h1>
             <p className="text-stone-600 text-center mb-6">
               {summary?.email ? <>Your account is <strong>{summary.email}</strong>. </> : null}
-              Set a password and Kira will open your Business Value Gap dashboard.
+              {/* Says where he is actually going. This promised the dashboard while the button
+                  below now opens the setup conversation — a small lie, told at the one moment he
+                  is deciding whether this thing is straight with him. */}
+              Set a password and you&apos;ll meet Kira — a short conversation so she learns how the
+              business runs. Your dashboard is waiting behind it.
             </p>
             <form onSubmit={finish} className="space-y-4">
               <PasswordInput
