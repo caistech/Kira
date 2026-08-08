@@ -41,6 +41,30 @@
       "state": "not-applicable",
       "reason": "Session cookie only, strictly necessary to keep a signed-in user signed in. No analytics, no advertising, no cross-site tracking — disclosed in the privacy policy rather than gated behind a banner. Re-declare the moment any analytics is added."
     },
+    "automated_decisions": {
+      "_doc": "Privacy Act APP 1.7/1.8 (POLA Act 2024), commencing 10 December 2026: a privacy policy must describe the kinds of personal information used in automated decision-making, the kinds of decisions made, and broadly how the process works — where a decision could reasonably be expected to SIGNIFICANTLY AFFECT the individual's rights or interests. OAIC gains infringement-notice powers, penalties to $330,000.",
+      "state": "customised",
+      "url": "/privacy",
+      "note": "Section 'What Kira works out on her own'. Disclosed although the threshold is probably NOT met — see assessment.",
+      "assessment": {
+        "threshold": "Probably out of scope. The rule targets decisions an organisation makes ABOUT a person that change what they can have (credit refused, application screened out, claim declined). Kira's automated outputs are about the OWNER'S OWN BUSINESS, shown to the owner, and grant or deny him nothing.",
+        "surfaces_reviewed": [
+          "lib/valuation/model.ts computeValuation — deterministic SDE arithmetic, no model in the path. An estimate, not a decision.",
+          "lib/genome/private.ts isOwnerPrivate — deterministic matcher withholding the owner's position from the buyer handover. Real consequence, but made in his favour.",
+          "memory distillation — chooses what is retained; readable and deletable by him.",
+          "declined_because / refusal classification — internal governance, not a decision about the user.",
+          "Genome coverage bands + Transferability /100 — score the business, shown only to him.",
+          "billing/arrears — ordinary subscription automation."
+        ],
+        "disclosed_anyway_because": "The product collects turnover, profit and frequently that the owner has not told his staff or family — the policy itself calls this the most sensitive information most owners will type into anything. Declining to describe the automation on the grounds that a threshold is arguably unmet is a technicality argued at the reader least likely to extend credit. It is also cheap: the honest disclosure is that nothing automated sets his price, access or standing.",
+        "open_for_legal_review": [
+          "Whether the small-business exemption applies to Global Buildtech Australia Pty Ltd (turnover under $3M, absent an exception). NOT DETERMINED — it decides whether this is mandatory or good practice, and it is an operator fact, not a code fact.",
+          "Whether the valuation, being an estimate the owner acts on, could be argued to 'directly support' a decision that significantly affects him."
+        ],
+        "reassess_when": "Any automated process begins to decide something ABOUT a user — pricing, eligibility, ranking against other customers, or anything reported to a third party. The privacy section commits to changing before that ships."
+      },
+      "confirmed_by": "Dennis McMahon, 2026-08-08 — pending the legal review already recorded in `review` above"
+    },
     "sender": {
       "state": "default",
       "note": "Canonical CAS identity via @caistech/email-compliance senderFromEnv(); assertCompliant() throws on a commercial send missing ABN or unsubscribe. EMAIL_SENDER_* are set in Vercel."
