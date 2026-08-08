@@ -22,13 +22,22 @@ export interface GenomeEntry {
   capturedFrom: string;
 }
 
+/** Mirrors derive.ts:186 — the product's own coverage vocabulary. */
+export type CoverageBand = 'empty' | 'thin' | 'building' | 'covered';
+
 export interface GenomeSection {
   key: string;
   title: string;
   /** The due-diligence question this section answers. */
   question: string;
-  /** 0-100. What share of this area is on the page rather than only in his head. */
-  coverage: number;
+  /**
+   * THE SAME FOUR BANDS THE PRODUCT EMITS (`derive.ts:186`), not a percentage.
+   *
+   * This was `0-100`. The real Genome has never produced a percentage for an area, so a prospect
+   * was shown "78%" here and would get "building" on his own account — the example promising a
+   * precision the product cannot deliver, on the one page he sees before he pays.
+   */
+  coverage: CoverageBand;
   entries: GenomeEntry[];
   /** Named, specific gaps — the honest half. */
   stillOnlyInYourHead: string[];
@@ -44,7 +53,7 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
     key: 'demand',
     title: 'Where the work comes from',
     question: 'Where does revenue come from, and does it depend on the owner?',
-    coverage: 78,
+    coverage: 'covered',
     entries: [
       {
         title: 'Three builders supply roughly 60% of turnover',
@@ -78,7 +87,7 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
     key: 'pricing',
     title: 'How work is priced and quoted',
     question: 'Can someone else quote a job and get the same number?',
-    coverage: 54,
+    coverage: 'building',
     entries: [
       {
         title: 'Standard hourly rates, by job type',
@@ -112,7 +121,7 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
     key: 'operations',
     title: 'How the work actually gets done',
     question: 'Does the business run without the owner on site?',
-    coverage: 41,
+    coverage: 'thin',
     entries: [
       {
         title: 'Two crews, allocated each morning by the owner',
@@ -140,7 +149,7 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
     key: 'cash',
     title: 'Money in, money out and terms',
     question: 'What do the input costs depend on, and are they portable?',
-    coverage: 83,
+    coverage: 'covered',
     entries: [
       {
         title: 'Reece account since 1996, negotiated pricing',
@@ -161,7 +170,7 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
     key: 'compliance',
     title: 'Licences, insurance and the calendar',
     question: 'What must not lapse, and who is watching it?',
-    coverage: 92,
+    coverage: 'covered',
     entries: [
       {
         title: 'Plumbing licence, public liability, workers comp — all current',
@@ -186,7 +195,7 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
     key: 'people',
     title: 'Who does the work',
     question: 'Who is critical, how long have they been with you, and who would leave on announcement?',
-    coverage: 61,
+    coverage: 'building',
     entries: [
       {
         title: 'Two of the nine are load-bearing, and only one has a contract',
@@ -212,7 +221,7 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
     key: 'assets',
     title: 'What the business owns',
     question: 'What do you own, what do you lease, and what is held in your own name?',
-    coverage: 44,
+    coverage: 'thin',
     entries: [
       {
         title: 'Four vans owned outright, one on finance until 2027',
@@ -238,7 +247,7 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
     key: 'systems',
     title: 'What is run by them, and what they can tell you',
     question: 'Where do your records live, who can reach them, and what is written down?',
-    coverage: 38,
+    coverage: 'thin',
     entries: [
       {
         title: 'Jobs are scheduled in a whiteboard photo, sent nightly',
@@ -269,7 +278,7 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
     key: 'customers',
     title: 'Who buys, and who owns the relationship',
     question: 'Revenue by customer, concentration, and who owns each relationship.',
-    coverage: 22,
+    coverage: 'empty',
     entries: [
       {
         title: 'Which customers pay and which need chasing',
@@ -297,7 +306,18 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
 ];
 
 /** Overall coverage — the headline number, and the thing that moves as the Genome fills in. */
-export function overallCoverage(sections: GenomeSection[] = EXAMPLE_GENOME): number {
+/**
+ * The example's headline number, in THE PRODUCT'S metric.
+ *
+ * This was `overallCoverage` — the mean of nine invented percentages, rendered as "X%" under
+ * "On the page, not in your head" and captioned "This is the number that moves". The product's
+ * actual headline is **Transferability /100** (business-valuation:1094, my-genome:86), so the one
+ * page a prospect sees before paying taught him a second scale that does not exist, and then his
+ * own account showed him a different number under a different name. Same metric, same scale,
+ * DERIVED from the bands rather than asserted beside them.
+ */
+export function exampleTransferability(sections: GenomeSection[] = EXAMPLE_GENOME): number {
   if (!sections.length) return 0;
-  return Math.round(sections.reduce((sum, s) => sum + s.coverage, 0) / sections.length);
+  const points: Record<CoverageBand, number> = { covered: 100, building: 66, thin: 33, empty: 0 };
+  return Math.round(sections.reduce((sum, s) => sum + points[s.coverage], 0) / sections.length);
 }

@@ -33,7 +33,7 @@
 // two different fictional businesses read as marketing; one business followed through time reads as
 // a record.
 
-import { overallCoverage } from './example';
+import { exampleTransferability } from './example';
 
 export interface Beat {
   when: string;
@@ -58,9 +58,12 @@ export interface Beat {
   cta?: { label: string; href: string };
 }
 
+// The timeline's three beats, on the SAME scale as everything else now: Transferability /100.
+// The month-six figure is DERIVED from the example's bands rather than asserted, so the story and
+// the example can never drift apart — which they would have done the moment either was edited.
 export const WEEK_ONE_COVERAGE = 12;
 export const MONTH_THREE_COVERAGE = 34;
-export const MONTH_SIX_COVERAGE = overallCoverage();
+export const MONTH_SIX_COVERAGE = exampleTransferability();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The owner — second person throughout

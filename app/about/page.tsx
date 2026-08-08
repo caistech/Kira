@@ -28,7 +28,13 @@ export default function AboutPage() {
           </a>
           <div className="flex items-center gap-6">
             <a href="/" className="font-body text-stone-600 hover:text-pink-500 transition-colors font-medium">Home</a>
-            <a href="/start" className="font-display gradient-sunny text-stone-800 px-5 py-2.5 rounded-full text-sm font-bold hover-pop shadow-md">Try Kira Free</a>
+            {/* NOT "Try Kira Free". There is no free tier and no trial — the plan is $999 + GST a
+                month, billed in ARREARS, which is a different promise and a better one: the month
+                is worked before it is charged, and cancelling before it falls due waives it.
+                lib/faq.ts was corrected for this in ad6e475 and c0a53ac ("one billing model on
+                every surface") missed this page, which is how a free-trial promise outlived the
+                free trial by weeks on a public URL. */}
+            <a href="/business-valuation" className="font-display gradient-sunny text-stone-800 px-5 py-2.5 rounded-full text-sm font-bold hover-pop shadow-md">See what it&apos;s worth</a>
           </div>
         </div>
       </nav>
