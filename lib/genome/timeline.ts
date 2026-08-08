@@ -96,10 +96,21 @@ export const ICP_BEATS: Beat[] = [
     scene: 'phone',
     narration:
       "Before any of it — a few things I can't do. I can't sit in the background and listen; you have " +
+      // SCOPED, because the unqualified version was contradicted on the same screen.
+      //
+      // This said "nobody at our end reads what you tell me". Three slides down the same page, a
+      // question typed into the Ask-Kira box was answered with "your question has gone to a person…
+      // Dennis reads these himself" — and a tester had BOTH sentences in one browser window at once
+      // (screenshot 26-carousel-after-start.png). His words: "one of them is wrong and I don't know
+      // which, and the one that reassures me is the one I now can't believe."
+      //
+      // Both were true of different things: the Genome conversation is private; a question typed into
+      // a marketing widget is a message to a human. The promise now says WHICH, so the two cannot
+      // collide again. Do not un-scope this to make it read stronger — the strength was the problem.
       "to open a conversation and press the button. I don't read your email. And nobody at our end " +
-      "reads what you tell me. I'd rather you heard that from me than found it out later.",
+      "reads your conversations with me. I'd rather you heard that from me than found it out later.",
     caption:
-      'What I cannot do: no background listening, no reading your email, and nobody at our end reads your conversations.',
+      'What I cannot do: no background listening, no reading your email, and nobody at our end reads your conversations with me.',
   },
   {
     when: 'Week one',

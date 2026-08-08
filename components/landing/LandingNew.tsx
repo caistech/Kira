@@ -324,6 +324,52 @@ export function LandingNew() {
                 }
               }}
             />
+
+            {/* THE ANSWER GOES WHERE HE TYPED.
+                This acknowledgement used to be a `fixed bottom-4 right-6` toast. A tester typed his
+                question at the top-left of a 1440 screen, watched the box clear, saw nothing appear,
+                and concluded it had gone nowhere — the reply was 800px across and 340px down, which
+                he described as "a different part of the room". He only found it later, by accident,
+                while scrolling. Inline, directly under the control he used. */}
+            {askState !== 'idle' && (
+              <div
+                role="status"
+                aria-live="polite"
+                className="mt-4 rounded-md border border-kira-line bg-white px-4 py-3 text-[16px] leading-[1.5] text-kira-dark"
+              >
+                {askState === 'sending' && 'Sending your question…'}
+                {askState === 'sent' && (
+                  <>
+                    {/* WHAT THIS MUST NOT DO, learned the hard way:
+                        (1) promise a reply — it used to say "Dennis reads these himself and will come
+                        back to you" while never asking for an address, and the tester read that as
+                        "they have some way of reaching me I was not told about", which is the single
+                        most frightening reading available to a man who has told nobody he is selling;
+                        (2) contradict the walkthrough three slides above, which says nobody at our end
+                        reads your conversations — that slide is now scoped to conversations with Kira
+                        (timeline.ts), and this says plainly what happens to a question typed HERE. */}
+                    <strong className="font-semibold">Got it — and I should be straight with you.</strong>{' '}
+                    There is no microphone here, so this did not reach Kira. It went to a question list
+                    that one person reads: Dennis, who built this. He cannot reply, because you have not
+                    given him an address and this page does not ask for one — nothing about you was
+                    recorded beyond the question itself.{' '}
+                    <a className="font-medium text-kira-600 underline" href="mailto:dennis@corporateaisolutions.com">
+                      Email him directly
+                    </a>{' '}
+                    if you want an answer, or read the questions below — most people ask what you just asked.
+                  </>
+                )}
+                {askState === 'error' && (
+                  <>
+                    That did not send. Nothing was lost on your side — email{' '}
+                    <a className="font-medium text-kira-600 underline" href="mailto:dennis@corporateaisolutions.com">
+                      dennis@corporateaisolutions.com
+                    </a>{' '}
+                    and it will reach the same place.
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -685,31 +731,8 @@ export function LandingNew() {
               see "MEET HER" above. A corner popup in the footer was the wrong shape for the thing
               the whole page is selling. */}
 
-          {askState !== 'idle' && (
-            <div
-              role="status"
-              aria-live="polite"
-              className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-sm rounded-md border border-kira-line bg-white px-4 py-3 text-[16px] sm:text-[15px] leading-[1.5] text-kira-dark shadow-lg sm:left-auto sm:right-6 sm:mx-0"
-            >
-              {askState === 'sending' && 'Sending your question…'}
-              {askState === 'sent' && (
-                <>
-                  <strong className="font-semibold">Got it.</strong> Voice needs a microphone and this
-                  browser has not given one, so your question has gone to a person rather than to Kira.
-                  Dennis reads these himself and will come back to you.
-                </>
-              )}
-              {askState === 'error' && (
-                <>
-                  That did not send. Nothing was lost on your side — email{' '}
-                  <a className="font-medium text-kira-600 underline" href="mailto:dennis@corporateaisolutions.com">
-                    dennis@corporateaisolutions.com
-                  </a>{' '}
-                  and it will reach the same place.
-                </>
-              )}
-            </div>
-          )}
+          {/* The acknowledgement that stood here as a fixed bottom-right toast now renders inline,
+              directly under the input that produced it. See the block beside the VoiceWidget. */}
 
           <div className="mt-12 border-t border-kira-charcoal pt-8 text-[16px] sm:text-[15px] leading-[1.6] text-kira-on-dark-muted">
             <p>Global Buildtech Australia Pty Ltd · ABN 54 672 395 685 · trading as Corporate AI Solutions</p>

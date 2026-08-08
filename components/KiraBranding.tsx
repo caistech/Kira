@@ -12,7 +12,23 @@ import { Calendar, ExternalLink, Sparkles } from 'lucide-react';
 
 export const CORPORATE_AI_SOLUTIONS = {
   name: 'Corporate AI Solutions',
+  /**
+   * DISPLAY ONLY — do not use as an href. See `linkTarget` below.
+   */
   website: 'https://corporateaisolutions.com',
+  /**
+   * Where the attribution components actually point.
+   *
+   * `website` is BROKEN: both the apex and www serve a certificate issued to
+   * `*.ingress-earth.ewp.live` (parked at Dreamscape, not Vercel), so a browser shows a full
+   * "Your connection is not private" interstitial and then 404s behind it. Verified 2026-08-08.
+   * These are Kira-attribution components — "Powered by Kira", the mini attribution — so Kira's own
+   * site is the correct destination for them anyway, and it has a valid certificate.
+   *
+   * Point this back at `website` when the domain is fixed; that is a one-line change here and it
+   * covers all three call sites, which is why it is a constant and not three literals.
+   */
+  linkTarget: 'https://kiraexec.com',
   booking: 'https://calendly.com/mcmdennis',
   email: 'dennis@corporateaisolutions.com',
 };
@@ -30,7 +46,7 @@ export const KIRA_AI = {
 export function PoweredByKira({ className = '' }: { className?: string }) {
   return (
     <a
-      href={CORPORATE_AI_SOLUTIONS.website}
+      href={CORPORATE_AI_SOLUTIONS.linkTarget}
       target="_blank"
       rel="noopener noreferrer"
       className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-red-500/10 to-amber-500/10 border border-red-500/20 hover:border-red-500/40 transition-all group ${className}`}
@@ -88,7 +104,7 @@ export function KiraFooter({ className = '' }: { className?: string }) {
           </p>
           <div className="flex items-center gap-6">
             <a
-              href={CORPORATE_AI_SOLUTIONS.website}
+              href={CORPORATE_AI_SOLUTIONS.linkTarget}
               target="_blank"
               rel="noopener noreferrer"
               className="text-slate-400 hover:text-white transition-colors flex items-center gap-1"
@@ -148,7 +164,7 @@ export function KiraCTABanner({ className = '' }: { className?: string }) {
 export function KiraMiniAttribution({ className = '' }: { className?: string }) {
   return (
     <a
-      href={CORPORATE_AI_SOLUTIONS.website}
+      href={CORPORATE_AI_SOLUTIONS.linkTarget}
       target="_blank"
       rel="noopener noreferrer"
       className={`text-xs text-slate-500 hover:text-slate-300 transition-colors ${className}`}
