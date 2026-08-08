@@ -58,11 +58,32 @@ export default function OnboardingPage() {
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || 'Onboarding failed');
 
-      // Account exists + confirmed; sign in and open the dashboard.
+      // Account exists + confirmed; sign in.
       const supabase = createClient();
       const { error: signInErr } = await supabase.auth.signInWithPassword({ email: data.email, password });
       if (signInErr) throw signInErr;
-      window.location.assign('/dashboard?welcome=1');
+
+      // STRAIGHT INTO SETTING HER UP, not onto the dashboard.
+      //
+      // Paying does not create an agent — /api/onboarding/complete makes the account, links the
+      // users row, writes the valuation and stops. Agents are only ever created from an approved
+      // draft (POST /api/kira/create), so an owner who lands on /dashboard has no Kira, and the
+      // dashboard's "Talk to Kira" button silently falls back to /start (dashboard:107). Walked
+      // 2026-08-08 on a real payment: kira_agents = 0 rows.
+      //
+      // Every previous attempt at this fixed the ROUTING — which door the button opens — and the
+      // door was never the problem: there was nothing behind any of them. So the paid path now
+      // leads INTO the flow that makes her, and the fallback stops being how anyone gets there.
+      //
+      // Deliberately NOT `ensureUserAgent` at this point, though it is the canonical one-agent-per-
+      // user call and is used nowhere in this repo. Two reasons: an agent provisioned here has no
+      // brief, so she would know nothing about his business on the first screen he sees after
+      // paying — and the seeded first message is the thing that made the 2026-08-07 fresh-signup
+      // test pass, where she named his trade, his 35 years and his two builders. And
+      // /api/kira/create makes a NEW agent per draft (create/route.ts:11), so provisioning here
+      // would hand him a second one the moment he finished the brief — the duplicate-agent state
+      // D2 recorded, where which agent an owner gets is decided by a name collision.
+      window.location.assign('/start?journey=business&from=paid');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
       setBusy(false);

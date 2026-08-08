@@ -104,7 +104,14 @@ export default async function DashboardPage({
 
   // The always-on entry point: their first active business Kira, else the create flow.
   const businessAgent = list.find((a) => a.journey_type === 'business' && a.status === 'active') ?? list[0];
-  const talkHref = businessAgent ? `/chat/${businessAgent.elevenlabs_agent_id}` : '/start?journey=business';
+  // The fallback is now NAMED, not silent. An owner with no agent used to get a button reading
+  // "Talk to Kira" that quietly went to /start — a page that looks like a different product,
+  // because there was no Kira to talk to. The paid path leads into /start directly now
+  // (app/onboarding/page.tsx), so this branch is the recovery route rather than the main one, and
+  // `hasMetKira` below already switches the copy to "Start talking to Kira" when it fires.
+  const talkHref = businessAgent
+    ? `/chat/${businessAgent.elevenlabs_agent_id}`
+    : '/start?journey=business&from=paid';
 
   const val = valuation as Valuation | null;
   // APPROXIMATE, like the result page — see formatMoneyApprox.

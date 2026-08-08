@@ -237,16 +237,15 @@ export default function StartPage() {
   // Kira is business-only now — the personal journey is deprecated. Any ?journey= param (including a
   // stale ?journey=personal from an old link) resolves to business; a direct visitor picks the single
   // Business card below. Read from location directly to avoid a Suspense boundary.
+  //
+  // `from=paid` marks the owner who has just paid and is being brought here as step 2 of onboarding
+  // rather than arriving by a dashboard fallback. It changes the framing, not the flow.
+  const [fromPaid, setFromPaid] = useState(false);
   useEffect(() => {
-    const param = new URLSearchParams(window.location.search).get('journey');
-    if (param) setSelectedJourney('business');
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('journey')) setSelectedJourney('business');
+    setFromPaid(params.get('from') === 'paid');
   }, []);
-
-  const goBack = () => {
-    setSelectedJourney(null);
-    setWidgetLoaded(false);
-    setSessionStartTime(null);
-  };
 
   // Error state
   if (error) {
@@ -273,25 +272,18 @@ export default function StartPage() {
       />
 
       <div className="relative max-w-4xl mx-auto px-6 py-12">
-        {/* Back link */}
+        {/* Back link.
+            "Back to selection" used to stand here whenever a journey was set — a way back to a
+            chooser that has had one option since the personal journey was deprecated (see the
+            ?journey= resolution above). Removed: offering a way back to a choice that no longer
+            exists is how this page kept reading as the pre-Exec product. */}
         <div className="mb-8">
-          {selectedJourney ? (
-            <button
-              onClick={goBack}
-              className="text-stone-500 hover:text-stone-300 text-sm transition-colors inline-flex items-center gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to selection
-            </button>
-          ) : (
-
-            <a href="/"
-              className="text-stone-500 hover:text-stone-300 text-sm transition-colors inline-flex items-center gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to home
-            </a>
-          )}
+          <a href={fromPaid ? '/dashboard' : '/'}
+            className="text-stone-500 hover:text-stone-300 text-sm transition-colors inline-flex items-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            {fromPaid ? 'Back to your dashboard' : 'Back to home'}
+          </a>
         </div>
 
         {/* Header */}
@@ -306,18 +298,23 @@ export default function StartPage() {
             </div>
           </div>
 
+          {/* THE PAID OWNER IS BEING SET UP, NOT BROWSING.
+              He has just paid and been sent here as step 2. Naming that is the difference between
+              "one more page" and "the bit that makes her yours" — and it is the honest description,
+              because until this conversation happens he has no agent at all. */}
           <h2 className="text-3xl font-bold text-white mb-2">
-            {selectedJourney ? (
-              selectedJourney === 'personal' ? "Let's talk about life stuff" : "Tell her how the business actually runs"
-            ) : (
-              "What brings you here today?"
-            )}
+            {fromPaid
+              ? "Last step — let's set up your Kira"
+              : selectedJourney
+                ? "Tell her how the business actually runs"
+                : "What brings you here today?"}
           </h2>
           <p className="text-stone-400">
-            {selectedJourney
-              ? "Have a quick chat and Kira will create a brief for you to review."
-              : "Choose your path and let's have a conversation"
-            }
+            {fromPaid
+              ? "About three minutes. Tell her how the work actually gets done and she writes it up for you to check — nothing is kept until you approve it."
+              : selectedJourney
+                ? "Have a quick chat and Kira will create a brief for you to review."
+                : "Choose your path and let's have a conversation"}
           </p>
         </div>
 
@@ -378,7 +375,15 @@ export default function StartPage() {
                 avatarUrl="/female_avatar.jpeg"
                 coachName="Kira"
                 transcript
-                autoConnect
+                /* NO autoConnect — deliberately.
+                   With it, the widget skipped its pre-connect state and dropped the owner straight
+                   into a live session: "Mute / End / Listening for your framework…", with nothing
+                   on screen inviting him to begin. The launcher it skipped is the button every
+                   other surface in the product shows — `greeting` mode, "Talk to the assistant"
+                   (@caistech/elevenlabs-convai widget-logic.js:28). Restoring it means a 66-year-old
+                   presses something to start talking instead of finding a microphone already open,
+                   which is also the difference between a page that reads as his and one that reads
+                   as already running. */
                 getSignedUrl={getSignedUrl}
                 /* Replaces the CDN's `conversation-started` DOM listener. The draft poll scopes to
                    this id, so losing it would let one owner's poll see another's draft — the exact
