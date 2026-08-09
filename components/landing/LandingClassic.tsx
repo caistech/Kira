@@ -288,6 +288,14 @@ export function LandingClassic() {
               <p className="font-body text-center text-sm text-stone-600">
                 The <span className="font-semibold text-kira-600">$195k gap</span> is the knowledge in your head. Kira helps you capture it.
               </p>
+              {/* P5 — the same qualifier as LandingNew, and it must stay on BOTH.
+                  This example is the maximum-headroom case (readiness 0.08), and presenting it
+                  unlabelled is what made a reader's own 15.5% look like the shop window overselling
+                  the shop. Same model, different amount left to capture. */}
+              <p className="font-body text-center text-sm text-stone-500 mt-2">
+                Everything in his head: nothing written down, one big customer. That is the widest
+                the gap gets — it narrows for an owner who has already done some of it.
+              </p>
             </div>
           </div>
         </div>

@@ -402,6 +402,23 @@ export function LandingNew() {
             The <strong className="font-semibold text-kira-dark">$195k gap</strong> is the knowledge in your head.
             Kira helps you capture it.
           </p>
+
+          {/* P5 — SAY THAT THIS IS THE WIDEST CASE, because it is.
+              "The marketing example is nearly twice as flattering as what the calculator gave me."
+              He was right about the ratio and wrong about the cause: both figures come from the same
+              model, and the difference is that this plumber has NOTHING captured (readiness 0.08)
+              while he had done some of it himself (0.38). Kira's claim is proportional to what is
+              left to capture, so the owner who has already done half the work is quoted half the
+              gain — 28.5% here against 14.5% for the same business partly documented.
+              That is a feature of the model and it was being hidden by presenting the extreme as
+              "a real plumbing business". Fixing it by re-inflating the model would undo A1-A4.
+              The honest fix is to name the case, which also makes the smaller number a reader gets
+              on his own result read as consistency rather than as a bait-and-switch. */}
+          <p className="ln-measure mt-4 text-[17px] leading-[1.65] text-kira-soft">
+            This plumber has all of it in his head — nothing written down, no contracts, one big
+            customer. That is the widest the gap gets. An owner who has already documented half of it
+            sees roughly half as much, because Kira only claims what is left to capture.
+          </p>
         </div>
       </section>
 

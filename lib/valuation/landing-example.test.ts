@@ -78,6 +78,17 @@ describe('the landing example matches the calculator', () => {
       expect(read(page)).toContain(short(v.gap));
     });
 
+    it(`${page} says the example is the WIDEST case, not a typical one`, () => {
+      // P5. "The marketing example is nearly twice as flattering as what the calculator gave me."
+      // Both figures are the model's; the difference is how much was left to capture. Unlabelled,
+      // the extreme reads as typical and a reader's own smaller number reads as a bait-and-switch.
+      // ⚠️ WHITESPACE-TOLERANT ON PURPOSE. JSX prose wraps across source lines, so a literal-string
+      // match fails on formatting rather than on meaning — it did, on LandingClassic, where the
+      // phrase breaks between "widest" and "the". A check that reds on a line wrap gets deleted.
+      const html = read(page);
+      expect(html).toMatch(/widest\s+the\s+gap\s+gets/);
+    });
+
     it(`${page} does not still carry the pre-correction figures`, () => {
       // Named explicitly, because a generic "matches the model" check passes the moment someone
       // updates one figure and not the other — which is how this shipped.
@@ -86,4 +97,53 @@ describe('the landing example matches the calculator', () => {
       expect(html).not.toContain('$438k');
     });
   }
+});
+
+// ---------------------------------------------------------------------------------------------
+// P5 — the qualifier above is a CLAIM ABOUT THE MODEL, so it is checked against the model.
+//
+// "An owner who has already documented half of it sees roughly half as much." If that stops being
+// true the landing is overclaiming again, in the subtler way: correct figures, wrong impression.
+// A copy string nobody checks is exactly how the 2.25× overstatement survived, and asserting the
+// sentence exists (above) without asserting it is TRUE would repeat that with extra steps.
+// ---------------------------------------------------------------------------------------------
+
+/** The same plumber, having already done roughly half the work himself. */
+const HALF_DONE: ValuationInputs = {
+  ...EXAMPLE,
+  ownerDependence: 'heavily_involved',
+  systems: 'some',
+  recurringRevenue: 'some',
+  clientConcentration: 'moderate',
+};
+
+describe('the landing example is the widest case, and says so truthfully', () => {
+  const worst = computeValuation(EXAMPLE);
+  const halfDone = computeValuation(HALF_DONE);
+  const upliftPct = (v: { today: number; potential: number }) => (v.potential / v.today - 1) * 100;
+
+  it('is the maximum-headroom business — essentially nothing captured', () => {
+    // Every capturable factor at its worst. If someone "improves" the example to a more relatable
+    // business, the qualifier stops being true and this fails rather than the page quietly lying.
+    expect(worst.readiness).toBeLessThan(0.15);
+    expect(EXAMPLE.ownerDependence).toBe('i_am_the_business');
+    expect(EXAMPLE.systems).toBe('in_my_head');
+    expect(EXAMPLE.recurringRevenue).toBe('none');
+  });
+
+  it('quotes an owner who has done half the work roughly half the gain', () => {
+    // Measured 2026-08-09: 28.5% against 14.5%. "Roughly half" is generous to us in neither
+    // direction, so the band is wide enough to survive calibration but narrow enough to catch a
+    // model change that decouples the claim from what is left to capture.
+    const ratio = upliftPct(halfDone) / upliftPct(worst);
+    expect(ratio).toBeGreaterThan(0.35);
+    expect(ratio).toBeLessThan(0.65);
+  });
+
+  it('gives the owner who has already done the work a SMALLER gap, never a larger one', () => {
+    // The property the sentence rests on: the claim is proportional to what is left to capture.
+    // This is the load-bearing one — the two bounds above are calibration, this is the direction.
+    expect(halfDone.gap).toBeLessThan(worst.gap);
+    expect(halfDone.today).toBeGreaterThan(worst.today);
+  });
 });
