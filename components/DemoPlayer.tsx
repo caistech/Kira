@@ -169,8 +169,13 @@ export function DemoPlayer({
           not already know what it means, and this audience does not. */}
       <div className="flex flex-wrap items-center gap-3 px-5 py-4 border-t border-kira-line bg-kira-mist">
         {mode === 'auto' ? (
+          // "START" DID NOT SAY WHAT IT WOULD DO (register P16). Ray's note is that "Start" and
+          // "Hear Kira" sat as equals and he could not tell what either one was going to do — which
+          // on the product's own demo is the worst place to make a stranger guess. Both labels now
+          // name their object: one plays the walkthrough, the other turns the sound on. They were
+          // already differentiated visually (filled against outlined); the words were the problem.
           <button onClick={() => setPlaying((p) => !p)} className={`${btn} grad-coral text-white`} style={{ background: 'linear-gradient(135deg,#15803D,#166534)' }}>
-            {playing ? 'Pause' : i === 0 ? 'Start' : 'Continue'}
+            {playing ? 'Pause' : i === 0 ? 'Play the walkthrough' : 'Continue'}
           </button>
         ) : (
           <>
@@ -180,10 +185,10 @@ export function DemoPlayer({
         )}
 
         <button onClick={() => { setBlocked(false); setSound((s) => !s); }} className={`${btn} border border-stone-300`}>
-          {sound ? 'Sound off' : 'Hear Kira'}
+          {sound ? 'Turn sound off' : 'Turn sound on'}
         </button>
         {!src && sound && <span className="text-sm text-stone-500">No audio for this step yet.</span>}
-        {blocked && <span className="text-sm text-kira-700">Your browser blocked the sound — press Hear Kira again.</span>}
+        {blocked && <span className="text-sm text-kira-700">Your browser blocked the sound — press Turn sound on again.</span>}
 
         {i > 0 && (
           <button onClick={() => { setI(0); setPlaying(false); }} className="text-stone-500 underline underline-offset-4 min-h-[44px]">
