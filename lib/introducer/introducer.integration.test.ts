@@ -24,7 +24,17 @@ const canRun = Boolean(url && key);
 const EMAIL = `introducer-verify-${Date.now()}@example.invalid`;
 
 describe.skipIf(!canRun)('introducer invite mechanics (live DB)', () => {
-  const supabase = createClient(url, key, { auth: { persistSession: false } });
+  // ⚠️ CONSTRUCTED ONLY WHEN IT CAN RUN. `describe.skipIf` skips the TESTS, not the collection —
+  // vitest still evaluates this callback body, so an unconditional `createClient('', '')` threw
+  // "supabaseUrl is required" and failed the whole FILE on any machine without credentials.
+  //
+  // The header of this file has claimed since it was written that it "skips (never fails) without
+  // credentials, so CI stays green". That was the intent and the code defeated it, which nobody
+  // noticed for one reason: the suite had never run in CI. The first run after `npm test` was added
+  // to the gate turned this red, on an assertion nobody had made.
+  const supabase = canRun
+    ? createClient(url, key, { auth: { persistSession: false } })
+    : (null as unknown as ReturnType<typeof createClient>);
   let introducerId = '';
   let token = '';
 

@@ -17,11 +17,36 @@
 // The existing control was a comment reading "change one, change both". This is that comment with
 // teeth.
 
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { kiraAllTools } from './convai';
 import { toolDefsFor } from './tool-manifest.mjs';
 
 const APP = 'https://example.test';
+
+// A DUMMY SECRET, SET HERE RATHER THAN SKIPPING, AND RATHER THAN IN CI CONFIG.
+//
+// `kiraAllTools` calls `requireToolSecret`, which THROWS when the secret is unset — correct, and
+// deliberately fail-closed: the tool webhooks resolve identity from a public agent id, so serving
+// them unauthenticated would expose every user's memory. That guard is not being weakened.
+//
+// But this test is about TOOL PARITY, not about authentication. It only needs the call to return a
+// list. On a machine with a .env.local the real value satisfied it and the test passed; in CI it
+// threw, so the check that exists because the fleet was silently stripped to 15 tools TWICE was the
+// one thing not protecting the fleet.
+//
+// Skipping without a secret would have been the easy fix and the wrong one — it would leave this
+// green and unrun everywhere it matters most. Setting it in the workflow instead would fix CI and
+// leave a fresh clone broken. Set here, scoped to this file, so the invariant is checked wherever
+// the suite runs. `lib/kira/tool-secret.test.ts` owns the "unset must throw" behaviour and manages
+// its own env, so nothing here can mask it.
+// Falsy rather than nullish (`??=`), matching `requireToolSecret`'s own `if (!secret)`. An empty
+// string is a real state — it is what a declared-but-blank env var gives you — and `??=` would leave
+// it in place and throw exactly as before.
+beforeAll(() => {
+  if (!process.env.KIRA_TOOL_WEBHOOK_SECRET && !process.env.CONVAI_TOOL_SECRET) {
+    process.env.KIRA_TOOL_WEBHOOK_SECRET = 'test-tool-secret-not-a-real-credential';
+  }
+});
 
 const names = (tools: Array<{ name?: string }>): string[] =>
   tools.map((t) => t.name).filter((n): n is string => Boolean(n)).sort();
