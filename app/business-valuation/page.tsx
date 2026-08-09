@@ -21,10 +21,21 @@ import React, { useCallback, useMemo, useState, useEffect } from 'react';
 
 import {
   SDE_DEFINITION,
+  SDE_EXPANSION,
   SDE_SHORT_REMINDER,
   sdeExample,
   sdeMarginNote,
 } from '@/lib/valuation/sde-copy';
+import {
+  formatRunDate,
+  summariseAnswers,
+  type SummaryStep,
+} from '@/lib/valuation/answer-summary';
+import {
+  EXIT_TIMEFRAME_OPTIONS,
+  exitAdvice,
+  type ExitTimeframe,
+} from '@/lib/valuation/exit-timing';
 import {
   ArrowLeft,
   ArrowRight,
@@ -39,20 +50,23 @@ import {
   Sparkles,
   Printer,
   Brain,
+  Clock,
 } from 'lucide-react';
 import {
   computeValuation,
   buildBuyerRationale,
+  MODEL_VERSION,
+  type Premises,
   type ValuationInputs,
 } from '@/lib/valuation/model';
 import { SECTOR_MULTIPLES } from '@/lib/valuation/sde-multiples';
 import { sectorContext, MULTIPLE_SOURCE } from '@/lib/valuation/sector-context';
 import { FULL_RATE_PERIOD_CAP, priceForProfit } from '@/lib/valuation/pricing';
-import { netOfDebt } from '@/lib/valuation/net-of-debt';
+import { netPosition } from '@/lib/valuation/net-position';
 import { approxNumber, formatMoney, formatMoneyApprox, formatPrice, getCurrency, CURRENCIES, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { displayedFigures, displayedUplifts } from '@/lib/valuation/displayed';
 import { synonymGroup, synonymSector } from '@/lib/valuation/industry-synonyms';
-import { storeValuation, VALUATION_HANDOFF_KEY } from '@/lib/valuation/share';
+import { forSharing, storeValuation, VALUATION_HANDOFF_KEY } from '@/lib/valuation/share';
 import {
   clearValuationLocal,
   loadValuationLocal,
@@ -60,7 +74,19 @@ import {
   VALUATION_TTL_DAYS,
 } from '@/lib/valuation/persist';
 
-type Answers = Partial<ValuationInputs>;
+/**
+ * The answers held on the device.
+ *
+ * WIDER THAN `ValuationInputs` BY EXACTLY ONE FIELD, and the widening is the H3 guard's structural
+ * half. `exitTimeframe` is asked, shown back, and never travels: it is not an input to the model and
+ * it is not part of the payload that becomes a row on his account at signup. Keeping it out of
+ * `ValuationInputs` means it cannot arrive there by being passed along with everything else — see
+ * `forSharing` in lib/valuation/share.ts, and the reasoning in lib/valuation/exit-timing.ts.
+ */
+type Answers = Partial<ValuationInputs> & { exitTimeframe?: ExitTimeframe };
+
+/** Any answer key the questionnaire can write, including the device-only one. */
+type AnswerKey = keyof ValuationInputs | 'exitTimeframe';
 
 interface ChoiceOption {
   value: string;
@@ -68,10 +94,55 @@ interface ChoiceOption {
   sub?: string;
 }
 
+/**
+ * A questionnaire step.
+ *
+ * `record` IS REQUIRED ON EVERY VARIANT, and that is the mechanism rather than a convention. The
+ * result page prints a record of what the number was worked out from (register P9), derived from
+ * this array — so a question cannot be added without deciding what it is called on that document,
+ * and the record cannot silently fall behind the questionnaire. A block hand-written in JSX would
+ * have gone stale at the next question with nothing to say so; this fails to compile.
+ *
+ * `group` renders SEVERAL short questions on ONE screen. It exists because the thing Ray asked for
+ * was literally "one more screen" — and the three-minute, no-signup, one-question-at-a-time shape is
+ * the best-reviewed thing on the site, with the count quoted on the intro button. Three more steps
+ * would have taken 12 questions to 15; one group step takes 12 screens to 13.
+ */
 type Step =
-  | { id: keyof ValuationInputs; kind: 'industry'; icon: React.ReactNode; title: string; help: string }
-  | { id: keyof ValuationInputs; kind: 'money'; icon: React.ReactNode; title: string; help: string; placeholder: string }
-  | { id: keyof ValuationInputs; kind: 'choice'; icon: React.ReactNode; title: string; help: string; options: ChoiceOption[] };
+  | { id: keyof ValuationInputs; kind: 'industry'; icon: React.ReactNode; title: string; help: string; record: string }
+  | {
+      id: keyof ValuationInputs;
+      kind: 'money';
+      icon: React.ReactNode;
+      title: string;
+      help: string;
+      placeholder: string;
+      record: string;
+      /**
+       * Next stays enabled with the field empty.
+       *
+       * ⚠️ THIS WAS A LIVE DEFECT, found while adding the record block. The debt question's help says
+       * "Leave it blank if you would rather not say — everything else still works", and `canAdvance`
+       * disabled Next until a number was typed. The copy promised something the button refused, on
+       * the one question an owner is most likely to decline, in a product whose entire proposition is
+       * that it does not push.
+       */
+      optional?: boolean;
+    }
+  | { id: keyof ValuationInputs; kind: 'choice'; icon: React.ReactNode; title: string; help: string; options: ChoiceOption[]; record: string }
+  | {
+      id: 'closing';
+      kind: 'group';
+      icon: React.ReactNode;
+      title: string;
+      help: string;
+      fields: GroupField[];
+    };
+
+/** One question inside a `group` step. Same two shapes, without an icon or its own screen. */
+type GroupField =
+  | { id: AnswerKey; kind: 'money'; label: string; help: string; placeholder: string; record: string; optional?: boolean }
+  | { id: AnswerKey; kind: 'choice'; label: string; help: string; options: ChoiceOption[]; record: string; optional?: boolean };
 
 /** Where in-progress answers are parked so a reload resumes rather than restarting. */
 const PROGRESS_KEY = 'kira_valuation_progress';
@@ -90,8 +161,16 @@ export function amountInWords(n: number): string {
     return `${m % 1 === 0 ? m.toFixed(0) : m.toFixed(1)} million`;
   }
   if (n >= 1_000) {
+    // "k", NOT "thousand" (register P17). $460,000 came back as "$460 thousand", and his note is
+    // exactly right: no human writes that. "$2.4 million" is a phrase people say and write; "460
+    // thousand" is a phrase nobody writes down, so on the one line whose entire job is to look
+    // FAMILIAR enough to be checked at arm's length, it reads as machine output.
+    //
+    // "k" keeps the property the line exists for. The field above already shows "460,000", so the
+    // echo has to differ in SHAPE or it confirms nothing — and a fat-fingered zero still separates
+    // loudly: $460k against $4.6 million.
     const k = n / 1_000;
-    return `${k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)} thousand`;
+    return `${k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)}k`;
   }
   return n.toLocaleString('en-AU');
 }
@@ -99,6 +178,7 @@ export function amountInWords(n: number): string {
 const STEPS: Step[] = [
   {
     id: 'industry',
+    record: 'Sector',
     kind: 'industry',
     icon: <Building2 className="h-6 w-6" />,
     title: 'What industry is your business in?',
@@ -106,6 +186,7 @@ const STEPS: Step[] = [
   },
   {
     id: 'turnover',
+    record: 'Annual turnover',
     kind: 'money',
     icon: <TrendingUp className="h-6 w-6" />,
     title: "Roughly what's your annual turnover?",
@@ -114,14 +195,20 @@ const STEPS: Step[] = [
   },
   {
     id: 'annualProfit',
+    record: 'Annual profit (SDE)',
     kind: 'money',
     icon: <TrendingUp className="h-6 w-6" />,
-    title: "And what's your annual PROFIT?",
+    // NOT "PROFIT" in capitals (register P17). The shout was there to separate this question from
+    // the turnover one before it, and it is the wrong instrument: "I can read." The separation is
+    // carried by SDE_DEFINITION below, which says "Not turnover" in words, and by the fact that the
+    // previous screen just asked for turnover by name.
+    title: "And what's your annual profit?",
     help: SDE_DEFINITION,
     placeholder: 'e.g. 200,000',
   },
   {
     id: 'profitTrend',
+    record: 'Profit over five years',
     kind: 'choice',
     icon: <TrendingUp className="h-6 w-6" />,
     title: 'Over the last 5 years, profit has been…',
@@ -135,6 +222,7 @@ const STEPS: Step[] = [
   },
   {
     id: 'marginTrend',
+    record: 'Margins',
     kind: 'choice',
     icon: <TrendingUp className="h-6 w-6" />,
     title: 'And your margins?',
@@ -147,6 +235,7 @@ const STEPS: Step[] = [
   },
   {
     id: 'clientTrend',
+    record: 'Client base',
     kind: 'choice',
     icon: <Users className="h-6 w-6" />,
     title: 'Your client base is…',
@@ -159,6 +248,7 @@ const STEPS: Step[] = [
   },
   {
     id: 'clientConcentration',
+    record: 'Revenue spread',
     kind: 'choice',
     icon: <Users className="h-6 w-6" />,
     title: 'How spread out is your revenue?',
@@ -171,6 +261,7 @@ const STEPS: Step[] = [
   },
   {
     id: 'ownerDependence',
+    record: 'If you took three months off',
     kind: 'choice',
     icon: <UserCog className="h-6 w-6" />,
     title: 'If you took a 3-month holiday tomorrow, what happens?',
@@ -184,6 +275,7 @@ const STEPS: Step[] = [
   },
   {
     id: 'systems',
+    record: 'Processes and know-how',
     kind: 'choice',
     icon: <FileStack className="h-6 w-6" />,
     title: 'Your processes, pricing and know-how are…',
@@ -196,6 +288,7 @@ const STEPS: Step[] = [
   },
   {
     id: 'recurringRevenue',
+    record: 'Revenue locked in ahead',
     kind: 'choice',
     icon: <Repeat className="h-6 w-6" />,
     title: 'How much revenue is locked in ahead of time?',
@@ -208,6 +301,7 @@ const STEPS: Step[] = [
   },
   {
     id: 'tangibleAssets',
+    record: 'Gear, vehicles and stock',
     kind: 'money',
     icon: <Wrench className="h-6 w-6" />,
     title: 'Rough value of your gear, vehicles and stock?',
@@ -235,13 +329,103 @@ const STEPS: Step[] = [
   // this question could ship — see lib/valuation/sde-copy.ts.
   {
     id: 'businessDebt',
+    record: 'What the business owes',
     kind: 'money',
     icon: <Landmark className="h-6 w-6" />,
     title: 'Roughly what does the business owe?',
     help: 'Vehicle and equipment finance, overdraft, ATO debt, outstanding leases. A rough figure is fine. Leave it blank if you would rather not say - everything else still works.',
     placeholder: 'e.g. 380000',
+    // The help text has said "leave it blank" since this question shipped, and Next was disabled
+    // until a figure was typed. See the `optional` field on the Step type.
+    optional: true,
+  },
+  // ─── THE LAST SCREEN — the three questions that turn a valuation of the BUSINESS into what he
+  //     would actually walk away with (register P7).
+  //
+  // "The entire product is aimed at a man in his sixties and never once asks how long he's got."
+  // "WIP and retentions — real money on other people's balance sheets." "He owns the yard through
+  // his super fund; for a trade business often the biggest single question in the deal."
+  //
+  // ONE SCREEN, NOT THREE, and the shape is the decision. His own framing was "one more screen turns
+  // an indicative valuation of the business into roughly what you'd walk away with — that's the
+  // number I'd screenshot and show my wife." Three more steps would have taken the questionnaire
+  // from 12 to 15 on the strength of a fix to a complaint about it being incomplete, and the
+  // eleven-questions-in-three-minutes shape is the best-reviewed thing on the site.
+  //
+  // EACH ANSWER IS TREATED DIFFERENTLY, and the differences are the honest part:
+  //   WIP        adds to every figure, the mirror image of debt. Nothing about the model moves.
+  //   PREMISES   changes NO number at all. It buys a disclosure — the property is not in these
+  //              figures, and a buyer will normalise the rent. Pricing it would need a market rent
+  //              we do not have (see `Premises` in lib/valuation/model.ts).
+  //   TIMEFRAME  changes no number and never leaves this device (H3 — lib/valuation/exit-timing.ts).
+  {
+    id: 'closing',
+    kind: 'group',
+    icon: <Clock className="h-6 w-6" />,
+    title: 'Three last things',
+    help: 'These do not change what the business is worth. They change what you would actually be left with, and what the number above means for you.',
+    fields: [
+      {
+        id: 'workInProgress',
+        kind: 'money',
+        record: 'Work in progress and retentions',
+        label: 'Roughly how much is owed to you for work already done?',
+        help: 'Work in progress, invoices out, retentions held on jobs. Money that is yours but not in the bank yet. Leave blank if it does not apply.',
+        placeholder: 'e.g. 95000',
+        optional: true,
+      },
+      {
+        id: 'premises',
+        kind: 'choice',
+        record: 'Premises',
+        label: 'The yard, workshop or office — who owns it?',
+        help: 'Including through a self-managed super fund, which for a lot of trade businesses is where the property sits.',
+        options: [
+          { value: 'owns', label: 'I do', sub: 'Personally, or through my super fund' },
+          { value: 'rents', label: 'We rent it', sub: 'From someone else' },
+          { value: 'none', label: 'No premises', sub: 'We work out of vehicles or from home' },
+        ],
+        optional: true,
+      },
+      {
+        id: 'exitTimeframe',
+        kind: 'choice',
+        record: 'When you would like to be out',
+        label: 'How long would you like to keep running it?',
+        // The promise this makes is kept by `forSharing` in lib/valuation/share.ts, and pinned by a
+        // test. Saying it here is also the most persuasive thing on the screen for a man deciding
+        // whether to answer this honestly at all.
+        help: 'Two years and eight years are completely different advice, so it changes what we tell you below. This one answer stays on this device — it is not sent anywhere, not attached to any account, and it changes none of the figures.',
+        options: EXIT_TIMEFRAME_OPTIONS.map((o) => ({ value: o.value, label: o.label, sub: o.sub })),
+        optional: true,
+      },
+    ],
   },
 ];
+
+/**
+ * The questionnaire, flattened for the record block — group fields hoisted to the top level.
+ *
+ * Derived from `STEPS` rather than written out, so the record cannot fall behind the questions. See
+ * lib/valuation/answer-summary.ts for why that invariant is the one worth holding.
+ */
+const RECORD_STEPS: SummaryStep[] = STEPS.flatMap<SummaryStep>((step) =>
+  step.kind === 'group'
+    ? step.fields.map<SummaryStep>((f) => ({
+        id: f.id,
+        kind: f.kind,
+        record: f.record,
+        options: 'options' in f ? f.options : undefined,
+      }))
+    : [
+        {
+          id: step.id,
+          kind: step.kind,
+          record: step.record,
+          options: 'options' in step ? step.options : undefined,
+        },
+      ],
+);
 
 
 export default function BusinessValuationPage() {
@@ -352,12 +536,19 @@ export default function BusinessValuationPage() {
 
   const canAdvance = useMemo(() => {
     if (!step) return true;
+    // A group's questions are all skippable — see the `optional` flags on its fields. The screen is
+    // "three last things", not a gate, and the whole point of the timeframe question is that he is
+    // free not to answer it.
+    if (step.kind === 'group') return true;
+    // ⚠️ `optional` was added because the debt question's help promised "leave it blank" while this
+    // line disabled Next until a number was typed.
+    if ('optional' in step && step.optional) return true;
     const v = answers[step.id];
     if (step.kind === 'money') return typeof v === 'number' && !Number.isNaN(v);
     return typeof v === 'string' && v.length > 0;
   }, [step, answers]);
 
-  function setAnswer(id: keyof ValuationInputs, value: string | number) {
+  function setAnswer(id: AnswerKey, value: string | number) {
     setAnswers((a) => ({ ...a, [id]: value }));
   }
 
@@ -471,7 +662,10 @@ export default function BusinessValuationPage() {
   useEffect(() => {
     if (!isResult) return;
     storeValuation({
-      inputs: answers as ValuationInputs,
+      // ⚠️ `forSharing`, NOT the raw answers. It strips the device-only answers — today that is the
+      // exit timeframe, which must never become a row on an account (H3; see share.ts). The page
+      // keeps rendering from the full set, because the advice below is built from what this removes.
+      inputs: forSharing(answers),
       currency,
       firstName: firstName.trim() || undefined,
       // Carried so the app does not later ask him whether a valuation he ran from his own dashboard,
@@ -506,6 +700,27 @@ export default function BusinessValuationPage() {
         .grad-genome { background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 60%, #f472b6 100%); }
         .card-pop { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
         .card-pop:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(0,0,0,.08); }
+
+        /* PRINT — register P9/P11. The result page carries a print button and is built to be handed
+           to an accountant, and it printed with a sticky header floating over the first block, a
+           gradient sell panel eating a page in ink, and cards split across page breaks.
+           A document, not a screenshot of a web page. */
+        @media print {
+          /* Backgrounds and gradients cost a fortune in ink and read as grey mud on a mono printer.
+             The gap headline is a white-on-violet panel, so it needs its own treatment rather than
+             just losing the fill — otherwise the largest number on the page prints white on white. */
+          .grad-warm, .grad-coral, .grad-genome {
+            background: none !important;
+            color: #1c1917 !important;
+          }
+          .grad-genome * { color: #1c1917 !important; }
+          header { display: none !important; }
+          .card-pop { transition: none !important; }
+          /* Keep a block whole across a page break where the printer will let us. A three-figure
+             card split down the middle is the one thing worse than no record at all. */
+          section, dl, .rounded-3xl, .rounded-2xl { break-inside: avoid; page-break-inside: avoid; }
+          a[href]::after { content: none !important; }
+        }
       `}</style>
 
       {/* Slim top bar */}
@@ -809,38 +1024,13 @@ export default function BusinessValuationPage() {
             {/* Money */}
             {step.kind === 'money' && (
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 text-lg">{currencySymbol}</span>
-                <input
-                  // NOT type="number": it renders spinner arrows, and scrolling the page with
-                  // the cursor over the field silently changes the figure. A tester spotted it
-                  // before it bit him — "I'll change my turnover without knowing". inputMode
-                  // still gives the numeric keypad on a phone, so nothing is lost.
-                  type="text"
-                  inputMode="numeric"
-                  min={0}
+                <MoneyInput
+                  value={answers[step.id] as number | undefined}
+                  onChange={(n) => setAnswer(step.id, n)}
                   placeholder={step.placeholder}
-                  // GROUPED AS HE TYPES. It rendered the raw number, so 2400000 and 240000 are the
-                  // same shape on a phone at arm's length — a fat-fingered zero is a ten-fold error
-                  // with nothing on screen to catch it, and the first he'd know is a valuation out
-                  // by a factor of ten. The placeholder already promised "e.g. 2,000,000"; the
-                  // field just never honoured it. Digits are stripped on the way in, so the commas
-                  // are display only and can never reach the number.
-                  value={typeof answers[step.id] === 'number' ? (answers[step.id] as number).toLocaleString('en-AU') : ''}
-                  onChange={(e) => {
-                    const digits = e.target.value.replace(/[^\d]/g, '');
-                    setAnswer(step.id, digits === '' ? NaN : Math.max(0, Number(digits)));
-                  }}
-                  className="w-full text-lg rounded-2xl border-2 border-amber-200 focus:border-pink-400 focus:outline-none pl-9 pr-4 py-4 min-h-[52px] bg-amber-50/40"
+                  currencySymbol={currencySymbol}
                   autoFocus
                 />
-                {/* Said back in words, because commas alone still read as a shape. "$2.4 million" is
-                    the check a 66-year-old actually performs. */}
-                {typeof answers[step.id] === 'number' && (answers[step.id] as number) > 0 && (
-                  <p className="mt-2 text-base font-medium text-stone-700">
-                    {currencySymbol}
-                    {amountInWords(answers[step.id] as number)}
-                  </p>
-                )}
                 {step.id === 'annualProfit' && (() => {
                   const turnover = typeof answers.turnover === 'number' ? answers.turnover : null;
                   const profit = typeof answers.annualProfit === 'number' ? answers.annualProfit : null;
@@ -897,6 +1087,65 @@ export default function BusinessValuationPage() {
               </div>
             )}
 
+            {/* THE CLOSING GROUP — three short questions on one screen (register P7).
+                No auto-advance on its choices: on a grouped screen that would carry him off the
+                other two questions the moment he answered one. */}
+            {step.kind === 'group' && (
+              <div className="space-y-9">
+                {step.fields.map((field) => (
+                  <div key={field.id}>
+                    <label
+                      htmlFor={field.kind === 'money' ? `group-${field.id}` : undefined}
+                      className="font-display block text-lg font-bold text-stone-800"
+                    >
+                      {field.label}
+                    </label>
+                    <p className="mb-4 mt-1 text-sm leading-relaxed text-stone-500 sm:text-base">{field.help}</p>
+
+                    {field.kind === 'money' ? (
+                      <MoneyInput
+                        id={`group-${field.id}`}
+                        value={answers[field.id] as number | undefined}
+                        onChange={(n) => setAnswer(field.id, n)}
+                        placeholder={field.placeholder}
+                        currencySymbol={currencySymbol}
+                      />
+                    ) : (
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {field.options.map((opt) => {
+                          const selected = answers[field.id] === opt.value;
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => setAnswer(field.id, opt.value)}
+                              aria-pressed={selected}
+                              className={`card-pop flex min-h-[56px] items-center justify-between rounded-2xl border-2 px-4 py-3 text-left ${
+                                selected ? 'border-pink-400 bg-pink-50' : 'border-amber-200 bg-white hover:border-amber-300'
+                              }`}
+                            >
+                              <span>
+                                <span className="font-display block font-semibold text-stone-800">{opt.label}</span>
+                                {opt.sub && <span className="text-sm text-stone-500">{opt.sub}</span>}
+                              </span>
+                              <span
+                                className={`ml-3 h-5 w-5 flex-shrink-0 rounded-full border-2 ${
+                                  selected ? 'border-pink-400 bg-pink-400' : 'border-stone-300'
+                                }`}
+                              />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                <p className="text-sm leading-relaxed text-stone-500">
+                  Skip any of these you would rather not answer — the valuation works without them.
+                </p>
+              </div>
+            )}
+
             {/* Nav */}
             <div className="flex items-center justify-between mt-8">
               <button onClick={back} className="text-stone-500 hover:text-stone-800 inline-flex items-center gap-1 min-h-[44px] px-2">
@@ -920,7 +1169,24 @@ export default function BusinessValuationPage() {
         )}
 
         {/* RESULT */}
-        {isResult && result && <ResultView result={result} annualProfit={Number(answers.annualProfit) || 0} businessDebt={typeof answers.businessDebt === 'number' ? answers.businessDebt : undefined} currency={currency} planHref={planHref} firstName={firstName.trim()} matchedSector={String(answers.industry ?? "")} typedSector={industryQuery.trim()} onChangeSector={() => setStepIndex(0)} returningToApp={returningToApp} />}
+        {isResult && result && (
+          <ResultView
+            result={result}
+            annualProfit={Number(answers.annualProfit) || 0}
+            businessDebt={typeof answers.businessDebt === 'number' ? answers.businessDebt : undefined}
+            workInProgress={typeof answers.workInProgress === 'number' ? answers.workInProgress : undefined}
+            premises={answers.premises}
+            exitTimeframe={answers.exitTimeframe}
+            answers={answers}
+            currency={currency}
+            planHref={planHref}
+            firstName={firstName.trim()}
+            matchedSector={String(answers.industry ?? '')}
+            typedSector={industryQuery.trim()}
+            onChangeSector={() => setStepIndex(0)}
+            returningToApp={returningToApp}
+          />
+        )}
       </main>
 
       {/* The "Ask Kira" floating widget was REMOVED from this flow on 2026-07-27.
@@ -942,6 +1208,10 @@ function ResultView({
   result,
   annualProfit,
   businessDebt,
+  workInProgress,
+  premises,
+  exitTimeframe,
+  answers,
   currency,
   planHref,
   firstName,
@@ -959,6 +1229,14 @@ function ResultView({
    * after-debt block then does not render at all.
    */
   businessDebt?: number;
+  /** Work in progress and retentions — the mirror image of debt. Undefined when skipped. */
+  workInProgress?: number;
+  /** Who owns the premises. Changes no figure; buys a disclosure. See `Premises` in model.ts. */
+  premises?: Premises;
+  /** ⚠️ DEVICE-ONLY (H3). Selects an advice paragraph and travels nowhere. */
+  exitTimeframe?: ExitTimeframe;
+  /** Everything he answered, for the record block. Read, never re-derived. */
+  answers: Answers;
   currency: string;
   planHref: string;
   firstName?: string;
@@ -1029,10 +1307,25 @@ function ResultView({
    * rendered with `formatMoney` rather than `money` — re-approximating an already-approximated
    * number is what would reopen the gap, because the two figures can round in opposite directions.
    */
-  const net = netOfDebt(
+  const net = netPosition(
     { walkAwayLow, walkAwayHigh, today: shown.today, potential: shown.potential },
-    businessDebt,
+    { debt: businessDebt, workInProgress },
   );
+  /**
+   * The date this was run, fixed once at mount.
+   *
+   * `useState` with an initialiser rather than a plain `new Date()` in the body: a re-render (a
+   * currency change, a React strict double-render) must not move the date printed on a document.
+   * Safe against hydration because `ResultView` is only ever reached by answering the questions —
+   * the prerendered page is the intro screen, so this never renders on the server.
+   */
+  const [runDate] = useState(() => formatRunDate(new Date()));
+  /** The record of what he was asked and what he answered — register P9. */
+  const record = summariseAnswers(RECORD_STEPS, answers as Record<string, unknown>, {
+    money: (n: number) => formatMoney(n, currency),
+    typedSector,
+  });
+  const timing = exitAdvice(exitTimeframe);
   // Reconciled against `displayedGap` so the itemised lines add up to the headline above them —
   // they were rounded independently and came out $500 short. Render `upliftText`, never re-format.
   const capturable = displayedUplifts(
@@ -1197,8 +1490,18 @@ function ResultView({
               equally, so it is unchanged, and repeating it would imply otherwise. */}
           {net.applied && (
             <div className="rounded-3xl border border-stone-200 bg-white p-7 sm:p-9">
+              {/* THE HEADING NAMES BOTH LEGS, because it now has two.
+                  It used to read "After the $380,000 the business owes" — correct while debt was the
+                  only adjustment, and a false statement of the arithmetic the moment work in progress
+                  started being added. A heading that names one of two operations is the same
+                  stale-prose class as P4: nothing errors, and the sum below it stops matching the
+                  sentence above it. */}
               <p className="font-display text-xl font-bold text-stone-900">
-                After the {exact(net.debt)} the business owes
+                {net.debt > 0 && net.workInProgress > 0
+                  ? `After the ${exact(net.debt)} owed, and the ${exact(net.workInProgress)} owed to you`
+                  : net.debt > 0
+                    ? `After the ${exact(net.debt)} the business owes`
+                    : `With the ${exact(net.workInProgress)} owed to you`}
               </p>
               <dl className="mt-5 space-y-3 text-lg">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -1240,9 +1543,77 @@ function ResultView({
                   honest way to compute it from eleven questions. Saying so once is the difference
                   between his phrase and a promise we cannot keep. Note this is a different thing
                   from the ATO debt in the question above, which is money owed today. */}
+              {/* WORK IN PROGRESS IS NOT CERTAIN MONEY, and this page does not get to imply it is.
+                  On a going-concern sale, work in progress and debtors are normally settled at
+                  completion rather than sold with the business — but "normally" is a term of the
+                  contract of sale, not a law, and a retention on a job he walks away from may never
+                  be released. Stating that is the difference between adding his number and claiming
+                  it. Only shown when he gave one. */}
+              {net.workInProgress > 0 && (
+                <p className="mt-5 text-base leading-relaxed text-stone-500">
+                  The {exact(net.workInProgress)} owed to you is counted as yours, because work in
+                  progress and retentions are usually settled separately at completion rather than
+                  sold with the business. Usually, not always — it is a term of the contract, and a
+                  retention on a job you walk away from may never be released.
+                </p>
+              )}
+
               <p className="mt-5 text-base leading-relaxed text-stone-500">
                 Before whatever tax the sale itself triggers — that depends on how you are
                 structured, and it is a question for your accountant rather than a calculator.
+              </p>
+            </div>
+          )}
+
+          {/* THE PREMISES — a disclosure, not an adjustment (register P7).
+              "He owns the yard through his super fund; for a trade business often the biggest single
+              question in the deal." It is deliberately NOT priced into anything above, and the two
+              reasons point the same way: the property is a separate asset he keeps or sells on its
+              own, and the rent arrangement distorts the profit figure in a direction that needs a
+              market rent we do not have. Guessing it would corrupt the ONE input the whole model
+              runs on. See `Premises` in lib/valuation/model.ts.
+              The rent point is the one a broker would raise first and the product had never said. */}
+          {premises === 'owns' && (
+            <div className="rounded-3xl border border-stone-200 bg-white p-7 sm:p-9">
+              <p className="font-display text-xl font-bold text-stone-900">
+                The property is not in any of these figures
+              </p>
+              <p className="mt-4 text-base leading-relaxed text-stone-600">
+                You own the premises, so they are yours whether or not you ever sell the business.
+                Every figure above values the business alone — the property is a separate asset and a
+                separate decision, and rolling the two together would give you one number that
+                answers neither question.
+              </p>
+              <p className="mt-4 text-base leading-relaxed text-stone-600">
+                One thing worth knowing before a buyer raises it, because he will. What the business
+                pays you in rent changes its profit, and a buyer will re-work your figures at the
+                market rent he would have to pay — to you, or to whoever owns it next. If you have
+                been charging the business under the odds, some of the profit above is really rent
+                you have chosen not to take, and the valuation moves down when that is corrected. If
+                you have been charging over the odds, it moves up. Your accountant can tell you which
+                way in about ten minutes, and it is worth knowing before somebody else works it out
+                for you.
+              </p>
+            </div>
+          )}
+
+          {/* HOW LONG HE HAS GOT — advice, not arithmetic (register P7).
+              "The entire product is aimed at a man in his sixties and never once asks how long he's
+              got. Two years and eight years are completely different advice."
+              ⚠️ This answer never left his device. See lib/valuation/exit-timing.ts (H3). */}
+          {timing && (
+            <div className="rounded-3xl border border-stone-200 bg-white p-7 sm:p-9">
+              <h2 className="font-display text-xl font-bold text-stone-900">{timing.heading}</h2>
+              <div className="mt-4 space-y-3">
+                {timing.paragraphs.map((p) => (
+                  <p key={p.slice(0, 40)} className="text-base leading-relaxed text-stone-600">
+                    {p}
+                  </p>
+                ))}
+              </div>
+              <p className="mt-5 text-sm leading-relaxed text-stone-400">
+                You told us this on the last question. It stayed on this device — it is not attached
+                to any account, it was not sent anywhere, and it changed none of the figures above.
               </p>
             </div>
           )}
@@ -1363,11 +1734,50 @@ function ResultView({
           {returningToApp ? 'Back to Kira' : 'Start building your Business Genome'} <ArrowRight className="h-5 w-5" />
         </a>
         <div className="mt-5 flex items-center justify-center gap-5 text-sm">
-          <button onClick={() => window.print()} className="text-stone-500 hover:text-stone-800 inline-flex items-center gap-1.5 min-h-[44px]">
-            <Printer className="h-4 w-4" /> Save / print this
+          {/* THE LABEL SAYS WHAT THE BUTTON DOES (register P11).
+              "'Save' in the label suggests a file, and what I got was a printer." It opens the print
+              dialog — which is also how you save a PDF, on every browser he could be using, so the
+              honest label is both, in that order. */}
+          <button onClick={() => window.print()} className="print:hidden text-stone-500 hover:text-stone-800 inline-flex items-center gap-1.5 min-h-[44px]">
+            <Printer className="h-4 w-4" /> Print, or save as a PDF
           </button>
-          <a href="/business-valuation" className="text-stone-500 hover:text-stone-800 min-h-[44px] inline-flex items-center">Start over</a>
+          <a href="/business-valuation" className="print:hidden text-stone-500 hover:text-stone-800 min-h-[44px] inline-flex items-center">Start over</a>
         </div>
+      </div>
+
+      {/* ─── THE RECORD (register P9) ──────────────────────────────────────────────
+          "If I print this and put it in a drawer, in six months I won't know what turnover figure it
+          was based on or when I ran it."
+          This is the page that LEAVES THE BUILDING — it carries a print button and is explicitly
+          built to be handed to an accountant — and it printed three figures and an essay with no
+          record of what produced them. His own summary of the fix: a small block carrying date,
+          sector and the input figures "turns it from a screenshot into a document."
+          Derived from the questionnaire itself (lib/valuation/answer-summary.ts), so a thirteenth
+          question cannot be added without appearing here. */}
+      <div className="rounded-3xl border border-stone-200 bg-white p-7 sm:p-9">
+        <h2 className="font-display text-xl font-bold text-stone-900">What this was worked out from</h2>
+        <p className="mt-2 text-base text-stone-500">
+          Run on {runDate}
+          {firstName ? ` for ${firstName}` : ''}. Your answers, as you gave them.
+        </p>
+
+        <dl className="mt-6 divide-y divide-stone-100">
+          {record.map((row) => (
+            <div key={row.label} className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-2.5">
+              <dt className="text-base text-stone-500">{row.label}</dt>
+              <dd className="text-base font-medium text-stone-800">{row.value}</dd>
+            </div>
+          ))}
+        </dl>
+
+        {/* P10 — SDE, EXPANDED, ON THE PAGE THAT USES IT.
+            The abbreviation appears twice under the headline numbers and again in the essay, and was
+            defined on question 3, which by the time he is reading this he cannot see. Consumed from
+            the single canonical definition (lib/valuation/sde-copy.ts), not restated here. */}
+        <p className="mt-6 text-sm leading-relaxed text-stone-500">{SDE_EXPANSION}</p>
+        <p className="mt-2 text-sm leading-relaxed text-stone-500">
+          Sector multiples from {MULTIPLE_SOURCE}. Kira valuation model {MODEL_VERSION}.
+        </p>
       </div>
 
       <div className="space-y-3 text-base text-stone-500 leading-relaxed">
@@ -1383,10 +1793,16 @@ function ResultView({
               : 'This is the value of the business, before debt.'}
           </strong>{' '}
           {net.applied
-            ? 'What you would keep is shown separately above, after the figure you gave us.'
-            : "It's what the business itself is worth — not what lands in your pocket. Tell us what the business owes and we will show you that too."}{' '}
-          It doesn&apos;t account for your lease terms, working capital, or how long you&apos;ve been
-          trading, all of which a buyer will price.
+            ? 'What you would keep is shown separately above, after the figures you gave us.'
+            : "It's what the business itself is worth — not what lands in your pocket. Tell us what the business owes and what is owed to you, and we will show you that too."}{' '}
+          {/* ⚠️ THIS SENTENCE WENT STALE THE MOMENT WORK IN PROGRESS WAS APPLIED.
+              It read "It doesn't account for your lease terms, working capital, or how long you've
+              been trading" — and work in progress and retentions ARE working capital, now asked for
+              and applied above. Exactly the P4 class: the code changed, the prose beside it did not,
+              nothing errors, and the page contradicts itself for anyone reading both halves.
+              What genuinely stays outside the model is what remains. */}
+          It doesn&apos;t account for your lease terms, your stock and debtor position beyond what
+          you told us, or how long you&apos;ve been trading, all of which a buyer will price.
         </p>
         {/* ⚠️ THIS PARAGRAPH DESCRIBED A MODEL THAT NO LONGER EXISTS.
             It read "Not a dataset — the two numbers either side of a deal will actually agree to.
@@ -1445,6 +1861,68 @@ function ResultView({
           depend on many factors specific to your business and your buyer.
         </p>
       </div>
+    </div>
+  );
+}
+
+/**
+ * The money field, in ONE place.
+ *
+ * Extracted when the closing group needed a second one (register P7). Every decision below was
+ * bought with a tester finding, so a second hand-rolled input would have been a fork of four of
+ * them — and the group's field is the one asking about retentions, where an unnoticed extra zero is
+ * as expensive as it is on turnover.
+ */
+function MoneyInput({
+  value,
+  onChange,
+  placeholder,
+  currencySymbol,
+  autoFocus = false,
+  id,
+}: {
+  value: number | undefined;
+  onChange: (n: number) => void;
+  placeholder: string;
+  currencySymbol: string;
+  autoFocus?: boolean;
+  id?: string;
+}) {
+  const has = typeof value === 'number' && !Number.isNaN(value);
+  return (
+    <div className="relative">
+      <span className="absolute left-4 top-[26px] -translate-y-1/2 text-stone-400 text-lg">{currencySymbol}</span>
+      <input
+        id={id}
+        // NOT type="number": it renders spinner arrows, and scrolling the page with the cursor over
+        // the field silently changes the figure. A tester spotted it before it bit him — "I'll
+        // change my turnover without knowing". inputMode still gives the numeric keypad on a phone,
+        // so nothing is lost.
+        type="text"
+        inputMode="numeric"
+        min={0}
+        placeholder={placeholder}
+        // GROUPED AS HE TYPES. It rendered the raw number, so 2400000 and 240000 are the same shape
+        // on a phone at arm's length — a fat-fingered zero is a ten-fold error with nothing on
+        // screen to catch it, and the first he'd know is a valuation out by a factor of ten. The
+        // placeholder already promised "e.g. 2,000,000"; the field just never honoured it. Digits
+        // are stripped on the way in, so the commas are display only and can never reach the number.
+        value={has ? value.toLocaleString('en-AU') : ''}
+        onChange={(e) => {
+          const digits = e.target.value.replace(/[^\d]/g, '');
+          onChange(digits === '' ? NaN : Math.max(0, Number(digits)));
+        }}
+        className="w-full text-lg rounded-2xl border-2 border-amber-200 focus:border-pink-400 focus:outline-none pl-9 pr-4 py-4 min-h-[52px] bg-amber-50/40"
+        autoFocus={autoFocus}
+      />
+      {/* Said back in words, because commas alone still read as a shape. "$2.4 million" is the check
+          a 66-year-old actually performs. */}
+      {has && value > 0 && (
+        <p className="mt-2 text-base font-medium text-stone-700">
+          {currencySymbol}
+          {amountInWords(value)}
+        </p>
+      )}
     </div>
   );
 }

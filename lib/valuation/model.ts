@@ -30,6 +30,25 @@ import { lookupSdeMultiple } from './sde-multiples';
 import { sectorContext } from './sector-context';
 
 export type ProfitTrend = 'growing_strongly' | 'growing' | 'flat' | 'declining';
+/**
+ * Whether the business works from premises the OWNER owns — personally, or through his super fund.
+ *
+ * For a trade business this is frequently the biggest single question in the deal, and the product
+ * never asked it (register P7). It is recorded and NEVER read by this file, for two reasons that
+ * point the same way:
+ *
+ *   1. The property is not part of the business. He keeps it or sells it separately, and folding its
+ *      value into a business valuation would conflate two assets on the one number he said he would
+ *      screenshot and show his wife.
+ *   2. It distorts SDE in a direction we cannot measure. An owner charging his own business
+ *      below-market rent has a flattered profit figure, because a buyer will pay market rent and
+ *      earn less; above-market, the reverse. Correcting it needs a market rent we do not have and
+ *      must not guess — the profit figure is the ONE input the whole model runs on.
+ *
+ * So the answer buys a disclosure, not an adjustment. Saying "a buyer will normalise your rent to
+ * market" is worth more to him than a number we invented.
+ */
+export type Premises = 'owns' | 'rents' | 'none';
 export type MarginTrend = 'improving' | 'stable' | 'shrinking';
 export type ClientTrend = 'expanding' | 'stable' | 'shrinking';
 export type ClientConcentration = 'diversified' | 'moderate' | 'concentrated';
@@ -77,6 +96,24 @@ export interface ValuationInputs {
    * before.
    */
   businessDebt?: number;
+  /**
+   * Work in progress and retentions — work done that is not yet in the bank. OPTIONAL, and
+   * deliberately UNUSED by `computeValuation`, for exactly the same reason as `businessDebt`.
+   *
+   * ⚠️ NOTHING IN THIS FILE MAY READ IT. It is applied at the page (`lib/valuation/net-position.ts`)
+   * as the mirror image of debt: both convert the value of the BUSINESS into what the owner walks
+   * away with, and both move `today` and `potential` equally so the gap — and with it the multiple,
+   * MODEL_VERSION, six stored snapshots and his monthly price — is untouched.
+   *
+   * "Real money on other people's balance sheets" was his phrase, and for a contractor carrying
+   * retentions across several jobs it is routinely the difference between the walk-away figure
+   * reading as a disaster and reading as a decision.
+   */
+  workInProgress?: number;
+  /**
+   * Whether he owns the premises the business works from. Recorded, never read — see `Premises`.
+   */
+  premises?: Premises;
   profitTrend: ProfitTrend;
   marginTrend: MarginTrend;
   clientTrend: ClientTrend;

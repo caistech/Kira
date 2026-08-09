@@ -29,6 +29,24 @@ export const SDE_SHORT_REMINDER =
   'Profit, not sales - and add back what you pay yourself, plus interest, depreciation and one-offs.';
 
 /**
+ * SDE, expanded, for a surface that USES the abbreviation without having asked the question.
+ *
+ * The result page says "SDE" twice — under two of the three headline numbers — and expands it
+ * nowhere. It was defined on question 3, which by then he cannot see, and this is the page carrying
+ * "Print or save as PDF": the one that leaves the building and gets handed to an accountant. Register
+ * P10. His own note is the whole argument for a separate constant rather than reusing
+ * `SDE_SHORT_REMINDER`: that one is an INSTRUCTION for someone about to type a figure ("add back what
+ * you pay yourself"), and on a finished document instructions read as though the number might still
+ * be wrong.
+ *
+ * A noun phrase, therefore, not a command — the same four add-backs as `SDE_DEFINITION`, in the
+ * shortest form that survives being read cold six months later.
+ */
+export const SDE_EXPANSION =
+  "SDE is seller's discretionary earnings: profit with your own salary and perks, interest, " +
+  'depreciation and one-off costs added back.';
+
+/**
  * The worked example. Shows the components SEPARATELY, because the original failure was an example
  * that quietly folded the owner's pay into "what you kept".
  *

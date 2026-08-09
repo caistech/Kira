@@ -77,6 +77,38 @@ export interface ValuationPayload {
 export const VALUATION_HANDOFF_KEY = 'kira_valuation_handoff';
 const STORAGE_KEY = VALUATION_HANDOFF_KEY;
 
+/**
+ * Answers that are DEVICE-ONLY: collected, shown back on the result page, and never carried onward.
+ *
+ * ⚠️ THIS IS THE H3 GUARD, IN CODE. `exitTimeframe` — "when would you like to be out?" — is asked on
+ * the questionnaire because two years and eight years are genuinely different advice (register P7).
+ * It must not travel, because the handoff is claimed at signup and becomes a permanent row on the
+ * account, and at that point "he wants out within two years" is a fact about a man in a database
+ * that an agent can read and repeat.
+ *
+ * This ICP is defined by having told nobody — not his staff, frequently not his family. Answering an
+ * optional question on a calculator is not authority to record the answer against his name, and the
+ * question on screen promises it stays here. `forSharing` is what makes that promise true rather than
+ * intended.
+ *
+ * It is a LIST rather than a rule about the type on purpose: `ValuationInputs` is what the model
+ * takes, and holding this answer out of that type is the structural half. The list is the second
+ * belt, for anything that arrives in the answers object without going through the type.
+ */
+export const DEVICE_ONLY_ANSWERS = ['exitTimeframe'] as const;
+
+/**
+ * Strip the device-only answers from a set of questionnaire answers before it travels.
+ *
+ * Deliberately returns a NEW object and never mutates: the page keeps rendering from the full set,
+ * because the advice paragraph he is reading is built from the answer this removes.
+ */
+export function forSharing<T extends Record<string, unknown>>(answers: T): ValuationInputs {
+  const copy: Record<string, unknown> = { ...answers };
+  for (const key of DEVICE_ONLY_ANSWERS) delete copy[key];
+  return copy as unknown as ValuationInputs;
+}
+
 /** Park the valuation for the next page. No-op (and never throws) outside a browser. */
 export function storeValuation(payload: ValuationPayload): void {
   // Its OWN, shorter lifetime — not the resume window. See VALUATION_HANDOFF_TTL_DAYS: this is his
