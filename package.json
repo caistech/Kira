@@ -17,7 +17,7 @@
     "@caistech/coordination-sdk": "^0.4.1",
     "@caistech/corporate-components": "^0.8.2",
     "@caistech/discovery-agent": "^0.1.0",
-    "@caistech/elevenlabs-convai": "^0.12.2",
+    "@caistech/elevenlabs-convai": "^0.13.0",
     "@caistech/email-compliance": "^0.4.0",
     "@caistech/email-send": "^0.2.0",
     "@caistech/mapbox": "^0.2.1",
