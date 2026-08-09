@@ -26,7 +26,7 @@ import {
 import { WHO_CAN_SEE_IT } from '@/lib/privacy';
 import { computeValuation } from '@/lib/valuation/model';
 import { formatMoneyApprox, formatPrice, taxSuffix, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
-import { priceForProfit } from '@/lib/valuation/pricing';
+import { priceForProfit, PRICE_TIERS, FULL_RATE_PERIOD_CAP } from '@/lib/valuation/pricing';
 import { billingCopy } from '@/lib/billing/copy';
 import {
   decodeValuationParam,
@@ -202,7 +202,39 @@ export default function PlanPage() {
             minutes at a time; she listens, works out what you need, and quietly builds the systems
             that make your business worth more.
           </p>
-          <p className="text-sm text-stone-500 mt-6">Reading your valuation from this device…</p>
+
+          {/* P12 — THE MONEY QUESTION IS ANSWERED BY THE SERVER, not after the browser catches up.
+              This block used to end on "Reading your valuation from this device…", and his reading
+              of that is unarguable: "of every page on this site, the one that starts as a loading
+              message is the one where I'm deciding to pay you." The first-paint audit passes /plan,
+              correctly — there IS real text — so no check could see this. It is not about how long
+              the wait is; it is about what the page says while you wait, on the page that asks for
+              a card.
+              His exact figure genuinely cannot be server-rendered: it is derived from turnover and
+              profit that live in sessionStorage on purpose, so the numbers never enter a URL, a
+              Referer header or browser history. What CAN be said without knowing him is the part he
+              actually wants first — what it costs, and when he is charged — so that is said here,
+              and the personalised figure refines it rather than being the first thing that answers.
+              ⚠️ THE FLOOR ONLY, NEVER THE BAND TABLE. pricing.ts:35-39 records that as a decision
+              (2026-08-01): the floor answers "roughly what does this cost", a full table invites
+              band-shopping before there is a gap to size it against. Read from PRICE_TIERS and
+              FULL_RATE_PERIOD_CAP so this cannot drift from what is charged. */}
+          <div className="mt-8 rounded-2xl border border-amber-200 bg-white/70 px-5 py-5 text-left">
+            <p className="font-body text-stone-700 leading-relaxed">
+              <strong className="font-semibold text-stone-900">
+                From {formatPrice(PRICE_TIERS[0].monthly, DEFAULT_CURRENCY)} a month
+              </strong>
+              , priced on the size of your business. You are billed{' '}
+              <strong className="font-semibold text-stone-900">after each month has finished</strong>,
+              never in advance — cancel before then and that month is on us. After{' '}
+              {FULL_RATE_PERIOD_CAP} months you move to a third of the rate whether or not the work
+              is done.
+            </p>
+            <p className="mt-3 text-sm text-stone-500">
+              Your own figure is worked out from the valuation on this device, and appears in a
+              moment.
+            </p>
+          </div>
         </main>
       )}
 
