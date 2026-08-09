@@ -39,9 +39,48 @@ describe('/talk when the owner has no Kira yet', () => {
     expect(talk).toMatch(/redirect\(\s*['"`]\/start\?journey=business['"`]\s*\)/);
   });
 
-  it('agrees with the destination /dashboard already uses for the same case', () => {
-    // One product, one answer. The dashboard had the right one all along; /talk was the loser.
+  // ⚠️ THIS BLOCK REPLACED A `toContain("'/start?journey=business'")` ASSERTION THAT WENT RED WHEN
+  // THE DASHBOARD GAINED A QUERY PARAM, AND IT WAS RIGHT TO GO RED.
+  //
+  // The original demanded the exact literal, so ANY param broke it — including a correct one. That
+  // made it a spelling test rather than an agreement test, and it stayed red on main for a day
+  // because "the two surfaces agree" and "the two surfaces are byte-identical" are not the same
+  // claim.
+  //
+  // What it should assert is the thing that can actually hurt an owner: the same PATH and the same
+  // journey, plus the framing flag being right for who is arriving. Deleting it and asserting
+  // nothing would have been the easy read of a red test.
+  describe('the dashboard sends the same owner to the same place', () => {
     const dashboard = stripComments(repo('app/dashboard/page.tsx'));
-    expect(dashboard).toContain("'/start?journey=business'");
+
+    it('agrees on the destination, whatever framing params ride along', () => {
+      // One product, one answer. The dashboard had the right one all along; /talk was the loser.
+      expect(dashboard).toMatch(/['"`]\/start\?journey=business(&[^'"`]*)?['"`]/);
+    });
+
+    it('does not tell a long-standing owner he has just paid', () => {
+      // `from=paid` makes /start announce "Last step — let's set up your Kira. About three
+      // minutes." Correct for a man who has just handed over a card; wrong for one who has been
+      // using the product for months and pressed Talk. The dashboard branch is the RECOVERY route —
+      // its own comment said so while the link said the opposite, and the two files contradicted
+      // each other in the tree for a day.
+      expect(dashboard).not.toMatch(/\/start\?journey=business&from=paid/);
+    });
+
+    it('still marks him as coming from inside the product', () => {
+      // Without a `from`, /start offers "Back to home" pointing at the marketing landing page — a
+      // signed-in owner sent to the shop window. `from=app` is the convention the valuation result
+      // page already uses for "he is already a customer".
+      expect(dashboard).toMatch(/\/start\?journey=business&from=app/);
+    });
+  });
+
+  describe('the paid path keeps its own framing', () => {
+    it('onboarding still marks the just-paid owner as just-paid', () => {
+      // The other half of the split: separating these two must not quietly demote the paid arrival
+      // to a generic one, which would lose the "last step" framing that the 08-08 walk added.
+      const onboarding = stripComments(repo('app/onboarding/page.tsx'));
+      expect(onboarding).toMatch(/\/start\?journey=business&from=paid/);
+    });
   });
 });

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { Loader2, FileEdit, CheckCircle, Sparkles, Briefcase, ArrowLeft } from 'lucide-react';
 import { VoiceWidget } from '@caistech/elevenlabs-convai/react';
+import { startFraming, type StartFraming } from '@/lib/kira/start-framing';
 
 interface Draft {
   id: string;
@@ -238,14 +239,34 @@ export default function StartPage() {
   // stale ?journey=personal from an old link) resolves to business; a direct visitor picks the single
   // Business card below. Read from location directly to avoid a Suspense boundary.
   //
-  // `from=paid` marks the owner who has just paid and is being brought here as step 2 of onboarding
-  // rather than arriving by a dashboard fallback. It changes the framing, not the flow.
-  const [fromPaid, setFromPaid] = useState(false);
+  // WHO SENT HIM, AND WHAT TO SAY, ARE TWO QUESTIONS. They were one flag, and that is what broke.
+  //
+  // `from=paid` marks the owner who has just paid and is being brought here as step 2 of onboarding.
+  // `from=app`  marks an owner already inside the product who arrived by the dashboard's recovery
+  //             route — the same convention the valuation result page already uses for "he is
+  //             already a customer, do not sell to him".
+  //
+  // The dashboard was passing `from=paid`, so a signed-in owner clicking "Talk to Kira" months
+  // later was greeted with "Last step — let's set up your Kira. About three minutes." — the copy
+  // for a man who had just handed over a card. The two comments describing this had drifted into
+  // contradicting each other: this file said `from=paid` meant "rather than arriving by a dashboard
+  // fallback", while `app/dashboard/page.tsx` described its own branch as "the recovery route" and
+  // passed `from=paid` anyway.
+  //
+  // Splitting them keeps both behaviours that were wanted: BOTH go back to the dashboard rather than
+  // the marketing home page, and ONLY the paid arrival is told this is the last step.
+  // The resolution itself lives in `lib/kira/start-framing.ts` — a pure function, because /start is
+  // behind auth and a browser check therefore needs a real session and does not run in CI. This is
+  // the one piece here that a person notices when it is wrong.
+  const [framing, setFraming] = useState<StartFraming>({ isPaidArrival: false, cameFromApp: false });
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('journey')) setSelectedJourney('business');
-    setFromPaid(params.get('from') === 'paid');
+    setFraming(startFraming(params.get('from')));
   }, []);
+
+  const fromPaid = framing.isPaidArrival;
+  const cameFromApp = framing.cameFromApp;
 
   // Error state
   if (error) {
@@ -278,11 +299,11 @@ export default function StartPage() {
             ?journey= resolution above). Removed: offering a way back to a choice that no longer
             exists is how this page kept reading as the pre-Exec product. */}
         <div className="mb-8">
-          <a href={fromPaid ? '/dashboard' : '/'}
+          <a href={cameFromApp ? '/dashboard' : '/'}
             className="text-stone-500 hover:text-stone-300 text-sm transition-colors inline-flex items-center gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
-            {fromPaid ? 'Back to your dashboard' : 'Back to home'}
+            {cameFromApp ? 'Back to your dashboard' : 'Back to home'}
           </a>
         </div>
 

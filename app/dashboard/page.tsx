@@ -109,9 +109,18 @@ export default async function DashboardPage({
   // because there was no Kira to talk to. The paid path leads into /start directly now
   // (app/onboarding/page.tsx), so this branch is the recovery route rather than the main one, and
   // `hasMetKira` below already switches the copy to "Start talking to Kira" when it fires.
+  //
+  // ⚠️ `from=app`, NOT `from=paid`, and the distinction is not cosmetic. `from=paid` makes /start
+  // announce "Last step — let's set up your Kira. About three minutes." That is right for a man who
+  // has just handed over a card and wrong for one who has been using the product for months and
+  // pressed Talk. This branch is the RECOVERY route — this comment already said so while the link
+  // said the opposite, which is how the two files came to contradict each other. `from=app` is the
+  // convention the valuation result page already uses for "he is already a customer": it keeps the
+  // back-link pointed at his dashboard rather than the marketing home page, without the onboarding
+  // framing.
   const talkHref = businessAgent
     ? `/chat/${businessAgent.elevenlabs_agent_id}`
-    : '/start?journey=business&from=paid';
+    : '/start?journey=business&from=app';
 
   const val = valuation as Valuation | null;
   // APPROXIMATE, like the result page — see formatMoneyApprox.
