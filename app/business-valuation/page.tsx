@@ -45,7 +45,7 @@ import {
   type ValuationInputs,
 } from '@/lib/valuation/model';
 import { SECTOR_MULTIPLES } from '@/lib/valuation/sde-multiples';
-import { priceForProfit } from '@/lib/valuation/pricing';
+import { FULL_RATE_PERIOD_CAP, priceForProfit } from '@/lib/valuation/pricing';
 import { approxNumber, formatMoney, formatMoneyApprox, formatPrice, getCurrency, CURRENCIES, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { displayedFigures, displayedUplifts } from '@/lib/valuation/displayed';
 import { synonymGroup, synonymSector } from '@/lib/valuation/industry-synonyms';
@@ -1159,6 +1159,15 @@ function ResultView({
         {/* Not to someone who is already paying. Quoting a customer the monthly fee again, under a
             button labelled as though he has not started, is the "does this product know who I am"
             failure — and for a 66-year-old bracing for a second charge it is worse than that. */}
+        {/* THE CEILING BELONGS HERE, not only in the FAQ.
+            The FAQ already said the rate steps down to a third; the tester never saw it, because
+            THIS is the page where the sum gets done — a gap on one line and a monthly fee on the
+            next. His words: "$200,000 against $999 + GST a month, for an unstated number of months.
+            That's a good ratio if it's ten months. It's a bad one at thirty. This is where the
+            missing duration estimate actually costs you the sale, because this is the page where
+            I'm doing the sum."
+            Enforced in lib/billing/arrears.ts `stepDownIfCapReached`, stated from the same constant
+            the enforcement uses, and deliberately a CAP rather than an estimate (DECISIONS.md §2). */}
         {!noEarnings && !returningToApp && (
           <p className="text-stone-700 max-w-xl mx-auto mb-7 text-lg">
             For your business that comes to{' '}
@@ -1166,7 +1175,9 @@ function ResultView({
               {formatPrice(priceForProfit(annualProfit, result.gap).monthly, currency)} a month
             </span>
             {'.'}{' '}
-            You are never invoiced for the month you are in.
+            You are never invoiced for the month you are in, and after{' '}
+            <span className="font-bold text-stone-900">{FULL_RATE_PERIOD_CAP} months</span> you move
+            to a third of that rate whether or not we think the work is done.
           </p>
         )}
         <a

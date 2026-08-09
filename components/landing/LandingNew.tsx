@@ -44,7 +44,7 @@ import { VoiceWidget } from '@caistech/elevenlabs-convai/react';
 
 import { OWNER_FAQ } from '@/lib/faq';
 import { LandingDemo } from '@/components/LandingDemo';
-import { PRICE_TIERS } from '@/lib/valuation/pricing';
+import { FULL_RATE_PERIOD_CAP, PRICE_TIERS } from '@/lib/valuation/pricing';
 import { formatPrice, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 
 // The PUBLIC, no-account agent — the same one /start uses. A landing page visitor has no session
@@ -589,9 +589,17 @@ export function LandingNew() {
               product that says its job is to make itself redundant and then bills the same amount
               forever has told him something he finds out is untrue in month thirteen.
 
-              NO DATE AND NO THRESHOLD, deliberately. "When the manual is built" needs a defensible
-              denominator (register B4) and until that exists a percentage is measured against an
-              unknown total. The shape can be said honestly today; a date cannot.
+              A CEILING, BUT STILL NO FORECAST. Amended 2026-08-09 (DECISIONS.md §2). "When the
+              manual is built" needs a defensible denominator (register B4) and until that exists a
+              percentage is measured against an unknown total — so no ESTIMATE may appear here, and
+              "typically nine to fourteen months" is exactly the sentence that must not. What may
+              appear is the CAP, because it is a commitment we control rather than a prediction about
+              a customer we have not met, and it is enforced in lib/billing/arrears.ts
+              `stepDownIfCapReached` rather than merely stated.
+
+              WHY IT WAS ADDED. A 66-year-old reading the previous version: "$999 + GST a month with
+              no stated end is an open cheque, and no man my age signs one of those." The refusal to
+              estimate was right and it left him with nothing bounding the number.
 
               THE FORK IS THE HONEST PART. Keeping the manual current genuinely costs less. The
               assistant does not, and it is worth most at exactly the moment he would be stepping
@@ -604,8 +612,16 @@ export function LandingNew() {
             refills — but keeping the manual current is a fraction of the work of building it, so
             it costs a fraction: <strong className="font-semibold text-kira-dark">a third of your
             band</strong>. If you would rather keep her working day to day, that stays at the rate
-            you are on. We will tell you when you get there; we do not put a date on it, because it
-            depends entirely on how much of the business is still only in your head.
+            you are on.
+          </p>
+          <p>
+            <strong className="font-semibold text-kira-dark">
+              And there is a ceiling: after {FULL_RATE_PERIOD_CAP} months you move to the lower rate
+              whether or not we think the work is done.
+            </strong>{' '}
+            Most owners should get there sooner, and we will tell you when you do. We will not
+            predict the date, because it depends entirely on how much of the business is still only
+            in your head — we would rather cap what you can be charged than guess.
           </p>
           <p>No gap, no pressure. The number is yours to keep either way.</p>
         </div>

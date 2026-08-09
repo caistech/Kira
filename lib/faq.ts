@@ -106,11 +106,26 @@ export const OWNER_FAQ: FaqItem[] = [
     // Operator decision 2026-08-05 — one third, narrow scope; see lib/valuation/pricing.ts for why
     // the assistant is deliberately NOT folded into the maintain tier.
     //
-    // Deliberately no date and no threshold: "when the manual is built" needs a defensible
-    // denominator (register B4), and a promise with a timeframe we cannot honour is worse than one
-    // without. The honest answer to "how long" is that it depends on him, which is also true.
+    // AMENDED 2026-08-09 — there is now a CEILING, and it is not the thing the old comment refused
+    // to do. That refusal was to FORECAST: "when the manual is built" needs a defensible denominator
+    // (register B4), and a predicted timeframe we cannot honour is worse than none. That reasoning
+    // still stands and trigger A is still undecided.
+    //
+    // A cap is the opposite shape. It is a commitment we control and can keep unilaterally, it needs
+    // no denominator, and it answers the question the refusal left standing. A 66-year-old reading
+    // the old answer: "$999 + GST a month with no stated end is an open cheque, and no man my age
+    // signs one of those." He also read our motive correctly and generously — "the refusal to
+    // estimate reads as evasion, when I think it's actually caution" — which is precisely why the
+    // answer had to change rather than be defended.
+    //
+    // ⚠️ STILL NO ESTIMATE. "Typically nine to fourteen months" remains a forecast we cannot make on
+    // six valuations, all internal. A ceiling is allowed here; a prediction is not, and
+    // lib/valuation/maintain-rate.test.ts pins that distinction.
+    //
+    // ⚠️ ENFORCED, not merely stated: lib/billing/arrears.ts `stepDownIfCapReached`. If that ever
+    // stops running, this sentence becomes a false promise about money to someone already paying.
     q: 'Does this go on forever?',
-    a: "No — and it isn't meant to. Kira's job is to get what's in your head onto paper, and once that's largely done she has made herself redundant. It's never completely finished, because the business keeps moving and the head refills, but keeping the manual current is a fraction of the work of building it — so it costs a third of your band. If you'd rather keep her working day to day, drafting and chasing and looking things up, that stays at the rate you're on. We'll tell you when you get there. We don't put a date on it, because it depends entirely on how much of the business is still only in your head.",
+    a: "No — and it isn't meant to. Kira's job is to get what's in your head onto paper, and once that's largely done she has made herself redundant. It's never completely finished, because the business keeps moving and the head refills, but keeping the manual current is a fraction of the work of building it — so it costs a third of your band. If you'd rather keep her working day to day, drafting and chasing and looking things up, that stays at the rate you're on. There is a hard ceiling either way: after 12 months you move to the lower rate whether or not we think the work is done. Most owners should get there sooner, and we'll tell you when you do — we won't predict the date, because it depends entirely on how much of the business is still only in your head, and we would rather cap what you can be charged than guess.",
   },
   {
     q: 'What happens to my data if I cancel?',

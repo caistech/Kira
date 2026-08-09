@@ -18,13 +18,37 @@ const cancelWithWaiver = vi.fn(async (_opts: Record<string, unknown>) => ({
   id: 'sub_1',
   status: 'canceled',
 }));
+const ensureBillingMeter = vi.fn(async () => ({ id: 'mtr_1' }));
+const ensureMeteredPrice = vi.fn(async (opts: Record<string, unknown>) => ({
+  id: 'price_maintain',
+  ...opts,
+}));
 
 vi.mock('@caistech/subscription-billing', () => ({
   reportPeriodOwed: (opts: Record<string, unknown>) => reportPeriodOwed(opts),
   cancelWithWaiver: (opts: Record<string, unknown>) => cancelWithWaiver(opts),
+  ensureBillingMeter: () => ensureBillingMeter(),
+  ensureMeteredPrice: (opts: Record<string, unknown>) => ensureMeteredPrice(opts),
 }));
 
-vi.mock('./stripe-mode', () => ({ getStripe: () => ({ __stripe: true }) }));
+// ─── a Stripe stub that can hold one subscription ────────────────────────────
+
+let subscriptionItem: {
+  id: string;
+  price: { unit_amount: number | null; currency: string; lookup_key?: string } | null;
+} | null = null;
+const subscriptionItemsUpdate = vi.fn(async (_id: string, _patch: Record<string, unknown>) => ({}));
+
+vi.mock('./stripe-mode', () => ({
+  getStripe: () => ({
+    subscriptions: {
+      retrieve: async () => ({ items: { data: subscriptionItem ? [subscriptionItem] : [] } }),
+    },
+    subscriptionItems: {
+      update: (id: string, patch: Record<string, unknown>) => subscriptionItemsUpdate(id, patch),
+    },
+  }),
+}));
 
 // ─── a Supabase stub that behaves like the unique constraint ─────────────────
 
@@ -36,6 +60,7 @@ interface Claim {
 
 const claims: Claim[] = [];
 let insertError: { code: string; message: string } | null = null;
+let countError: { message: string } | null = null;
 
 function tableStub() {
   return {
@@ -75,6 +100,27 @@ function tableStub() {
       };
       return chain;
     },
+    // `select(..., { count: 'exact', head: true }).eq(...).lt(...)` — how the cap counts how many
+    // periods this subscription has already been billed.
+    select: (_cols: string, _opts?: Record<string, unknown>) => {
+      const filters: Record<string, string> = {};
+      const chain = {
+        eq: (col: string, val: string) => {
+          filters[col] = val;
+          return chain;
+        },
+        lt: async (col: string, val: string) => {
+          if (countError) return { count: null, error: countError };
+          const n = claims.filter(
+            (c) =>
+              c.stripe_subscription_id === filters.stripe_subscription_id &&
+              (col === 'period_end' ? c.period_end < val : true),
+          ).length;
+          return { count: n, error: null };
+        },
+      };
+      return chain;
+    },
     update: (patch: Record<string, string>) => {
       const filters: Record<string, string> = {};
       const chain = {
@@ -101,7 +147,9 @@ vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => ({ from: () => tableStub() }),
 }));
 
-const { cancelSubscriptionWithWaiver, reportPeriodIfNew } = await import('./arrears');
+const { cancelSubscriptionWithWaiver, reportPeriodIfNew, stepDownIfCapReached, MAINTAIN_LOOKUP_PREFIX } =
+  await import('./arrears');
+const { FULL_RATE_PERIOD_CAP } = await import('@/lib/valuation/pricing');
 
 // ─── fixtures ────────────────────────────────────────────────────────────────
 
@@ -119,12 +167,32 @@ function state(over: Partial<SubscriptionState> = {}): SubscriptionState {
   };
 }
 
+/** Seed N already-billed periods, all ending BEFORE the period under test. */
+function seedBilledPeriods(n: number, subscriptionId = 'sub_1') {
+  for (let i = 0; i < n; i += 1) {
+    claims.push({
+      stripe_subscription_id: subscriptionId,
+      // 2025-01-01 … ascending, all well before the fixture's 2026-08-27.
+      period_end: `2025-${String((i % 12) + 1).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}T00:00:00.000Z`,
+      reported_at: '2025-01-01T00:00:00.000Z',
+    });
+  }
+}
+
 beforeEach(() => {
   claims.length = 0;
   insertError = null;
+  countError = null;
   reportPeriodOwed.mockClear();
   reportPeriodOwed.mockImplementation(async () => ({ identifier: 'ok' }));
   cancelWithWaiver.mockClear();
+  ensureBillingMeter.mockClear();
+  ensureMeteredPrice.mockClear();
+  subscriptionItemsUpdate.mockClear();
+  subscriptionItem = {
+    id: 'si_1',
+    price: { unit_amount: 99900, currency: 'aud' },
+  };
 });
 
 // ─── reporting ───────────────────────────────────────────────────────────────
@@ -216,5 +284,112 @@ describe('cancelSubscriptionWithWaiver', () => {
 
     expect(cancelWithWaiver).toHaveBeenCalledTimes(1);
     expect(cancelWithWaiver.mock.calls[0][0]).toMatchObject({ subscriptionId: 'sub_1' });
+  });
+});
+
+// ─── the 12-month cap ────────────────────────────────────────────────────────
+//
+// The promise is "never more than 12 months at the full rate", made on a pricing page to a man who
+// said an unbounded monthly fee is an open cheque he would not sign. It is the only statement this
+// product makes that binds us for every customer we have not met yet, so it is tested from both
+// directions: that it fires, and that it cannot fire twice.
+
+describe('the 12-month cap', () => {
+  it('does nothing before the cap is reached', async () => {
+    seedBilledPeriods(FULL_RATE_PERIOD_CAP - 1);
+
+    expect(await stepDownIfCapReached(state())).toBe('within_cap');
+    expect(subscriptionItemsUpdate).not.toHaveBeenCalled();
+    expect(ensureMeteredPrice).not.toHaveBeenCalled();
+  });
+
+  it('steps down on the period after the cap, at a third of what he is actually paying', async () => {
+    seedBilledPeriods(FULL_RATE_PERIOD_CAP);
+
+    expect(await stepDownIfCapReached(state())).toBe('stepped_down');
+
+    // A THIRD OF THE PRICE ON THE SUBSCRIPTION, not of a recomputed band. If the model or the tiers
+    // move, an owner's step-down must still be a third of the number on HIS invoices.
+    expect(ensureMeteredPrice).toHaveBeenCalledTimes(1);
+    expect(ensureMeteredPrice.mock.calls[0][0]).toMatchObject({
+      unitAmount: 33300, // floor(999 / 3) = 333 dollars
+      currency: 'AUD',
+      interval: 'month',
+    });
+    // Namespaced so the subscription itself records which rate it is on.
+    expect(String(ensureMeteredPrice.mock.calls[0][0].lookupKeyPrefix)).toBe(MAINTAIN_LOOKUP_PREFIX);
+    // The tax qualifier travels onto the invoice he receives.
+    expect(String(ensureMeteredPrice.mock.calls[0][0].productName)).toContain('GST');
+
+    expect(subscriptionItemsUpdate).toHaveBeenCalledTimes(1);
+    expect(subscriptionItemsUpdate.mock.calls[0][0]).toBe('si_1');
+    expect(subscriptionItemsUpdate.mock.calls[0][1]).toMatchObject({
+      price: 'price_maintain',
+      proration_behavior: 'none',
+    });
+  });
+
+  it('never steps down twice — a third of a third is the failure this guards', async () => {
+    // The realistic way in: Stripe retries a webhook whose report leg failed after the swap landed.
+    // Without the lookup-key check that retry takes $333 to $111, and two more take it to $12 — all
+    // silently, all in the owner's favour, which is the direction nobody audits.
+    seedBilledPeriods(FULL_RATE_PERIOD_CAP + 5);
+    subscriptionItem = {
+      id: 'si_1',
+      price: { unit_amount: 33300, currency: 'aud', lookup_key: `${MAINTAIN_LOOKUP_PREFIX}-aud-33300` },
+    };
+
+    expect(await stepDownIfCapReached(state())).toBe('already_stepped_down');
+    expect(subscriptionItemsUpdate).not.toHaveBeenCalled();
+    expect(ensureMeteredPrice).not.toHaveBeenCalled();
+  });
+
+  it('does not touch a subscription that is not accruing', async () => {
+    seedBilledPeriods(FULL_RATE_PERIOD_CAP);
+    // 'cancelled', not Stripe's 'canceled' — @caistech/subscription-billing normalises the American
+    // spelling to the portfolio's on the way in, so the American one is a status the adapter never
+    // writes and a test using it would pass without exercising the real value.
+    expect(await stepDownIfCapReached(state({ status: 'cancelled' }))).toBe('not_billable');
+    expect(subscriptionItemsUpdate).not.toHaveBeenCalled();
+  });
+
+  it('refuses to guess when the price carries no amount', async () => {
+    seedBilledPeriods(FULL_RATE_PERIOD_CAP);
+    subscriptionItem = { id: 'si_1', price: { unit_amount: null, currency: 'aud' } };
+
+    expect(await stepDownIfCapReached(state())).toBe('not_billable');
+    expect(subscriptionItemsUpdate).not.toHaveBeenCalled();
+  });
+
+  it('counts only THIS subscription, so one owner cannot step another down', async () => {
+    seedBilledPeriods(FULL_RATE_PERIOD_CAP + 3, 'sub_other');
+    seedBilledPeriods(2);
+
+    expect(await stepDownIfCapReached(state())).toBe('within_cap');
+    expect(subscriptionItemsUpdate).not.toHaveBeenCalled();
+  });
+
+  it('throws rather than silently overcharging when the ledger cannot be read', async () => {
+    // A count that failed is not "zero periods so far". Reading it that way keeps an owner on the
+    // full rate past the ceiling we promised him, which is the one direction that costs him money.
+    seedBilledPeriods(FULL_RATE_PERIOD_CAP);
+    countError = { message: 'connection reset' };
+
+    await expect(stepDownIfCapReached(state())).rejects.toThrow(/billing period count failed/i);
+  });
+
+  it('runs as part of opening a period, before that period is reported', async () => {
+    // The invoice is cut at period CLOSE from whatever price is on the item then, so the swap has
+    // to have happened by the time the period is reported. Asserted through call order rather than
+    // by reading the source.
+    seedBilledPeriods(FULL_RATE_PERIOD_CAP);
+
+    expect(await reportPeriodIfNew(state())).toBe('reported');
+
+    expect(subscriptionItemsUpdate).toHaveBeenCalledTimes(1);
+    expect(reportPeriodOwed).toHaveBeenCalledTimes(1);
+    expect(subscriptionItemsUpdate.mock.invocationCallOrder[0]).toBeLessThan(
+      reportPeriodOwed.mock.invocationCallOrder[0],
+    );
   });
 });

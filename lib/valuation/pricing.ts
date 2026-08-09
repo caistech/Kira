@@ -155,14 +155,33 @@ export function priceForProfit(annualProfit: number, gap = 0): PriceQuote {
 // A FRACTION RATHER THAN A FLAT PRICE, because a flat one is wrong at both ends: trivial revenue
 // from a $5M business and still steep for a $250k one. One decision covers all five bands.
 //
-// ⚠️ THE TRIGGER IS NOT DECIDED AND IS NOT HERE. "When the manual is built" needs a defensible
-// denominator — register B4, deactivation — and until that exists a percentage is measured against
-// an unknown total. Nothing in the product may imply a date or a threshold. What may be said is the
-// SHAPE: her job is to make herself redundant, and when she has, this is what it costs.
+// ⚠️ THERE ARE TWO TRIGGERS, AND ONLY ONE OF THEM IS DECIDED. Amended 2026-08-09; full reasoning in
+// docs/DECISIONS.md §2.
+//
+//   · TRIGGER A — "the manual is built" — STILL NOT DECIDED. It needs a defensible denominator
+//     (register B4, deactivation), and until that exists a percentage is measured against an unknown
+//     total. Nothing in the product may imply a date or a threshold for it, and nothing may ESTIMATE
+//     one: "typically nine to fourteen months" is a forecast, and six valuations — all internal — is
+//     not enough to make it. What may be said is the SHAPE: her job is to make herself redundant,
+//     and when she has, this is what it costs.
+//   · TRIGGER B — the CAP below — IS decided, and is a different kind of statement. A ceiling is a
+//     commitment we control and can keep unilaterally; it needs no denominator, only elapsed billed
+//     months. That is the entire reason it could ship while A could not.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** One third. The step-down at the transition — see the note above. */
 export const MAINTAIN_FRACTION = 1 / 3;
+
+/**
+ * The ceiling: months at the full rate before the maintain rate applies regardless.
+ *
+ * Operator decision 2026-08-09. It lives HERE rather than beside the Stripe mechanics because it is
+ * a pricing policy, and because both halves of the promise have to be pinned to one number — the
+ * copy that states it (`lib/faq.ts`) and the code that enforces it (`lib/billing/arrears.ts`
+ * `stepDownIfCapReached`, which re-exports this). A cap stated in prose and enforced from a second
+ * literal is one edit away from being a lie.
+ */
+export const FULL_RATE_PERIOD_CAP = 12;
 
 /**
  * The maintain price for a band, rounded to whole dollars.

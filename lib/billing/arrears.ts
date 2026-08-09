@@ -17,10 +17,17 @@
 // `cancelWithWaiver`). What is here is the part that is Kira's: WHEN a period counts as owed, and
 // the durable record that stops one being reported twice.
 
-import { cancelWithWaiver, reportPeriodOwed } from '@caistech/subscription-billing';
+import {
+  cancelWithWaiver,
+  ensureBillingMeter,
+  ensureMeteredPrice,
+  reportPeriodOwed,
+} from '@caistech/subscription-billing';
 import type { SubscriptionState } from '@caistech/subscription-billing';
 
 import { getStripe } from './stripe-mode';
+import { FULL_RATE_PERIOD_CAP, maintainPrice } from '@/lib/valuation/pricing';
+import { taxSuffix } from '@/lib/valuation/currency';
 import { createServiceClient } from '@/lib/supabase/server';
 
 /**
@@ -63,6 +70,53 @@ const BILLABLE_STATUSES = new Set(['active', 'trialing', 'past_due']);
 export type ReportOutcome = 'reported' | 'already_reported' | 'not_billable';
 
 /**
+ * THE CAP. Twelve months at the full rate, then the maintain rate regardless.
+ *
+ * Operator decision 2026-08-09; the reasoning is in `docs/DECISIONS.md` §2, "The trigger — TWO of
+ * them". The short version, because the distinction is the whole thing:
+ *
+ *   · Trigger A — "the manual is built" — is a JUDGEMENT, needs a defensible denominator (register
+ *     B4, deactivation), and is still undecided. Nothing here implements it.
+ *   · Trigger B — this — is a CEILING. It needs no denominator, only elapsed billed months, which
+ *     is why it can ship today and A cannot.
+ *
+ * What produced it: a 66-year-old electrician doing the sum on the result page. "I'm 66 and I want
+ * out inside two years. $999 + GST a month with no stated end is an open cheque, and no man my age
+ * signs one of those." The product had been refusing to name a duration on the honest grounds that
+ * a forecast we cannot keep is worse than none — correct about forecasts, and it left him with
+ * nothing bounding the number.
+ *
+ * ⚠️ THE COPY AND THIS CODE MUST NEVER SHIP SEPARATELY. A published cap that nothing enforces is
+ * exactly the J2 failure — a pricing sentence that went false the moment a flag flipped — except
+ * worse, because this one is a promise about money made to someone who is already paying.
+ *
+ * Re-exported rather than redeclared: the number is defined once, in `lib/valuation/pricing.ts`
+ * beside `MAINTAIN_FRACTION`, so the sentence in the FAQ and the swap in this file cannot drift
+ * apart. A cap stated in prose and enforced from a second literal is one edit away from being a lie.
+ */
+export { FULL_RATE_PERIOD_CAP } from '@/lib/valuation/pricing';
+
+/**
+ * A separate lookup-key namespace for maintain-rate prices.
+ *
+ * It is what makes the step-down IDEMPOTENT, and that is not a nicety: without a way to ask "has
+ * this subscription already stepped down?", a retried webhook would take a third of a third. Two
+ * retries and an owner is paying $37 a month instead of $333, silently, in his favour — the
+ * direction nobody audits until an accountant does.
+ *
+ * Stripe answers the question for us, because `ensureMeteredPrice` writes a deterministic
+ * `lookup_key` from this prefix. So the subscription itself records which rate it is on, in a field
+ * a human can read in the Stripe dashboard, rather than in a flag we would have to keep in sync.
+ */
+export const MAINTAIN_LOOKUP_PREFIX = `${PRICE_LOOKUP_PREFIX}-maintain`;
+
+export type StepDownOutcome =
+  | 'not_billable'
+  | 'within_cap'
+  | 'already_stepped_down'
+  | 'stepped_down';
+
+/**
  * Report the owner's current period as owed, once.
  *
  * Called after subscription state has been written, on every event that could open a new period.
@@ -95,6 +149,15 @@ export async function reportPeriodIfNew(state: SubscriptionState): Promise<Repor
   }
 
   try {
+    // BEFORE reporting, not after. The invoice is cut at period CLOSE from the price on the
+    // subscription item at that moment, so the swap has to land at period OPEN to affect the period
+    // it is meant to. Doing it after reporting would still work today, but only by accident of
+    // ordering — this way the dependency is explicit.
+    //
+    // Inside the try on purpose: a failure here releases the claim below and Stripe retries, and
+    // the retry is safe because the step-down is idempotent (see MAINTAIN_LOOKUP_PREFIX).
+    await stepDownIfCapReached(state);
+
     await reportPeriodOwed({
       stripe: getStripe(),
       eventName: METER_EVENT_NAME,
@@ -123,6 +186,82 @@ export async function reportPeriodIfNew(state: SubscriptionState): Promise<Repor
     .eq('period_end', currentPeriodEnd);
 
   return 'reported';
+}
+
+/**
+ * Move a subscription onto the maintain rate once it has been billed the full rate for the cap.
+ *
+ * COUNTED FROM OUR OWN LEDGER, NOT FROM STRIPE'S `start_date`, and the choice is the promise. The
+ * cap is "never more than twelve months AT THE FULL RATE" — so what must be counted is months
+ * actually CHARGED, not months elapsed since signup. A subscription that was paused, or that spent
+ * time in a status `BILLABLE_STATUSES` excludes, has not billed those months, and charging the
+ * calendar instead of the ledger would step him down early and quietly cost us the difference. The
+ * ledger is also already idempotent, which the calendar is not.
+ *
+ * Periods strictly EARLIER than the one being opened are counted, so this reads the same whether or
+ * not the current period's claim row has been written yet. Twelve earlier periods means this is the
+ * thirteenth, which is the first one owed at the maintain rate.
+ *
+ * Returns rather than throws for every "nothing to do" case; throws only when Stripe does, because
+ * the caller releases its claim on a throw and a retry is exactly what a failed swap wants.
+ */
+export async function stepDownIfCapReached(state: SubscriptionState): Promise<StepDownOutcome> {
+  const { stripeSubscriptionId, currentPeriodEnd, status } = state;
+
+  if (!stripeSubscriptionId || !currentPeriodEnd) return 'not_billable';
+  if (!BILLABLE_STATUSES.has(status)) return 'not_billable';
+
+  const supabase = createServiceClient();
+  const { count, error } = await supabase
+    .from('billing_periods_reported')
+    .select('period_end', { count: 'exact', head: true })
+    .eq('stripe_subscription_id', stripeSubscriptionId)
+    .lt('period_end', currentPeriodEnd);
+
+  if (error) throw new Error(`billing period count failed: ${error.message}`);
+  if ((count ?? 0) < FULL_RATE_PERIOD_CAP) return 'within_cap';
+
+  const stripe = getStripe();
+  const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+  const item = subscription.items?.data?.[0];
+  const price = item?.price;
+
+  // No item, or a price with no amount on it, means this is not a shape we know how to step down.
+  // Say so instead of guessing at a number — this function only ever moves money downwards, but a
+  // wrong guess here is still a wrong invoice.
+  if (!item || !price || typeof price.unit_amount !== 'number') return 'not_billable';
+
+  if (price.lookup_key?.startsWith(MAINTAIN_LOOKUP_PREFIX)) return 'already_stepped_down';
+
+  const currentMonthly = price.unit_amount / 100;
+  const maintainMonthly = maintainPrice(currentMonthly);
+  // A zero maintain rate would be a free subscription created by arithmetic rather than by anyone
+  // deciding it. Leave the price alone and let a human look.
+  if (maintainMonthly <= 0) return 'within_cap';
+
+  const currency = (price.currency || 'aud').toUpperCase();
+  const meter = await ensureBillingMeter({ stripe, eventName: METER_EVENT_NAME });
+  const maintainPriceObject = await ensureMeteredPrice({
+    stripe,
+    meterId: meter.id,
+    currency,
+    unitAmount: maintainMonthly * 100,
+    interval: 'month',
+    // The tax qualifier travels here for the same reason it travels onto checkout: this name is
+    // what Stripe renders beside the amount on the invoice he receives.
+    productName: `Kira — keeping it current (${taxSuffix(currency)})`,
+    lookupKeyPrefix: MAINTAIN_LOOKUP_PREFIX,
+  });
+
+  await stripe.subscriptionItems.update(item.id, {
+    price: maintainPriceObject.id,
+    // No proration. The period being opened is billed in full at the new rate; there is nothing to
+    // pro-rate because nothing has been invoiced for it yet, and a proration line here would be a
+    // credit or a charge nobody was told about.
+    proration_behavior: 'none',
+  });
+
+  return 'stepped_down';
 }
 
 /**

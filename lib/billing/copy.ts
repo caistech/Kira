@@ -18,6 +18,8 @@
 // says what will actually happen, badge included; the live variant states the arrears terms. Neither
 // is allowed to promise something the other mode would make untrue.
 
+import { FULL_RATE_PERIOD_CAP } from '@/lib/valuation/pricing';
+
 export interface BillingCopy {
   /** The primary call to action. */
   cta: string;
@@ -46,8 +48,13 @@ const LIVE: BillingCopy = {
     'We email you 3 days before every payment',
     'Cancel any time — the month you are in is never billed',
   ],
+  // The cap is a TERM OF THE CONTRACT, so it belongs in the terms line under the button. It is
+  // stated prominently on the landing, the result page and the FAQ; this is the copy that sits
+  // beside the card field, and a commitment about how much he can be charged in total belongs
+  // wherever the total is being agreed to. Enforced by lib/billing/arrears.ts `stepDownIfCapReached`
+  // and stated from the constant that enforcement reads (DECISIONS.md §2).
   finePrint: (price) =>
-    `Secure checkout by Stripe · billed by Corporate AI Solutions. Your card is saved today but nothing is charged. We bill in arrears: at the end of each month you pay ${price} for the month just finished, and we email you three days before. Cancel at any point and the month you are in is written off — no payment, no proration.`,
+    `Secure checkout by Stripe · billed by Corporate AI Solutions. Your card is saved today but nothing is charged. We bill in arrears: at the end of each month you pay ${price} for the month just finished, and we email you three days before. After ${FULL_RATE_PERIOD_CAP} months you move to a third of that rate whether or not the work is finished. Cancel at any point and the month you are in is written off — no payment, no proration.`,
   adminBanner: 'LIVE billing — real cards, real money. Stripe is on live keys.',
 };
 
