@@ -388,11 +388,42 @@ export async function POST(req: NextRequest) {
 
     } // end: create-the-first-one branch
 
-    /* ---------------- Post-create ElevenLabs binding (parallel, all non-fatal) ---------------- */
-    // webhook bind + origin allowlist + tool attach are independent ElevenLabs round-trips. Running
-    // them sequentially added ~15s to the request (allowlist ~7s, tools ~5s) — enough for a slow
-    // client to time out and retry. They're all non-fatal, so run them concurrently; a failure in one
-    // never blocks the others or the response.
+    /* ---------------- Post-create ElevenLabs binding (all non-fatal) ---------------- */
+    // webhook bind + origin allowlist are independent ElevenLabs round-trips and stay concurrent.
+    // Running everything sequentially added ~15s to the request (allowlist ~7s, tools ~5s) — enough
+    // for a slow client to time out and retry.
+    //
+    // ⚠️ THE TOOL ATTACH IS NO LONGER IN THIS SET, AND THE REASON IS A MEASURED RACE WINDOW.
+    //
+    // All three of these PATCH the SAME agent, and `setAgentTools` is not one call — it is a
+    // read-modify-write spanning three round-trips: `ensureWorkspaceTools` (eighteen tools),
+    // then `getAgent` to read the current prompt, then a PATCH of
+    // `conversation_config.agent.prompt` carrying the prompt it read back plus the new `tool_ids`.
+    // The package re-sends the prompt precisely because a PATCH of that path REPLACES it rather
+    // than merging — its own comment says so.
+    //
+    // From `kira_logs`, the run that produced a tool-less agent (request fc01d199, 2026-08-07):
+    //
+    //     02:05:06.414  elevenlabs_create success      <- setAgentTools begins here
+    //     02:05:10.441  allowlist_set    success       <- PATCH lands INSIDE the window
+    //     02:05:10.840  webhook_bind     success       <- PATCH lands INSIDE the window
+    //     02:05:11.968  tools_attach     success       <- the read-modify-write completes
+    //
+    // So two other writes to the same agent land in the ~5.5s between the tool attach's read and
+    // its write, on every single creation. That is a genuine structural race, and it was previously
+    // undocumented.
+    //
+    // ⚠️ IT IS NOT ESTABLISHED AS THE CAUSE, AND I AM NOT RECORDING IT AS ONE. The two other PATCHes
+    // write `platform_settings`, not `conversation_config`, so on a well-behaved partial-PATCH API
+    // they should not touch `tool_ids` at all. What the logs DO show is that the failing run is the
+    // one where `webhook_bind` CREATED the workspace webhook ("workspace webhook created") while the
+    // succeeding run seventy-five minutes later REUSED it — and the package's own release notes
+    // record that the reuse-by-URL check races. That is a second unproven candidate, not a finding.
+    //
+    // Sequencing the tool attach AFTER the other two removes the window whichever candidate is true,
+    // which is the same reasoning that made the read-back the right fix for an unknown cause. It
+    // costs about four seconds on a request that already takes fourteen, and it buys the property
+    // that nothing else is writing to the agent while its tools are being attached.
     await Promise.allSettled([
       // Bind the workspace-scoped post-call webhook (the per-agent platform_settings.webhook shape is
       // deprecated + silently ignored). The signing secret is returned only on first creation —
@@ -432,71 +463,72 @@ export async function POST(req: NextRequest) {
           console.error('[kira/create] allowlist set failed (non-fatal):', e);
         }
       })(),
-      // Attach the canonical memory/continuity tools (an agent created without tools can't call
-      // get_conversation_context / save_memory / recall_memory) as workspace entities on
-      // prompt.tool_ids + enable per-session overrides.
-      (async () => {
-        // ⚠️ READ THE AGENT BACK. A RETURNED CALL IS NOT AN ATTACHED TOOL.
-        //
-        // This block logged `tools_attach: success` for Ray's first account at 02:05:11 on
-        // 2026-08-07. Seventy-five minutes later a re-provision dry run inspected that same agent
-        // and reported `0 tool(s) attached`. The success was recorded because `setAgentTools` did
-        // not throw — which is a fact about the call, not about the agent.
-        //
-        // WHAT THAT COSTS. An agent with no tools cannot call `get_conversation_context`,
-        // `recall_memory` or `save_memory`. It is not a degraded Kira; it is a Kira with no memory
-        // whatsoever, which is the entire product. And it looks completely normal — she talks, she
-        // answers, and she silently knows nothing about him and stores nothing he says. The owner
-        // has no way to tell, and this failure keeps its own log entry saying it went fine.
-        //
-        // I could not determine from here WHETHER the write silently did not take or something
-        // removed the tools afterwards, and I am not going to guess: the read-back catches both,
-        // which is why it is the right fix for a cause that is still unknown.
-        //
-        // Kept non-fatal deliberately — the owner should not lose his account because ElevenLabs
-        // was slow — but non-fatal must not mean unnoticed. One retry, then an honest log naming
-        // the observed count, so `tools_attach: success` means the tools are on the agent.
-        const desired = kiraAllTools(APP_URL, user.id);
-        const attachedCount = async (): Promise<number> => {
-          const live: any = await getAgent(ELEVENLABS_API_KEY, agentId);
-          return (live?.conversation_config?.agent?.prompt?.tool_ids ?? []).length;
-        };
+    ]);
 
-        for (let attempt = 1; attempt <= 2; attempt += 1) {
-          try {
-            await setAgentTools(ELEVENLABS_API_KEY, agentId, desired);
-            await setAgentOverrides(ELEVENLABS_API_KEY, agentId);
-            const observed = await attachedCount();
-            if (observed >= desired.length) {
-              await log(supabase, requestId, 'tools_attach', 'success', undefined, {
-                observed,
-                expected: desired.length,
-                attempt,
-              });
-              return;
-            }
-            if (attempt === 2) {
-              await log(
-                supabase,
-                requestId,
-                'tools_attach',
-                'error',
-                `attached ${observed} of ${desired.length} tools after 2 attempts — this agent has no memory`,
-                { observed, expected: desired.length },
-              );
-              console.error(
-                `[kira/create] agent ${agentId} has ${observed}/${desired.length} tools after retry — memory will not work`,
-              );
-            }
-          } catch (e: any) {
-            if (attempt === 2) {
-              await log(supabase, requestId, 'tools_attach', 'error', e?.message ?? 'tool attach failed');
-              console.error('[kira/create] tool attach failed (non-fatal):', e);
-            }
+    // Attach the canonical memory/continuity tools (an agent created without tools can't call
+    // get_conversation_context / save_memory / recall_memory) as workspace entities on
+    // prompt.tool_ids + enable per-session overrides.
+    await (async () => {
+      // ⚠️ READ THE AGENT BACK. A RETURNED CALL IS NOT AN ATTACHED TOOL.
+      //
+      // This block logged `tools_attach: success` for Ray's first account at 02:05:11 on
+      // 2026-08-07. Seventy-five minutes later a re-provision dry run inspected that same agent
+      // and reported `0 tool(s) attached`. The success was recorded because `setAgentTools` did
+      // not throw — which is a fact about the call, not about the agent.
+      //
+      // WHAT THAT COSTS. An agent with no tools cannot call `get_conversation_context`,
+      // `recall_memory` or `save_memory`. It is not a degraded Kira; it is a Kira with no memory
+      // whatsoever, which is the entire product. And it looks completely normal — she talks, she
+      // answers, and she silently knows nothing about him and stores nothing he says. The owner
+      // has no way to tell, and this failure keeps its own log entry saying it went fine.
+      //
+      // I could not determine from here WHETHER the write silently did not take or something
+      // removed the tools afterwards, and I am not going to guess: the read-back catches both,
+      // which is why it is the right fix for a cause that is still unknown.
+      //
+      // Kept non-fatal deliberately — the owner should not lose his account because ElevenLabs
+      // was slow — but non-fatal must not mean unnoticed. One retry, then an honest log naming
+      // the observed count, so `tools_attach: success` means the tools are on the agent.
+      const desired = kiraAllTools(APP_URL, user.id);
+      const attachedCount = async (): Promise<number> => {
+        const live: any = await getAgent(ELEVENLABS_API_KEY, agentId);
+        return (live?.conversation_config?.agent?.prompt?.tool_ids ?? []).length;
+      };
+
+      for (let attempt = 1; attempt <= 2; attempt += 1) {
+        try {
+          await setAgentTools(ELEVENLABS_API_KEY, agentId, desired);
+          await setAgentOverrides(ELEVENLABS_API_KEY, agentId);
+          const observed = await attachedCount();
+          if (observed >= desired.length) {
+            await log(supabase, requestId, 'tools_attach', 'success', undefined, {
+              observed,
+              expected: desired.length,
+              attempt,
+            });
+            return;
+          }
+          if (attempt === 2) {
+            await log(
+              supabase,
+              requestId,
+              'tools_attach',
+              'error',
+              `attached ${observed} of ${desired.length} tools after 2 attempts — this agent has no memory`,
+              { observed, expected: desired.length },
+            );
+            console.error(
+              `[kira/create] agent ${agentId} has ${observed}/${desired.length} tools after retry — memory will not work`,
+            );
+          }
+        } catch (e: any) {
+          if (attempt === 2) {
+            await log(supabase, requestId, 'tools_attach', 'error', e?.message ?? 'tool attach failed');
+            console.error('[kira/create] tool attach failed (non-fatal):', e);
           }
         }
-      })(),
-    ]);
+      }
+    })();
 
     /* ---------------- Save Agent to Database ---------------- */
     await log(supabase, requestId, 'agent_save', 'start');
