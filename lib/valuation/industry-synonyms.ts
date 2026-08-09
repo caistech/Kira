@@ -273,19 +273,50 @@ export function synonymGroup(industry: string): string | null {
   return hit ? SYNONYM_GROUPS[hit] : null;
 }
 
+/**
+ * Keys that name a BUSINESS MODEL rather than a TRADE, and so must lose to any trade word.
+ *
+ * THE BUG THIS EXISTS TO FIX. An electrician typed what he calls himself — "electrical
+ * contracting" — and the picker offered him exactly one option: "Residential Building & General
+ * Contracting". He is not a builder, and the page tells him in terms that the sector "sets the
+ * multiple, so if it is wrong the number is too". Typing the MORE accurate description got the
+ * LESS accurate answer, and the right category was invisible until he shortened it to "electrical".
+ *
+ * The cause is one line: matches were ranked by key LENGTH, and `contracting` (11) is longer than
+ * `electrical` (10). Longest-wins is right for its intended case — "plumbing services" should hit
+ * `plumbing`, not `plum` — because there the two candidates describe the SAME trade at different
+ * lengths. It is wrong the moment two candidates describe DIFFERENT trades, and then it silently
+ * prefers whichever happens to have more letters.
+ *
+ * Of the 191 keys in this table exactly ONE is a business-model word, which is why the fix is a
+ * set of size one rather than a scoring model. Add to it only for words that describe HOW a
+ * business is engaged (contracting, services, group) and never for one that names WHAT it does.
+ */
+const GENERIC_MODEL_KEYS = new Set(['contracting']);
+
 export function synonymSector(industry: string): string | null {
   const q = normalise(industry);
   if (!q) return null;
 
   if (INDUSTRY_SYNONYMS[q]) return INDUSTRY_SYNONYMS[q];
 
-  const keys = Object.keys(INDUSTRY_SYNONYMS).sort((a, b) => b.length - a.length);
-  for (const k of keys) {
+  const hits: string[] = [];
+  for (const k of Object.keys(INDUSTRY_SYNONYMS)) {
     const nk = normalise(k);
     // Word-boundary containment: "plumbing services" hits "plumbing", but "plum" does not.
     if (new RegExp(`(^|\\s)${nk.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|$)`).test(q)) {
-      return INDUSTRY_SYNONYMS[k];
+      hits.push(k);
     }
   }
-  return null;
+  if (hits.length === 0) return null;
+
+  // A trade beats a business model; among equals, the longer (more specific) key still wins, so
+  // "plumbing services" resolves through `plumbing` exactly as before.
+  hits.sort((a, b) => {
+    const genericA = GENERIC_MODEL_KEYS.has(normalise(a)) ? 1 : 0;
+    const genericB = GENERIC_MODEL_KEYS.has(normalise(b)) ? 1 : 0;
+    if (genericA !== genericB) return genericA - genericB;
+    return b.length - a.length;
+  });
+  return INDUSTRY_SYNONYMS[hits[0]];
 }

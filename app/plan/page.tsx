@@ -407,9 +407,14 @@ export default function PlanPage() {
             </div>
           </section>
 
-          <footer className="py-10 text-center text-sm text-stone-400 border-t border-amber-100">
-            Kira — Built by Corporate AI Solutions · <a href="/business-valuation" className="hover:text-pink-500">Redo my valuation</a>
-          </footer>
+          {/* A <div>, not a <footer>. This page keeps the root CorporateFooter — it is where money
+              is asked for, so the operator's identity belongs at the bottom of it — and two
+              <footer> elements on one page is the /about defect in a quieter form. The identity
+              half was a duplicate of what CorporateFooter already says; the "redo" link is the
+              only part that was page-specific, so that is all that is left. */}
+          <div className="py-10 text-center text-sm text-stone-400 border-t border-amber-100">
+            <a href="/business-valuation" className="hover:text-pink-500">Redo my valuation</a>
+          </div>
         </main>
       )}
     </div>

@@ -154,26 +154,22 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <footer className="bg-stone-800 py-12">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-3">
-              <div className="avatar-ring"><div className="w-8 h-8 rounded-full overflow-hidden bg-white"><img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" /></div></div>
-              <span className="font-display font-bold text-white">Kira</span>
-              <span className="text-stone-500">|</span>
-              <a href="https://corporate-ai-solutions.vercel.app/marketplace" target="_blank" rel="noopener noreferrer" className="font-body text-sm text-stone-400 hover:text-amber-400 transition-colors">A Corporate AI Solutions Product</a>
-            </div>
-            <div className="flex items-center gap-6 font-body text-sm text-stone-400">
-              <a href="/" className="hover:text-pink-400 transition-colors">Home</a>
-              <a href="/#how-it-works" className="hover:text-pink-400 transition-colors">How it Works</a>
-              <a href="/#pricing" className="hover:text-pink-400 transition-colors">Pricing</a>
-            </div>
-          </div>
-          <div className="mt-8 pt-8 border-t border-stone-700 text-center">
-            <p className="font-body text-stone-500 text-sm">© 2025 Corporate AI Solutions · Created by Dennis McMahon · <a href="https://corporate-ai-solutions.vercel.app/studio/thesis" target="_blank" rel="noopener noreferrer" className="text-amber-500 hover:text-amber-400 ml-1">Longtail AI Ventures</a></p>
-          </div>
-        </div>
-      </footer>
+      {/* THIS PAGE'S OWN FOOTER IS DELETED, NOT MOVED — the root layout's CorporateFooter already
+          renders here and is strictly better than what stood here.
+
+          What was removed and why each part is not worth keeping:
+            · "© 2025 Corporate AI Solutions" — hardcoded, and it sat directly above the generic
+              footer's getFullYear() "© 2026". Two footers, two years, on the page a suspicious
+              buyer opens to find out who he is dealing with. CorporateFooter cannot go stale.
+            · Two links to `corporate-ai-solutions.vercel.app` ("A Corporate AI Solutions Product",
+              "Longtail AI Ventures"). A raw hosting address, which the tester read exactly as it
+              reads: "I've learned the parent company doesn't have a website." Same class as the
+              footer domain fixed in 34a56dc, and it survived that change because that change was
+              looking at the certificate rather than at every link to the parent.
+            · Home / How it Works / Pricing — all three are in the header on this page already.
+
+          Do not re-add a page-local footer here. If something is genuinely missing from the site
+          footer, add it to CorporateFooter so every page gets it. */}
     </div>
   );
 }

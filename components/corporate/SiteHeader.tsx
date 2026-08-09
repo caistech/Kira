@@ -30,7 +30,7 @@ import { CorporateHeader } from '@/components/corporate/CorporateHeader';
  * headers, which is visible immediately — the failure of the opposite default (hide unless listed)
  * is a marketing page with no header at all, which nobody notices for weeks.
  */
-export const OWN_CHROME = [
+const OWN_CHROME_BOTH = [
   // The LANDING page carries its own header — nav, CTA and the avatar — so the corporate strip on
   // top of it made TWO stacked headers. A tester counted them: about 130px of chrome before the
   // headline on a phone, with the corporate logo ghosting through the sticky one on scroll. "It
@@ -48,24 +48,83 @@ export const OWN_CHROME = [
   '/admin',
 ];
 
+/**
+ * Routes that supply their OWN header, so the corporate one must not render on top.
+ *
+ * ⚠️ THIS USED TO BE ONE LIST FOR BOTH HALVES, AND THE COUPLING IS WHAT MADE THE BUG UNFIXABLE.
+ * The old comment argued the single list was a safety feature — "same list, same test, so the two
+ * can never disagree about which routes own their chrome." They can and they must: `/genome` and
+ * `/business-valuation` own their header and have no footer of their own, so listing them in one
+ * combined list would have removed the only footer they have, taking the operator's identity off
+ * the page with it. A list that cannot express the difference forces you to choose which defect to
+ * ship. So: two lists, and a test (`site-chrome.test.ts`) that derives the correct membership from
+ * the page files rather than from anyone remembering.
+ *
+ * Measured on production 2026-08-08, `fd11f62`, by counting `<header` in the served HTML:
+ * `/genome` `/business-valuation` `/plan` `/commit` `/privacy` `/pubguard` `/terms` all served TWO.
+ * A tester found three of them; the other four were found by looking for the class rather than the
+ * instance, which is the only reason they are in this change.
+ */
+export const OWN_HEADER = [
+  ...OWN_CHROME_BOTH,
+  '/genome',
+  '/business-valuation',
+  '/plan',
+  '/commit',
+  '/privacy',
+  '/pubguard',
+  '/terms',
+  // Behind auth, so a 307 hides them from any anonymous count. The test found them by reading the
+  // page files, which is the half of this check that does not depend on a page being reachable.
+  '/introducer',
+];
+
+/**
+ * Routes that supply their OWN footer.
+ *
+ * `/privacy` and `/terms` are here for a reason worth stating: their own footers carry the
+ * REGULATORY_INCLUSIONS identity — entity, ABN, trading-as, postal address, contact email — and
+ * `CorporateFooter` carries a lighter one with no ABN. On every other page the generic footer is
+ * the better of the two; on the two legal pages it is the weaker, so the page's own footer is the
+ * one that survives. Do not "simplify" this by collapsing the legal pages onto the generic footer.
+ */
+export const OWN_FOOTER = [
+  ...OWN_CHROME_BOTH,
+  '/privacy',
+  '/terms',
+  // `/pubguard` renders <KiraFooter/> rather than a literal <footer>, so it is here by MEASUREMENT
+  // (production served two) and not by the test, which cannot see chrome that arrives through a
+  // component. Stated so nobody later "cleans up" an entry that looks unsupported.
+  '/pubguard',
+  // Two more public pages the tester never opened. Found only because the check asked the
+  // question of every page instead of the three that were reported.
+  '/advisors',
+  '/what-she-does',
+];
+
+/** @deprecated Use OWN_HEADER / OWN_FOOTER. Kept only so an external import does not break. */
+export const OWN_CHROME = OWN_CHROME_BOTH;
+
+export function ownsChrome(list: readonly string[], pathname: string): boolean {
+  return list.some((p) => pathname === p || pathname.startsWith(p + '/'));
+}
+
 export function SiteHeader() {
   const pathname = usePathname() || '/';
-  const hasOwnChrome = OWN_CHROME.some((p) => pathname === p || pathname.startsWith(p + '/'));
-  if (hasOwnChrome) return null;
+  if (ownsChrome(OWN_HEADER, pathname)) return null;
   return <CorporateHeader productName="Kira" productAcronym="K" />;
 }
 
 /**
- * The footer half of the same rule.
+ * The footer half of the same rule, against its OWN list.
  *
- * A route in OWN_CHROME supplies its own header AND its own footer — the landing page carries the
- * legal identity, the link set and a closing CTA — so rendering the corporate one underneath gives
- * the page two of each. Same list, same test, so the two can never disagree about which routes own
- * their chrome.
+ * Measured on production 2026-08-08: `/about` `/privacy` `/pubguard` `/terms` each served TWO
+ * `<footer>` elements. On `/about` the two disagreed about the year — a hardcoded "© 2025" sitting
+ * directly above the generic footer's `getFullYear()` "© 2026". The tester's note on that is the
+ * reason it is not filed as cosmetic: "It's the kind of small thing I notice on an invoice."
  */
 export function SiteFooter() {
   const pathname = usePathname() || '/';
-  const hasOwnChrome = OWN_CHROME.some((p) => pathname === p || pathname.startsWith(p + '/'));
-  if (hasOwnChrome) return null;
+  if (ownsChrome(OWN_FOOTER, pathname)) return null;
   return <CorporateFooter productName="Kira" />;
 }
