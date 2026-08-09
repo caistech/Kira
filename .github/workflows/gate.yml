@@ -75,6 +75,31 @@ jobs:
       - name: Lint
         run: npm run lint --if-present
 
+      # THE TEST SUITE HAD NEVER RUN IN CI. Added 2026-08-09.
+      #
+      # Kira has 829 unit tests and not one of them gated anything: no workflow in this repo ran
+      # `npm test`. A broken test could sit on main indefinitely and nothing would say so — which is
+      # exactly what happened. `app/talk/talk-destination.test.ts` failed for a full day and every
+      # gate run over it reported SUCCESS, correctly, because it was never asked.
+      #
+      # It is quieter than the ESLint incident recorded in BUILD_REGISTER §M, and worse. There, a
+      # config error meant `npm run lint` exited 2 before reading a file, and the note drawn from it
+      # was "a gate that cannot start looks exactly like a gate that found something." This is a gate
+      # that was never invoked at all, so it does not even fail — it is simply absent, and absence is
+      # indistinguishable from green when you are reading a list of ticks.
+      #
+      # The consequence is not the red test. It is that every regression guard in this repo protected
+      # only the person who remembered to run it locally: the chrome duplication check, the
+      # ceiling-not-a-forecast guard on the pricing copy, the net-of-debt reconciliation, the
+      # SDE-is-not-net-profit banned phrases. All written precisely so a later session could not
+      # quietly undo them, and none of them enforced on anybody's push.
+      #
+      # Placed AFTER lint and BEFORE build because it is the fastest signal that carries real meaning
+      # and the build is the slowest step; a failing assertion should not wait behind a bundle.
+      # `--if-present` so a repo with no test script skips rather than fails, matching its neighbours.
+      - name: Tests
+        run: npm test --if-present
+
       # PRODUCT_STANDARDS §4 — every authenticated route renders inside the app chrome.
       #
       # Static, needs no deployment and no secrets, so it runs before the build and fails fast. It is
