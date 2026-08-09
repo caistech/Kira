@@ -230,6 +230,72 @@ export const ICP_BEATS: Beat[] = [
   },
 ];
 
+/**
+ * THE SIX BEATS THE LANDING PLAYS — register P16, operator decision 2026-08-09.
+ *
+ * "Ninety seconds of autoplay at about seven seconds a slide." Thirteen beats is a long time to ask
+ * a stranger for on a first visit, and his own reading was that "the words are carrying all of it",
+ * which is an argument for fewer and stronger rather than for better pictures.
+ *
+ * ⚠️ A SELECTION, NOT A REWRITE, AND THE REASON IS THE AUDIO. `DemoPlayer` finds a beat's recording
+ * by hashing its NARRATION (`keyFor(beat.narration)`) against `/demo-audio/manifest.json`. Editing
+ * one word of narration changes the hash, the lookup misses, and that beat silently plays "No audio
+ * for this step yet" — so folding two beats into one would cost the spoken version of both. Every
+ * beat below is carried verbatim; `ICP_BEATS` keeps all thirteen so nothing is lost and their audio
+ * stays valid.
+ *
+ * THE ARC, and what each one is doing:
+ *
+ *   1. The conversation you have had with yourself  — the hook, and the best-reviewed copy on the
+ *      site ("told nobody — not the staff, not the kids, some weeks not even your wife").
+ *   2. Why a buyer pays you less                    — the argument. Everything else is downstream.
+ *   3. Before I show you anything                   — the limits, unprompted. The single most
+ *      positive reaction in the whole walkthrough was to this shape: "you've told me the bad news
+ *      before I asked — that is the paragraph that would get the truth out of me."
+ *   4. A Tuesday, between jobs                      — the mechanism SHOWN rather than explained.
+ *      Hartley, twelve percent off list, a job in 2004. A specific beats a description, which is
+ *      why this survives and the two beats explaining how it works do not.
+ *   5. Month six                                    — the movement, and the honesty inside it:
+ *      what is still only in his head is named rather than hidden.
+ *   6. Your turn                                    — the ask, and the only beat carrying a CTA.
+ *
+ * DROPPED (7), each for a reason rather than to hit a number: `Week one` and `Month three` are two
+ * of three progress markers and one is enough to show movement; `How it actually works` and `Why it
+ * works that way` both EXPLAIN what beat 4 demonstrates; `Why that one mattered` is the commentary
+ * on beat 4; `What due diligence looks like now` and `What you end up owning` are both payoff beats
+ * arriving after the argument is already made.
+ *
+ * ⚠️ THE TWO I WOULD SWAP FIRST if this reads wrong to you, so the decision stays yours:
+ *   - `Week one` back in place of `Before I show you anything`, if the 12% → 61% arc matters more
+ *     than the privacy beat. It restores the numeric anchor Month six is measured against.
+ *   - `What you end up owning` back in place of `Month six`, if "if you stop paying us, you keep
+ *     it" is the thing you want a stranger to leave with. That promise appears nowhere else in the
+ *     demo now.
+ * Either swap is one line below.
+ */
+const DEMO_BEAT_TITLES = [
+  'The conversation you have had with yourself',
+  'Why a buyer pays you less',
+  'Before I show you anything',
+  'A Tuesday, between jobs',
+  'Month six',
+  'Your turn',
+] as const;
+
+/**
+ * The six, in authored order.
+ *
+ * Selected by title rather than index so a beat inserted above cannot silently shift the set — and
+ * a title that stops matching FAILS LOUDLY at import rather than quietly playing five beats, which
+ * is the failure this shape exists to prevent (a demo that is one beat short looks exactly like a
+ * demo that was meant to be).
+ */
+export const ICP_BEATS_DEMO: Beat[] = DEMO_BEAT_TITLES.map((title) => {
+  const beat = ICP_BEATS.find((b) => b.when === title);
+  if (!beat) throw new Error(`ICP_BEATS_DEMO: no beat titled "${title}" — the demo selection is stale`);
+  return beat;
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // The advisor — second person for her, third for the client
 // ─────────────────────────────────────────────────────────────────────────────
