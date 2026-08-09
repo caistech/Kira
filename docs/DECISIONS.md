@@ -71,17 +71,46 @@ $5M business, still steep for a $250k one. One decision covers all five bands. *
 the whole dollar — $166 is a third of $499 and $167 is not, and a promise about paying less is one an
 owner checks with a calculator.
 
-### ⚠️ The trigger is NOT decided
+### The trigger — TWO of them, whichever comes first
 
-No date and no threshold appears anywhere, in code or copy, and a test asserts no timeframe in the FAQ
-answer. "When the manual is built" needs a defensible denominator — **register B4, deactivation** —
-and until that exists a percentage is measured against an unknown total.
+**Amended 2026-08-09.** There are now two ways the step-down fires, and separating them is the whole
+point, because one is a prediction and the other is a promise.
 
-What the copy says instead is true: *"we don't put a date on it, because it depends entirely on how
-much of the business is still only in your head."*
-
-**Her raise / him confirm** is the agreed mechanism for declaring it reached, matching the
+**Trigger A — "the manual is built". STILL NOT DECIDED.** Needs a defensible denominator — **register
+B4, deactivation** — and until that exists a percentage is measured against an unknown total. **Her
+raise / him confirm** remains the agreed mechanism for declaring it reached, matching the
 confirmation loop that already exists for facts.
+
+**Trigger B — a HARD CAP of 12 MONTHS at the full rate. DECIDED 2026-08-09, operator.** After twelve
+months the account steps down to the maintain rate regardless of how much is still in his head.
+
+**Why this is not the thing §2 refused to do.** The refusal was to *predict*: "typically nine to
+fourteen months" is a forecast, we have six valuations and all six are internal, and a timeframe we
+cannot honour is worse than none. A **ceiling is not a forecast** — it is a commitment we control and
+can keep unilaterally, and it needs no denominator, only elapsed time. So the one promise the product
+could not make and the one it can look identical on the page and are opposites underneath.
+
+**What produced it.** A 66-year-old electrician doing the arithmetic on the result page: $200,000 of
+gap against $999 + GST a month with nothing bounding it. *"I'm 66 and I want out inside two years.
+$999 + GST a month with no stated end is an open cheque, and no man my age signs one of those."* He
+also read the refusal correctly and generously — *"The refusal to estimate reads as evasion, when I
+think it's actually caution."* The cap answers him without inventing data.
+
+**What it costs, stated because it binds every client not yet met.** Maximum revenue at the full rate
+becomes **12 × band** — $11,988 + GST at the $999 band — then a third indefinitely. Open-ended before.
+One active subscription exists (the operator's own), so nothing is repriced retroactively.
+
+**It must be enforced, not merely stated.** A published cap that nothing implements is the `J2`
+failure exactly: a pricing sentence that went false the moment a flag flipped. The mechanism is
+cheap because arrears already bills through a Billing Meter where the **Price carries the amount and
+the meter controls only WHEN** (`unitAmount` is the monthly fee, `value` is always 1) — so the
+step-down is a subscription-item price swap at a period boundary, and `reportPeriodIfNew` already
+runs at exactly that moment. Ship the copy and the swap together or neither.
+
+⚠️ **`maintain-rate.test.ts` asserts the FAQ contains NO timeframe** (`not.toMatch(/\d+\s*months?/)`).
+That guard was right for trigger A and is wrong for trigger B. Replace it deliberately: assert the
+**cap** is stated AND that no *estimate* is — a ceiling is allowed, a prediction is not. Deleting the
+assertion instead would drop the guard that stops "typically nine to fourteen months" appearing.
 
 ---
 
@@ -182,3 +211,70 @@ real ask. **Operator decision outstanding.**
 captured — `CAPTURED_ASKS.md` covers email, WhatsApp, phone, Drive and attachments, and mentions
 LinkedIn only incidentally via `@caistech/unipile-channels`. That is a gap in the record, not a
 decision that went the other way.
+
+---
+
+## 8. `/about` is Kira's page, not the portfolio's
+
+**Decided 2026-08-09. Copy: not yet rewritten. The mechanical half is live (`c45a71f`).**
+
+`kiraexec.com/about` was Corporate AI Solutions' page — the thesis, the marketplace, Longtail AI
+Ventures, *"a suite of AI Voice Agent platforms"* — on a product domain, in front of a 66-year-old
+deciding whether to hand over his books.
+
+**The decision is whose page it is, not what colour it is.** It carries the founder story from the
+landing page at full length, on the same cream palette, and the portfolio material comes off. Ray:
+*"I genuinely thought I'd clicked through to a different company… That paragraph made me trust you.
+This page took it back."* And the constructive half — *"You already wrote the right About page. It's
+just on the wrong URL."*
+
+**The URL stays.** For this ICP an About page is itself a trust artifact: he opened it before typing
+a turnover figure, *"because that's what a suspicious man does before he types a turnover figure into
+a website."* Redirecting it to a landing anchor saves a surface and costs the destination he was
+looking for.
+
+**Already shipped in `c45a71f`** (mechanical, no tone judgement): the duplicate footer, the hardcoded
+`© 2025` sitting above a live `© 2026`, and two links to `corporate-ai-solutions.vercel.app` — a raw
+hosting address that reads exactly as he read it, *"the parent company doesn't have a website."*
+
+⚠️ **Two consequences, neither of them copy.** (1) The portfolio story now has **no destination** from
+this product, and inventing one is a separate decision — it is deliberately not solved here. (2) The
+page carries **P14**, which is not tone but a factual contradiction: *"Every agent learns, adapts,
+and gets better with every conversation"* against the landing's *"not sold, not pooled, not used to
+train anyone's model."* That is the third confirmed instance of the class **K15**'s unbuilt
+`single-statement` check exists to catch, and it is the sentence this audience is least able to
+forgive. It must go with the rewrite, not after it.
+
+---
+
+## 9. Debt is asked; premises, WIP and timing come after the result
+
+**Decided 2026-08-09. Not yet built.** Register **P7**, absorbing **K7**.
+
+A buyer asks four things the eleven questions never did: **debt**, **the premises**, **WIP and
+retentions**, and **when he wants out**. All four are real. They do not all belong in the same place.
+
+**Debt becomes the twelfth question**, and the result page gains *"after debt, about $X to you."*
+That is the number he actually cares about: *"you could have asked in one box and shown me the number
+I actually care about, which is what lands in my pocket… That's the number I'd screenshot and show my
+wife."* Today it is a disclaimer at `app/business-valuation/page.tsx:1190` telling him to do the
+subtraction himself.
+
+**The other three go on an optional refine screen after he has seen a number** — where he is most
+motivated, and where they cost the funnel nothing.
+
+**Why the split rather than all four in the form.** The intro promises *"About 3 minutes"*, and the
+eleven questions are the highest-praised surface in the entire report — the profit guard, Q8, the SDE
+worked example. That funnel just carried the first PASS this product has recorded. Adding four
+questions to it breaks a promise and puts the best thing here at risk to fix a gap that a later
+screen fixes just as well.
+
+**Debt is free of the model, which is why it can go first.** `lib/valuation/model.ts` has no concept
+of debt. So this is page-level arithmetic exactly like A6's realisable range: **no `MODEL_VERSION`
+bump, no rescore of the six stored valuations, and no change to anyone's price**, since pricing runs
+off reported profit rather than the gap.
+
+⚠️ **Two traps in the other three.** The premises is usually a yard held in a **super fund** — a
+*separate* asset, so it must be named and excluded, never added to the business figure. And *"when do
+you want out"* brushes **H3**'s do-not-infer-exit rule: asking him directly is fine and is what he
+asked for; inferring it from the fact that he ran a valuation is not.
