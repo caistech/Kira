@@ -5,6 +5,7 @@ import { OWNER_FAQ } from '@/lib/faq';
 import { LandingDemo } from '@/components/LandingDemo';
 import { PRICE_TIERS } from '@/lib/valuation/pricing';
 import { formatPrice, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
+import { HEADLINE_NUMBERS } from '@/lib/valuation/headline-numbers';
 
 export function LandingClassic() {
   const [isVisible, setIsVisible] = useState(false);
@@ -280,17 +281,28 @@ export function LandingClassic() {
                     by well over double and the owner found out at the results page (naive-tester,
                     Ray, 2026-07-28). Whoever changes the model must change these with it.
                     Same business as /genome and the demos — one story across every surface. */}
+                {/* P8 — EACH NUMBER SAYS WHAT IT MEANS.
+                    "Walk away from what? From the sale? From the business?" He only found out deep
+                    inside the valuation, where these three have always been explained properly. The
+                    clause under each figure is read from lib/valuation/headline-numbers.ts — the
+                    same constants the valuation intro uses — so the shop window and the product
+                    cannot come to describe the same three numbers differently.
+                    ⚠️ The FIGURES stay as literals here; landing-example.test.ts reads this file's
+                    source to check them against the calculator. */}
                 <div className="rounded-2xl bg-stone-50 border border-stone-200 p-3">
-                  <p className="text-sm uppercase tracking-wide text-stone-400 font-semibold">Walk away</p>
+                  <p className="text-sm uppercase tracking-wide text-stone-400 font-semibold">{HEADLINE_NUMBERS[0].shortLabel}</p>
                   <p className="font-display font-bold text-stone-700 text-sm mt-1">$220k</p>
+                  <p className="text-sm text-stone-500 mt-1 leading-snug">{HEADLINE_NUMBERS[0].meaning}</p>
                 </div>
                 <div className="rounded-2xl bg-kira-mist border border-kira-mist p-3">
-                  <p className="text-sm uppercase tracking-wide text-stone-400 font-semibold">Today</p>
+                  <p className="text-sm uppercase tracking-wide text-stone-400 font-semibold">{HEADLINE_NUMBERS[1].shortLabel}</p>
                   <p className="font-display font-bold text-stone-800 text-sm mt-1">$684k</p>
+                  <p className="text-sm text-stone-500 mt-1 leading-snug">{HEADLINE_NUMBERS[1].meaning}</p>
                 </div>
                 <div className="rounded-2xl bg-gradient-to-br from-kira-50 to-kira-50 border border-kira-mist p-3">
-                  <p className="text-sm uppercase tracking-wide text-stone-400 font-semibold">Captured</p>
+                  <p className="text-sm uppercase tracking-wide text-stone-400 font-semibold">{HEADLINE_NUMBERS[2].shortLabel}</p>
                   <p className="font-display font-bold text-kira-600 text-sm mt-1">$879k</p>
+                  <p className="text-sm text-stone-500 mt-1 leading-snug">{HEADLINE_NUMBERS[2].meaning}</p>
                 </div>
               </div>
               <p className="font-body text-center text-sm text-stone-600">

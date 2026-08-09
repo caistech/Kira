@@ -18,8 +18,19 @@
 // The accordion was the ONLY interactive thing on this page, and it made the whole page a client
 // component: every card's clickability waited on the bundle. Native <details> needs no JS, so the
 // page is now a server component and there is no window in which it is served-but-inert.
+import type { Metadata } from 'next';
+
 import { ArrowRight, Check, ChevronDown, FileText, Lock, ShieldCheck } from 'lucide-react';
 import { EXAMPLE_GENOME, EXAMPLE_BUSINESS, exampleTransferability, type Confidence, type CoverageBand } from '@/lib/genome/example';
+
+// Per-page title (register P20). "Kira — your part-time general manager" sat on every page, so a
+// man comparing his own valuation against the worked example in another tab could not tell the two
+// apart. The distinguishing word goes first, because a tab strip shows about twenty characters.
+export const metadata: Metadata = {
+  title: 'See a real Business Genome · Kira',
+  description:
+    'A worked example of a finished Business Genome — the nine areas, what is captured in each, and what is still only in the owner’s head.',
+};
 
 // The bar is a VISUAL for the band, not a measurement. Four fixed widths, so nothing on screen
 // implies a precision the band does not carry.
@@ -204,18 +215,35 @@ export default function GenomePage() {
           <div className="flex items-start gap-3">
             <Lock className="h-6 w-6 text-violet-600 flex-shrink-0 mt-0.5" />
             <div>
+              {/* ⚠️ REWRITTEN 2026-08-09 — register P18. THE ORDER WAS THE DEFECT, and the first
+                  sentence was worse than the order.
+                  It opened "Kira sits quietly in the background while you work and only wakes when
+                  you say her name — like Siri, but for your business." His reading: "for a man whose
+                  entire problem is leakage, 'sits quietly in the background' is not a feature, it's
+                  the thing I'm afraid of." The heading did say "not built yet" — and it does not
+                  help, because "the sentence before that lands first."
+                  Two changes. WHAT IS TRUE TODAY GOES FIRST, so the reassurance is not conditional
+                  on him parsing a roadmap note. And the roadmap item is described by the half that
+                  is actually the feature — the LEAVING, not the listening. An always-on microphone
+                  waiting for its name is not what we are selling him, and describing it as though it
+                  were is the K20 failure in print: unbuilt surveillance is the claim this audience
+                  least forgives, and it was being volunteered. */}
               <p className="font-display font-bold text-lg">Privacy mode — on the roadmap, and not built yet</p>
               <p className="text-stone-700 mt-2 leading-relaxed">
-                Where this is going: Kira sits quietly in the background while you work and only wakes when
-                you say her name — like Siri, but for your business. That means a pause you can hit at any
-                time, and Kira offering it herself when a conversation is obviously not hers to hear:{' '}
-                <em>&ldquo;want me to turn off for this?&rdquo;</em> A good executive assistant leaves the room
-                without being asked.
+                First, what is true today. Kira hears nothing at all unless you open a conversation and
+                press the button, and she stops when you close it. There is no listening in the
+                background, nothing waiting for its name, and nothing running between conversations.
+              </p>
+              <p className="text-stone-700 mt-3 leading-relaxed">
+                What is coming is not more listening — it is a better way to stop. A pause you can hit
+                mid-sentence without ending the conversation, and Kira offering it herself when what is
+                being said is obviously not hers to hear: <em>&ldquo;want me to turn off for this?&rdquo;</em>{' '}
+                A good executive assistant leaves the room without being asked.
               </p>
               <p className="text-stone-700 mt-3 leading-relaxed">
                 We are telling you it is not finished because most owners reading this have not told their
                 staff or their family yet, and you should know exactly what we can and cannot do before you
-                say a word to us. Today Kira listens only when you open a conversation and press the button.
+                say a word to us.
               </p>
             </div>
           </div>

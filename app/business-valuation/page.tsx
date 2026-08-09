@@ -36,6 +36,7 @@ import {
   exitAdvice,
   type ExitTimeframe,
 } from '@/lib/valuation/exit-timing';
+import { HEADLINE_NUMBERS } from '@/lib/valuation/headline-numbers';
 import {
   ArrowLeft,
   ArrowRight,
@@ -777,10 +778,20 @@ export default function BusinessValuationPage() {
               <Brain className="h-7 w-7" />
             </div>
             <h2 className="font-display text-xl font-bold text-stone-800 mb-4">Here's what you'll find out</h2>
+            {/* P8 — THE SAME THREE DEFINITIONS THE LANDING NOW SHOWS.
+                These lived only here, which is how the landing's three headline numbers came to be
+                printed with nothing saying what "walk away" meant. Read from
+                lib/valuation/headline-numbers.ts so the four surfaces that print these labels
+                cannot drift into four descriptions of them. */}
             <ul className="space-y-4 text-stone-700 mb-8">
-              <li className="flex gap-3"><span className="text-stone-400 font-bold">1.</span> The <strong>walk-away</strong> value — if you just sold the gear and closed the doors.</li>
-              <li className="flex gap-3"><span className="text-stone-400 font-bold">2.</span> What it's <strong>worth today</strong> — where a buyer is really buying themselves a job.</li>
-              <li className="flex gap-3"><span className="text-stone-400 font-bold">3.</span> What it's worth once <strong>the knowledge in your head is captured</strong> — a business that runs, and sells, without you.</li>
+              {HEADLINE_NUMBERS.map((h, i) => (
+                <li key={h.key} className="flex gap-3">
+                  <span className="text-stone-400 font-bold">{i + 1}.</span>
+                  <span>
+                    <strong>{h.longLabel}</strong> — {h.meaning}.
+                  </span>
+                </li>
+              ))}
             </ul>
             {/* HIS NAME, ASKED ONCE, HERE.
                 This is the only place the product ever hears it from him. Everything downstream was

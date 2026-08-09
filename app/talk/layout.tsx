@@ -25,6 +25,15 @@
 // an authenticated route renders without the shell, the same way the canonical-feed guard fails on a
 // forked feed. Tracked in BUILD_REGISTER.md.
 
+import type { Metadata } from 'next';
+
+// Per-page title (register P20). "Kira — your part-time general manager" sat on every page, so a
+// man comparing his own valuation against the worked example in another tab could not tell the two
+// apart. The distinguishing word goes first, because a tab strip shows about twenty characters.
+export const metadata: Metadata = {
+  title: 'Talk to Kira · Kira',
+};
+
 import { UserShell } from '@/components/UserShell';
 
 export default function TalkLayout({ children }: { children: React.ReactNode }) {

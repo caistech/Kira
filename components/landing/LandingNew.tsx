@@ -46,6 +46,20 @@ import { OWNER_FAQ } from '@/lib/faq';
 import { LandingDemo } from '@/components/LandingDemo';
 import { FULL_RATE_PERIOD_CAP, PRICE_TIERS } from '@/lib/valuation/pricing';
 import { formatPrice, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
+import { HEADLINE_NUMBERS } from '@/lib/valuation/headline-numbers';
+
+/**
+ * The example figures, in the order of `HEADLINE_NUMBERS`.
+ *
+ * ⚠️ LITERALS, DELIBERATELY, AND THEY MUST STAY IN THIS FILE. `landing-example.test.ts` reads this
+ * component's SOURCE and asserts it contains the figures the calculator returns — that guard exists
+ * because the page once carried a gap 2.25× the model's for two days, and two of the four figures
+ * being right is what made it invisible. Computing these at runtime would leave the shop window
+ * correct and the guard asserting nothing.
+ *
+ * Whoever changes the model must change these with it, and the test is what says so out loud.
+ */
+const LANDING_EXAMPLE_FIGURES = ['$220k', '$684k', '$879k'] as const;
 
 // The PUBLIC, no-account agent — the same one /start uses. A landing page visitor has no session
 // and must not need one: the whole product claim is that you only ever talk to her, and until now
@@ -137,7 +151,15 @@ export function LandingNew() {
           software. The gradient RING is what went (it was amber->pink->purple); the face is the
           product. */}
       <header className="sticky top-0 z-50 border-b border-kira-line bg-kira-surface/90 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+        {/* P19 — THE NAV WRAPPED ONTO TWO LINES AT 1440px.
+            "How it / works", "See a real / one", "Create an / account", each breaking mid-phrase.
+            "It reads slightly unfinished. Not a dealbreaker; a first impression."
+            Two causes, both fixed here. The bar was capped at the CONTENT width (max-w-5xl, 1024px)
+            while carrying a brand lockup plus five items — a header is not prose and does not want
+            the reading measure — so it widens on xl. And nothing stopped a label breaking: the fix
+            that actually guarantees it is `whitespace-nowrap` on the links, because a wider
+            container only moves the width at which it happens. */}
+        <div className="mx-auto flex max-w-5xl xl:max-w-6xl items-center justify-between px-6 py-4">
           <a href="/" className="flex min-h-[44px] items-center gap-3">
             <span className="block h-9 w-9 shrink-0 overflow-hidden rounded-full ring-1 ring-kira-line">
               <img src="/female_avatar.jpeg" alt="Kira" className="h-full w-full object-cover" />
@@ -146,13 +168,13 @@ export function LandingNew() {
             <span className="hidden text-[16px] sm:text-[15px] text-kira-soft sm:inline">by Corporate AI Solutions</span>
           </a>
 
-          <nav className="hidden items-center gap-7 md:flex">
+          <nav className="hidden items-center gap-5 lg:gap-7 md:flex">
             {NAV.map((item) => (
-              <a key={item.href} href={item.href} className="ln-link text-[16px] sm:text-[15px] text-kira-charcoal hover:text-kira-600">
+              <a key={item.href} href={item.href} className="ln-link whitespace-nowrap text-[16px] sm:text-[15px] text-kira-charcoal hover:text-kira-600">
                 {item.label}
               </a>
             ))}
-            <a href="/login" className="ln-link flex min-h-[44px] items-center text-[16px] sm:text-[15px] text-kira-charcoal hover:text-kira-600">
+            <a href="/login" className="ln-link flex min-h-[44px] items-center whitespace-nowrap text-[16px] sm:text-[15px] text-kira-charcoal hover:text-kira-600">
               Sign in
             </a>
             {/* THE FREE DOOR, ON THE FRONT PAGE.
@@ -163,13 +185,13 @@ export function LandingNew() {
                 buyers will not find it. The only door the page pointed at led to a payment screen. */}
             <a
               href="/signup"
-              className="ln-link flex min-h-[44px] items-center text-[16px] sm:text-[15px] text-kira-charcoal hover:text-kira-600"
+              className="ln-link flex min-h-[44px] items-center whitespace-nowrap text-[16px] sm:text-[15px] text-kira-charcoal hover:text-kira-600"
             >
               Create an account
             </a>
             <a
               href="/business-valuation"
-              className="ln-link flex min-h-[44px] items-center rounded-md bg-kira-600 px-4 text-[16px] sm:text-[15px] font-medium text-white hover:bg-kira-700"
+              className="ln-link flex min-h-[44px] items-center whitespace-nowrap rounded-md bg-kira-600 px-4 text-[16px] sm:text-[15px] font-medium text-white hover:bg-kira-700"
             >
               Value my business
             </a>
@@ -206,9 +228,21 @@ export function LandingNew() {
 
       {/* HERO — left-aligned, one statement, two doors. The portrait is back: this is a person you
           decide whether to talk to, and the page that sells her should show her. */}
-      <section className="mx-auto max-w-5xl px-6 pb-16 pt-16 lg:pt-24">
+      {/* P19 — AT 1440px THE RIGHT HALF WAS EMPTY.
+          "Content in a left column with the right half empty. It reads slightly unfinished."
+          The cause is that the hero is a single column of prose: the paragraph is capped at 62ch
+          (`ln-measure`) because that is the right measure for READING, and the headline at 18ch — so
+          on a wide screen the text does its job and the remaining 400px does nothing.
+          The fix is composition, not width. Widening the measure would make the page harder to read
+          to fill space, which is the wrong trade for a 66-year-old. So at `lg:` the hero becomes two
+          columns and her PORTRAIT takes the right — which the file's own header already argues for:
+          "this is a person you decide whether to talk to, and the page that sells her should show
+          her." Below `lg:` nothing changes: the small avatar stays inline beside the eyebrow, where
+          it has been through three walkthroughs. */}
+      <section className="mx-auto max-w-5xl xl:max-w-6xl px-6 pb-16 pt-16 lg:grid lg:grid-cols-12 lg:gap-12 lg:pt-24">
+        <div className="lg:col-span-7">
         <div className="mb-8 flex items-center gap-4">
-          <span className="block h-16 w-16 shrink-0 overflow-hidden rounded-full ring-1 ring-kira-line lg:h-20 lg:w-20">
+          <span className="block h-16 w-16 shrink-0 overflow-hidden rounded-full ring-1 ring-kira-line lg:hidden">
             <img src="/female_avatar.jpeg" alt="Kira" className="h-full w-full object-cover" />
           </span>
           <p className="text-[16px] sm:text-[15px] uppercase tracking-[0.14em] text-kira-soft">
@@ -255,6 +289,18 @@ export function LandingNew() {
         <p className="mt-4 text-[16px] sm:text-[15px] text-kira-soft">
           Free · no sign-up · an indicative valuation on the spot.
         </p>
+        </div>
+
+        {/* The right-hand column, `lg:` and up only. A portrait rather than a stock illustration or
+            a product screenshot: the thing being decided on this page is whether to tell a stranger
+            how your business really works, and that is a decision about a person.
+            `aria-hidden` — the eyebrow above already names her, and a screen reader does not need
+            the same portrait announced twice for a purely compositional image. */}
+        <div className="hidden lg:col-span-5 lg:flex lg:items-start lg:justify-end" aria-hidden="true">
+          <span className="block aspect-square w-full max-w-[340px] overflow-hidden rounded-2xl ring-1 ring-kira-line">
+            <img src="/female_avatar.jpeg" alt="" className="h-full w-full object-cover" />
+          </span>
+        </div>
       </section>
 
       {/* MEET HER — the voice agent, in the page flow, in the shape the rest of the portfolio uses.
@@ -379,21 +425,24 @@ export function LandingNew() {
         <div className="mx-auto max-w-5xl px-6 py-14">
           <p className="text-[16px] sm:text-[15px] text-kira-soft">A real plumbing business, run through the actual calculator</p>
 
+          {/* P8 — EACH NUMBER SAYS WHAT IT MEANS.
+              "Walk away from what? From the sale? From the business?" He only found out deep inside
+              the valuation, on a screen that has explained it properly all along. The clause under
+              each figure comes from lib/valuation/headline-numbers.ts — the same constants the
+              valuation intro reads — so the landing and the product cannot come to describe the same
+              three numbers differently. */}
           <div className="mt-8 grid gap-8 sm:grid-cols-3">
-            {[
-              { label: 'Walk away', value: '$220k', accent: false },
-              { label: 'Today', value: '$684k', accent: false },
-              { label: 'Captured', value: '$879k', accent: true },
-            ].map((f) => (
-              <div key={f.label} className="border-l-2 border-kira-line pl-5">
-                <p className="text-[16px] sm:text-[15px] uppercase tracking-[0.1em] text-kira-soft">{f.label}</p>
+            {HEADLINE_NUMBERS.map((f, i) => (
+              <div key={f.key} className="border-l-2 border-kira-line pl-5">
+                <p className="text-[16px] sm:text-[15px] uppercase tracking-[0.1em] text-kira-soft">{f.shortLabel}</p>
                 <p
                   className={`mt-2 text-[34px] font-semibold tracking-tight ${
-                    f.accent ? 'text-kira-600' : 'text-kira-dark'
+                    f.key === 'captured' ? 'text-kira-600' : 'text-kira-dark'
                   }`}
                 >
-                  {f.value}
+                  {LANDING_EXAMPLE_FIGURES[i]}
                 </p>
+                <p className="mt-2 text-[15px] leading-[1.5] text-kira-soft">{f.meaning}</p>
               </div>
             ))}
           </div>
