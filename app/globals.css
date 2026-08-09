@@ -7,6 +7,25 @@
 @tailwind utilities;
 
 /* ---------------------------------------------------------------------------
+ * ⚠️ .font-display / .font-body ARE DELIBERATELY *NOT* DEFINED HERE. Read this before adding them.
+ *
+ * `tailwind.config.ts` maps both to Inter, and DESIGN.md §4 records that as a decision rather than
+ * an oversight: the aliases carry 256 usages, and adding a second face mid-testing is a visual
+ * change the operator explicitly deferred. Five pages override them to Outfit / DM Sans inside
+ * their own body <style>, which is page-scoped by the cascade — a body rule beats the head sheet
+ * at equal specificity — so those five look different and nothing else does.
+ *
+ * Defining them here instead would be a one-line change that quietly reversed that decision on
+ * every page in the product. The build makes it visible: both rules compile to `.font-display{…}`
+ * at identical specificity, so it comes down to sheet order, and mine landed last. Caught by
+ * reading the built CSS rather than by anything failing.
+ *
+ * The fonts themselves are now self-hosted (app/layout.tsx, next/font) and reach those five pages
+ * as CSS variables, which is the part of K5 that was worth changing: the third-party render-
+ * blocking @import is gone, the page-scoped typography is untouched.
+ * ------------------------------------------------------------------------- */
+
+/* ---------------------------------------------------------------------------
  * Jumping to an anchor put the heading UNDER the sticky header.
  *
  * A naive tester: "the sticky header clips section headings when jumping to an anchor." The browser

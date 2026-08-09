@@ -1,5 +1,3 @@
-'use client';
-
 // @public-route
 
 // app/genome/page.tsx
@@ -15,8 +13,12 @@
 // a buyer's advisor actually asks. The coverage numbers are the honest half: they name what is still
 // only in his head, which is precisely what he is paying to change.
 
-import { useState } from 'react';
-import { ArrowRight, Check, FileText, Lock, ShieldCheck } from 'lucide-react';
+// NO 'use client' AND NO useState — P3/K5.
+//
+// The accordion was the ONLY interactive thing on this page, and it made the whole page a client
+// component: every card's clickability waited on the bundle. Native <details> needs no JS, so the
+// page is now a server component and there is no window in which it is served-but-inert.
+import { ArrowRight, Check, ChevronDown, FileText, Lock, ShieldCheck } from 'lucide-react';
 import { EXAMPLE_GENOME, EXAMPLE_BUSINESS, exampleTransferability, type Confidence, type CoverageBand } from '@/lib/genome/example';
 
 // The bar is a VISUAL for the band, not a measurement. Four fixed widths, so nothing on screen
@@ -30,17 +32,31 @@ const CONFIDENCE_LABEL: Record<Confidence, string> = {
 };
 
 export default function GenomePage() {
-  const [open, setOpen] = useState<string | null>(EXAMPLE_GENOME[0].key);
   const overall = exampleTransferability();
 
   return (
     <div className="min-h-screen bg-amber-50 text-stone-800 font-body">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Outfit:wght@400;500;600;700&display=swap');
-        .font-display { font-family: 'Outfit', sans-serif; }
-        .font-body { font-family: 'DM Sans', sans-serif; }
+        /* SELF-HOSTED FONTS, PAGE-SCOPED TYPOGRAPHY — K5/P3.
+           An @import of a Google Fonts stylesheet stood here: a render-blocking third-
+           party stylesheet inside a BODY <style>, invisible to the preload scanner, on five pages —
+           and on the pages a tester called slow. next/font (app/layout.tsx) self-hosts the two
+           faces and exposes them as variables, so the external request is gone entirely.
+           ⚠️ These two rules stay HERE rather than moving to globals.css. Tailwind maps
+           .font-display/.font-body to Inter and DESIGN.md §4 defers a second face; a body rule
+           beats the head sheet at equal specificity, so keeping them page-scoped is what stops this
+           becoming a site-wide typeface change nobody asked for. */
+        .font-display { font-family: var(--font-display), 'Outfit', ui-sans-serif, sans-serif; }
+        .font-body { font-family: var(--font-body), 'DM Sans', ui-sans-serif, sans-serif; }
         .grad-genome { background: linear-gradient(135deg,#16A34A,#15803D 60%,#166534); }
         .grad-coral { background: linear-gradient(135deg,#15803D,#166534); }
+
+        /* The default disclosure triangle, removed in both dialects — Safari still needs the
+           -webkit- pseudo-element, and without it the card carries two indicators. The chevron
+           below is the one indicator, and it turns on [open] with no JS involved. */
+        .genome-area > summary { list-style: none; }
+        .genome-area > summary::-webkit-details-marker { display: none; }
+        .genome-area[open] > summary .genome-chevron { transform: rotate(180deg); }
       `}</style>
 
       <header className="sticky top-0 z-40 bg-amber-50/85 backdrop-blur border-b border-amber-200/60">
@@ -83,16 +99,28 @@ export default function GenomePage() {
           </p>
         </section>
 
+        {/* NATIVE <details>, SO THE CARDS WORK BEFORE THE JAVASCRIPT ARRIVES — P3/K5.
+            "8 of the 9 areas are not clickable." Investigated on production: the handlers were real
+            and did work, but a click issued before hydration was silently dropped — aria-expanded
+            unchanged, no text moved, no console error. The page was served, readable, and inert,
+            and the failure is indistinguishable from a broken button.
+            The measured window was only ~300ms from a fast headless client on a fast link, which
+            does not explain a man clicking, waiting and giving up — so his client was slower, and
+            since his client cannot be measured from here, the fix removes the DEPENDENCY rather
+            than shortening the wait. <details> is open/closed by the browser with no JS at all, so
+            there is no window in which it is inert, whatever the device.
+            `name` gives exclusive accordion behaviour natively where supported; where it is not,
+            the panels open independently, which is a graceful loss rather than a broken one. */}
         <section className="mt-10 space-y-3">
-          {EXAMPLE_GENOME.map((s) => {
-            const isOpen = open === s.key;
+          {EXAMPLE_GENOME.map((s, i) => {
             return (
-              <article key={s.key} className="rounded-2xl border border-amber-200 bg-white overflow-hidden">
-                <button
-                  onClick={() => setOpen(isOpen ? null : s.key)}
-                  aria-expanded={isOpen}
-                  className="w-full text-left px-5 py-4 min-h-[64px] flex items-center justify-between gap-4 hover:bg-amber-50/60"
-                >
+              <details
+                key={s.key}
+                name="genome-area"
+                open={i === 0}
+                className="genome-area rounded-2xl border border-amber-200 bg-white overflow-hidden"
+              >
+                <summary className="w-full cursor-pointer text-left px-5 py-4 min-h-[64px] flex items-center justify-between gap-4 hover:bg-amber-50/60">
                   <span>
                     <span className="font-display font-bold text-lg block">{s.title}</span>
                     <span className="text-sm text-stone-500">{s.question}</span>
@@ -103,10 +131,11 @@ export default function GenomePage() {
                       the same card — a page contradicting itself on one line, which is exactly what
                       a tester reported hours after this shipped. The band IS the statement; it does
                       not need a noun under it. */}
-                  <span className="flex-shrink-0 text-right">
+                  <span className="flex-shrink-0 flex items-center gap-3 text-right">
                     <span className="font-display font-bold text-xl capitalize">{s.coverage}</span>
+                    <ChevronDown className="genome-chevron h-5 w-5 text-stone-400 transition-transform" />
                   </span>
-                </button>
+                </summary>
 
                 <div className="h-1.5 w-full bg-amber-100">
                   <div
@@ -115,8 +144,7 @@ export default function GenomePage() {
                   />
                 </div>
 
-                {isOpen && (
-                  <div className="px-5 py-5 space-y-5">
+                <div className="px-5 py-5 space-y-5">
                     {s.entries.map((e) => (
                       <div key={e.title} className="flex items-start gap-2">
                         <Check className="h-5 w-5 text-emerald-500 flex-shrink-0 mt-0.5" />
@@ -141,9 +169,8 @@ export default function GenomePage() {
                         </p>
                       </div>
                     )}
-                  </div>
-                )}
-              </article>
+                </div>
+              </details>
             );
           })}
         </section>

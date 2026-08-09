@@ -490,9 +490,17 @@ export default function BusinessValuationPage() {
   return (
     <div className="min-h-screen bg-amber-50 text-stone-800 font-body">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Outfit:wght@400;500;600;700&display=swap');
-        .font-display { font-family: 'Outfit', sans-serif; }
-        .font-body { font-family: 'DM Sans', sans-serif; }
+        /* SELF-HOSTED FONTS, PAGE-SCOPED TYPOGRAPHY — K5/P3.
+           An @import of a Google Fonts stylesheet stood here: a render-blocking third-
+           party stylesheet inside a BODY <style>, invisible to the preload scanner, on five pages —
+           and on the pages a tester called slow. next/font (app/layout.tsx) self-hosts the two
+           faces and exposes them as variables, so the external request is gone entirely.
+           ⚠️ These two rules stay HERE rather than moving to globals.css. Tailwind maps
+           .font-display/.font-body to Inter and DESIGN.md §4 defers a second face; a body rule
+           beats the head sheet at equal specificity, so keeping them page-scoped is what stops this
+           becoming a site-wide typeface change nobody asked for. */
+        .font-display { font-family: var(--font-display), 'Outfit', ui-sans-serif, sans-serif; }
+        .font-body { font-family: var(--font-body), 'DM Sans', ui-sans-serif, sans-serif; }
         .grad-warm { background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 45%, #fce7f3 100%); }
         .grad-coral { background: linear-gradient(135deg, #fb7185 0%, #f472b6 100%); }
         .grad-genome { background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 60%, #f472b6 100%); }

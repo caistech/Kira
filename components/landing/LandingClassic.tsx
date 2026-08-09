@@ -43,10 +43,18 @@ export function LandingClassic() {
   return (
     <div className="min-h-screen bg-kira-mist text-stone-800 font-sans overflow-x-hidden">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400;1,9..40,500&family=Outfit:wght@300;400;500;600;700&display=swap');
+        /* SELF-HOSTED FONTS, PAGE-SCOPED TYPOGRAPHY — K5/P3.
+           An @import of a Google Fonts stylesheet stood here: a render-blocking third-
+           party stylesheet inside a BODY <style>, invisible to the preload scanner, on five pages —
+           and on the pages a tester called slow. next/font (app/layout.tsx) self-hosts the two
+           faces and exposes them as variables, so the external request is gone entirely.
+           ⚠️ These two rules stay HERE rather than moving to globals.css. Tailwind maps
+           .font-display/.font-body to Inter and DESIGN.md §4 defers a second face; a body rule
+           beats the head sheet at equal specificity, so keeping them page-scoped is what stops this
+           becoming a site-wide typeface change nobody asked for. */
+        .font-display { font-family: var(--font-display), 'Outfit', ui-sans-serif, sans-serif; }
+        .font-body { font-family: var(--font-body), 'DM Sans', ui-sans-serif, sans-serif; }
         
-        .font-display { font-family: 'Outfit', sans-serif; }
-        .font-body { font-family: 'DM Sans', sans-serif; }
         
         /* DESIGN.md §3 — one palette. These were five unrelated colour families (amber, pink,
            lavender, mint, slate) built as a deliberate playful system, on a page selling to a
