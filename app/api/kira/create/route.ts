@@ -5,10 +5,16 @@
 // 1. User completes setup with Setup Kira → draft saved to kira_drafts
 // 2. User reviews/edits draft on /setup/draft/[draftId]
 // 3. User submits → this endpoint is called with draftId
-// 4. We fetch the draft, create ElevenLabs agent, save to kira_agents
+// 4. We fetch the draft, create OR RE-BRIEF the owner's ElevenLabs agent, save to kira_agents
 // 5. User redirected to /chat/[agentId]
 //
-// IMPORTANT: Each draft creates a NEW agent. Users can have multiple agents.
+// IMPORTANT: ONE agent per owner per journey — matching `kira_one_active_agent_per_journey`, the
+// unique index the database has declared since 2026-01-20. This header used to read "Each draft
+// creates a NEW agent. Users can have multiple agents", which the schema had never allowed: the
+// second draft minted a real ElevenLabs agent, had its INSERT rejected by that index, swallowed the
+// error as non-fatal, and sent the owner to an agent no server-side lookup could resolve. A second
+// draft now RE-BRIEFS her — same agent, same id, so `kira_memory` stays attached. See the block at
+// the ElevenLabs call for the full account.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
@@ -224,6 +230,96 @@ export async function POST(req: NextRequest) {
       objective: draft.primary_objective,
     });
 
+    /* ---------------- One Kira per owner: reuse hers, or create the first ---------------- */
+    //
+    // ⚠️ THE DATABASE HAS ALWAYS SAID ONE, AND THE CODE HAS ALWAYS CREATED MANY — register O1/D2.
+    //
+    // `kira_one_active_agent_per_journey` is a UNIQUE index on (user_id, journey_type) WHERE
+    // status = 'active', and the migration that added it says, out loud, "this matches backend
+    // logic". It did not. This route inserted a fresh 'active' row for every draft, and the header
+    // of this file states the assumption plainly: "Each draft creates a NEW agent."
+    //
+    // What that produced on a second draft, in order: a NEW ElevenLabs agent (a real vendor
+    // resource, billed), an INSERT rejected by the unique index, an error deliberately swallowed as
+    // non-fatal ("agent was created in ElevenLabs, we should still return it"), and a redirect to
+    // /chat/<the new agent>. So the owner ends up talking to an agent the database does not know
+    // about, while `kira_agents` — which is what /talk and every server-side lookup resolve through
+    // — still points at the old one. Two Kiras, one of them orphaned, and nothing on screen to say
+    // so. That is the shape of the 08-05 incident where a paying owner was told she had no
+    // connection to his Gmail: the wrong Kira answered.
+    //
+    // WHY REUSE RATHER THAN DEACTIVATE-AND-REPLACE. `kira_memory` is keyed by `kira_agent_id`, so
+    // minting a new agent silently strands everything she has ever learned about him. Redoing the
+    // brief is an act of correction, not a request to be forgotten. Reuse keeps the memory and
+    // updates the brief, which is what the owner means by the button.
+    //
+    // This is also the precondition O1 named: with create-per-draft collapsed, provisioning at
+    // payment can no longer hand him a second agent the moment he finishes the brief.
+    const { data: existingActive } = await supabase
+      .from('kira_agents')
+      .select('id, elevenlabs_agent_id')
+      .eq('user_id', user.id)
+      .eq('journey_type', draft.journey_type)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    const reusing = Boolean(existingActive?.elevenlabs_agent_id);
+    let agentId: string;
+
+    if (reusing) {
+      agentId = existingActive!.elevenlabs_agent_id as string;
+      await log(supabase, requestId, 'elevenlabs_update', 'start', undefined, { agentId });
+
+      // PATCH rather than create. The tool/webhook/allowlist block below is unchanged and runs on
+      // `agentId` either way, so a re-briefed agent gets exactly the same wiring as a new one —
+      // including the tools read-back, which is what catches a silent tool-less agent.
+      const patchRes = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agentId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'xi-api-key': ELEVENLABS_API_KEY,
+        },
+        body: JSON.stringify({
+          name: agentName,
+          conversation_config: {
+            agent: {
+              prompt: {
+                prompt: `${systemPrompt}\n\n${conversationContinuityPrompt}`,
+                llm: ELEVENLABS_CONFIG.llm,
+                temperature: ELEVENLABS_CONFIG.temperature,
+              },
+              first_message: firstMessage,
+              language: 'en',
+            },
+            tts: {
+              model_id: ELEVENLABS_CONFIG.tts_model,
+              voice_id: ELEVENLABS_CONFIG.voice_id,
+            },
+            conversation: {
+              max_duration_seconds: ELEVENLABS_CONFIG.max_duration_seconds,
+            },
+          },
+        }),
+      });
+
+      if (!patchRes.ok) {
+        const text = await patchRes.text();
+        await log(supabase, requestId, 'elevenlabs_update', 'error', 'ElevenLabs HTTP error', {
+          status: patchRes.status,
+          response: text,
+        });
+        // Release the claim, exactly as the create path does — otherwise the draft is stranded
+        // 'used' with a brief that never reached her.
+        await supabase
+          .from('kira_drafts')
+          .update({ status: draft.status, used_at: null })
+          .eq('id', draftId);
+        throw new Error(`ElevenLabs update failed: ${patchRes.status}`);
+      }
+
+      await log(supabase, requestId, 'elevenlabs_update', 'success', undefined, { agentId });
+    } else {
+
     /* ---------------- Create ElevenLabs Agent ---------------- */
     await log(supabase, requestId, 'elevenlabs_create', 'start');
 
@@ -284,11 +380,13 @@ export async function POST(req: NextRequest) {
     }
 
     const elevenData = await elevenRes.json();
-    const agentId = elevenData.agent_id;
+    agentId = elevenData.agent_id;
 
     await log(supabase, requestId, 'elevenlabs_create', 'success', undefined, {
       agentId,
     });
+
+    } // end: create-the-first-one branch
 
     /* ---------------- Post-create ElevenLabs binding (parallel, all non-fatal) ---------------- */
     // webhook bind + origin allowlist + tool attach are independent ElevenLabs round-trips. Running
@@ -403,27 +501,53 @@ export async function POST(req: NextRequest) {
     /* ---------------- Save Agent to Database ---------------- */
     await log(supabase, requestId, 'agent_save', 'start');
 
-    const { data: savedAgent, error: agentError } = await supabase
-      .from('kira_agents')
-      .insert({
-        user_id: user.id,
-        agent_name: agentName,
-        journey_type: draft.journey_type,
-        elevenlabs_agent_id: agentId,
-        framework,
-        draft_id: draftId,
-        status: 'active',
-        voice_id: ELEVENLABS_CONFIG.voice_id,
-      })
-      .select('id')
-      .single();
+    // UPDATE when re-briefing, INSERT only for the first one — mirroring the branch above so the
+    // row and the live agent can never describe different Kiras. `id` is preserved on the update,
+    // which is what keeps `kira_memory` (keyed by `kira_agent_id`) attached to her.
+    const { data: savedAgent, error: agentError } = reusing
+      ? await supabase
+          .from('kira_agents')
+          .update({
+            agent_name: agentName,
+            framework,
+            draft_id: draftId,
+            voice_id: ELEVENLABS_CONFIG.voice_id,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingActive!.id)
+          .select('id')
+          .single()
+      : await supabase
+          .from('kira_agents')
+          .insert({
+            user_id: user.id,
+            agent_name: agentName,
+            journey_type: draft.journey_type,
+            elevenlabs_agent_id: agentId,
+            framework,
+            draft_id: draftId,
+            status: 'active',
+            voice_id: ELEVENLABS_CONFIG.voice_id,
+          })
+          .select('id')
+          .single();
 
     if (agentError) {
-      await log(supabase, requestId, 'agent_save', 'error', 'Failed to save agent', { error: agentError });
-      // Don't throw - agent was created in ElevenLabs, we should still return it
-      console.error('[kira/create] Failed to save agent to DB:', agentError);
+      // ⚠️ STILL NON-FATAL, BUT NO LONGER QUIET ABOUT WHAT IT COSTS.
+      //
+      // The old comment — "Don't throw, agent was created in ElevenLabs, we should still return it"
+      // — is what turned a rejected INSERT into an orphaned agent nobody could see. The failure it
+      // was written for was the unique index, which the reuse branch above now prevents; anything
+      // reaching here is a genuine write failure, and an agent with no row is one that /talk cannot
+      // resolve, that has no memory binding, and that the owner will meet exactly once.
+      await log(supabase, requestId, 'agent_save', 'error', 'Failed to save agent — the live agent has no row', {
+        error: agentError,
+        agentId,
+        reusing,
+      });
+      console.error('[kira/create] agent %s has NO kira_agents row (%s):', agentId, reusing ? 'update' : 'insert', agentError);
     } else {
-      await log(supabase, requestId, 'agent_save', 'success');
+      await log(supabase, requestId, 'agent_save', 'success', undefined, { reusing });
     }
 
     /* ---------------- Brief the new Kira from the Client Profile (if discovery ran) ---------- */
