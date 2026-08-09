@@ -27,6 +27,7 @@
 // lift the multiple.
 
 import { lookupSdeMultiple } from './sde-multiples';
+import { sectorContext } from './sector-context';
 
 export type ProfitTrend = 'growing_strongly' | 'growing' | 'flat' | 'declining';
 export type MarginTrend = 'improving' | 'stable' | 'shrinking';
@@ -671,6 +672,15 @@ export function buildBuyerRationale(result: ValuationResult): BuyerRationale {
   const opener =
     "A buyer isn't really paying for last year's profit - they're paying for how confident they can be it keeps coming in once you're gone. So what they actually price is risk.";
 
+  // Both the low and the strong narrative used to make a claim about where his multiple sits
+  // RELATIVE TO HIS SECTOR without printing either figure, and both claims are reachably false
+  // (see sector-context.ts). Derived once here so the two branches cannot drift apart.
+  const sector = sectorContext({
+    sectorMultiple: result.sdeMultiple,
+    appliedMultiple: result.appliedMultipleToday,
+    matched: result.sectorMatched,
+  });
+
   // WHICH STORY WE TELL. Narrative only — `readiness` still drives every figure on the page, and
   // nothing here moves a number. That distinction is the reason this fix was safe to make and a
   // re-weighting was not: re-weighting would re-price valuations already shown to people.
@@ -698,7 +708,14 @@ export function buildBuyerRationale(result: ValuationResult): BuyerRationale {
       paragraphs: [
         opener,
         `Right now they would look at your business and see that ${weak}. From the outside most of that is invisible - they are taking your word for how it all holds together.`,
-        "It is the same as buying a car sight unseen on the seller's promises: you would knock the price down to cover the unknown unknowns, because you are the one who wears it if things turn out worse than described. A buyer does exactly that here - which is why the multiple sits below your sector's average, not at it.",
+        // ⚠️ THE DIRECTION IS DERIVED, NOT ASSERTED (P4). This sentence used to end "which is why
+        // the multiple sits below your sector's average, not at it" — a claim about a number it did
+        // not print and did not check. It is reachably FALSE: an owner who answers "I am the
+        // business" in a cheap sector is priced ABOVE his sector median, because the absolute
+        // seller's floor (1.5x) sits above that sector's scaled floor. Routes at 1.51x on $120k SDE
+        // comes out at 1.6x — the weakest possible business, told it was being marked down below a
+        // median it is in fact above. See sector-context.ts.
+        `It is the same as buying a car sight unseen on the seller's promises: you would knock the price down to cover the unknown unknowns, because you are the one who wears it if things turn out worse than described. A buyer does exactly that here - ${sector.clause}`,
         "The more of that you make visible and transferable - documented, systemised, running without you - the less there is to discount for. The gap above isn't extra profit; it's risk you have taken off the buyer's table.",
       ],
     };
@@ -725,7 +742,7 @@ export function buildBuyerRationale(result: ValuationResult): BuyerRationale {
     title: 'Why the number is what it is',
     paragraphs: [
       opener,
-      'You have done the hard part. A buyer can largely see how this business runs without you, so there is little left for them to discount for the unknown - which is why you are near the top of what your sector commands.',
+      `You have done the hard part. A buyer can largely see how this business runs without you, so there is little left for them to discount for the unknown - ${sector.strongClause}`,
       weak
         ? `The small remaining gap is ${weak}. Tidy that and there is almost nothing left for a buyer to hold back.`
         : 'There is almost nothing left for a buyer to hold back - this reads as an asset, not a job.',

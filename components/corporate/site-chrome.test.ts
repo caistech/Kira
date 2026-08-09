@@ -3,6 +3,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
 import { OWN_HEADER, OWN_FOOTER, ownsChrome } from './SiteHeader';
+import { stripComments } from '@/lib/source-scan';
 
 // WHY THIS FILE EXISTS.
 //
@@ -46,21 +47,8 @@ function pageFiles(dir: string, acc: string[] = []): string[] {
   return acc;
 }
 
-/**
- * Comments are stripped before scanning, and that is not a nicety.
- *
- * The first run of this test failed on `app/plan/page.tsx` — whose own <footer> had just been
- * REMOVED, in a comment that explained the removal by naming the element. So the check failed on
- * the note describing the fix. `@caistech/portfolio-gate`'s offer-claims audit learned the same
- * thing the same way: punishing an honest explanation teaches people to delete the explanation,
- * which costs more than the check is worth.
- */
-function stripComments(src: string): string {
-  return src
-    .replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, ' ') // JSX comment blocks
-    .replace(/\/\*[\s\S]*?\*\//g, ' ') // block comments
-    .replace(/^\s*\/\/.*$/gm, ' '); // line comments
-}
+// `stripComments` moved to `lib/source-scan.ts` on its SECOND consumer (the valuation-claims test),
+// per the build-alike rule — the reasoning that earned it is documented there.
 
 const PAGES = pageFiles(APP_DIR).map((file) => {
   const src = stripComments(readFileSync(file, 'utf8'));

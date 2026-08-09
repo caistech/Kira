@@ -46,6 +46,7 @@ import {
   type ValuationInputs,
 } from '@/lib/valuation/model';
 import { SECTOR_MULTIPLES } from '@/lib/valuation/sde-multiples';
+import { sectorContext, MULTIPLE_SOURCE } from '@/lib/valuation/sector-context';
 import { FULL_RATE_PERIOD_CAP, priceForProfit } from '@/lib/valuation/pricing';
 import { netOfDebt } from '@/lib/valuation/net-of-debt';
 import { approxNumber, formatMoney, formatMoneyApprox, formatPrice, getCurrency, CURRENCIES, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
@@ -1033,6 +1034,20 @@ function ResultView({
   );
   const readinessPct = Math.round(result.readiness * 100);
   const rationale = buildBuyerRationale(result);
+  /**
+   * P4 — the sector's own multiple, printed beside his.
+   *
+   * "If electrical contracting averages 4.1× and I'm at 2.8×, that's a fact I'd chew on for a week.
+   * As written it's a claim I can't check, on a page whose whole credibility rests on being
+   * checkable." The figure was already in `sde-multiples.ts`; the page referenced it four times and
+   * never once stated it. Derived from the SAME helper the rationale below uses, so the sentence
+   * under the cards and the sentence in the essay can never disagree about which way he sits.
+   */
+  const sector = sectorContext({
+    sectorMultiple: result.sdeMultiple,
+    appliedMultiple: result.appliedMultipleToday,
+    matched: result.sectorMatched,
+  });
 
   return (
     <div className="space-y-8">
@@ -1131,6 +1146,16 @@ function ResultView({
               tone="genome"
             />
           </div>
+
+          {/* P4 — THE SECTOR'S OWN MULTIPLE, BESIDE HIS.
+              The page referenced it four separate times ("this sets the multiple", "below your
+              sector's average", "near the top of what your sector commands", "sector figures inform
+              the commentary") and never printed it. Directly under the cards because that is where
+              "~2.8× SDE" is, and the whole point is that he can do the subtraction himself.
+              `direction` is derived from the two printed figures — see sector-context.ts. */}
+          <p className="text-base text-stone-600 leading-relaxed">
+            {sector.sentence}
+          </p>
 
           {/* WHY ONE OF THESE IS A RANGE AND TWO ARE NOT.
               "You're more uncertain about the value of my second-hand gear than about the value of
@@ -1355,16 +1380,41 @@ function ResultView({
           It doesn&apos;t account for your lease terms, working capital, or how long you&apos;ve been
           trading, all of which a buyer will price.
         </p>
+        {/* ⚠️ THIS PARAGRAPH DESCRIBED A MODEL THAT NO LONGER EXISTS.
+            It read "Not a dataset — the two numbers either side of a deal will actually agree to.
+            The bottom is 1.5×… The top is 5×." That was true of the UNIVERSAL band (2026-08-04 to
+            08-08), which was flat for every sector and scaled only by profit. Since the band was
+            sector-scaled on 08-08 it is false: 1.5× and 5× are outer GUARDS, and the real band is
+            the sector median × 0.75 to × 1.35, size-adjusted. Ray's own figures give 2.2×–4.2×,
+            while this paragraph told him 1.5× and 5×.
+            Left behind because the 08-08 change was made in `model.ts` and nobody re-read the page
+            that explains it — the same one-fact-two-places shape as E1/K11, and the reason P4 was
+            filed at severity 1: we were withholding the sector figure on the one screen built to be
+            checked, while describing a band that was not his. */}
         <p>
-          <strong className="text-stone-700">Where the range comes from.</strong> Not a dataset — the two
-          numbers either side of a deal will actually agree to.{' '}
-          <strong className="text-stone-700">The bottom is 1.5×.</strong> Below about eighteen months of
-          profit a seller doesn&apos;t sell; he keeps working it, because handing over a business he could
-          simply continue to run isn&apos;t worth that.{' '}
-          <strong className="text-stone-700">The top is 5×.</strong> No buyer pays more than four or five
-          years of profit for a business this size, and he only reaches the top when three things are true
-          at once: it is well run, he can take it over without you, and he believes he can add his own spin
-          and lift the margins. Miss one and he is not at the top of the range.
+          <strong className="text-stone-700">Where your range comes from.</strong> Two things.{' '}
+          <strong className="text-stone-700">The centre is your sector.</strong>{' '}
+          {sector.matched
+            ? `${sector.sectorMultiple.toFixed(1)}× SDE is the median for businesses like yours that have actually changed hands`
+            : `${sector.sectorMultiple.toFixed(1)}× SDE is the overall market median across businesses that have actually changed hands`}{' '}
+          ({MULTIPLE_SOURCE}).
+          {!noEarnings && (
+            <>
+              {' '}That sets your band at{' '}
+              <strong className="text-stone-700">
+                {result.floorMultiple.toFixed(1)}× to {result.ceilingMultiple.toFixed(1)}×
+              </strong>
+              , adjusted for the size of your earnings; where you land inside it is what the eleven
+              questions decide.
+            </>
+          )}{' '}
+          <strong className="text-stone-700">The outer limits are 1.5× and 5×</strong>, and they hold
+          whatever the sector says. Below about eighteen months of profit a seller doesn&apos;t sell;
+          he keeps working it, because handing over a business he could simply continue to run
+          isn&apos;t worth that. And no buyer pays more than four or five years of profit for a
+          business this size, however rich the sector — he only reaches the top when three things are
+          true at once: it is well run, he can take it over without you, and he believes he can add
+          his own spin and lift the margins. Miss one and he is not at the top of the range.
         </p>
         <p>
           <strong className="text-stone-700">Which is why the questions are weighted the way they are.</strong>{' '}
@@ -1373,7 +1423,8 @@ function ResultView({
           equipment. Three tenths is whether the earnings survive the handover: locked-in revenue and clients
           who aren&apos;t only yours. The last fifth is the upside he thinks he can add, weighted least
           because a buyer discounts his own optimism and won&apos;t pay you today for improvements he intends
-          to make himself. Sector figures inform the commentary, not the number.
+          to make himself. Your sector sets the centre of the band; your answers set where in it you
+          sit.
         </p>
         <p>
           <strong className="text-stone-700">This is what the rubric supports and nothing more.</strong> A
