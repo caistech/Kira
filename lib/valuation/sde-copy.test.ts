@@ -45,13 +45,53 @@ describe('SDE copy', () => {
     }
   });
 
-  it('shows the worked example as two components that are ADDED, not one net figure', () => {
+  it('shows the worked example as SEPARATE components that are ADDED, not one net figure', () => {
     const example = sdeExample('$');
     // The failure mode was an example that folded the owner's pay into "what you kept".
-    expect(example).toMatch(/\$150k after costs/i);
+    expect(example).toMatch(/\$120k after costs/i);
     expect(example).toMatch(/paid you \$50k/i);
-    expect(example).toMatch(/add them together/i);
     expect(example).toMatch(/\$200,000/);
+    // The components must actually reconcile to the total, or the example teaches arithmetic that
+    // does not work: 120 + 50 + 30 = 200.
+    expect(120 + 50 + 30).toBe(200);
+  });
+
+  // ⚠️ THESE TWO REPLACED A GUARD THAT PINNED THE EXAMPLE AT TWO COMPONENTS.
+  //
+  // The old assertions required "$150k after costs" and "add them together", which described an
+  // example with owner's pay as the only add-back. That was right when SDE's only widely-missed
+  // component was the owner's pay. It is wrong now, and updating it rather than deleting it matters
+  // for the same reason it did with the FAQ timeframe guard: the point is not to stop asserting, it
+  // is to assert the thing that is now true.
+  //
+  // WHY INTEREST IS LOAD-BEARING RATHER THAN THOROUGH. SDE is a PRE-debt-service measure. The
+  // multiple applied to it yields the value of the business regardless of financing (enterprise
+  // value); equity value is that minus what the business owes. Subtracting debt is only correct in
+  // that order. An owner who omits the interest add-back gives us a figure that has already absorbed
+  // his debt service, and the debt question then takes the principal off a second time — two errors,
+  // same direction, on the number he takes to his wife.
+  describe('interest is named wherever the owner is told what to add back', () => {
+    it('the definition says so', () => {
+      expect(SDE_DEFINITION).toMatch(/add back interest/i);
+    });
+
+    it('the worked example demonstrates it, not just the definition', () => {
+      // The definition is read once; the example is worked through. An example teaching two
+      // add-backs beside a definition naming four is the exact label-versus-helper split this
+      // module was created to end.
+      expect(sdeExample('$')).toMatch(/interest/i);
+      expect(sdeExample('$')).toMatch(/\$30k in interest/i);
+    });
+
+    it('the confirmation note repeats it at the last moment before the figure is accepted', () => {
+      expect(sdeMarginNote(10, '$2,000,000')).toMatch(/interest/i);
+    });
+
+    it('the example explains WHY interest goes back, not merely that it does', () => {
+      // "A buyer is valuing the business, not your loans" is the sentence that makes the later debt
+      // subtraction read as deliberate rather than as us taking it off twice.
+      expect(sdeExample('$')).toMatch(/valuing the business, not your loans/i);
+    });
   });
 
   it('reminds the owner to add their pay back when confirming a margin', () => {

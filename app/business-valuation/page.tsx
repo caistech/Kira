@@ -35,6 +35,7 @@ import {
   FileStack,
   Repeat,
   Wrench,
+  Landmark,
   Sparkles,
   Printer,
   Brain,
@@ -46,6 +47,7 @@ import {
 } from '@/lib/valuation/model';
 import { SECTOR_MULTIPLES } from '@/lib/valuation/sde-multiples';
 import { FULL_RATE_PERIOD_CAP, priceForProfit } from '@/lib/valuation/pricing';
+import { netOfDebt } from '@/lib/valuation/net-of-debt';
 import { approxNumber, formatMoney, formatMoneyApprox, formatPrice, getCurrency, CURRENCIES, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { displayedFigures, displayedUplifts } from '@/lib/valuation/displayed';
 import { synonymGroup, synonymSector } from '@/lib/valuation/industry-synonyms';
@@ -210,6 +212,33 @@ const STEPS: Step[] = [
     title: 'Rough value of your gear, vehicles and stock?',
     help: 'Equipment, tools, vehicles, inventory - what you could sell if you simply closed up. A ballpark is fine; enter 0 if little applies.',
     placeholder: 'e.g. 150000',
+  },
+  // THE TWELFTH QUESTION. Assets, then liabilities — they belong next to each other, and he is
+  // already in the frame of mind.
+  //
+  // WHY IT EXISTS. The result page used to end with a disclaimer telling him to do this himself:
+  // "Subtract any loans, equipment finance, lease obligations or tax owing to get to that." A
+  // 66-year-old with $380k of equipment finance: "you could have asked in one box and shown me the
+  // number I actually care about, which is what lands in my pocket... That's the number I'd
+  // screenshot and show my wife." Asking is one input; the arithmetic was already ours to do.
+  //
+  // WHY IT IS SAFE TO ADD. It changes nothing about the MODEL. `multiple × SDE` is the value of the
+  // business regardless of financing (enterprise value); what he keeps is that minus what the
+  // business owes. So debt is subtracted at the PAGE, comes off `today` and `potential` equally, and
+  // therefore leaves the GAP — and with it the multiple, MODEL_VERSION, every stored snapshot and
+  // the price he is quoted — completely untouched.
+  //
+  // ⚠️ It is only correct because SDE is PRE-debt-service. If an owner hands us a profit figure that
+  // has already absorbed his interest, this subtracts his debt a second time. That is why the
+  // interest add-back had to become visible in the worked example and the confirmation note before
+  // this question could ship — see lib/valuation/sde-copy.ts.
+  {
+    id: 'businessDebt',
+    kind: 'money',
+    icon: <Landmark className="h-6 w-6" />,
+    title: 'Roughly what does the business owe?',
+    help: 'Vehicle and equipment finance, overdraft, ATO debt, outstanding leases. A rough figure is fine. Leave it blank if you would rather not say - everything else still works.',
+    placeholder: 'e.g. 380000',
   },
 ];
 
@@ -882,7 +911,7 @@ export default function BusinessValuationPage() {
         )}
 
         {/* RESULT */}
-        {isResult && result && <ResultView result={result} annualProfit={Number(answers.annualProfit) || 0} currency={currency} planHref={planHref} firstName={firstName.trim()} matchedSector={String(answers.industry ?? "")} typedSector={industryQuery.trim()} onChangeSector={() => setStepIndex(0)} returningToApp={returningToApp} />}
+        {isResult && result && <ResultView result={result} annualProfit={Number(answers.annualProfit) || 0} businessDebt={typeof answers.businessDebt === 'number' ? answers.businessDebt : undefined} currency={currency} planHref={planHref} firstName={firstName.trim()} matchedSector={String(answers.industry ?? "")} typedSector={industryQuery.trim()} onChangeSector={() => setStepIndex(0)} returningToApp={returningToApp} />}
       </main>
 
       {/* The "Ask Kira" floating widget was REMOVED from this flow on 2026-07-27.
@@ -903,6 +932,7 @@ export default function BusinessValuationPage() {
 function ResultView({
   result,
   annualProfit,
+  businessDebt,
   currency,
   planHref,
   firstName,
@@ -914,6 +944,12 @@ function ResultView({
   result: ReturnType<typeof computeValuation>;
   /** What the owner REPORTED. The price band comes from this, never from result.gap. */
   annualProfit: number;
+  /**
+   * What the business owes, if he told us. Converts the enterprise value the model produced into
+   * the equity value he would actually keep. Undefined when the question was skipped, and the
+   * after-debt block then does not render at all.
+   */
+  businessDebt?: number;
   currency: string;
   planHref: string;
   firstName?: string;
@@ -928,6 +964,15 @@ function ResultView({
   // screen where this buyer decides whether to believe any of it. The walk-away auction range below
   // is left exact because it is already expressed as a range and reads as one.
   const money = (n: number) => formatMoneyApprox(n, currency);
+  /**
+   * EXACT formatting, for figures that are already derived from rounded inputs.
+   *
+   * `money` re-rounds to 3 significant figures. Applied to a net-of-debt figure that was computed
+   * from an already-rounded pair, it can move the two numbers in OPPOSITE directions and reopen the
+   * subtraction the block exists to close. His debt figure is his own and is exact; the values it is
+   * taken from are already approximated, so the precision here is inherited rather than invented.
+   */
+  const exact = (n: number) => formatMoney(n, currency);
   /**
    * THE GAP, DERIVED FROM WHAT IS ON SCREEN.
    *
@@ -944,8 +989,41 @@ function ResultView({
   // Derived in ONE place now (lib/valuation/displayed.ts) rather than here, because the dashboard
   // and /plan needed the identical derivation and each had grown its own — which is how one figure
   // came to have four values.
-  const displayedGap = displayedFigures({ worthToday: result.today, worthPotential: result.potential }, currency).gap;
+  const shown = displayedFigures({ worthToday: result.today, worthPotential: result.potential }, currency);
+  const displayedGap = shown.gap;
   const noEarnings = result.today === 0 && result.potential === 0;
+
+  /**
+   * The realisable walk-away range, derived ONCE.
+   *
+   * 40–60c in the dollar on book value (register A6), and it lives here rather than inline in the
+   * card because the after-debt block needs the identical numbers. Deriving it twice is how one
+   * figure comes to have two values — the exact failure `displayedFigures` was extracted to end.
+   */
+  const walkAwayLow = approxNumber(Math.round(result.walkAway * 0.4));
+  const walkAwayHigh = approxNumber(Math.round(result.walkAway * 0.6));
+
+  /**
+   * Enterprise value → equity value. Debt comes off every figure equally, so the GAP is untouched
+   * and nothing about the model, MODEL_VERSION, the stored snapshots or his price moves.
+   * `net.applied` is false when he left the question blank, and the block does not render.
+   *
+   * ⚠️ FED THE DISPLAYED FIGURES, NOT THE RAW ONES, AND THE DIFFERENCE IS A REAL DEFECT I SHIPPED
+   * FOR ABOUT TEN MINUTES. Every figure on this page is rounded to 3 significant figures, and
+   * `displayedGap` is the difference between the ROUNDED pair. Subtracting debt from the RAW pair
+   * produced $712,000 and $988,000 under a headline gap of $280,000 — and 988 − 712 is 276. That is
+   * exactly the J8 defect returning: "a tester with a calculator caught it, and he checked precisely
+   * BECAUSE the paragraph above earns that scrutiny by explaining why we round."
+   *
+   * Taking debt off the DISPLAYED pair closes it by construction: the difference between the two net
+   * figures IS `displayedGap`, for any debt, with no arithmetic left to disagree about. They are then
+   * rendered with `formatMoney` rather than `money` — re-approximating an already-approximated
+   * number is what would reopen the gap, because the two figures can round in opposite directions.
+   */
+  const net = netOfDebt(
+    { walkAwayLow, walkAwayHigh, today: shown.today, potential: shown.potential },
+    businessDebt,
+  );
   // Reconciled against `displayedGap` so the itemised lines add up to the headline above them —
   // they were rounded independently and came out $500 short. Render `upliftText`, never re-format.
   const capturable = displayedUplifts(
@@ -1036,7 +1114,7 @@ function ResultView({
                 valuation already shown to anyone is re-priced and MODEL_VERSION is untouched. */}
             <NumberCard
               label="Walk away"
-              value={`${money(Math.round(result.walkAway * 0.4))} – ${money(Math.round(result.walkAway * 0.6))}`}
+              value={`${money(walkAwayLow)} – ${money(walkAwayHigh)}`}
               sub={`What a quick auction on ${money(result.walkAway)} of gear typically returns (40–60c in the dollar)`}
               tone="floor"
             />
@@ -1070,6 +1148,71 @@ function ResultView({
             sector data gives one median multiple and no spread around it; putting a ± on them would
             be inventing a precision we do not have. Both are rounded for the same reason.
           </p>
+
+          {/* AFTER DEBT — the number he said he would screenshot.
+              "You could have asked in one box and shown me the number I actually care about, which
+              is what lands in my pocket... That's the number I'd screenshot and show my wife."
+              Until now the page ended with a disclaimer instructing him to do this subtraction
+              himself, which is arithmetic we already had every input for.
+
+              A SEPARATE BLOCK, not a fourth line inside each card, because it is a different
+              QUESTION — the cards answer "what is the business worth", this answers "what would I
+              be left with". Only rendered when he told us, so an owner who skipped the question
+              sees exactly the page he saw before.
+
+              The gap is deliberately NOT restated here: debt comes off `today` and `potential`
+              equally, so it is unchanged, and repeating it would imply otherwise. */}
+          {net.applied && (
+            <div className="rounded-3xl border border-stone-200 bg-white p-7 sm:p-9">
+              <p className="font-display text-xl font-bold text-stone-900">
+                After the {exact(net.debt)} the business owes
+              </p>
+              <dl className="mt-5 space-y-3 text-lg">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <dt className="text-stone-600">Worth today</dt>
+                  <dd className="font-display font-bold text-stone-900">{exact(net.today)}</dd>
+                </div>
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <dt className="text-stone-600">With your knowledge captured</dt>
+                  <dd className="font-display font-bold text-stone-900">{exact(net.potential)}</dd>
+                </div>
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <dt className="text-stone-600">If you simply closed up</dt>
+                  <dd className="font-display font-bold text-stone-900">
+                    {exact(net.walkAwayLow)} – {exact(net.walkAwayHigh)}
+                  </dd>
+                </div>
+              </dl>
+
+              {/* NOT FLOORED AT ZERO, BY DECISION (operator, 2026-08-09).
+                  Equipment finance is secured against the very gear the walk-away figure counts, so
+                  owing more than it would fetch is a real position — and the most useful thing the
+                  tool can tell him, because it means closing the doors is not available to him.
+                  "Better for him to be clear and walk away than promise something from a not real
+                  basis." Fires only when even the TOP of the range is under water, so it is a
+                  statement of fact rather than a possibility dressed as one. */}
+              {net.walkAwayNegative && (
+                <p className="mt-5 rounded-xl bg-amber-50 px-4 py-4 text-base leading-relaxed text-stone-700">
+                  <strong className="text-stone-900">Closing up is not an option on these numbers.</strong>{' '}
+                  The gear would not cover what is owed, so simply shutting the doors leaves a
+                  shortfall rather than a cheque. Selling the business, or getting it to a state
+                  where someone wants to, is the way out — which is what the figures above are
+                  about.
+                </p>
+              )}
+
+              {/* THE TAX QUALIFIER, ONCE AND PLAINLY.
+                  "What lands in your pocket" is his phrase and it is the right one, but it is
+                  PRE-TAX: a sale triggers tax that depends on how he is structured, and there is no
+                  honest way to compute it from eleven questions. Saying so once is the difference
+                  between his phrase and a promise we cannot keep. Note this is a different thing
+                  from the ATO debt in the question above, which is money owed today. */}
+              <p className="mt-5 text-base leading-relaxed text-stone-500">
+                Before whatever tax the sale itself triggers — that depends on how you are
+                structured, and it is a question for your accountant rather than a calculator.
+              </p>
+            </div>
+          )}
 
           {/* The gap headline */}
           <div className="grad-genome rounded-3xl p-7 sm:p-9 text-white shadow-lg">
@@ -1195,11 +1338,22 @@ function ResultView({
       </div>
 
       <div className="space-y-3 text-base text-stone-500 leading-relaxed">
+        {/* THIS PARAGRAPH USED TO SET HOMEWORK.
+            It read "Subtract any loans, equipment finance, lease obligations or tax owing to get to
+            that" — the product telling a 66-year-old to do arithmetic it had every input for except
+            one, and never asked for. It now asks (question 12) and does the subtraction, so what is
+            left here is only what genuinely stays outside the model. */}
         <p>
-          <strong className="text-stone-700">This is the value of the business, before debt.</strong> It&apos;s
-          what the business itself is worth — not what lands in your pocket. Subtract any loans, equipment
-          finance, lease obligations or tax owing to get to that. It also doesn&apos;t account for your lease
-          terms, working capital, or how long you&apos;ve been trading, all of which a buyer will price.
+          <strong className="text-stone-700">
+            {net.applied
+              ? 'The three headline figures are the value of the business, before debt.'
+              : 'This is the value of the business, before debt.'}
+          </strong>{' '}
+          {net.applied
+            ? 'What you would keep is shown separately above, after the figure you gave us.'
+            : "It's what the business itself is worth — not what lands in your pocket. Tell us what the business owes and we will show you that too."}{' '}
+          It doesn&apos;t account for your lease terms, working capital, or how long you&apos;ve been
+          trading, all of which a buyer will price.
         </p>
         <p>
           <strong className="text-stone-700">Where the range comes from.</strong> Not a dataset — the two

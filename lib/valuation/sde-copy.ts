@@ -12,7 +12,8 @@
 // remuneration, which is frequently the largest single add-back in the calculation — so an owner
 // reading the helper rather than the label enters a materially smaller figure, and the valuation
 // is not slightly off, it is wrong. This is the ONE input the whole model runs on
-// (`lib/valuation/model.ts`: SDE = net profit + owner salary & perks).
+// (`lib/valuation/model.ts`: SDE = net profit + owner salary & perks + interest + depreciation +
+// one-offs a new owner would not carry).
 //
 // A definition that appears in four places will drift in four directions. It appears here once.
 
@@ -28,21 +29,46 @@ export const SDE_SHORT_REMINDER =
   'Profit, not sales - and add back what you pay yourself, plus interest, depreciation and one-offs.';
 
 /**
- * The worked example. Deliberately shows the two components separately, because the whole failure
- * was an example that quietly folded the owner's pay into "what you kept".
+ * The worked example. Shows the components SEPARATELY, because the original failure was an example
+ * that quietly folded the owner's pay into "what you kept".
+ *
+ * ⚠️ INTEREST IS NOW IN THE EXAMPLE, AND IT IS NOT A DETAIL. Added 2026-08-09 with the debt question
+ * (register P7/K7). `SDE_DEFINITION` has always said to add interest back; this example and
+ * `sdeMarginNote` did not, and they are the two surfaces an owner actually copies — the definition
+ * is read once, the example is worked through. So the definition taught four add-backs and the
+ * example taught two, which is the same label-versus-helper split this module exists to end, grown
+ * back in a different pair of surfaces.
+ *
+ * It became a correctness bug rather than an imprecision the moment debt started being subtracted.
+ * SDE is a PRE-debt-service measure: the multiple applied to it produces the value of the business
+ * irrespective of how it is financed (enterprise value), and equity value is that MINUS what the
+ * business owes. That is the only sequence in which subtracting debt is correct rather than a
+ * double count. An owner who omits the interest add-back hands us a figure that has already absorbed
+ * his debt service; we then multiply it and take the principal off again, and both errors push the
+ * same way. A man with $380k of equipment finance is charged for it twice, on the number he said he
+ * would screenshot and show his wife.
  */
 export function sdeExample(symbol: string): string {
   return (
-    `If the business kept ${symbol}150k after costs and paid you ${symbol}50k in salary and perks, ` +
-    `add them together and enter ${symbol}200,000.`
+    `If the business kept ${symbol}120k after costs, paid you ${symbol}50k in salary and perks, ` +
+    `and paid ${symbol}30k in interest on its loans, add all three and enter ${symbol}200,000. ` +
+    `Interest goes back in because a buyer is valuing the business, not your loans — those are ` +
+    `settled separately.`
   );
 }
 
-/** Confirmation once a plausible figure is entered. Must not re-describe SDE as net profit. */
+/**
+ * Confirmation once a plausible figure is entered. Must not re-describe SDE as net profit.
+ *
+ * Names interest for the same reason the example does: this is the LAST thing said before the
+ * figure is accepted, so it is the last chance to catch an owner who added his own pay back and
+ * stopped there.
+ */
 export function sdeMarginNote(marginPct: number, turnoverLabel: string): string {
   return (
     `That's a ${marginPct}% margin on the ${turnoverLabel} turnover you entered. Looks right? ` +
-    `Remember this figure includes your own salary and perks added back.`
+    `Remember this figure includes your own salary and perks added back, and any interest the ` +
+    `business paid on its loans.`
   );
 }
 

@@ -44,10 +44,38 @@ export interface ValuationInputs {
    * cross-check (implied margin). NOT used in the valuation math - it runs on profit/SDE.
    */
   turnover?: number;
-  /** Adjusted annual profit / owner earnings (SDE = net profit + owner salary & perks), in dollars. */
+  /**
+   * Adjusted annual profit / owner earnings, in dollars.
+   *
+   * SDE = net profit + owner salary & perks + interest + depreciation + one-offs a new owner would
+   * not carry. The canonical wording an owner is shown is `lib/valuation/sde-copy.ts`; this comment
+   * used to say "net profit + owner salary & perks" and stop, which made it the third statement of
+   * SDE in the codebase and the shortest.
+   *
+   * ⚠️ INTEREST IS THE ONE THAT MATTERS TO THE ARITHMETIC AROUND THIS FIELD. SDE is a PRE-debt-
+   * service measure, so `multiple × SDE` is the value of the business regardless of how it is
+   * financed. What the owner is left with is that MINUS what the business owes, which is why debt is
+   * subtracted at the page (register P7/K7) and NOT here. Fold debt into this figure and it is
+   * counted twice.
+   */
   annualProfit: number;
   /** Rough value of tangible assets (equipment, vehicles, stock) - feeds the walk-away floor. */
   tangibleAssets: number;
+  /**
+   * What the business owes: finance, overdraft, ATO debt, leases. OPTIONAL, and deliberately UNUSED
+   * by `computeValuation`.
+   *
+   * ⚠️ NOTHING IN THIS FILE MAY READ IT. Debt converts enterprise value to equity value, which is
+   * arithmetic performed at the page on top of a finished valuation (`lib/valuation/net-of-debt.ts`)
+   * — exactly like the realisable-asset range (register A6). Reading it here would change what
+   * `MODEL_VERSION` means and re-price six stored snapshots that are introducer baselines.
+   *
+   * Optional rather than required on purpose: `ValuationInputs` has nine required fields and
+   * `isUsableInputs` guards four of them (register C5), so a tenth REQUIRED field would start
+   * failing writes for any client still holding the old payload shape. Blank behaves exactly as
+   * before.
+   */
+  businessDebt?: number;
   profitTrend: ProfitTrend;
   marginTrend: MarginTrend;
   clientTrend: ClientTrend;
