@@ -16,6 +16,8 @@
 // a conversation an owner is having — the alert is the least important thing happening at that
 // moment. Every failure is logged and swallowed.
 
+import { createHash } from 'node:crypto';
+
 import { createEmailSender } from '@caistech/email-send';
 
 import { adminEmails } from '@/lib/auth';
@@ -66,9 +68,73 @@ const STATUS_LINE: Record<UnansweredRequestAlert['status'], string> = {
  */
 const WINDOW_MS = 10 * 60_000;
 const MAX_PER_WINDOW = 5;
+const RETENTION_MS = 24 * 60 * 60_000;
 const recentUtterances = new Map<string, number>();
 let windowStart = 0;
 let sentInWindow = 0;
+
+/** Normalised, hashed. The raw text is already stored on the task row; this table only needs identity. */
+function utteranceKey(utterance: string): string {
+  return createHash('sha256').update(utterance.trim().toLowerCase().slice(0, 500)).digest('hex');
+}
+
+/**
+ * The throttle that survives a cold start (2026-08-10).
+ *
+ * The in-memory version below was added on 3 August and could not do its job: a module-level Map is
+ * per serverless instance, and on a low-traffic public endpoint nearly every request lands on a
+ * fresh one. The operator's inbox has three identical alerts four minutes apart, inside a
+ * ten-minute dedupe window — the check was running and starting from nothing every time.
+ *
+ * Both limits are now questions about a TABLE rather than about the memory of whichever instance
+ * happened to answer, so they hold across instances, cold starts and deploys.
+ *
+ * THROWS rather than returning a verdict when the database is unreachable, so the caller can fall
+ * back to the in-memory limiter. Neither layer is sufficient alone: this one is correct but depends
+ * on a service that can be down, and that one always works but barely limits anything. A DB outage
+ * degrades alerting to August's behaviour instead of to either extreme — silence, or the flood that
+ * took portfolio-wide auth email down.
+ *
+ * ⚠️ Not transactional: two concurrent calls can both pass the count and both send. Accepted, and
+ * stated rather than hidden — this is a blast-radius reducer, not an access control. The access
+ * control it really wants is auth on `/api/kira/ask`, and that endpoint exists precisely so someone
+ * WITHOUT an account can ask.
+ */
+async function throttledDurable(utterance: string): Promise<string | null> {
+  const svc = createServiceClient();
+  const since = new Date(Date.now() - WINDOW_MS).toISOString();
+  const key = utteranceKey(utterance);
+
+  const { count: sameUtterance, error: dupError } = await svc
+    .from('unanswered_alert_sends')
+    .select('id', { count: 'exact', head: true })
+    .eq('utterance_key', key)
+    .gt('sent_at', since);
+  if (dupError) throw dupError;
+  if ((sameUtterance ?? 0) > 0) return 'duplicate within the window';
+
+  const { count: anyUtterance, error: capError } = await svc
+    .from('unanswered_alert_sends')
+    .select('id', { count: 'exact', head: true })
+    .gt('sent_at', since);
+  if (capError) throw capError;
+  if ((anyUtterance ?? 0) >= MAX_PER_WINDOW) {
+    return `ceiling of ${MAX_PER_WINDOW} per ${WINDOW_MS / 60000}m reached`;
+  }
+
+  const { error: insertError } = await svc.from('unanswered_alert_sends').insert({ utterance_key: key });
+  if (insertError) throw insertError;
+
+  // Opportunistic prune. The table is only ever consulted over a ten-minute window, so anything a
+  // day old is dead weight; doing it here keeps it self-limiting instead of needing another cron.
+  // Failure is ignored on purpose — housekeeping must never stop an alert going out.
+  await svc
+    .from('unanswered_alert_sends')
+    .delete()
+    .lt('sent_at', new Date(Date.now() - RETENTION_MS).toISOString());
+
+  return null;
+}
 
 function throttled(utterance: string): string | null {
   const now = Date.now();
@@ -108,7 +174,7 @@ function throttled(utterance: string): string | null {
  * literal string `portfolio-gate`, which no owner will ever type, rather than anything that tries to
  * be clever about what automated traffic looks like.
  */
-function isAutomatedProbe(utterance: string): boolean {
+export function isAutomatedProbe(utterance: string): boolean {
   return /portfolio-gate/i.test(utterance);
 }
 
@@ -118,7 +184,14 @@ export async function sendUnansweredRequestAlert(alert: UnansweredRequestAlert):
     return;
   }
 
-  const skip = throttled(alert.utterance);
+  // Durable first, in-memory only if the database cannot answer. See throttledDurable.
+  let skip: string | null;
+  try {
+    skip = await throttledDurable(alert.utterance);
+  } catch (error) {
+    console.warn('[email] durable throttle unavailable, falling back to in-memory:', error);
+    skip = throttled(alert.utterance);
+  }
   if (skip) {
     // Logged, never silent: an alert nobody receives and nobody knows was dropped is the same
     // failure in the other direction. The row is still written by the caller either way.

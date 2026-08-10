@@ -19,10 +19,13 @@
 //
 // @machine-callable
 
+import { randomUUID } from 'node:crypto';
+
 import { NextResponse } from 'next/server';
 
-import { sendUnansweredRequestAlert } from '@/lib/email/unanswered-request';
+import { isAutomatedProbe, sendUnansweredRequestAlert } from '@/lib/email/unanswered-request';
 import { haltState } from '@/lib/kill-switch';
+import { createServiceClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -104,6 +107,37 @@ export async function POST(request: Request) {
 
   if (!question) {
     return NextResponse.json({ ok: false, error: 'No question.' }, { status: 400 });
+  }
+
+  // Our own CI probe drives this box twenty times a run against production. It is not a person, so
+  // it gets no row in the build queue and no mail to three operators — see isAutomatedProbe.
+  if (isAutomatedProbe(question)) {
+    return NextResponse.json({ ok: true });
+  }
+
+  // RECORDED BEFORE IT IS MAILED, because until 2026-08-10 it was only ever mailed.
+  //
+  // This endpoint wrote nothing anywhere. The alert email was the entire record — so a question
+  // suppressed by the throttle was gone for good, and the email invited the reader to "See the
+  // build queue →" for an item that had never been added to it. `kira_tasks.user_id` is now
+  // nullable, and NULL means exactly what happened: asked by a visitor with no account.
+  //
+  // Fail-soft, and ordered first on purpose: if only one of the two can happen, the durable record
+  // is worth more than the notification, because the notification can be reconstructed from it and
+  // not the other way round.
+  try {
+    const { error } = await createServiceClient().from('kira_tasks').insert({
+      user_id: null,
+      intent_id: `public-ask:${randomUUID()}`,
+      kind: 'unsupported',
+      status: 'unsupported',
+      utterance: question,
+      summary: 'Asked on the public page, by a visitor with no account',
+      handled_by: 'public-ask',
+    });
+    if (error) throw error;
+  } catch (error) {
+    console.error('[api/kira/ask] could not record the ask, continuing to alert:', error);
   }
 
   // FAIL-SOFT ON THE ALERT, NOT ON THE RECEIPT. If the mail fails, the visitor still gets told his

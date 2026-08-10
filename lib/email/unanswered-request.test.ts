@@ -62,6 +62,33 @@ describe('the unanswered-request alert ignores our own probe', () => {
   it('still throttles everything that is not a probe', () => {
     // The 3 August blast-radius reducer must survive this change: the endpoint is public and
     // unauthenticated, so a stranger with curl is the case the throttle exists for.
-    expect(code).toMatch(/const skip = throttled\(alert\.utterance\)/);
+    expect(code).toMatch(/throttledDurable\(alert\.utterance\)/);
+  });
+});
+
+describe('the throttle survives a cold start', () => {
+  it('asks the database, not the memory of one serverless instance', () => {
+    // The whole defect: a module-level Map is per instance, so on a low-traffic public endpoint
+    // nearly every request started from nothing. Three identical alerts four minutes apart, inside
+    // a ten-minute window, are in the operator's inbox as proof.
+    expect(code).toMatch(/from\('unanswered_alert_sends'\)/);
+    expect(code).toMatch(/utterance_key/);
+  });
+
+  it('enforces BOTH limits against the table', () => {
+    // Dedupe alone lets novel-but-automated text walk straight past; the ceiling alone lets one
+    // repeated utterance spend the whole budget. The 3 August incident needed both.
+    const durable = code.slice(code.indexOf('async function throttledDurable'), code.indexOf('export function isAutomatedProbe'));
+    expect(durable).toMatch(/duplicate within the window/);
+    expect(durable).toMatch(/ceiling of/);
+  });
+
+  it('keeps the in-memory limiter as a fallback rather than deleting it', () => {
+    // Neither layer is sufficient alone. The durable one is correct but depends on a service that
+    // can be down; the in-memory one always works and barely limits anything. Losing the fallback
+    // means a database blip either silences every alert or reopens the flood — and the flood is
+    // what took portfolio-wide auth email down.
+    expect(code).toMatch(/skip = throttled\(alert\.utterance\)/);
+    expect(code).toMatch(/durable throttle unavailable, falling back to in-memory/);
   });
 });
