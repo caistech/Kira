@@ -86,7 +86,38 @@ function throttled(utterance: string): string | null {
   return null;
 }
 
+/**
+ * Is this our own CI probe rather than a person?
+ *
+ * `portfolio-gate-audit-input-response` really submits, twenty times a run (R20), against whatever
+ * `PORTFOLIO_GATE_PREVIEW_URL` names — which for this repo is `kira-rho.vercel.app`, an alias of
+ * PRODUCTION. So every gate run drives the landing page's box and every submission mails three
+ * operators. The inbox evidence: fourteen identical alerts between 6 Aug 20:20 and 7 Aug 11:55,
+ * including three four minutes apart, which the 3 August throttle should have collapsed and did not
+ * — its state is a module-level Map, so it is per serverless instance, and on a low-traffic public
+ * endpoint almost every request lands on a fresh one with an empty map.
+ *
+ * ⚠️ POINTING THE GATE AT A PREVIEW DOES NOT FIX THIS, which was my first suggestion and it was
+ * wrong: `RESEND_API_KEY` and `ADMIN_EMAILS` are set on preview as well as production, so a preview
+ * deployment sends exactly the same mail. The fault is the alert, not the URL.
+ *
+ * MATCHED TIGHT, ON THE TOOL'S OWN NAME, and the asymmetry is the reason. A missed probe costs one
+ * email. A matched HUMAN costs the question itself — public asks are recorded nowhere (see the route;
+ * `kira_tasks.user_id` is NOT NULL so an anonymous ask has no row to go in), which means the email IS
+ * the record and suppressing it wrongly loses a visitor's words for good. So this requires the
+ * literal string `portfolio-gate`, which no owner will ever type, rather than anything that tries to
+ * be clever about what automated traffic looks like.
+ */
+function isAutomatedProbe(utterance: string): boolean {
+  return /portfolio-gate/i.test(utterance);
+}
+
 export async function sendUnansweredRequestAlert(alert: UnansweredRequestAlert): Promise<void> {
+  if (isAutomatedProbe(alert.utterance)) {
+    console.info('[email] unanswered-request alert suppressed (our own CI probe):', alert.utterance.slice(0, 80));
+    return;
+  }
+
   const skip = throttled(alert.utterance);
   if (skip) {
     // Logged, never silent: an alert nobody receives and nobody knows was dropped is the same
