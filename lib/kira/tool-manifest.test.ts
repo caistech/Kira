@@ -98,3 +98,37 @@ describe('the prompt cannot name a tool that is not attached', () => {
     expect(business.size).toBeGreaterThan(attachedNames('personal').length);
   });
 });
+
+describe('server-side bookkeeping stays off her menu', () => {
+  // `createConversationTools` returns five; two of them are the ROUTE's filing, not her decisions,
+  // and they are dropped in toolDefsFor. Pinned because the exclusion is a filter over a package
+  // array — a convai bump that renames or re-adds them would put them silently back on the menu,
+  // and the symptom (a small model picking the wrong tool on a long call) is invisible from here.
+  for (const journey of ['business', 'personal'] as const) {
+    it(`does not attach save_message or update_conversation_topic (${journey})`, () => {
+      const names = (toolDefsFor(journey, 'https://example.test') as { name?: string }[]).map((t) => t.name);
+      expect(names).not.toContain('save_message');
+      expect(names).not.toContain('update_conversation_topic');
+    });
+  }
+
+  it('KEEPS get_conversation_context — voice has no native history replay', () => {
+    // The asymmetry with text-tools.ts, which excludes all three. A typed conversation replays its
+    // own history; a voice call must pull at turn zero, so dropping this one would cost her the
+    // continuity the whole memory loop exists for.
+    const names = (toolDefsFor('business', 'https://example.test') as { name?: string }[]).map((t) => t.name);
+    expect(names).toContain('get_conversation_context');
+  });
+
+  it('the prompt inventory says exactly what is attached', () => {
+    // The one that matters on a live agent: 10 of 11 deployed prompts asserted "These are the tools
+    // you have, and there are no others: …" including both dropped names. A prompt naming a tool she
+    // lacks is how she reaches for it, fails, and tells the owner she "can't access" something.
+    const section = toolsSection('business', 'https://example.test');
+    expect(section).not.toContain('save_message');
+    expect(section).not.toContain('update_conversation_topic');
+    for (const name of (toolDefsFor('business', 'https://example.test') as { name?: string }[])) {
+      expect(section).toContain(name.name);
+    }
+  });
+});
