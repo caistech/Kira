@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { getCurrentAppUser } from '@/lib/auth';
 import { canSend } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
@@ -91,6 +92,27 @@ export default async function DashboardPage({
         .eq('user_id', user.id)
         .maybeSingle()
     : { data: null as Valuation | null };
+
+  // AN EMPTY ACCOUNT IS LED IN, NOT LEFT ON A DASHBOARD WITH A BUTTON ON IT.
+  //
+  // The paid path goes straight into the flow that creates her (app/onboarding/page.tsx:100).
+  // Nothing did that for anyone who arrived any other way, so an invited owner signed in, landed
+  // here, and met a screen reporting on a business we know nothing about — with the one control
+  // that would have introduced him to Kira sitting among several others. Measured 2026-08-10 across
+  // the whole table: 21 of 33 accounts have no agent behind them, and the one invited person who
+  // actually signed in (2026-07-31) left with no agent, no draft and no valuation.
+  //
+  // ⚠️ SCOPED TO AN ACCOUNT WITH NOTHING IN IT — no agent AND no valuation — and that scoping is the
+  // whole safety of it. A redirect on this surface has already produced a thirteen-hop loop
+  // (app/setup/layout.tsx) and the locked door Shah hit (UserShell, 2026-08-06), and BOTH bounced
+  // people away from content that was theirs. There is nothing here to bounce anyone away from: the
+  // gap figure is precisely why a valuation-first owner came, so he keeps his dashboard and the
+  // named `!hasMetKira` copy below leads him instead of moving him.
+  //
+  // It cannot loop, and that is checked rather than assumed: /start never returns here — it goes
+  // forward to /setup/draft/<id> (start:201, start:227) — and UserShell's own redirect is only the
+  // unauthenticated one to /login.
+  if (user && list.length === 0 && !valuation) redirect('/start?journey=business&from=app');
 
   const { data: profile } = user
     ? await svc
