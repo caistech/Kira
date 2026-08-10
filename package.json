@@ -15,7 +15,7 @@
     "@caistech/attribution": "^0.1.0",
     "@caistech/beta-gate": "^0.2.0",
     "@caistech/coordination-sdk": "^0.4.1",
-    "@caistech/corporate-components": "^0.8.2",
+    "@caistech/corporate-components": "^0.8.3",
     "@caistech/discovery-agent": "^0.1.0",
     "@caistech/elevenlabs-convai": "^0.15.1",
     "@caistech/email-compliance": "^0.4.0",
