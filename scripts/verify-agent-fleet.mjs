@@ -26,6 +26,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 import { UID_TOOL_NAMES } from '../lib/kira/uid-tools.mjs';
+import { toolDefsFor } from '../lib/kira/tool-manifest.mjs';
 
 const { ELEVENLABS_API_KEY, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, DISCOVERY_AGENT_ID } =
   process.env;
@@ -35,35 +36,38 @@ if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) throw new Error('Su
 
 const TOOL_SECRET_HEADER = 'x-convai-tool-secret';
 
-/** What each journey is supposed to hold. Mirrors buildToolsForUser() in the re-provision script. */
-const MEMORY_AND_KNOWLEDGE = [
-  'get_conversation_context',
-  'save_message',
-  'update_conversation_topic',
-  'recall_memory',
-  'save_memory',
-  'search_knowledge',
-];
-const BUSINESS_ONLY = [
-  'dispatch_task',
-  'approve_task',
-  'look_up_financials',
-  'check_tasks',
-  'search_drive',
-  'read_document',
-  'keep_document',
-  'lookup_contact',
-  'record_refusal',
-  // THE VERIFIABLE AXIS. Added 2026-08-02 after the fleet was found holding 17 tools against an
-  // expected set of 15 — and passing. The two the script did not know about were exactly the pair
-  // that carries §2's confirmed state, so a re-provision that dropped them would have reported
-  // "fleet is consistent" while the axis the product charges for was dead across every agent. That
-  // is the same shape as the doing-slice strip this file's header describes, which is the argument
-  // for the rule underneath it: a tool the fleet holds and this list does not is a tool nothing
-  // guards.
-  'facts_to_confirm',
-  'confirm_fact',
-];
+/**
+ * What each journey is supposed to hold — DERIVED from the manifest, not restated here.
+ *
+ * It was a hand-kept copy that "mirrors buildToolsForUser()", and on 2026-08-10 that copy became
+ * the thing reporting a correct fleet as broken: dropping save_message + update_conversation_topic
+ * from tool-manifest.mjs produced 20 PROBLEMS from a verifier still expecting them. Both directions
+ * of that drift are bad — the note below records the fleet holding 17 against an expected 15 and
+ * PASSING, and this was the same list wrong the other way.
+ *
+ * The manifest already exists to be the one list (see its header: "A tool cannot be described to
+ * her without being attached, and cannot be attached without being described, because there is only
+ * one list"). A verifier with its own second list is outside that guarantee by construction, so it
+ * now reads the same source the provisioner and the prompt read.
+ *
+ * The ordering/journey split stays observable: toolDefsFor already returns the doing + Google slice
+ * for business only, so the personal-must-NOT-hold check below still has something real to assert.
+ */
+const manifestNames = (journey) =>
+  toolDefsFor(journey, process.env.NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app')
+    .filter((t) => t?.name)
+    .map((t) => t.name);
+
+const MEMORY_AND_KNOWLEDGE = manifestNames('personal');
+const BUSINESS_ONLY = manifestNames('business').filter((n) => !MEMORY_AND_KNOWLEDGE.includes(n));
+// The previous hand-kept array is preserved as the RATIONALE it carried, because the reason those
+// last two entries exist is worth more than the list was:
+//   "Added 2026-08-02 after the fleet was found holding 17 tools against an expected set of 15 —
+//    and passing. The two the script did not know about were exactly the pair that carries the
+//    confirmed-state axis, so a re-provision that dropped them would have reported 'fleet is
+//    consistent' while the axis the product charges for was dead across every agent."
+// Deriving from the manifest is that lesson generalised: the list cannot fall behind what is
+// attached, in either direction, because it is no longer a separate list.
 
 /**
  * Prompt sections, and the tool that entitles an agent to carry each one. `null` = ungated (it

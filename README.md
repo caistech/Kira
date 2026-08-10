@@ -51,11 +51,21 @@ EMAIL_FROM=Kira <noreply@updates.corporateaisolutions.com>
 CRON_SECRET=your-secret-string
 
 # App URL (for links in emails)
-# ⚠️ NOT the public domain. Production is https://kiraexec.com, but this variable is
-# deliberately still the Vercel alias: the ElevenLabs tool webhooks have the base URL
-# BAKED into each agent's tool config at provision time, so changing it needs a fleet
-# reprovision — which has twice caused a real regression here. Read docs/DOMAIN_KIRAEXEC.md
-# §4 before changing it.
+#
+# ⚠️ TWO HOSTS ARE LIVE AND THEY DISAGREE. Vercel production has been kiraexec.com since
+# 2026-08-05; every tool baked into the ElevenLabs fleet points at kira-rho.vercel.app
+# (verified 2026-08-10: 185 of 185 referenced tools). Both serve the same deployment, so
+# nothing is broken — but they are not interchangeable for every purpose:
+#
+#   • the APP (email links, referral links) should use the production value, kiraexec.com
+#   • FLEET SCRIPTS (reprovision, patch-tool-*) must use kira-rho.vercel.app, because
+#     ensureWorkspaceTools matches an existing tool on name + URL. Run a reprovision with
+#     kiraexec.com and it matches nothing, mints a fresh tool per agent and orphans the old
+#     ones — silently performing the host migration docs/DOMAIN_KIRAEXEC.md §4 says to defer.
+#     That was nearly done by accident on 2026-08-10; the dry run caught it.
+#
+# So a local .env.local used for fleet work carries kira-rho even though prod carries
+# kiraexec.com. Read docs/DOMAIN_KIRAEXEC.md §4 before changing either.
 NEXT_PUBLIC_APP_URL=https://kira-rho.vercel.app
 ```
 
