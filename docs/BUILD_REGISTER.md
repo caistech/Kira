@@ -1,5 +1,47 @@
 # Build register — Kira
 
+> ## N. 2026-08-10 — nobody ignored us, and the new-owner path finally got walked
+>
+> **The day started with "what else is needed considering the number of people holding access
+> invitations?" — a question nobody had asked from the invited person's side.** It is one Supabase
+> query. It could have been run any day since 5 August.
+>
+> **33 accounts · 12 agent rows · 21 with no live agent · 8 with no auth identity at all.**
+>
+> | Who | What actually happened |
+> |---|---|
+> | **Carmen** (Barcelona) & **Andrew** | Signed up Jan/Feb, given a 30-day trial and a provisioned agent, and **no login was ever created**. Trials expired without either getting in once. The re-engagement cron then invited them back for six months — last on 7 Aug, in the same batch as the operator's own account. |
+> | **Simon Crisp** (broker), **Will** | Recovery email sent one minute after account creation. `mailer_otp_exp` = **3600**. Simon's only way in died at 04:59 the same morning. |
+> | **Joseph** | Account created 8 Aug. Sent **nothing**. |
+> | **Gareth** | Signed in once, 31 Jul, found an empty dashboard, left. |
+>
+> **The rule: never email a magic link as an invitation.** An invitation is read when the recipient
+> gets to it. Send the instruction — *"/login, then Forgot password"* — which never expires.
+> `send-owner-invite.mjs` says exactly this in its header and was written **one day after Simon was
+> onboarded**. Invitations sent properly to all three on 08-10; the reset route was then verified
+> against an account in Simon's exact state (no password): link → session → password set.
+>
+> **✅ THE NEW-OWNER PATH IS WALKED AND PASSING** — signup → `users` row bridged → dashboard leads him
+> in → brief **typed, no mic** → draft → approve → agent, with `verify-agent-fleet` reporting *16
+> tools, prompt sections correct*. First time end to end by anyone. `/start`'s text fallback is why it
+> needs no microphone; every future walk should use it.
+>
+> **Shipped, each verified by observation rather than by a green tick:**
+>
+> | | |
+> |---|---|
+> | Dashboard leads an empty account into the brief | scoped to no-agent **AND** no-valuation, because two earlier redirects here bounced people off content that was theirs |
+> | Re-engagement cron skips accounts that cannot sign in | would have mailed Carmen and Andrew again next morning; that day's run missed them by **33 seconds** |
+> | Our own CI probe stopped mailing three operators | `audit-input-response` submits **20×/run to PRODUCTION**; 14 alerts in 15 hours. ⚠️ Repointing at a preview would NOT have fixed it — `RESEND_API_KEY`/`ADMIN_EMAILS` are set on preview too |
+> | A public ask is recorded, not just mailed | `kira_tasks.user_id` now nullable = asked by someone with no account; the email used to BE the record |
+> | The alert throttle survives a cold start | was a per-instance `Map`; in-memory kept as fallback so a DB blip degrades rather than flooding or silencing |
+> | `email_logs.email_type` closed enum **dropped** | a closed enum on a LOG silently drops rows; extending it would leave the trap armed |
+>
+> **Still open:** the fixed **paid path** unwalked (live Stripe, arrears — check
+> `configure-billing-portal.mjs`, the portal's cancel cannot waive); **voice untested by anyone**;
+> email **delivery** untested; `assertJurisdictionAllowed` wired **nowhere** (Carmen is in Spain);
+> the gate still tests **production** rather than the PR.
+
 > ## M. 2026-08-06 — a real user found two bugs, and the gates that should have found them first
 >
 > **Shah Hussain (founder of Mnemo, evaluating for a deep-recall integration) reported two things.**
