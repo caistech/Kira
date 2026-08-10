@@ -112,3 +112,27 @@ const result = await createEmailSender({ sender }).send({
   compliance: { transactional: true },
 });
 console.log(`[invite] sent — id ${result?.id ?? '(none returned)'}`);
+
+// RECORD IT, because not recording it is what made this whole class of problem invisible.
+//
+// On 2026-08-10 three people — a business broker among them — were found holding accounts with no
+// sign-in, and nothing anywhere could answer "was this person ever actually invited?" The script
+// mailed them and forgot. The only trace was `auth.users.recovery_sent_at` from a DIFFERENT
+// mechanism, and reading that wrongly is how you conclude someone ignored you when in fact you sent
+// them a link that expired within the hour.
+//
+// Fail-soft: the mail has already gone, and failing here would report a send that happened as a
+// send that did not.
+try {
+  await db.from('users').update({ last_email_at: new Date().toISOString() }).eq('id', appUser.id);
+  await db.from('email_logs').insert({
+    user_id: appUser.id,
+    email_type: 'owner_invite',
+    recipient: email,
+    status: 'sent',
+    metadata: { app_url: appUrl, from: fromWho, provider_id: result?.id ?? null },
+  });
+  console.log('[invite] recorded in email_logs');
+} catch (recordError) {
+  console.error('[invite] SENT but not recorded — the mail went, the trail did not:', recordError);
+}

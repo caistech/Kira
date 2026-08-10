@@ -106,15 +106,23 @@ for (const letter of LETTERS) {
     },
   });
 
+  // SURFACED, NOT SWALLOWED. supabase-js returns { error } rather than throwing, so an unchecked
+  // insert here would fail silently and leave the same "was this person ever contacted?" hole this
+  // whole exercise came out of. It cost three invitations on 2026-08-10: email_logs carried a
+  // CLOSED enum on email_type from January, every newer type failed the check, and every caller
+  // wrapped the write fail-soft — so the rows just never appeared. The constraint is gone now
+  // (20260810140000), and this reports rather than assumes.
   if (appUser?.id) {
     await db.from('users').update({ last_email_at: new Date().toISOString() }).eq('id', appUser.id);
-    await db.from('email_logs').insert({
+    const { error: logError } = await db.from('email_logs').insert({
       user_id: appUser.id,
       email_type: 'apology_account_never_worked',
       recipient: letter.email,
       status: 'sent',
+      resend_id: result?.id ?? null,
       metadata: { reason: 'no auth identity was ever created; trial expired unused' },
     });
+    if (logError) console.error(`  SENT but not recorded — the mail went, the trail did not: ${logError.message}`);
   }
   console.log(`  sent — id ${result?.id ?? '(none returned)'}`);
 }
