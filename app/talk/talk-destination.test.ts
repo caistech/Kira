@@ -75,6 +75,28 @@ describe('/talk when the owner has no Kira yet', () => {
     });
   });
 
+  // An invited owner arrives with an account and nothing in it. Until 2026-08-10 the dashboard
+  // showed him a report on a business it knew nothing about and waited to be clicked, while the
+  // paid path took its owner straight into the flow that creates her. Same product, two arrivals,
+  // one of them led.
+  describe('an account with nothing in it is led in rather than parked', () => {
+    const dashboard = stripComments(repo('app/dashboard/page.tsx'));
+
+    it('sends an owner with no agent and no valuation into the create flow', () => {
+      expect(dashboard).toMatch(
+        /if\s*\(\s*user\s*&&\s*list\.length === 0\s*&&\s*!valuation\s*\)\s*redirect\(\s*['"`]\/start\?journey=business&from=app['"`]\s*\)/,
+      );
+    });
+
+    it('leaves an owner who HAS a valuation on his own dashboard', () => {
+      // The load-bearing half, and the one a later tidy-up would drop as a redundant condition.
+      // Dropping `!valuation` turns this into the failure the redirect was written to avoid: a man
+      // who came for his gap figure, bounced off it every time he opens the page. Two redirects on
+      // this surface have already done exactly that to real people.
+      expect(dashboard).not.toMatch(/if\s*\(\s*user\s*&&\s*list\.length === 0\s*\)\s*redirect\(/);
+    });
+  });
+
   describe('the paid path keeps its own framing', () => {
     it('onboarding still marks the just-paid owner as just-paid', () => {
       // The other half of the split: separating these two must not quietly demote the paid arrival
