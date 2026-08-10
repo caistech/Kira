@@ -42,13 +42,21 @@ npm install resend
 # Resend
 RESEND_API_KEY=re_xxxxxxxxxxxxx
 RESEND_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxx
-EMAIL_FROM=Kira <kira@yourdomain.com>
+# The ONLY Resend-verified sender in the portfolio. `kira@yourdomain.com` was the
+# placeholder here for months; because EMAIL_FROM was set in no environment, every
+# transactional email Kira sent came from an unverified domain and was rejected.
+EMAIL_FROM=Kira <noreply@updates.corporateaisolutions.com>
 
 # For cron jobs
 CRON_SECRET=your-secret-string
 
 # App URL (for links in emails)
-NEXT_PUBLIC_APP_URL=https://kira.app
+# ⚠️ NOT the public domain. Production is https://kiraexec.com, but this variable is
+# deliberately still the Vercel alias: the ElevenLabs tool webhooks have the base URL
+# BAKED into each agent's tool config at provision time, so changing it needs a fleet
+# reprovision — which has twice caused a real regression here. Read docs/DOMAIN_KIRAEXEC.md
+# §4 before changing it.
+NEXT_PUBLIC_APP_URL=https://kira-rho.vercel.app
 ```
 
 ### 3. Configure Resend Domain
@@ -67,7 +75,7 @@ NEXT_PUBLIC_APP_URL=https://kira.app
 ### 5. Set Up Webhook (for tracking)
 
 1. Go to Resend Dashboard → Webhooks
-2. Add webhook URL: `https://kira.app/api/webhooks/resend`
+2. Add webhook URL: `https://kiraexec.com/api/webhooks/resend`
 3. Select events: `email.sent`, `email.delivered`, `email.opened`, `email.clicked`, `email.bounced`
 4. Copy the signing secret to `RESEND_WEBHOOK_SECRET`
 
