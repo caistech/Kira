@@ -712,9 +712,9 @@ export default function BusinessValuationPage() {
              just losing the fill — otherwise the largest number on the page prints white on white. */
           .grad-warm, .grad-coral, .grad-genome {
             background: none !important;
-            color: #1c1917 !important;
+            color: rgb(var(--print-ink)) !important;
           }
-          .grad-genome * { color: #1c1917 !important; }
+          .grad-genome * { color: rgb(var(--print-ink)) !important; }
           header { display: none !important; }
           .card-pop { transition: none !important; }
           /* Keep a block whole across a page break where the printer will let us. A three-figure

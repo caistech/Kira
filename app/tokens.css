@@ -68,6 +68,13 @@
   --text-on-dark: var(--neutral-on-dark);
   --text-on-dark-muted: var(--neutral-on-dark-muted);
 
+  /* Ink on PAPER. Deliberately its own role rather than --text-body, and deliberately absent from
+   * the dark block below: a print stylesheet strips the gradient fills so the text underneath needs
+   * a colour, and --text-body re-points to a LIGHT value under [data-theme="dark"]. An owner who
+   * had dark mode on would print the largest number on the page white on white — the exact failure
+   * the print rules exist to prevent. Paper has one theme. */
+  --print-ink: var(--neutral-900);
+
   --surface-page: var(--neutral-50);
   --surface-raised: 255 255 255;
   --surface-inset: var(--neutral-100);
