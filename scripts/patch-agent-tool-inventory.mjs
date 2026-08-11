@@ -33,7 +33,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';
-import { getAgent, updateAgent } from '@caistech/elevenlabs-convai';
+import { getAgent } from '@caistech/elevenlabs-convai';
+
+import { writePromptAndVerify } from './lib/agent-prompt.mjs';
 
 import { toolDefsFor } from '../lib/kira/tool-manifest.mjs';
 
@@ -67,7 +69,7 @@ if (error) throw new Error(error.message);
 
 console.log(`${rows.length} agent(s)${APPLY ? '  [APPLY]' : '  [DRY RUN — pass --apply]'}\n`);
 
-let patched = 0, already = 0, missing = 0;
+let patched = 0, already = 0, missing = 0, failedWrites = 0;
 
 for (const row of rows) {
   const agent = await getAgent(apiKey, row.elevenlabs_agent_id);
@@ -106,9 +108,17 @@ for (const row of rows) {
   if (APPLY) {
     const next = prompt.replace(LIST_RE, `$1${expected}$3`);
     if (next === prompt) throw new Error(`replacement was a no-op for ${name} — refusing to report success`);
-    await updateAgent(apiKey, row.elevenlabs_agent_id, {
-      conversation_config: { agent: { prompt: { prompt: next } } },
-    });
+    // ⚠️ This used to call updateAgent with a raw conversation_config body, which the package
+    // ignores — 200, nothing written. It reported "10 prompts patched" on 2026-08-10 and patched
+    // none, leaving every prompt naming two tools the agent no longer held for a full day.
+    // scripts/lib/agent-prompt.mjs reads back and preserves llm/temperature.
+    const res = await writePromptAndVerify(apiKey, row.elevenlabs_agent_id, next, { mustContain: expected });
+    if (!res.ok) {
+      console.error(`  ✗ ${name} — ${res.reason}`);
+      failedWrites++;
+      continue;
+    }
+    console.log(`        verified live: ${res.before} → ${res.after} chars`);
     patched++;
   }
 }
