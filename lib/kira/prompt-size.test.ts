@@ -45,7 +45,7 @@ const framework = (journeyType: JourneyType): KiraFramework => ({
 // CHECKING WHAT YOU HAVE GOT RIGHT, THE ADDRESS IS THE ONE THING YOU MUST CHECK, READING THEIR
 // ACCOUNTS) sitting thousands of characters away from the tool it describes. Moving each into its
 // tool's description is the next tranche, and should take this under 15k.
-const BUDGET = { business: 37_300, personal: 12_500 } as const;
+const BUDGET = { business: 38_500, personal: 12_500 } as const;
 
 // ⚠️ THE BUSINESS CEILING WENT BACK UP, from 28,000 to 36,000, and that is not backsliding.
 //
@@ -103,6 +103,30 @@ const BUDGET = { business: 37_300, personal: 12_500 } as const;
 // This is the second 300-1,000 character raise in two days. Both were controls found by a live
 // owner walkthrough, both were justified, and the trend is the point: the relocation tranche is
 // now the only thing that brings this down, and every raise makes it more overdue rather than less.
+//
+// ⚠️ RAISED 37,300 → 38,500 on 2026-08-11 for `## WHEN HE HAS JUST COME OFF A CALL`. Measured
+// 38,447 with it in. This is 1,150 — the largest of the three raises, and the first that is a
+// FEATURE rather than a control found by a walkthrough. Both facts are stated because they are the
+// ones that would otherwise get smoothed over.
+//
+// WHAT IT BUYS. The largest single request in docs/CAPTURED_ASKS.md: "currently making phone calls
+// without note-taking, leading to lost verbal decisions and a knowledge gap", happening several
+// times a day. The alternative is a telephony build — and a third-party app cannot reach the audio
+// of a normally-dialled cellular call on either platform, so that build is a bridged-call
+// architecture carrying a vendor, a consent state machine, a jurisdictional legal question and a
+// per-minute cost that a flat subscription does not absorb. 1,150 characters answers the question
+// that decides whether any of it is worth starting: will he do the capture step at all.
+//
+// WHY NOT TRIM SOMETHING ELSE INSTEAD. It was trimmed, hard, before this line moved: 2,866 → 1,357,
+// a 53% cut, by moving every "why" into a comment in prompts.ts and leaving only what she must do —
+// the same move that halved the confidentiality section in the 08-06 raise above. What remains is
+// five numbered items, two tool calls, and the read-back rule. Cutting further removes an operative
+// instruction, which this file names as the mistake three times now.
+//
+// ⚠️ AND THE PART THAT SHOULD BE UNCOMFORTABLE: this is ~9,600 tokens, three raises in five days,
+// and the relocation tranche described at the top has not moved in any of them. It is no longer
+// "overdue" in a general sense — it is the reason each of these raises had to be argued rather than
+// absorbed. The next section added should not be a raise; it should be the tranche.
 
 describe('prompt budget', () => {
   for (const journey of ['business', 'personal'] as const) {
