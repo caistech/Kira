@@ -88,5 +88,31 @@ export default async function TalkPage() {
   // Fixing it HERE rather than in TalkFab is deliberate: the FAB, My Genome and Knowledge all point
   // at `/talk`, so this is one change instead of three, and the next surface that adds a Talk link
   // inherits the correct behaviour instead of having to remember.
-  redirect('/start?journey=business');
+  //
+  // ── UPDATED 2026-08-12: THE DESTINATION MOVED BACK TO /dashboard, AND THAT IS NOT A REVERT ──
+  //
+  // Everything above was right when it was written. What has changed underneath it is that
+  // `/dashboard` no longer dead-ends: since 2026-08-10 it forwards an account with NO AGENT AND NO
+  // VALUATION straight into `/start?journey=business&from=app`. So the silent bounce Ray reported —
+  // the Talk button returning him to the page he was already on — cannot happen for the owner who
+  // reported it, because the dashboard now carries him onward.
+  //
+  // Sending everyone to /start regardless is what broke, and it broke for the opposite person: an
+  // owner who HAS a saved valuation. He signs in, `login` sets `next=/talk`, this line fires, and he
+  // is dropped into a setup flow having never seen the gap figure he came back for. The dashboard
+  // redirect is deliberately scoped to spare exactly him — "a gap figure someone came for isn't
+  // snatched away" — and routing round the dashboard defeats that scoping entirely.
+  //
+  // So the decision of where an agent-less owner belongs is made in ONE place, by the surface that
+  // knows what else he has. Here we only say "you have no agent, go home"; /dashboard decides
+  // whether home is a gap figure with a Meet-Kira CTA, or the setup flow.
+  //
+  // Terminates: /dashboard only forwards when there is no valuation either, and /start never routes
+  // back. Empty account: /talk → /dashboard → /start. Valuation holder: /talk → /dashboard, stop.
+  //
+  // ⚠️ It also restores what `app/login/page.tsx` has claimed in a comment all along — that a new
+  // owner "falls through to /dashboard, which carries the right empty state for him (saved
+  // valuation, the eleven questions)". That comment described behaviour this file did not implement,
+  // and the two disagreed for six days. Reported by the operator, 2026-08-12.
+  redirect('/dashboard');
 }

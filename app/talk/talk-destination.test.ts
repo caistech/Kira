@@ -27,16 +27,41 @@ const stripComments = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(
 describe('/talk when the owner has no Kira yet', () => {
   const talk = stripComments(repo('app/talk/page.tsx'));
 
-  it('does not send him back to the dashboard he came from', () => {
-    // The silent bounce. Every Talk control in the product routes through here, so this one
-    // redirect is what made three separate CTAs do nothing.
-    expect(talk).not.toMatch(/redirect\(\s*['"`]\/dashboard['"`]\s*\)/);
+  // ⚠️ THESE TWO ASSERTIONS WERE INVERTED ON 2026-08-12, AND THE REASON MATTERS MORE THAN THE CHANGE.
+  //
+  // They used to require `/talk → /start?journey=business` and FORBID `/talk → /dashboard`, because
+  // Ray hit the silent bounce: the button naming the entire product returned him to the page he was
+  // already on, with no message. That was correct then. `/dashboard` was a dead end for a new owner.
+  //
+  // It is not a dead end any more. Since 2026-08-10 the dashboard forwards an account with NO AGENT
+  // AND NO VALUATION straight into `/start?journey=business&from=app`, so the bounce cannot happen to
+  // the owner who reported it.
+  //
+  // What DID break is the opposite person. An owner with a saved valuation signs in, login sets
+  // `next=/talk`, and this redirect dropped him into a setup flow having never seen the gap figure he
+  // came back for — defeating the scoping the dashboard redirect was deliberately given ("a gap
+  // figure someone came for isn't snatched away"). Reported by the operator, 2026-08-12.
+  //
+  // So the destination decision moved to the ONE surface that knows what else he has. This file now
+  // pins the composition rather than the hop.
+  it('sends him home, and lets the dashboard decide where home is', () => {
+    expect(talk).toMatch(/redirect\(\s*['"`]\/dashboard['"`]\s*\)/);
   });
 
-  it('sends him to the flow that creates her, with the journey already chosen', () => {
-    // `?journey=business` matters: without it he lands on a bare "choose a journey" picker, which is
-    // the complaint that caused the previous fix and produced the silent bounce.
-    expect(talk).toMatch(/redirect\(\s*['"`]\/start\?journey=business['"`]\s*\)/);
+  it('does NOT route around the dashboard into setup', () => {
+    // The regression this replaces. Going straight to /start skips the one surface that knows
+    // whether he has a valuation waiting, and sends a returning owner into onboarding.
+    expect(talk).not.toMatch(/redirect\(\s*['"`]\/start\?journey=business['"`]\s*\)/);
+  });
+
+  it('the composition still terminates', () => {
+    // /talk → /dashboard → /start is only safe while /start never routes back, and while the
+    // dashboard's forward is conditional. Both are asserted where they live — dashboard:
+    // `list.length === 0 && !valuation` below, and /start pushes forward to /setup/draft only.
+    // Asserted here as the thing that would make this hop a loop: /talk must not be a destination
+    // the dashboard can send someone to.
+    const dashboard = stripComments(repo('app/dashboard/page.tsx'));
+    expect(dashboard).not.toMatch(/redirect\(\s*['"`]\/talk['"`]\s*\)/);
   });
 
   // ⚠️ THIS BLOCK REPLACED A `toContain("'/start?journey=business'")` ASSERTION THAT WENT RED WHEN

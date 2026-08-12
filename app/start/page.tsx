@@ -281,9 +281,16 @@ export default function StartPage() {
 
   return (
     <div className="min-h-screen bg-stone-950 font-sans">
-      {/* Background gradient */}
+      {/* BACKGROUND GRADIENT — decoration only, and it must never receive a click.
+          It is `absolute inset-0` with no stacking of its own, so it painted over the nav that
+          `UserShell` renders around this page and swallowed every link on it. The page's own content
+          escaped because the div below is `relative`; the shell's nav had no such protection, so the
+          links rendered, looked fine, and did nothing.
+          `pointer-events-none` is the fix and `-z-10` is the belt: a full-bleed decorative layer
+          should be incapable of intercepting input, not merely arranged so that it currently does
+          not. Reported by the operator, 2026-08-12. */}
       <div
-        className="absolute inset-0"
+        className="pointer-events-none absolute inset-0 -z-10"
         style={{
           background: `
             radial-gradient(ellipse at 50% 0%, rgba(251, 191, 36, 0.08) 0%, transparent 50%),
