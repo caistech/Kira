@@ -61,12 +61,25 @@ export interface TechnologyDetection {
   /** Everything recognised, across all categories, strongest first. */
   detected: ProviderDetection[];
   /**
-   * FALSE when no page could be read at all. The caller must not report
-   * 'no_visible_online_booking' in that case — it would turn a fetch failure into a finding.
+   * FALSE when no page could be READ — either nothing was fetched, or what came back had markup but
+   * no readable content. The caller must not report 'no_visible_online_booking' in that case; it
+   * would turn a fetch failure, or a page we cannot see, into a finding about the practice.
    */
   inspected: boolean;
+  /**
+   * WHY nothing was inspected. Present only when `inspected` is false, and the two values send a
+   * reader somewhere completely different: 'no-pages' means we never got a response,
+   * 'no-readable-content' means we got one and it was empty of text.
+   */
+  notInspectedReason?: 'no-pages' | 'no-readable-content';
   /** Pages actually inspected. */
   pagesInspected: string[];
+  /**
+   * Pages fetched successfully but carrying no readable text — almost always a JavaScript-rendered
+   * site. Named separately because "we could not read this site" is a fact worth SAYING, and it is
+   * not the same fact as "this practice has no online booking".
+   */
+  unreadablePages: string[];
 }
 
 /**
@@ -135,10 +148,59 @@ const NON_BOOKING_HOSTS = [
   'wordpress.com', 'wix.com', 'squarespace.com', 'godaddy.com', 'cloudflare.com',
   'googletagmanager.com', 'google-analytics.com', 'gstatic.com', 'googleapis.com',
   'jquery.com', 'jsdelivr.net', 'unpkg.com', 'bootstrapcdn.com', 'fontawesome.com',
+  // Tag/analytics hosts observed on real practice sites. `facebook.net` is a DIFFERENT domain from
+  // `facebook.com` and was not covered by it — belt-and-braces alongside the word boundary above,
+  // since the boundary is the actual fix and this list can only ever cover what someone has seen.
+  'facebook.net', 'fbcdn.net', 'doubleclick.net', 'googlesyndication.com',
+  'hotjar.com', 'clarity.ms', 'cloudfront.net',
 ];
 
-/** Path/word signals that a link is about making an appointment. URL-only — never page copy. */
-const BOOKING_URL_HINTS = /(book|appointment|appt|schedul|reserve)/i;
+/**
+ * Path/word signals that a link is about making an appointment. URL-only — never page copy.
+ *
+ * ⚠️ THE LEADING BOUNDARY IS THE WHOLE POINT. Without it this matched "book" inside **face**book**,
+ * so `connect.facebook.net/en_US/fbevents.js` and a Wix CSS bundle named `[WFacebookLike]` both
+ * registered as unrecognised booking systems. Two of ten real practice sites were misclassified that
+ * way, and always in the same direction: a practice with NO online booking reported as having some.
+ * That is the single most commercially load-bearing verdict this module produces — it is the
+ * strongest direct-prospect signal — so a false positive there quietly buries the best leads.
+ *
+ * `reserv` rather than `reserve` so "reservation" is caught; `schedul` covers schedule/scheduling.
+ */
+const BOOKING_URL_HINTS = /(^|[^a-z])(book|appointment|appt|schedul|reserv)/i;
+
+/**
+ * The floor for "we could actually read this page".
+ *
+ * A JavaScript-rendered site returns plenty of MARKUP and no CONTENT: the case that produced this
+ * constant served 33,737 bytes of HTML containing ten characters of visible text. Byte length is
+ * therefore not evidence that anything was read, and treating it as evidence is what let a fetch
+ * that learned nothing be reported as a successful inspection.
+ *
+ * 200 is deliberately modest. A real practice homepage runs to thousands; anything under a couple of
+ * hundred characters is a shell, a challenge page or an error, none of which we may draw conclusions
+ * from.
+ */
+export const MIN_VISIBLE_TEXT_CHARS = 200;
+
+/**
+ * Visible text length, for the floor above.
+ *
+ * Strips the same three block elements `stripHtmlToText` does and then all tags. It is deliberately
+ * a LOCAL, cheap measure rather than a call into the shared extractor: this module is otherwise pure
+ * and dependency-free, and all it needs is an order-of-magnitude answer to "is there any prose
+ * here?" — not a faithful text rendering.
+ */
+export function visibleTextLength(html: string): number {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim().length;
+}
 
 function hostOf(rawUrl: string): string | null {
   try {
@@ -183,11 +245,23 @@ export interface PageSource {
  * homepage is how a Healthengine practice gets misread as having no online booking.
  */
 export function detectTechnology(pages: readonly PageSource[]): TechnologyDetection {
-  const usable = pages.filter((p) => typeof p.html === 'string' && p.html.length > 0);
+  const fetched = pages.filter((p) => typeof p.html === 'string' && p.html.length > 0);
+
+  // READABLE, not merely present. Byte length proves a response arrived, nothing more.
+  const usable = fetched.filter((p) => visibleTextLength(p.html) >= MIN_VISIBLE_TEXT_CHARS);
+  const unreadablePages = fetched.filter((p) => !usable.includes(p)).map((p) => p.url);
 
   if (usable.length === 0) {
-    // Could not look. Say so — this is the distinction the whole module exists to protect.
-    return { booking: 'unknown', detected: [], inspected: false, pagesInspected: [] };
+    // Could not look. Say so — this is the distinction the whole module exists to protect, and the
+    // reason distinguishes "nothing came back" from "something came back and was unreadable".
+    return {
+      booking: 'unknown',
+      detected: [],
+      inspected: false,
+      notInspectedReason: fetched.length === 0 ? 'no-pages' : 'no-readable-content',
+      pagesInspected: [],
+      unreadablePages,
+    };
   }
 
   /** provider → its accumulating detection. */
@@ -296,5 +370,6 @@ export function detectTechnology(pages: readonly PageSource[]): TechnologyDetect
     detected,
     inspected: true,
     pagesInspected: usable.map((p) => p.url),
+    unreadablePages,
   };
 }

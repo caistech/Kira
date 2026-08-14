@@ -12,12 +12,37 @@ import { detectTechnology, extractUrls, type PageSource } from './technology-det
 
 const page = (html: string, url = 'https://examplepractice.com.au/'): PageSource => ({ url, html });
 
+/**
+ * A page shaped like a real one.
+ *
+ * The prose is not decoration. `detectTechnology` now requires MIN_VISIBLE_TEXT_CHARS of readable
+ * text before it will claim to have inspected anything, and the earlier fixtures carried about forty
+ * characters — thinner than any real practice homepage, and thin enough that they would have sailed
+ * past the very floor these tests exist to prove. A fixture that could not survive the rule it is
+ * testing is not a test.
+ */
 const SHELL = (body: string) => `<!doctype html><html><head>
 <meta charset="utf-8"><title>Example Medical Centre</title>
 <script src="https://www.googletagmanager.com/gtag/js?id=G-1"></script>
-</head><body>${body}
+</head><body>
+<h1>Example Medical Centre</h1>
+<p>We are a family practice in the northern suburbs, caring for patients of all ages since 1998.
+Our doctors offer general consultations, chronic disease management, childhood immunisations,
+skin checks, travel medicine and minor procedures. We are open six days a week and welcome new
+patients. Please phone reception during business hours to discuss your needs.</p>
+${body}
 <a href="https://www.facebook.com/examplepractice">Facebook</a>
 <a href="https://maps.app.goo.gl/abc">Find us</a>
+</body></html>`;
+
+/** A JavaScript-rendered site: plenty of markup, no content. Modelled on a real measurement. */
+const JS_SHELL = `<!doctype html><html><head><meta charset="utf-8"><title>Example Dental</title>
+<script src="https://a1b2c3.edge.sdk.awswaf.com/challenge.js"></script>
+<script src="/webpack-runtime-1b985d00.js"></script><script src="/framework-831866eb.js"></script>
+<script src="/app-4f2c9a1b.js"></script><link rel="stylesheet" href="/styles.abc123.css">
+${'<meta name="pad" content="'.concat('x'.repeat(2000), '">')}
+</head><body><div id="___gatsby"></div><div id="gatsby-announcer"></div>
+<noscript>You need to enable JavaScript to run this app.</noscript>
 </body></html>`;
 
 describe('booking provider detection', () => {
@@ -104,6 +129,28 @@ describe('the wording rule', () => {
     expect(detectTechnology([page(html)]).booking).toBe('no_visible_online_booking');
   });
 
+  it('does NOT match "book" inside "facebook" — the live false positive', () => {
+    // FOUND AGAINST REAL SITES, not imagined. Two of ten Australian practice websites were reported
+    // as having online booking because the substring `book` occurs inside `facebook`:
+    //   https://connect.facebook.net/en_US/fbevents.js
+    //   https://static.parastorage.com/…/rb_wixui.thunderbolt[WFacebookLike].a6a92f24.min.css
+    // Both should be silent. The direction of the error is what made it expensive: a practice with
+    // NO online booking — the strongest direct-prospect signal there is — was reported as having it.
+    const html = SHELL(`
+      <script src="https://connect.facebook.net/en_US/fbevents.js"></script>
+      <link rel="stylesheet" href="https://static.parastorage.com/services/x/rb_wixui.thunderbolt[WFacebookLike].a6a92f24.min.css">`);
+    const result = detectTechnology([page(html)]);
+
+    expect(result.booking).toBe('no_visible_online_booking');
+    expect(result.detected.filter((d) => d.provider.startsWith('unrecognised:'))).toEqual([]);
+  });
+
+  it('still matches a genuine booking host on a word boundary', () => {
+    // The boundary must not be so tight that it kills the real signal it was narrowed to protect.
+    const html = SHELL(`<a href="https://bookings.some-new-vendor.com.au/example">Reserve</a>`);
+    expect(detectTechnology([page(html)]).booking).toBe('other_online_booking');
+  });
+
   it('does NOT treat an ordinary third-party link as a booking system', () => {
     // Added after a mutation check: removing the booking-shape requirement altogether left every
     // test green, which meant nothing was actually holding that line. A practice site links out to
@@ -136,6 +183,7 @@ describe('the unknown / not-inspected distinction', () => {
     const result = detectTechnology([]);
     expect(result.booking).toBe('unknown');
     expect(result.inspected).toBe(false);
+    expect(result.notInspectedReason).toBe('no-pages');
     expect(result.pagesInspected).toEqual([]);
   });
 
@@ -143,6 +191,37 @@ describe('the unknown / not-inspected distinction', () => {
     const result = detectTechnology([page('')]);
     expect(result.booking).toBe('unknown');
     expect(result.inspected).toBe(false);
+    expect(result.notInspectedReason).toBe('no-pages');
+  });
+
+  it('refuses to draw a conclusion from a JavaScript-rendered shell', () => {
+    // THE REGRESSION TEST FOR THE WORST FAILURE THIS MODULE HAS HAD. Run against a real target, a
+    // Gatsby site behind a WAF returned 33,737 bytes of markup carrying ten characters of visible
+    // text — and the detector reported 'no_visible_online_booking' about an organisation that used a
+    // booking platform at every one of its locations. Byte length is not evidence of content.
+    const result = detectTechnology([page(JS_SHELL)]);
+
+    expect(result.inspected).toBe(false);
+    expect(result.booking).toBe('unknown');
+    expect(result.booking).not.toBe('no_visible_online_booking');
+    // 'no-readable-content' rather than 'no-pages': the fetch SUCCEEDED. Those send a reader to two
+    // completely different places — one is our network, the other is their website.
+    expect(result.notInspectedReason).toBe('no-readable-content');
+    expect(result.unreadablePages).toEqual(['https://examplepractice.com.au/']);
+  });
+
+  it('still detects a vendor on a readable page while reporting an unreadable sibling', () => {
+    const readable = page(
+      SHELL(`<a href="https://healthengine.com.au/appointment/x">Book</a>`),
+      'https://examplepractice.com.au/appointments',
+    );
+    const shell = page(JS_SHELL, 'https://examplepractice.com.au/team');
+    const result = detectTechnology([readable, shell]);
+
+    expect(result.booking).toBe('healthengine');
+    expect(result.inspected).toBe(true);
+    expect(result.pagesInspected).toEqual(['https://examplepractice.com.au/appointments']);
+    expect(result.unreadablePages).toEqual(['https://examplepractice.com.au/team']);
   });
 
   it('no_visible_online_booking is only reachable when something WAS inspected', () => {

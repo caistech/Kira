@@ -138,12 +138,56 @@ async function getPage(
 }
 
 /**
+ * Strip an honorific and normalise, so a returned name can be checked against the page.
+ *
+ * A site writes "Sarah Chen" and a model returns "Dr Sarah Chen"; that is a reasonable elaboration,
+ * not an invention, and the guard must not throw it away. Everything else is normalised — case,
+ * punctuation, whitespace — because a name that differs from the page only by a comma is the same
+ * name, and a guard that rejects it teaches nobody anything.
+ */
+export function normaliseName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/^(dr|doctor|mr|mrs|ms|miss|prof|professor|a\/prof)\.?\s+/i, '')
+    .replace(/[^a-z\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Is this person actually WRITTEN on the page we read?
+ *
+ * THE GUARD THAT SHOULD HAVE EXISTED FROM THE START. Handed a JavaScript shell containing ten
+ * characters of text, the extractor below returned two people — plausible names, plausible titles,
+ * and a real source URL attached to each — none of which appeared anywhere in the document. The
+ * system prompt says "NEVER invent a person". It did anyway, and the failure was invisible from the
+ * outside because the fabrication arrived wearing correct provenance.
+ *
+ * So provenance is no longer taken on trust: the caller VERIFIES it. A model may only surface a name
+ * that is present in the text we retrieved. Matching on the surname alone is deliberate — "Sarah
+ * Chen" and "Chen, Sarah" and "Dr S. Chen" are one person, and requiring an exact full-name match
+ * would drop real people to guard against invented ones.
+ */
+export function isGroundedInSource(name: string, corpusLower: string): boolean {
+  const normalised = normaliseName(name);
+  if (!normalised) return false;
+  const parts = normalised.split(' ').filter((p) => p.length > 1);
+  if (parts.length === 0) return false;
+  // The surname is the strongest single token, and the one a page always carries.
+  const surname = parts[parts.length - 1];
+  return corpusLower.includes(surname);
+}
+
+/**
  * Read the people off the team/about pages.
  *
  * A model is used here and that is the right call: a person's name and role is unstructured prose,
  * not a signature, and there is no deterministic rule that separates "Dr Sarah Chen, Practice
  * Principal" from the rest of a paragraph. This is the opposite case from technology detection —
  * which is why THAT one refuses a model and this one uses one.
+ *
+ * But the model's output is CHECKED against the source before it leaves this function, because a
+ * model asked to list people from a page with no people on it will produce some.
  *
  * Returns [] on any failure. Nothing here is load-bearing enough to fail the whole pass.
  */
@@ -174,7 +218,7 @@ async function extractPeople(
     const parsed: unknown = JSON.parse(match[0]);
     if (!Array.isArray(parsed)) return [];
 
-    return parsed
+    const proposed = parsed
       .map((p) => p as Record<string, unknown>)
       .filter((p) => typeof p.name === 'string' && p.name.trim())
       .map((p) => ({
@@ -183,6 +227,27 @@ async function extractPeople(
         sourceUrl: typeof p.sourceUrl === 'string' ? p.sourceUrl : pages[0].url,
       }))
       .slice(0, 25);
+
+    // THE GROUNDING CHECK. Everything the model proposed is now verified against the text we
+    // actually retrieved, and anything absent from it is dropped.
+    const corpusLower = corpus.toLowerCase();
+    const grounded = proposed.filter((p) => isGroundedInSource(p.name, corpusLower));
+    const droppedCount = proposed.length - grounded.length;
+
+    if (droppedCount > 0) {
+      // REPORTED, never silently discarded. A silent filter would fix the symptom and hide the
+      // condition — and "the model invented people from this page" is exactly the thing a reader
+      // needs to know, because it says the page gave us nothing and something filled the gap.
+      failures.push({
+        stage: 'people',
+        reason:
+          `${droppedCount} of ${proposed.length} name(s) offered did not appear anywhere in the ` +
+          `retrieved text and were discarded — treat this page as giving us no people, not as ` +
+          `having none`,
+      });
+    }
+
+    return grounded;
   } catch (error) {
     failures.push({
       stage: 'people',
@@ -206,7 +271,9 @@ function buildSummary(r: Omit<PracticeResearchResult, 'summary'>): string {
   if (!r.technology.inspected) {
     // The sentence that must never become "no online booking".
     parts.push(
-      'No page could be read, so nothing is known about their booking technology — this is a research failure, not a finding.',
+      r.technology.notInspectedReason === 'no-readable-content'
+        ? 'Their site loaded but is built to render in the browser, so it served almost no readable text to me. I could not read it, which means nothing is known about their booking technology — that is a limit on me, not a finding about them.'
+        : 'No page could be read, so nothing is known about their booking technology — this is a research failure, not a finding.',
     );
   } else {
     const label: Record<string, string> = {
@@ -389,8 +456,31 @@ export async function researchPractice(input: ResearchInput): Promise<PracticeRe
   unknowns.push('Practice management system (PMS) — not publicly observable unless referenced');
   unknowns.push('Actual administrative workload — not observable from a website');
 
+  // ── The JavaScript case, said out loud ────────────────────────────────────────────────────────
+  // A site that renders in the browser returns markup and no content to us. That is a fact about
+  // what WE can see, not a fact about the practice, and it has to travel as one — the failure that
+  // produced this branch reported "no online booking" about an organisation with a booking platform
+  // at every location, because a shell was mistaken for an empty page.
+  if (technology.unreadablePages.length > 0) {
+    failures.push({
+      stage: 'homepage',
+      reason:
+        `${technology.unreadablePages.length} page(s) loaded but carried almost no readable text — ` +
+        `this is a JavaScript-rendered site I cannot read, so I learned nothing from it: ` +
+        `${technology.unreadablePages.join(', ')}`,
+    });
+  }
+
+  // ── Status, honestly ──────────────────────────────────────────────────────────────────────────
+  // 'ok' has to mean "I found things out". A pass that fetched pages and could read none of them
+  // learned nothing, and reporting that as success is what let a fabricated answer look verified.
+  // `inspected` is the discriminator: it is the one field that says whether anything was read.
   const status: PracticeResearchResult['status'] =
-    pages.length === 0 ? 'failed' : failures.length > 0 ? 'partial' : 'ok';
+    pages.length === 0 || !technology.inspected
+      ? 'failed'
+      : failures.length > 0
+        ? 'partial'
+        : 'ok';
 
   const withoutSummary: Omit<PracticeResearchResult, 'summary'> = {
     status,
