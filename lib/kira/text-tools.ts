@@ -52,6 +52,8 @@ import { kiraRecordRefusalToolDef } from './refusal-tool-def.mjs';
 import { handleRecordRefusal } from './refusal';
 import { kiraConfirmFactToolDef, kiraFactsToConfirmToolDef } from './confirm-tool-def.mjs';
 import { handleConfirmFact, handleFactsToConfirm } from './confirm';
+import { kiraResearchPracticeToolDef } from './practice-intelligence-tool-def.mjs';
+import { researchPractice } from './practice-intelligence/research';
 import {
   kiraApproveToolDef,
   kiraCheckTasksToolDef,
@@ -112,6 +114,7 @@ const BUILDERS: Record<string, Builder> = {
   record_refusal: kiraRecordRefusalToolDef as Builder,
   facts_to_confirm: kiraFactsToConfirmToolDef as Builder,
   confirm_fact: kiraConfirmFactToolDef as Builder,
+  research_practice: kiraResearchPracticeToolDef as Builder,
 };
 
 const UNUSED_BASE_URL = 'https://in-process.invalid';
@@ -311,6 +314,16 @@ export async function runTextTool(
         return await keepDocument(ownerId, String(args.file_id ?? ''));
       case 'look_up_financials':
         return await lookUpFinancials(ownerId, String(args.resource ?? ''));
+
+      // Called directly, like the lookup family above: researchPractice already returns the
+      // status/failures contract its description promises, so a route would only re-wrap it.
+      case 'research_practice':
+        return await researchPractice({
+          practice: String(args.practice ?? ''),
+          location: args.location ? String(args.location) : undefined,
+          website: args.website ? String(args.website) : undefined,
+          researchQuestion: args.research_question ? String(args.research_question) : undefined,
+        });
 
       default:
         return { ok: false, message: `I don't have a way to do that from here.` };
