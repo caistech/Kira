@@ -22,9 +22,9 @@ import { isUidToolUrl, UID_TOOL_NAMES } from './../uid-tools.mjs';
 import { textToolsFor } from './../text-tools';
 
 const APP_URL = 'https://example.test';
-const TOOL = 'research_practice';
+const TOOL = 'research_organisation';
 
-describe('research_practice is registered everywhere it has to be', () => {
+describe('research_organisation is registered everywhere it has to be', () => {
   it('is attached to the BUSINESS voice agent', () => {
     const names = (toolDefsFor('business', APP_URL) as { name?: string }[]).map((t) => t.name);
     expect(names).toContain(TOOL);
@@ -59,8 +59,8 @@ describe('research_practice is registered everywhere it has to be', () => {
     const pi = tools.find((t) => t.function.name === TOOL);
 
     // If this fails, textToolsFor skipped the name: BUILDERS has no entry for it.
-    expect(pi, 'research_practice was skipped by textToolsFor — add it to BUILDERS in text-tools.ts').toBeDefined();
-    expect(Object.keys(pi!.function.parameters.properties as object)).toContain('practice');
+    expect(pi, 'research_organisation was skipped by textToolsFor — add it to BUILDERS in text-tools.ts').toBeDefined();
+    expect(Object.keys(pi!.function.parameters.properties as object)).toContain('organisation');
   });
 
   it('every tool the voice fleet holds is ALSO reachable by typing', () => {

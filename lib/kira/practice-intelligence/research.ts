@@ -32,6 +32,7 @@ import {
 import { createOpenAITextRunner } from '@/lib/kira/structured-runner';
 import { detectTechnology, type PageSource, type TechnologyDetection } from './technology-detect';
 import { selectInternalPages, selectPracticeWebsite, type SiteSelection } from './site-selection';
+import { packFor, supportedSectors, type DomainPack } from './domain-pack';
 
 // ── Budgets. Fixed here so a slow site cannot hold a conversation open. ────────────────────────
 const FETCH_TIMEOUT_MS = 8_000;
@@ -44,8 +45,14 @@ const MAX_HTML_CHARS = 400_000;
 const MAX_PEOPLE_TEXT = 12_000;
 
 export interface ResearchInput {
-  /** The practice or organisation name, as the owner said it. */
-  practice: string;
+  /** The organisation name, as the owner said it. */
+  organisation: string;
+  /**
+   * Which industry's research pack to use. Defaults to healthcare, the only one that exists.
+   * An unrecognised sector fails honestly rather than silently researching with the wrong vendor
+   * list — see domain-pack.ts.
+   */
+  sector?: string;
   /** Suburb / city / state — materially improves the search. Optional. */
   location?: string;
   /** Skip the search entirely when the owner already knows the site. */
@@ -54,7 +61,7 @@ export interface ResearchInput {
   researchQuestion?: string;
 }
 
-export type ResearchStage = 'search' | 'site-selection' | 'homepage' | 'interior-pages' | 'profile' | 'people';
+export type ResearchStage = 'sector' | 'search' | 'site-selection' | 'homepage' | 'interior-pages' | 'profile' | 'people';
 
 export interface ResearchFailure {
   stage: ResearchStage;
@@ -194,6 +201,7 @@ export function isGroundedInSource(name: string, corpusLower: string): boolean {
 async function extractPeople(
   pages: readonly PageSource[],
   failures: ResearchFailure[],
+  pack: DomainPack,
 ): Promise<ObservedPerson[]> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey || pages.length === 0) return [];
@@ -205,7 +213,7 @@ async function extractPeople(
     .slice(0, MAX_PEOPLE_TEXT);
 
   const system =
-    'You list people named on a healthcare practice\'s own website. Return ONLY a JSON array of ' +
+    `You list people named on ${pack.peoplePromptSubject}. Return ONLY a JSON array of ` +
     '{"name": string, "role": string|null, "sourceUrl": string}. Use the exact URL given in the ' +
     'section header the person appeared under. Include clinicians, practice managers, owners and ' +
     'administrators. NEVER invent a person, a role, or a name that is not written on the page. ' +
@@ -325,11 +333,25 @@ function buildSummary(r: Omit<PracticeResearchResult, 'summary'>): string {
  * NEVER THROWS. Kira calls this mid-conversation; an exception would surface as her going silent, so
  * every failure is captured into `failures` and reported in the result.
  */
-export async function researchPractice(input: ResearchInput): Promise<PracticeResearchResult> {
+export async function researchOrganisation(input: ResearchInput): Promise<PracticeResearchResult> {
   const startedAt = Date.now();
   const failures: ResearchFailure[] = [];
-  const name = input.practice.trim();
+  const name = input.organisation.trim();
   const location = input.location?.trim() || null;
+
+  // ── 0. Resolve the sector pack ────────────────────────────────────────────────────────────────
+  // Before anything is fetched, because researching with the wrong industry's vendor list produces a
+  // confident answer about the wrong things. Null is said out loud rather than defaulted away.
+  const pack = packFor(input.sector);
+  if (!pack) {
+    failures.push({
+      stage: 'sector',
+      reason:
+        `I don't have a research pack for "${input.sector}" yet — I can only research ` +
+        `${supportedSectors().join(', ')} at the moment. That's a limit on me, not a judgement ` +
+        `about them.`,
+    });
+  }
 
   let websiteUrl: string | null = null;
   let websiteReason = '';
@@ -356,9 +378,9 @@ export async function researchPractice(input: ResearchInput): Promise<PracticeRe
       });
     } else {
       try {
-        const query = [name, location, 'medical practice'].filter(Boolean).join(' ');
+        const query = [name, location, pack?.searchQualifier].filter(Boolean).join(' ');
         const results = await braveWebSearch(query, apiKey, { count: SEARCH_RESULTS, country: 'AU' });
-        const selection = selectPracticeWebsite(results);
+        const selection = selectPracticeWebsite(results, pack?.directoryHosts);
         websiteUrl = selection.websiteUrl;
         websiteReason = selection.reason;
         rejected = selection.rejected;
@@ -420,11 +442,13 @@ export async function researchPractice(input: ResearchInput): Promise<PracticeRe
   }
 
   // ── 4. Deterministic technology detection over everything we read ─────────────────────────────
-  const technology = detectTechnology(pages);
+  const technology = detectTechnology(pages, pack?.signatures);
 
   // ── 5. People ─────────────────────────────────────────────────────────────────────────────────
-  const peoplePages = pages.filter((p) => /(team|about|doctor|practitioner|staff|clinician)/i.test(p.url));
-  const decisionMakers = await extractPeople(peoplePages.length ? peoplePages : pages.slice(0, 1), failures);
+  const peoplePages = pack ? pages.filter((p) => pack.peoplePagePattern.test(p.url)) : [];
+  const decisionMakers = pack
+    ? await extractPeople(peoplePages.length ? peoplePages : pages.slice(0, 1), failures, pack)
+    : [];
 
   // ── 6. Assemble ───────────────────────────────────────────────────────────────────────────────
   const observedFacts: string[] = [];
@@ -453,7 +477,9 @@ export async function researchPractice(input: ResearchInput): Promise<PracticeRe
 
   if (!decisionMakers.length) unknowns.push('Named individuals — nobody was listed on the pages read');
   // Never inferable from a public website, and naming it stops the gap being quietly filled.
-  unknowns.push('Practice management system (PMS) — not publicly observable unless referenced');
+  // Sector-specific: a builder has no practice-management system, so this must not be asserted as
+  // an open question for every industry.
+  if (pack) unknowns.push(...pack.sectorUnknowns);
   unknowns.push('Actual administrative workload — not observable from a website');
 
   // ── The JavaScript case, said out loud ────────────────────────────────────────────────────────
@@ -476,7 +502,7 @@ export async function researchPractice(input: ResearchInput): Promise<PracticeRe
   // learned nothing, and reporting that as success is what let a fabricated answer look verified.
   // `inspected` is the discriminator: it is the one field that says whether anything was read.
   const status: PracticeResearchResult['status'] =
-    pages.length === 0 || !technology.inspected
+    !pack || pages.length === 0 || !technology.inspected
       ? 'failed'
       : failures.length > 0
         ? 'partial'

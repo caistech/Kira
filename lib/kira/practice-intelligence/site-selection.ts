@@ -23,14 +23,28 @@
  * "looks like a directory" heuristic over-rejects, and a practice's own site occasionally looks
  * directory-shaped. AU health directories and aggregators dominate these results, so they lead.
  */
-const NON_PRACTICE_HOSTS = new Set<string>([
-  // AU health directories / aggregators — the main noise source for this vertical
+/**
+ * Directories and aggregators for THIS industry. Split out from the universal list below because
+ * they are the one part of this file that is about medicine — the day a second sector wants the
+ * spine, it brings its own list of these and reuses everything else unchanged.
+ */
+export const HEALTHCARE_DIRECTORY_HOSTS: readonly string[] = [
   'healthdirect.gov.au', 'healthengine.com.au', 'hotdoc.com.au', 'healthshare.com.au',
-  'whitecoat.com.au', 'ratemds.com', 'yellowpages.com.au', 'truelocal.com.au',
-  'localsearch.com.au', 'startlocal.com.au', 'hotfrog.com.au', 'aushealthdirectory.com.au',
+  'whitecoat.com.au', 'ratemds.com', 'aushealthdirectory.com.au',
   'myhealth1st.com.au', '1stavailable.com.au', 'medicaldirectory.com.au',
   'health.gov.au', 'servicesaustralia.gov.au', 'ahpra.gov.au', 'racgp.org.au',
-  // Jobs boards — the signal's own source; never the practice's website
+  'medicalrepublic.com.au', 'ausdoc.com.au',
+];
+
+/**
+ * Hosts that are never ANY organisation's own website, whatever the industry: business directories,
+ * jobs boards, social networks, maps and the general press.
+ */
+export const UNIVERSAL_NON_TARGET_HOSTS: readonly string[] = [
+  // Generic business directories
+  'yellowpages.com.au', 'truelocal.com.au', 'localsearch.com.au', 'startlocal.com.au',
+  'hotfrog.com.au',
+  // Jobs boards — the signal's own source; never the organisation's website
   'indeed.com', 'au.indeed.com', 'seek.com.au', 'jora.com', 'adzuna.com.au',
   'glassdoor.com.au', 'linkedin.com', 'ethicaljobs.com.au', 'careerone.com.au',
   // Social / maps / general
@@ -38,9 +52,8 @@ const NON_PRACTICE_HOSTS = new Set<string>([
   'google.com', 'google.com.au', 'goo.gl', 'maps.app.goo.gl', 'wikipedia.org',
   // Press
   'abc.net.au', 'news.com.au', 'smh.com.au', 'theage.com.au', 'theguardian.com',
-  'watoday.com.au', 'perthnow.com.au', 'thewest.com.au', 'medicalrepublic.com.au',
-  'ausdoc.com.au', 'medianet.com.au',
-]);
+  'watoday.com.au', 'perthnow.com.au', 'thewest.com.au', 'medianet.com.au',
+];
 
 /** Exact host or a subdomain of it. */
 function hostMatches(host: string, domain: string): boolean {
@@ -56,9 +69,14 @@ export function hostnameOf(url: string): string | null {
 }
 
 /** Is this host a directory, jobs board, press outlet or social network rather than a practice? */
-export function isNonPracticeHost(hostname: string): boolean {
+export function isNonPracticeHost(
+  hostname: string,
+  /** The sector's own directory hosts. Defaults to healthcare's, which is the only pack today. */
+  directoryHosts: readonly string[] = HEALTHCARE_DIRECTORY_HOSTS,
+): boolean {
   const host = hostname.toLowerCase().replace(/^www\./, '');
-  for (const d of NON_PRACTICE_HOSTS) if (hostMatches(host, d)) return true;
+  for (const d of UNIVERSAL_NON_TARGET_HOSTS) if (hostMatches(host, d)) return true;
+  for (const d of directoryHosts) if (hostMatches(host, d)) return true;
   return false;
 }
 
@@ -120,7 +138,10 @@ export interface SiteSelection {
  * Normalised to the ORIGIN, not the matched page, because the deep link a search engine returns is
  * usually an interior page and the crawl below wants a base to resolve candidates against.
  */
-export function selectPracticeWebsite(results: readonly SearchResultLike[]): SiteSelection {
+export function selectPracticeWebsite(
+  results: readonly SearchResultLike[],
+  directoryHosts: readonly string[] = HEALTHCARE_DIRECTORY_HOSTS,
+): SiteSelection {
   const rejected: Array<{ url: string; why: string }> = [];
 
   for (const r of results) {
@@ -129,7 +150,7 @@ export function selectPracticeWebsite(results: readonly SearchResultLike[]): Sit
       rejected.push({ url: r.url, why: 'unparseable url' });
       continue;
     }
-    if (isNonPracticeHost(host)) {
+    if (isNonPracticeHost(host, directoryHosts)) {
       rejected.push({ url: r.url, why: `directory / jobs board / press host (${host})` });
       continue;
     }

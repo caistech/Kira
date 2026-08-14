@@ -1,5 +1,5 @@
-// app/api/kira/webhooks/research_practice/route.ts
-// research_practice tool → one bounded Practice Intelligence research pass over public sources.
+// app/api/kira/webhooks/research_organisation/route.ts
+// research_organisation tool → one bounded Practice Intelligence research pass over public sources.
 //
 // Guarded by the shared tool secret; identity is server-baked as ?uid, exactly like the memory,
 // knowledge, doing and lookup tools. ElevenLabs does not pass a conversation id to a server tool,
@@ -19,7 +19,7 @@
 // @machine-callable — called by ElevenLabs, never a browser.
 
 import { toolSecretOk } from '@/lib/kira/convai';
-import { researchPractice } from '@/lib/kira/practice-intelligence/research';
+import { researchOrganisation } from '@/lib/kira/practice-intelligence/research';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,29 +40,30 @@ export async function POST(req: Request) {
     return Response.json({ status: 'failed', message: 'Invalid request' }, { status: 400 });
   }
 
-  const practice = String(body?.practice ?? '').trim();
-  if (!practice) {
+  const organisation = String(body?.organisation ?? '').trim();
+  if (!organisation) {
     // Said as a request rather than an error: the model can simply ask him which practice he means.
     return Response.json({
       status: 'failed',
-      message: 'Tell me which practice to look at and I will go and read what is public about them.',
+      message: 'Tell me which organisation to look at and I will go and read what is public about them.',
     });
   }
 
-  // researchPractice never throws by contract — every failure is captured into `research.failures`
+  // researchOrganisation never throws by contract — every failure is captured into `research.failures`
   // so it can be spoken. The catch is a backstop for the genuinely unforeseen, and it too returns a
   // sentence rather than a 500: a thrown error inside a live conversation surfaces as silence.
   try {
     return Response.json(
-      await researchPractice({
-        practice,
+      await researchOrganisation({
+        organisation,
+        sector: body?.sector ? String(body.sector) : undefined,
         location: body?.location ? String(body.location) : undefined,
         website: body?.website ? String(body.website) : undefined,
         researchQuestion: body?.research_question ? String(body.research_question) : undefined,
       }),
     );
   } catch (error) {
-    console.error('[research_practice] failed:', error);
+    console.error('[research_organisation] failed:', error);
     return Response.json({
       status: 'failed',
       message:

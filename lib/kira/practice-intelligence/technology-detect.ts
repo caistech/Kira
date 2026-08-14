@@ -96,7 +96,7 @@ export interface TechnologyDetection {
  * incomplete. An unrecognised vendor degrades to `other_online_booking` with the host as evidence —
  * it does not silently become "no booking", which is the failure that would matter.
  */
-interface Signature {
+export interface Signature {
   provider: string;
   category: TechCategory;
   domains: string[];
@@ -244,7 +244,11 @@ export interface PageSource {
  * the booking widget on an /appointments page and nothing on the homepage — inspecting only the
  * homepage is how a Healthengine practice gets misread as having no online booking.
  */
-export function detectTechnology(pages: readonly PageSource[]): TechnologyDetection {
+export function detectTechnology(
+  pages: readonly PageSource[],
+  /** The sector pack's vendor table. Defaults to the healthcare list this module ships. */
+  signatures: readonly Signature[] = SIGNATURES,
+): TechnologyDetection {
   const fetched = pages.filter((p) => typeof p.html === 'string' && p.html.length > 0);
 
   // READABLE, not merely present. Byte length proves a response arrived, nothing more.
@@ -295,7 +299,7 @@ export function detectTechnology(pages: readonly PageSource[]): TechnologyDetect
       if (!host) continue;
 
       let matchedVendor = false;
-      for (const sig of SIGNATURES) {
+      for (const sig of signatures) {
         if (sig.domains.some((d) => hostMatches(host, d))) {
           record(sig, { match: url.slice(0, 300), where: 'url-reference', sourceUrl: page.url }, 1);
           matchedVendor = true;
@@ -320,7 +324,7 @@ export function detectTechnology(pages: readonly PageSource[]): TechnologyDetect
 
     // Bare domain mentioned in the markup without being a URL — e.g. "we use HotDoc" in prose, or a
     // domain inside a data attribute. Recorded at half confidence and never enough on its own.
-    for (const sig of SIGNATURES) {
+    for (const sig of signatures) {
       for (const domain of sig.domains) {
         if (byProvider.get(sig.provider)?.confidence === 1) continue;
         if (page.html.toLowerCase().includes(domain)) {
