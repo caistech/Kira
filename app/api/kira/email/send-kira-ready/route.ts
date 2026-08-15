@@ -8,7 +8,6 @@ import { sendKiraReadyEmail } from '@/lib/email/resend';
 interface SendKiraReadyRequest {
   user_id: string;
   agent_id: string; // ElevenLabs agent ID
-  primary_goal?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -18,7 +17,7 @@ export async function POST(request: NextRequest) {
     
     console.log('[send-kira-ready] Received:', body);
 
-    const { user_id, agent_id, primary_goal } = body;
+    const { user_id, agent_id } = body;
 
     if (!user_id || !agent_id) {
       return NextResponse.json(
@@ -57,7 +56,6 @@ export async function POST(request: NextRequest) {
       userEmail: user.email,
       agentId: agent_id,
       journeyType: user.journey_type || 'personal',
-      primaryGoal: primary_goal,
     });
 
     console.log('[send-kira-ready] Email sent:', result?.id);

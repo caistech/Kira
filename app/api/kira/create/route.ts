@@ -31,6 +31,7 @@ import { bindWorkspaceWebhook, setAllowlist, standardAllowlist, setAgentTools, s
 import { kiraAllTools, conversationContinuityPrompt } from '@/lib/kira/convai';
 import { buildProfileBriefing } from '@/lib/kira/discovery-schema';
 import { formatMoneyApprox } from '@/lib/valuation/currency';
+import { sendKiraReadyEmail } from '@/lib/email/resend';
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app';
@@ -701,6 +702,40 @@ export async function POST(req: NextRequest) {
         } catch (e: any) {
           console.error('[kira/create] setup brief seed failed (non-fatal):', e?.message ?? e);
         }
+      }
+    }
+
+    /* ---------------- Welcome email (first creation only, non-fatal) ---------------- */
+    //
+    // The only path that creates an agent is this route, and until now nothing along it sent the
+    // owner a "your Kira is ready" email — the template only ever went out by hand. A re-brief
+    // (reusing) does not send: the owner already has an active Kira, and a second "it's ready"
+    // reads as a mistake. The name falls back exactly the way the standalone send-kira-ready route
+    // does (`name || 'there'`), preferring what he typed during setup.
+    if (!reusing && savedAgent?.id && user.email) {
+      try {
+        const result = await sendKiraReadyEmail({
+          userName: draft.user_name || user.first_name || 'there',
+          userEmail: user.email,
+          agentId,
+          journeyType: draft.journey_type as 'personal' | 'business',
+        });
+        try {
+          await supabase
+            .from('email_logs')
+            .insert({
+              user_id: user.id,
+              email_type: 'kira_ready',
+              recipient: user.email,
+              status: 'sent',
+              resend_id: result?.id ?? null,
+            });
+        } catch (recordError) {
+          console.error('[kira/create] welcome email SENT but not recorded:', recordError);
+        }
+        await log(supabase, requestId, 'welcome_email', 'success');
+      } catch (e: any) {
+        console.error('[kira/create] welcome email failed (non-fatal):', e?.message ?? e);
       }
     }
 

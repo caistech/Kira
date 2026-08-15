@@ -42,7 +42,6 @@ export async function POST(request: NextRequest) {
           userEmail: user.email,
           agentId: body.agent_id, // The newly created ElevenLabs agent ID
           journeyType: user.journey_type || 'personal',
-          primaryGoal: body.primary_goal,
         });
         
         console.log('[create_operational_kira] Welcome email sent to:', user.email);
@@ -141,7 +140,6 @@ export async function POST(request: NextRequest) {
         userEmail: user.email,
         agentId: agent.agent_id,
         journeyType: journey_type,
-        primaryGoal: primary_goal,
       });
     }
 
