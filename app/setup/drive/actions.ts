@@ -9,9 +9,14 @@
 import { redirect } from 'next/navigation';
 
 import { getCurrentAppUser } from '@/lib/auth';
-import { googleConnectLink, type DriveAccess } from '@/lib/connectors/google-connect';
+import {
+  googleConnectLink,
+  type DriveAccess,
+  type GmailAccess,
+} from '@/lib/connectors/google-connect';
 
 const ACCESS: DriveAccess[] = ['full', 'readonly', 'picked'];
+const GMAIL: GmailAccess[] = ['none', 'draft', 'read'];
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export interface DriveFormState {
@@ -38,10 +43,19 @@ export async function connectDrive(
     return { error: 'Enter the Google address whose Drive you want Kira to read.' };
   }
 
+  // Unrecognised or absent falls to 'none' rather than erroring. Every other field on this form is
+  // a decision he must make; the mailbox is the one where silence has an unambiguous safe reading,
+  // and refusing the submission would hold him at a consent screen over a field he left alone.
+  const mailbox = String(formData.get('gmail') || 'none');
+  const gmail: GmailAccess = GMAIL.includes(mailbox as GmailAccess)
+    ? (mailbox as GmailAccess)
+    : 'none';
+
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
   const link = googleConnectLink({
     tenantId: user.id as string,
     access: choice as DriveAccess,
+    gmail,
     email,
     returnTo: appUrl ? `${appUrl}/settings#drive` : null,
   });

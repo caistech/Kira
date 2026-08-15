@@ -24,11 +24,21 @@ export default async function ConnectDrivePage() {
   return (
     <div className="mx-auto w-full max-w-2xl px-5 py-10">
       <header className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Let Kira read your Drive</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Connect your Google account</h1>
         <p className="mt-2 text-base leading-relaxed text-gray-700">
           When you ask Kira for a quote, she writes it in <em>your</em> format — the one your existing
           quotes already use — instead of inventing one. To do that she needs to read the documents
           you have written. You choose how much she can see, and you can disconnect at any time.
+        </p>
+        {/*
+          Three things, named up front, because all three are on the Google screen and only one of
+          them used to be on this one. The contacts line is not a choice below — it is part of every
+          connection — so an owner who reads no further than this paragraph has still been told.
+        */}
+        <p className="mt-2 text-base leading-relaxed text-gray-700">
+          There are three parts to it: <strong>your files</strong>, <strong>your contacts</strong>,
+          and — only if you want it — <strong>your email</strong>. Your contacts are included in every
+          connection. Your files and your email are yours to set below.
         </p>
       </header>
 
@@ -36,6 +46,7 @@ export default async function ConnectDrivePage() {
         <h2 className="text-lg font-semibold text-gray-900">What she does with it</h2>
         <ul className="mt-3 space-y-2 text-base text-gray-700">
           <li>Reads documents you already wrote — quotes, letters, proposals — to learn how you write them.</li>
+          <li>Looks up an address in your contacts when she needs to know who something goes to.</li>
           <li>Shows you the format she has learned and waits for you to approve it before using it.</li>
           <li>Never sends anything to anyone without your approval.</li>
         </ul>
