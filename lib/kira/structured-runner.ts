@@ -63,3 +63,39 @@ export function createOpenAIRunner(apiKey: string) {
     },
   };
 }
+
+/**
+ * The plain-text sibling of the runner above — `(system, prompt) => text`.
+ *
+ * WHY IT LIVES HERE rather than beside its caller. `@caistech/extractors` takes an INJECTED llm of
+ * exactly this shape (that is what makes the package framework-agnostic), and the obvious place to
+ * satisfy it is a small fetch next to the code doing the extraction. That would be Kira's second
+ * OpenAI transport, and the two would drift on the first change — the base-URL override below is
+ * precisely the kind of thing that gets fixed in one copy and not the other.
+ *
+ * So: same env vars, same `OPENAI_BASE_URL` convention, same failure shape as `createOpenAIRunner`.
+ * One place in Kira talks to OpenAI. The difference is only that this one does NOT ask for JSON and
+ * does not parse — its callers want prose or their own schema handling.
+ */
+export function createOpenAITextRunner(apiKey: string, model = 'gpt-4.1-mini') {
+  if (!apiKey) throw new Error('createOpenAITextRunner: OPENAI_API_KEY is required');
+  return async function run(system: string, prompt: string): Promise<string> {
+    const baseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
+    const res = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: prompt },
+        ],
+      }),
+    });
+    if (!res.ok) {
+      throw new Error(`OpenAI text completion failed: ${res.status} ${await res.text()}`);
+    }
+    const data = await res.json();
+    return String(data.choices?.[0]?.message?.content ?? '');
+  };
+}
