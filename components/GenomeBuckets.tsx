@@ -159,68 +159,51 @@ export function bucketDisplay(section: BucketSection): BucketDisplay {
  * `label` is what the owner reads. It is deliberately about CAPTURE ("Kira holds a lot of this")
  * rather than about quality ("this area is strong"), because capture is what the band measures.
  */
+/**
+ * THE FOUR SEGMENTS OF THE FUNNEL, bottom to top.
+ *
+ * These are the operator's own thresholds, drawn rather than described: red at the bottom, amber,
+ * light green, bright green at the top. An area fills from the bottom up, so a glance across nine
+ * funnels shows which parts of the business have climbed and which have not.
+ */
+const SEGMENTS = [
+  { fill: '#ef4444', label: 'Nothing yet' },       // bottom — narrowest
+  { fill: '#c2703a', label: 'You told us' },
+  { fill: '#bbe5c3', label: 'Building up' },
+  { fill: '#3cbf5c', label: 'Well covered' },      // top — widest
+] as const;
+
+/** How many segments are filled, and what to call the state. */
 const BANDS = {
-  empty: {
-    rule: 'border-l-rose-500',
-    surface: 'bg-rose-50/70',
-    label: 'Nothing yet',
-    dot: 'bg-rose-500',
-    chip: 'bg-rose-100 text-rose-900 border-rose-300',
-    bar: 'bg-rose-500',
-    glow: 'text-rose-500',
-    track: 'bg-rose-100',
-    // A FIXED SLIVER, not a percentage — a bare grey bar is hard to scan as "this row is the red
-    // one", but `w-[6%]` would have been a percentage in a component whose whole design decision is
-    // that there are none, and the test caught it.
-    width: 'w-2',
-  },
-  located: {
-    rule: 'border-l-amber-500',
-    surface: 'bg-amber-50/70',
-    // "YOU TOLD US" — not "started". Kira has captured nothing here; he answered for it. The
-    // distinction is the point of the state and the label is where a reader meets it.
-    label: 'You told us',
-    dot: 'bg-amber-500',
-    chip: 'bg-amber-100 text-amber-900 border-amber-300',
-    bar: 'bg-amber-500',
-    glow: 'text-amber-500',
-    track: 'bg-amber-100',
-    width: 'w-1/4',
-  },
-  thin: {
-    rule: 'border-l-orange-500',
-    surface: 'bg-orange-50/70',
-    label: 'Just started',
-    dot: 'bg-orange-500',
-    chip: 'bg-orange-100 text-orange-900 border-orange-300',
-    bar: 'bg-orange-500',
-    glow: 'text-orange-500',
-    track: 'bg-orange-100',
-    width: 'w-1/3',
-  },
-  building: {
-    rule: 'border-l-lime-600',
-    surface: 'bg-lime-50/70',
-    label: 'Building up',
-    dot: 'bg-lime-600',
-    chip: 'bg-lime-100 text-lime-900 border-lime-400',
-    bar: 'bg-lime-600',
-    glow: 'text-lime-600',
-    track: 'bg-lime-100',
-    width: 'w-2/3',
-  },
-  covered: {
-    rule: 'border-l-emerald-600',
-    surface: 'bg-emerald-50/70',
-    label: 'Well covered',
-    dot: 'bg-emerald-600',
-    chip: 'bg-emerald-100 text-emerald-900 border-emerald-400',
-    bar: 'bg-emerald-600',
-    glow: 'text-emerald-600',
-    track: 'bg-emerald-100',
-    width: 'w-full',
-  },
+  // ⚠️ `empty` FILLS NOTHING. An outline with no colour is the honest picture of an area Kira has
+  // never been told anything about, and it is visibly different from one he has answered for.
+  empty: { filled: 0, label: 'Nothing yet', chip: 'bg-rose-100 text-rose-900 border-rose-300' },
+  // "YOU TOLD US" — he answered for it in the thirteen questions; Kira has captured nothing. The
+  // distinction is the point of this state and the label is where a reader meets it.
+  located: { filled: 1, label: 'You told us', chip: 'bg-amber-100 text-amber-900 border-amber-300' },
+  thin: { filled: 2, label: 'Just started', chip: 'bg-orange-100 text-orange-900 border-orange-300' },
+  building: { filled: 3, label: 'Building up', chip: 'bg-lime-100 text-lime-900 border-lime-400' },
+  covered: { filled: 4, label: 'Well covered', chip: 'bg-emerald-100 text-emerald-900 border-emerald-400' },
 } as const;
+
+/**
+ * One segment of the funnel as an SVG path.
+ *
+ * The funnel is an inverted trapezoid — widest at the top, narrowest at the bottom — so each slice
+ * is a trapezoid whose width is interpolated from its own y position. Drawn per-slice rather than as
+ * one clipped shape because the segments have GAPS between them, which is what makes it read as a
+ * stack of levels rather than a single filling vessel.
+ */
+function segmentPath(index: number): string {
+  const TOP_W = 92, BOT_W = 30, H = 120, SLICE = H / 4, GAP = 3;
+  // index 0 is the TOP slice in draw order; the array is bottom-to-top, so flip.
+  const yTop = (3 - index) * SLICE;
+  const yBot = yTop + SLICE - GAP;
+  const halfAt = (y: number) => (TOP_W - ((TOP_W - BOT_W) * y) / H) / 2;
+  const [tl, tr] = [50 - halfAt(yTop), 50 + halfAt(yTop)];
+  const [bl, br] = [50 - halfAt(yBot), 50 + halfAt(yBot)];
+  return `M ${tl} ${yTop} L ${tr} ${yTop} L ${br} ${yBot} L ${bl} ${yBot} Z`;
+}
 
 /**
  * Why an area is empty — and there are two answers, which the model already distinguishes.
@@ -303,7 +286,7 @@ export function GenomeBuckets({
           "Your business broken into the nine areas a buyer's advisor works through. The colour shows how much of each one Kira has captured so far — not how good that part of the business is. Every conversation fills one of these in."}
       </p>
 
-      <ul className="mt-5 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="mt-6 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3">
         {ordered.map((section, index) => {
           const display = bucketDisplay(section);
           const band = BANDS[display];
@@ -311,46 +294,54 @@ export function GenomeBuckets({
           return (
             <li
               key={section.key}
-              /* ⚠️ THE CARD CARRIES THE COLOUR, not just the bar. The first pass put the whole
-                 signal in an 8px pale bar and an outlined chip, and at real page width nine rows
-                 read as grey with slivers on them — the operator asked three times where the colour
-                 scheme was, and he was looking straight at it. A tinted surface and a coloured left
-                 rule make the state legible before anyone reads a word. */
-              className={`kira-rise-in rounded-xl border-l-4 ${band.rule} ${band.surface} p-3`}
-              /* THE STAGGER — 45ms apart, so the grid assembles rather than appearing.
-                 CAPPED at the 8th item: the delay is per-position, and an uncapped ramp would put
-                 the last of nine buckets 400ms behind the first, which stops reading as one motion
-                 and starts reading as a slow page. */
+              className={`kira-rise-in flex flex-col items-center text-center ${
+                justImproved ? 'kira-band-pulse' : ''
+              }`}
+              /* THE STAGGER — 45ms apart so the row assembles as one motion. Capped at the 8th,
+                 because an uncapped ramp puts the last of nine 400ms behind the first, which stops
+                 reading as one motion and starts reading as a slow page. */
               style={{ animationDelay: `${Math.min(index, 7) * 45}ms` }}
             >
-              <div className="flex items-start justify-between gap-3">
-                <span className="text-base font-medium leading-snug text-stone-900">{section.title}</span>
-                {/* The band as a WORD, beside the colour — see the accessibility note at the top. */}
-                <span
-                  className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${band.chip}`}
-                >
-                  {band.label}
-                </span>
-              </div>
-              {/* ⚠️ `overflow-hidden` LIVES ON THE TRACK, and the pulse therefore CANNOT go on the
-                  bar inside it — a glow is drawn outside the element's box and would be clipped
-                  away to nothing. So the animation sits on the track, and `text-*` sets the
-                  `currentColor` the keyframe glows with. This looked like it worked in the markup
-                  and would have shipped as an invisible feature. */}
-              <div
-                className={`mt-2 h-3 w-full rounded-full ${band.track} ${band.glow} ${
-                  justImproved ? 'kira-band-pulse' : ''
-                }`}
+              <svg
+                viewBox="0 0 100 120"
+                className="h-32 w-24"
+                role="img"
+                /* THE PICTURE IS NOT THE ONLY SIGNAL. Screen readers and anyone who cannot separate
+                   red from green get the state as a sentence; the funnel is the fast path, not the
+                   only one. Red/green blindness affects roughly one man in twelve and this ICP is
+                   men aged 60-70, so that is closer to the median user than an edge case. */
+                aria-label={`${section.title}: ${band.label}`}
               >
-                <div className={`h-full rounded-full ${band.bar} ${band.width}`} />
-              </div>
+                {SEGMENTS.map((seg, i) => {
+                  const isFilled = i < band.filled;
+                  return (
+                    <path
+                      key={seg.label}
+                      d={segmentPath(i)}
+                      fill={isFilled ? seg.fill : '#ffffff'}
+                      stroke={isFilled ? '#1c1917' : '#d6d3d1'}
+                      strokeWidth={1.5}
+                    />
+                  );
+                })}
+              </svg>
+
+              <p className="mt-2 text-sm font-semibold leading-snug text-stone-900">{section.title}</p>
+
+              {/* The band as a WORD beneath the picture — see the aria-label note above. */}
+              <span
+                className={`mt-1.5 inline-block rounded-full border px-2.5 py-0.5 text-xs font-semibold ${band.chip}`}
+              >
+                {band.label}
+              </span>
+
               {display === 'located' && section.baseline ? (
-                /* HIS OWN WORDS, not our summary of them. `AreaBaseline.statement` is written
-                   "addressed to the owner, in his own words as far as possible", which is what makes
-                   this read as a receipt for what he told us rather than as a claim we are making. */
-                <p className="mt-1.5 text-sm text-stone-600">{section.baseline.statement}</p>
+                /* HIS OWN WORDS. `AreaBaseline.statement` is written "addressed to the owner, in his
+                   own words as far as possible", which is what makes this a receipt for what he told
+                   us rather than a claim we are making. */
+                <p className="mt-1.5 text-xs leading-relaxed text-stone-600">{section.baseline.statement}</p>
               ) : display === 'empty' ? (
-                <p className="mt-1.5 text-sm text-stone-500">{emptyReason(section.key)}</p>
+                <p className="mt-1.5 text-xs text-stone-500">{emptyReason(section.key)}</p>
               ) : null}
             </li>
           );

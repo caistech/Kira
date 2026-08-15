@@ -17,7 +17,6 @@ import { redirect } from 'next/navigation';
 import { getAuthUser, getCurrentAppUser, isCurrentUserAdmin } from '@/lib/auth';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
 import { PortalShell, type NavItem } from '@/components/PortalShell';
-import { TalkFab } from '@/components/TalkFab';
 import { ClaimStoredValuation } from '@/components/ClaimStoredValuation';
 
 const USER_NAV: NavItem[] = [
@@ -99,7 +98,9 @@ export async function UserShell({ children }: { children: React.ReactNode }) {
           shell rather than in each signup flow, because the condition is "is signed in", not
           "arrived via checkout" — which is how the free-signup path lost it entirely. */}
       <ClaimStoredValuation />
-      {/* ROOM FOR THE FAB. It is fixed bottom-right, so whatever is last on the page sits under it —
+      {/* ⚠️ THE FAB IS GONE — removed 2026-08-15 on operator instruction. The spacing note below is
+          kept only until someone confirms the bottom padding is still wanted without it.
+          ROOM FOR THE FAB. It is fixed bottom-right, so whatever is last on the page sits under it —
           a tester found it covering the "Run the numbers again" link at the foot of the valuation
           card on a phone. Reserving the space in the shell fixes every page at once, rather than
           each page remembering to leave a gap for a button it does not render. Sized past the
@@ -109,7 +110,6 @@ export async function UserShell({ children }: { children: React.ReactNode }) {
           TalkFab hides ITSELF on the pages that already are the conversation (see the component):
           the decision lives there because the FAB is the thing that knows where it points, and this
           shell is a server component that cannot read the path anyway. */}
-      <TalkFab />
     </PortalShell>
   );
 }

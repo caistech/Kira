@@ -8,8 +8,6 @@ import { formatMoney, formatMoneyApprox, DEFAULT_CURRENCY } from '@/lib/valuatio
 import { displayedFigures } from '@/lib/valuation/displayed';
 import { shouldInviteBaseline } from '@/lib/valuation/baseline-invite';
 import { readTaskLedger } from '@/lib/kira/swarm/open-tasks';
-import { deriveOwnerGenome } from '@/lib/genome/derive';
-import { GenomeBuckets } from '@/components/GenomeBuckets';
 import { OnboardingGate } from '@/components/OnboardingGate';
 import { nextOnboardingStep, onboardingProgress } from '@/lib/onboarding/gate';
 
@@ -181,20 +179,6 @@ export default async function DashboardPage({
   // built at the end of a long day, bypassing the confirmation that makes the first path safe.
   const ledger = user?.id ? await readTaskLedger(user.id) : { openCount: 0, open: [] as { id: string; summary: string; state: string; ageDays: number }[] };
 
-  // WHERE THE GAP IS, not just how big it is.
-  //
-  // The gap block above is one number for a nine-part problem, and until now the only answer to
-  // "which part?" was to open the Genome and read it. The buckets are that number decomposed —
-  // and, unlike the gap itself, they MOVE: `coverage` is recomputed from the entries on every load,
-  // so a fact captured this morning shows up this afternoon.
-  //
-  // ⚠️ That difference is the point, and it is worth stating because it looks like a duplication of
-  // the readiness figure directly above it. `readiness` is written once at signup and never
-  // recomputed (two writers, both signup-time). The buckets are derived on read. So the screen
-  // currently carries one number that cannot change and nine bars that can, which is exactly
-  // backwards from what the copy beside the readiness figure promises. The buckets are the honest
-  // half; fixing the other half is the valuation-movement work, tracked separately.
-  const genome = user?.id ? await deriveOwnerGenome(user.id) : null;
 
   return (
     <div>
@@ -322,22 +306,10 @@ export default async function DashboardPage({
         <GapDashboard valuation={val} money={money} talkHref={talkHref} isWelcome={isWelcome} hasMetKira={list.length > 0} firstName={user?.first_name as string | undefined} />
       )}
 
-      {/* Placed directly under the gap, because it is the same statement at higher resolution: the
-          figure says how much is locked up, the buckets say where. Rendered for anyone with an
-          account — including an owner who never ran a valuation, for whom this is the only picture
-          of his own coverage there is. */}
-      {genome && (
-        <GenomeBuckets
-          /* `baseline` rides along so an area he has ANSWERED FOR reads as located rather than
-             empty. It is never folded into coverage — see BucketSection.baseline. */
-          sections={genome.sections.map((s) => ({
-            key: s.key,
-            title: s.title,
-            coverage: s.coverage,
-            baseline: s.baseline ? { statement: s.baseline.statement, ownerDependent: s.baseline.ownerDependent } : null,
-          }))}
-        />
-      )}
+      {/* ⚠️ THE FUNNELS ARE NOT ON THIS PAGE — operator decision, 2026-08-15. They live on
+          /my-genome and /sample-genome: the page about the Genome, and the page that sells it.
+          The dashboard already leads with the gap figure and the outstanding step, and a nine-part
+          picture underneath was a third thing competing for the same glance. */}
 
       {/* ONE KIRA, NOT A LIST.
           "My Kiras · start a new Kira for a different goal" contradicted the entire pitch — one exec
