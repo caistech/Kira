@@ -107,27 +107,56 @@ describe('/talk when the owner has no Kira yet', () => {
   describe('an account with nothing in it is led in rather than parked', () => {
     const dashboard = stripComments(repo('app/dashboard/page.tsx'));
 
-    it('sends an owner with no agent and no valuation into the create flow', () => {
-      expect(dashboard).toMatch(
-        /if\s*\(\s*user\s*&&\s*list\.length === 0\s*&&\s*!valuation\s*\)\s*redirect\(\s*['"`]\/start\?journey=business&from=app['"`]\s*\)/,
-      );
+    // ⚠️ REPLACED, NOT DELETED — 2026-08-15. This asserted the dashboard REDIRECTED an empty account
+    // to /start. That redirect is gone, and the intent it protected is not: a new owner must never
+    // be left on a dashboard reporting on nothing. It is now met by rendering the outstanding step
+    // in place (lib/onboarding/gate.ts) instead of ejecting him to a differently-styled page.
+    //
+    // Deleting this would have dropped the only guard on that intent. So it pins the new mechanism
+    // and, below, that the old one has not crept back.
+    it('leads an empty account in, by gating in place rather than redirecting', () => {
+      expect(dashboard).toMatch(/nextOnboardingStep\(/);
+      expect(dashboard).toMatch(/<OnboardingGate/);
+    });
+
+    it('no longer ejects him to /start', () => {
+      // The specific line that sent a paying owner somewhere he had not asked for, in a palette
+      // that made it look like a different product.
+      expect(dashboard).not.toMatch(/list\.length === 0 && !valuation\)\s*redirect\(/);
     });
 
     it('leaves an owner who HAS a valuation on his own dashboard', () => {
-      // The load-bearing half, and the one a later tidy-up would drop as a redundant condition.
-      // Dropping `!valuation` turns this into the failure the redirect was written to avoid: a man
-      // who came for his gap figure, bounced off it every time he opens the page. Two redirects on
-      // this surface have already done exactly that to real people.
       expect(dashboard).not.toMatch(/if\s*\(\s*user\s*&&\s*list\.length === 0\s*\)\s*redirect\(/);
     });
   });
 
-  describe('the paid path keeps its own framing', () => {
-    it('onboarding still marks the just-paid owner as just-paid', () => {
-      // The other half of the split: separating these two must not quietly demote the paid arrival
-      // to a generic one, which would lose the "last step" framing that the 08-08 walk added.
-      const onboarding = stripComments(repo('app/onboarding/page.tsx'));
-      expect(onboarding).toMatch(/\/start\?journey=business&from=paid/);
+  describe('both entry paths land in the same place', () => {
+    const onboarding = stripComments(repo('app/onboarding/page.tsx'));
+    const beta = stripComments(repo('components/BetaRedeem.tsx'));
+
+    // ⚠️ REPLACED, NOT DELETED — 2026-08-15. This asserted onboarding sent the just-paid owner to
+    // `/start?journey=business&from=paid`, and it was RIGHT to pin that while the destination
+    // carried the framing. It no longer does: both paid and beta go to `/dashboard?welcome=1`, and
+    // `welcome=1` is what marks him as just-arrived. The framing moved; the requirement that he BE
+    // framed did not, so this pins the new carrier.
+    //
+    // The stronger property is the second one: two entry paths pointing at different destinations is
+    // what made the ROUTE decide what he saw rather than his state, which is the defect the gate
+    // exists to end.
+    it('the paid path still marks the just-arrived owner as just-arrived', () => {
+      expect(onboarding).toMatch(/\/dashboard\?welcome=1/);
+    });
+
+    it('the beta path lands in the same place as the paid path', () => {
+      expect(beta).toMatch(/\/dashboard\?welcome=1/);
+    });
+
+    it('neither entry path routes around the dashboard into /start', () => {
+      for (const [name, src] of [['onboarding', onboarding], ['BetaRedeem', beta]] as const) {
+        expect(src, `${name} still sends the owner to /start`).not.toMatch(
+          /location\.assign\(\s*['"`]\/start\?journey=business/,
+        );
+      }
     });
   });
 });
