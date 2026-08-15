@@ -15,7 +15,7 @@ import { stripComments } from '@/lib/source-scan';
 //
 // The old SiteHeader comment predicted exactly this failure and called it "visible immediately."
 // It was not. It shipped on SEVEN routes and stood until a tester counted the logos on three of
-// them: /genome, /business-valuation, /plan, and then /commit, /privacy, /pubguard, /terms found
+// them: /sample-genome, /business-valuation, /plan, and then /commit, /privacy, /pubguard, /terms found
 // by looking for the class instead of the instance. On /about the two footers disagreed about the
 // year.
 //
@@ -65,7 +65,7 @@ const PAGES = pageFiles(APP_DIR).map((file) => {
 describe('site chrome — a page that brings its own header or footer must opt out of the shared one', () => {
   it('finds page files at all (a scan that silently matches nothing reads as green forever)', () => {
     expect(PAGES.length).toBeGreaterThan(10);
-    expect(PAGES.some((p) => p.route === '/genome')).toBe(true);
+    expect(PAGES.some((p) => p.route === '/sample-genome')).toBe(true);
   });
 
   it.each(PAGES.filter((p) => p.ownHeader))(
@@ -82,7 +82,7 @@ describe('site chrome — a page that brings its own header or footer must opt o
     },
   );
 
-  // The two lists are deliberately allowed to differ — /genome owns its header and has no footer
+  // The two lists are deliberately allowed to differ — /sample-genome owns its header and has no footer
   // of its own — but they must stay ROOTED in the same base, or an authenticated route added to
   // one and not the other gets the marketing chrome on half its pages.
   it('every route with its own header also opts out of the marketing footer, unless it has a footer of its own', () => {
@@ -92,7 +92,7 @@ describe('site chrome — a page that brings its own header or footer must opt o
     for (const route of headerOnly) {
       expect(ownsChrome(OWN_HEADER, route)).toBe(true);
     }
-    expect(headerOnly).toContain('/genome');
-    expect(ownsChrome(OWN_FOOTER, '/genome')).toBe(false);
+    expect(headerOnly).toContain('/sample-genome');
+    expect(ownsChrome(OWN_FOOTER, '/sample-genome')).toBe(false);
   });
 });

@@ -335,7 +335,7 @@ export default function PlanPage() {
                 (naive-tester, 2026-07-28). This is the difference between buying a promise and
                 seeing the thing. */}
             <p className="text-center mb-12 -mt-8">
-              <a href="/genome" className="text-violet-600 font-semibold underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500 min-h-[44px] inline-flex items-center">
+              <a href="/sample-genome" className="text-violet-600 font-semibold underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500 min-h-[44px] inline-flex items-center">
                 See an example of what you end up with →
               </a>
             </p>

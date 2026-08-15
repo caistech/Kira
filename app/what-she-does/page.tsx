@@ -34,7 +34,7 @@ export default function WhatSheDoesPage() {
             Kira
           </Link>
           <div className="flex items-center gap-4">
-            <Link href="/genome" className="text-sm font-medium text-stone-600 hover:text-pink-500">
+            <Link href="/sample-genome" className="text-sm font-medium text-stone-600 hover:text-pink-500">
               What you get
             </Link>
             <Link href="/advisors" className="hidden text-sm font-medium text-stone-600 hover:text-pink-500 sm:block">
@@ -144,7 +144,7 @@ export default function WhatSheDoesPage() {
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-6 text-sm text-stone-500">
           <p>Kira · Corporate AI Solutions</p>
           <div className="flex gap-5">
-            <Link href="/genome" className="hover:text-pink-500">
+            <Link href="/sample-genome" className="hover:text-pink-500">
               What you get
             </Link>
             <Link href="/terms" className="hover:text-pink-500">

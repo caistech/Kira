@@ -79,7 +79,7 @@ export default function AdvisorsPage() {
                 page written for the person who would refer a client. Shortened rather than hidden:
                 three short labels fit a phone header, and a broker skimming on a phone is the
                 normal case, not the edge one. */}
-            <Link href="/genome" className="text-sm font-medium text-stone-600 hover:text-pink-500">
+            <Link href="/sample-genome" className="text-sm font-medium text-stone-600 hover:text-pink-500">
               <span className="sm:hidden">Example</span>
               <span className="hidden sm:inline">What your client gets</span>
             </Link>
@@ -134,7 +134,7 @@ export default function AdvisorsPage() {
 
       {/* The advisor demo. PREV/NEXT rather than auto-advance, because an advisor is evaluating and
           will want to go back and re-read the commission terms — where the owner watches, she
-          interrogates. Same sample business as /genome and the ICP demo, so every surface describes
+          interrogates. Same sample business as /sample-genome and the ICP demo, so every surface describes
           one business rather than three. */}
       <section className="border-y border-amber-100 bg-white py-16">
         <div className="mx-auto max-w-3xl px-6">

@@ -106,7 +106,7 @@ export default async function MyGenome() {
           </a>
           <p className="text-sm text-stone-500 mt-6">
             Want to see what a filled-in one looks like?{' '}
-            <a href="/genome" className="underline underline-offset-4">See an example</a>.
+            <a href="/sample-genome" className="underline underline-offset-4">See an example</a>.
           </p>
         </div>
       ) : (

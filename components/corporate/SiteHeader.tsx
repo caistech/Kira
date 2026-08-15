@@ -53,7 +53,7 @@ const OWN_CHROME_BOTH = [
  *
  * ⚠️ THIS USED TO BE ONE LIST FOR BOTH HALVES, AND THE COUPLING IS WHAT MADE THE BUG UNFIXABLE.
  * The old comment argued the single list was a safety feature — "same list, same test, so the two
- * can never disagree about which routes own their chrome." They can and they must: `/genome` and
+ * can never disagree about which routes own their chrome." They can and they must: `/sample-genome` and
  * `/business-valuation` own their header and have no footer of their own, so listing them in one
  * combined list would have removed the only footer they have, taking the operator's identity off
  * the page with it. A list that cannot express the difference forces you to choose which defect to
@@ -61,13 +61,13 @@ const OWN_CHROME_BOTH = [
  * the page files rather than from anyone remembering.
  *
  * Measured on production 2026-08-08, `fd11f62`, by counting `<header` in the served HTML:
- * `/genome` `/business-valuation` `/plan` `/commit` `/privacy` `/pubguard` `/terms` all served TWO.
+ * `/sample-genome` `/business-valuation` `/plan` `/commit` `/privacy` `/pubguard` `/terms` all served TWO.
  * A tester found three of them; the other four were found by looking for the class rather than the
  * instance, which is the only reason they are in this change.
  */
 export const OWN_HEADER = [
   ...OWN_CHROME_BOTH,
-  '/genome',
+  '/sample-genome',
   '/business-valuation',
   '/plan',
   '/commit',

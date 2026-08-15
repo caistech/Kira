@@ -40,10 +40,13 @@ const FILES = [...sourceFiles(APP_DIR), ...sourceFiles(join(REPO, 'components'))
     src: stripComments(readFileSync(file, 'utf8')),
   }));
 
+// ⚠️ `app/genome/page.tsx` BECAME `app/sample-genome/page.tsx` on 2026-08-15. The old path is now a
+// permanent redirect stub with no fonts and no <details>, so a guard still pointing at it passes
+// vacuously on the font check and fails outright on the hydration one — which is how it was found.
 describe('no page loads a font by blocking on a third party', () => {
   it('finds source files at all (a scan matching nothing reads as green forever)', () => {
     expect(FILES.length).toBeGreaterThan(30);
-    expect(FILES.some((f) => f.file === 'app/genome/page.tsx')).toBe(true);
+    expect(FILES.some((f) => f.file === 'app/sample-genome/page.tsx')).toBe(true);
   });
 
   it('no file imports a stylesheet from fonts.googleapis.com', () => {
@@ -62,7 +65,7 @@ describe('no page loads a font by blocking on a third party', () => {
 });
 
 describe('/genome does not depend on hydration to be usable', () => {
-  const genome = FILES.find((f) => f.file === 'app/genome/page.tsx')!;
+  const genome = FILES.find((f) => f.file === 'app/sample-genome/page.tsx')!;
 
   it('is a server component', () => {
     // "8 of the 9 areas are not clickable." The handlers were real; a click before hydration was
