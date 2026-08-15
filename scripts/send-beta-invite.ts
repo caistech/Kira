@@ -41,6 +41,52 @@ async function main() {
     process.exit(1);
   }
 
+  // ⚠️ THE CODE MUST EXIST BEFORE IT IS MAILED. Added 2026-08-15, after this script sent a real
+  // invitation carrying a code that was never in the table — and the operator, walking the product,
+  // typed it out of the email and was told "That code is not valid."
+  //
+  // That is the worst shape this path can take. The recipient does exactly the right thing, the
+  // message tells him to CHECK IT AGAINST THE EMAIL, he checks, it matches, and the only conclusion
+  // available to him is that the product is broken. A real invitee has no second channel: he cannot
+  // query the table and does not know a placeholder exists. He tries twice and stops — which is the
+  // 2026-08-10 invitation audit repeating in new clothes, eight people who could not get in and
+  // never said so.
+  //
+  // The script already holds a service-role connection. One lookup makes the class impossible, and
+  // it runs before --dry too, so a dry run cannot bless a code a real send would fail on.
+  const { createClient } = await import('@supabase/supabase-js');
+  const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+    auth: { persistSession: false },
+  });
+  const normalised = code.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const { data: row } = await db
+    .from('beta_codes')
+    .select('code, email, redeemed_at, revoked_at, expires_at')
+    .eq('code', normalised)
+    .maybeSingle();
+
+  if (!row) {
+    console.error(`
+  REFUSING TO SEND: "${code}" is not in beta_codes.
+` +
+      `  Mint one first:  node --env-file=.env.local scripts/mint-beta-code.mjs --email <address>
+`);
+    process.exit(1);
+  }
+  if (row.revoked_at || row.redeemed_at || new Date(row.expires_at) <= new Date()) {
+    const why = row.revoked_at ? 'revoked' : row.redeemed_at ? 'already redeemed' : 'expired';
+    console.error(`
+  REFUSING TO SEND: "${code}" is ${why}. Mint a fresh one.
+`);
+    process.exit(1);
+  }
+  // ⚠️ NAMED OUT LOUD, because the account created is the code's BOUND address — not the address
+  // this email is going to. Mailing a code to one person that creates an account for another is
+  // legitimate for a test and confusing for everyone; it should never be a surprise.
+  if (String(row.email).toLowerCase() !== String(to).toLowerCase()) {
+    console.log(`  NOTE: this code creates an account for ${row.email}, not for ${to}.`);
+  }
+
   const { betaInviteEmail } = await import('../lib/email/invite');
   const message = betaInviteEmail({
     firstName: name,
