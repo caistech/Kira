@@ -11,6 +11,11 @@
 > **The rule:** a decision belongs here the moment it is made, whether or not it is built. Where it is
 > decided-but-unbuilt, that is stated — because the gap between the two is the thing most likely to
 > end up in customer-facing copy before it is true.
+>
+> **Companion register:** architecture and implementation decisions for the Practice Intelligence
+> workstream and the capability/entitlement model live in
+> **`DECISIONS_PRACTICE_INTELLIGENCE.md`** (D1–D31, decided 2026-08-14). Kept separate because this
+> file holds product *framing*; that one holds how the code is shaped.
 
 ---
 
