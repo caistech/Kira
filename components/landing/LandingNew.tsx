@@ -59,7 +59,7 @@ import { HEADLINE_NUMBERS } from '@/lib/valuation/headline-numbers';
  *
  * Whoever changes the model must change these with it, and the test is what says so out loud.
  */
-const LANDING_EXAMPLE_FIGURES = ['$220k', '$684k', '$879k'] as const;
+const LANDING_EXAMPLE_FIGURES = ['$220k', '$626k', '$821k'] as const;
 
 // The PUBLIC, no-account agent — the same one /start uses. A landing page visitor has no session
 // and must not need one: the whole product claim is that you only ever talk to her, and until now
