@@ -196,10 +196,26 @@ export function GenomeBuckets({
   /** Compact = the dashboard strip. Full = the standalone view with the legend. */
   variant = 'full',
   href = '/my-genome',
+  trackMovement = true,
+  heading = 'Where the value is locked up',
+  intro,
 }: {
   sections: BucketSection[];
   variant?: 'full' | 'compact';
   href?: string;
+  /**
+   * Watch for a bucket moving up a band and pulse it.
+   *
+   * ⚠️ FALSE ON THE PUBLIC EXAMPLE, and that is not a detail. `/genome` shows a FIXED, invented
+   * business — nothing about it ever changes — so remembering its bands and celebrating a "move"
+   * on a later visit would be the product congratulating a visitor for work nobody did, on the one
+   * page whose entire job is to be believable. It would also pollute the real owner's stored bands
+   * with an example's.
+   */
+  trackMovement?: boolean;
+  heading?: string;
+  /** Overrides the explanatory line — the example is not "your" business. */
+  intro?: string;
 }) {
   // ORDER IS THE AREAS' OWN RANK, NOT "MOST FULL FIRST".
   //
@@ -210,7 +226,7 @@ export function GenomeBuckets({
   // without a rebuild (areas.ts).
   const ordered = sections;
 
-  const improved = useImprovedBands(sections);
+  const improved = useImprovedBands(trackMovement ? sections : []);
 
   const covered = sections.filter((s) => s.coverage === 'covered').length;
   const untouched = sections.filter((s) => s.coverage === 'empty').length;
@@ -218,7 +234,7 @@ export function GenomeBuckets({
   return (
     <section className="mb-8 rounded-2xl border border-stone-200 bg-white p-5 sm:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 className="text-lg font-semibold text-stone-900">Where the value is locked up</h2>
+        <h2 className="text-lg font-semibold text-stone-900">{heading}</h2>
         <Link
           href={href}
           className="inline-flex min-h-[44px] items-center text-base font-semibold text-violet-700 underline underline-offset-4"
@@ -231,9 +247,8 @@ export function GenomeBuckets({
           matters. It also does the bounding: this says how much Kira HOLDS, and stops short of any
           claim about what the business is worth or whether it is ready to sell. */}
       <p className="mt-1 max-w-prose text-base leading-relaxed text-stone-600">
-        Your business broken into the nine areas a buyer&apos;s advisor works through. The colour
-        shows how much of each one Kira has captured so far — not how good that part of the business
-        is. Every conversation fills one of these in.
+        {intro ??
+          "Your business broken into the nine areas a buyer's advisor works through. The colour shows how much of each one Kira has captured so far — not how good that part of the business is. Every conversation fills one of these in."}
       </p>
 
       <ul className="mt-5 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
