@@ -27,6 +27,7 @@ import { WHO_CAN_SEE_IT } from '@/lib/privacy';
 import { computeValuation } from '@/lib/valuation/model';
 import { formatMoneyApprox, formatPrice, taxSuffix, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { priceForProfit, PRICE_TIERS, FULL_RATE_PERIOD_CAP } from '@/lib/valuation/pricing';
+import { BetaRedeem } from '@/components/BetaRedeem';
 import { billingCopy } from '@/lib/billing/copy';
 import {
   decodeValuationParam,
@@ -58,6 +59,27 @@ export default function PlanPage() {
   }, []);
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+
+  // THE BETA PATH — the same funnel, without the card.
+  //
+  // Opened either by `?code=` (what the invitation email links to, so a tester lands straight on it)
+  // or by the discreet line under the checkout button, which exists for the one whose link went
+  // stale. That second entrance is the lesson from the 2026-08-10 invitation audit: eight people
+  // could never sign in because what they were sent expired before they opened it. The code in the
+  // email body is the backup for the link in the email.
+  //
+  // ⚠️ DELIBERATELY NOT A PRICING CARD. A "Beta — free" column beside a real monthly price turns the
+  // price into an opening bid and every conversation into a negotiation about access. The people who
+  // need this are told it exists; nobody else is shown a discount they can ask for.
+  const [betaCode, setBetaCode] = useState<string | null>(null);
+  const [betaOpen, setBetaOpen] = useState(false);
+  useEffect(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get('code');
+    if (fromUrl) {
+      setBetaCode(fromUrl);
+      setBetaOpen(true);
+    }
+  }, []);
 
   useEffect(() => {
     // sessionStorage first — that is where the valuation page now parks it, so the owner's turnover
@@ -441,6 +463,28 @@ export default function PlanPage() {
                 </a>
                 .
               </p>
+
+              {/* THE BETA DOOR — a line, not a card. See the note on `betaCode` above for why this
+                  is not a pricing tier. Rendered last of the three secondary lines because it is the
+                  one fewest readers need: an invited tester usually arrives by `?code=` and never
+                  reads this at all. It is here for the one whose link went stale. */}
+              {betaOpen ? (
+                <div className="mt-5">
+                  <BetaRedeem initialCode={betaCode ?? ''} firstName={payload?.firstName} />
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-stone-500">
+                  Been invited to the beta?{' '}
+                  <button
+                    type="button"
+                    onClick={() => setBetaOpen(true)}
+                    className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500 min-h-[44px]"
+                  >
+                    Enter your invitation code
+                  </button>
+                  .
+                </p>
+              )}
               <p className="text-xs text-stone-400 mt-3">
                 {copy.finePrint(`${money(model.quote.monthly)} ${tax}`)} You set your password and meet Kira right after.
               </p>
