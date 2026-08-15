@@ -17,6 +17,7 @@ import { createEmailSender } from '@caistech/email-send';
 
 import { assertNotHalted } from '@/lib/kill-switch';
 import { senderIdentityOrNull as senderIdentity } from '@/lib/email/sender';
+import type { ConsentBasis } from '@caistech/email-compliance';
 import { suppressionStore, unsubscribeUrl } from '@/lib/email/suppressions';
 
 export interface CommercialEmailParams {
@@ -24,6 +25,20 @@ export interface CommercialEmailParams {
   subject: string;
   html: string;
   text?: string;
+  /**
+   * The consent basis STATED TO THE READER in the footer. Defaults to `express`.
+   *
+   * ⚠️ `express` IS NOT TRUE FOR EVERY COMMERCIAL SEND, and it was hard-coded here until a beta
+   * invitation needed sending. The justification below — "everyone with an account ticked the terms
+   * box at signup" — is sound for people who HAVE an account, and it is exactly wrong for the one
+   * case where we write to someone who does not: an invitation. That reader ticked nothing.
+   *
+   * For a cold-but-legitimate invitation the basis is `inferred`: a conspicuously-published business
+   * address, messaged about the function it is published for. That is a real basis under the Spam
+   * Act and it is a different sentence in the footer, so telling the reader the wrong one is not a
+   * technicality — it is a claim about how we got his address, made to the person who would know.
+   */
+  reason?: ConsentBasis;
 }
 
 export interface CommercialSendResult {
@@ -59,7 +74,7 @@ export async function sendCommercialEmail(
     ...(params.text ? { text: params.text } : {}),
     compliance: {
       unsubscribeUrl: await unsubscribeUrl(params.to),
-      reason: 'express',
+      reason: params.reason ?? 'express',
       ...(sender ? { sender } : {}),
     },
   });
