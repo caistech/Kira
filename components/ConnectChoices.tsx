@@ -1,3 +1,26 @@
+// ⚠️ NOT MOUNTED. THIS COMPONENT IS RENDERED BY NOTHING, AND THE LEVELS IT OFFERS DO NOT TRAVEL.
+//
+// Found 2026-08-15 by the orchestrator session, and it is the "inert rather than broken" shape this
+// codebase keeps producing: the type exists, the component exists, nine tests pass, and the feature
+// does not work — because nothing imports this file and no caller passes `gmail`.
+//
+//   - `grep ConnectChoices app components` returns only this file and its test.
+//   - `app/setup/drive/actions.ts` is the ONLY caller of `googleConnectLink`, and it passes
+//     `tenantId`, `access`, `email`, `returnTo` — never `gmail`.
+//
+// `ConnectClaim.gmail` is optional and absent means 'none' on the far side (deliberately — see
+// google-connect.ts), so EVERY ticket minted today reaches the orchestrator as `gmail: 'none'` and
+// Gmail drafts cannot work whatever an owner picks. He cannot pick anything anyway; there is no
+// screen.
+//
+// ⚠️ A COMMIT MESSAGE HAS ALREADY OVERCLAIMED THIS. af33bbc says "ConnectChoices puts the six levels
+// in front of him with the COST of each stated". The second half is true of the file; the first half
+// is not true of the product. Recorded here rather than silently fixed, because the gap is in the
+// wiring and closing it is a change to app/setup/drive/actions.ts plus whatever renders this — not
+// an edit to this component, which is correct as written.
+//
+// Filed as Q3 in docs/BUILD_REGISTER.md.
+
 'use client';
 
 // What may she see? Asked once, in his words, before he connects anything.
