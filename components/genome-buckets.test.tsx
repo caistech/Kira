@@ -10,8 +10,12 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { emptyReason } from './GenomeBuckets';
+import { emptyReason, improvedSince, type BucketSection } from './GenomeBuckets';
 import { GENOME_AREAS } from '@/lib/genome/areas';
+
+const at = (coverage: BucketSection['coverage']): BucketSection[] => [
+  { key: 'pricing', title: 'How work is priced and quoted', coverage },
+];
 
 const source = readFileSync(path.resolve(__dirname, 'GenomeBuckets.tsx'), 'utf8');
 
@@ -109,6 +113,50 @@ describe('the claim stays inside what the data supports', () => {
     // field was defined to avoid. Tailwind fraction widths (w-1/3, w-2/3) are fine; a printed
     // percentage is not.
     expect(prose).not.toMatch(/\d+\s*%/);
+  });
+});
+
+describe('the band-change pulse only fires when something was actually achieved', () => {
+  // A celebration that fires at the wrong moment is worse than none: it teaches the owner the
+  // signal means nothing, and then the one that matters is ignored too.
+
+  it('stays silent on a first visit', () => {
+    // With nothing stored, every populated bucket has "changed". A new owner's first dashboard
+    // would otherwise fire a celebration for every area, for work he has not done.
+    expect(improvedSince(null, at('covered')).size).toBe(0);
+  });
+
+  it('fires when a bucket moves up a band', () => {
+    expect(improvedSince({ pricing: 'thin' }, at('building')).has('pricing')).toBe(true);
+  });
+
+  it('fires on the very first capture in an area', () => {
+    // empty -> thin is the most meaningful move there is, and an off-by-one that treats index 0 as
+    // "nothing before" would swallow exactly this one.
+    expect(improvedSince({ pricing: 'empty' }, at('thin')).has('pricing')).toBe(true);
+  });
+
+  it('stays silent when a bucket moves DOWN', () => {
+    // Bands legitimately fall — redaction is a promised feature, and an entry the owner takes back
+    // should take its coverage with it. Congratulating him for deleting his own data is the wrong
+    // note, which is why this is directional rather than an inequality.
+    expect(improvedSince({ pricing: 'covered' }, at('thin')).size).toBe(0);
+  });
+
+  it('stays silent when nothing changed', () => {
+    expect(improvedSince({ pricing: 'building' }, at('building')).size).toBe(0);
+  });
+
+  it('stays silent for an area this browser has never seen', () => {
+    // A newly added area, or a stored record written before the model widened. Treated as a
+    // baseline, not as a move from zero.
+    expect(improvedSince({ somethingElse: 'thin' }, at('covered')).size).toBe(0);
+  });
+
+  it('ignores a stored value that is not a band at all', () => {
+    // localStorage is shared, writable by anything on the origin, and survives deploys. A corrupt
+    // or stale value must degrade to no pulse — never to a pulse.
+    expect(improvedSince({ pricing: 'banana' }, at('covered')).size).toBe(0);
   });
 });
 

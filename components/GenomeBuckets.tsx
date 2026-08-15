@@ -27,8 +27,96 @@
 // in twelve, and this product's stated ICP is men aged 60-70. A traffic-light dashboard whose whole
 // meaning is carried by hue would be unreadable to a meaningful slice of the people paying for it.
 
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { areaFor } from '@/lib/genome/areas';
+
+/**
+ * Where the last-seen band per area is parked, so a change can be noticed.
+ *
+ * ⚠️ DEVICE-LOCAL, AND THAT IS THE RIGHT TRADE HERE. Storing this server-side would be more
+ * complete — the pulse would follow him between his phone and his laptop — and it would also mean a
+ * schema, a write on every dashboard load, and a failure mode. This is a delight, not data: the cost
+ * of missing one is that a bar changes quietly, which is exactly what happens today. It must never
+ * become load-bearing, and nothing may read it except this component.
+ */
+const BANDS_SEEN_KEY = 'kira_bucket_bands_seen';
+
+/** Band order, worst to best. The pulse fires on a move UP this list and only on a move up. */
+const BAND_ORDER = ['empty', 'thin', 'building', 'covered'] as const;
+
+/**
+ * Which buckets have just improved since this browser last looked.
+ *
+ * THREE THINGS IT MUST NOT DO, each of which is the obvious implementation:
+ *
+ *   1. NEVER PULSE ON A FIRST VISIT. With nothing stored, every populated bucket "changed", so a
+ *      new owner's first dashboard would fire nine celebrations for work he has not done. No record
+ *      means record the current state and celebrate nothing.
+ *   2. NEVER PULSE ON A MOVE DOWN. A band can legitimately fall — redaction is a promised feature
+ *      ("anything here can be taken back"), and an entry the owner removes should take its coverage
+ *      with it. Congratulating him for deleting his own data is the wrong note, so the comparison is
+ *      directional rather than an inequality.
+ *   3. NEVER PULSE TWICE FOR ONE CHANGE. The seen-state is written in the same effect that reads it,
+ *      so a refresh shows the new band with no animation. The celebration marks the transition, not
+ *      the state.
+ *
+ * Runs after hydration, so the server render carries no pulse classes and there is nothing for the
+ * client to mismatch.
+ *
+ * PURE, AND EXPORTED, so those three rules are testable rather than trusted. The hook below is only
+ * the wiring between this and localStorage — all of the judgement is here, where a test can reach
+ * it without a DOM.
+ */
+export function improvedSince(
+  previous: Record<string, string> | null,
+  sections: BucketSection[],
+): Set<string> {
+  const moved = new Set<string>();
+  if (!previous) return moved; // rule 1 — nothing seen before, so nothing has changed
+
+  for (const section of sections) {
+    const before = BAND_ORDER.indexOf(previous[section.key] as (typeof BAND_ORDER)[number]);
+    const after = BAND_ORDER.indexOf(section.coverage);
+    // `before < 0` is an area this browser has never seen — a newly added one, or a stored value
+    // from an older model. Treated as a baseline rather than as a move from zero, per rule 1.
+    if (before >= 0 && after > before) moved.add(section.key);
+  }
+  return moved;
+}
+
+function useImprovedBands(sections: BucketSection[]): Set<string> {
+  const [improved, setImproved] = useState<Set<string>>(() => new Set());
+
+  useEffect(() => {
+    const current: Record<string, string> = {};
+    for (const section of sections) current[section.key] = section.coverage;
+
+    let previous: Record<string, string> | null = null;
+    try {
+      const raw = window.localStorage.getItem(BANDS_SEEN_KEY);
+      previous = raw ? (JSON.parse(raw) as Record<string, string>) : null;
+    } catch {
+      // Private mode, a full quota, or a value someone else's code corrupted. Degrade to no pulse —
+      // never to a pulse, which would be the failure that celebrates nothing having happened.
+      previous = null;
+    }
+
+    const moved = improvedSince(previous, sections);
+    if (moved.size > 0) setImproved(moved);
+
+    try {
+      window.localStorage.setItem(BANDS_SEEN_KEY, JSON.stringify(current));
+    } catch {
+      // Nothing to do. The next visit re-reads the old value and, at worst, pulses this change once
+      // more — which is a great deal better than throwing on a dashboard.
+    }
+  }, [sections]);
+
+  return improved;
+}
 
 /** Exactly what this component needs — so a caller can pass `OwnerGenome.sections` unchanged. */
 export interface BucketSection {
@@ -49,6 +137,7 @@ const BANDS = {
     dot: 'bg-rose-500',
     chip: 'bg-rose-50 text-rose-800 border-rose-200',
     bar: 'bg-rose-500',
+    glow: 'text-rose-500',
     // A FIXED SLIVER, not a percentage. An entirely grey bar is hard to scan as "this row is the
     // red one", so empty still shows a mark — but `w-[6%]` would have been a percentage in a
     // component whose whole design decision is that there are no percentages here, and the test
@@ -60,6 +149,7 @@ const BANDS = {
     dot: 'bg-amber-500',
     chip: 'bg-amber-50 text-amber-900 border-amber-200',
     bar: 'bg-amber-500',
+    glow: 'text-amber-500',
     width: 'w-1/3',
   },
   building: {
@@ -67,6 +157,7 @@ const BANDS = {
     dot: 'bg-lime-500',
     chip: 'bg-lime-50 text-lime-900 border-lime-300',
     bar: 'bg-lime-500',
+    glow: 'text-lime-500',
     width: 'w-2/3',
   },
   covered: {
@@ -74,6 +165,7 @@ const BANDS = {
     dot: 'bg-emerald-600',
     chip: 'bg-emerald-50 text-emerald-900 border-emerald-300',
     bar: 'bg-emerald-600',
+    glow: 'text-emerald-600',
     width: 'w-full',
   },
 } as const;
@@ -118,6 +210,8 @@ export function GenomeBuckets({
   // without a rebuild (areas.ts).
   const ordered = sections;
 
+  const improved = useImprovedBands(sections);
+
   const covered = sections.filter((s) => s.coverage === 'covered').length;
   const untouched = sections.filter((s) => s.coverage === 'empty').length;
 
@@ -143,10 +237,19 @@ export function GenomeBuckets({
       </p>
 
       <ul className="mt-5 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
-        {ordered.map((section) => {
+        {ordered.map((section, index) => {
           const band = BANDS[section.coverage];
+          const justImproved = improved.has(section.key);
           return (
-            <li key={section.key}>
+            <li
+              key={section.key}
+              className="kira-rise-in"
+              /* THE STAGGER — 45ms apart, so the grid assembles rather than appearing.
+                 CAPPED at the 8th item: the delay is per-position, and an uncapped ramp would put
+                 the last of nine buckets 400ms behind the first, which stops reading as one motion
+                 and starts reading as a slow page. */
+              style={{ animationDelay: `${Math.min(index, 7) * 45}ms` }}
+            >
               <div className="flex items-start justify-between gap-3">
                 <span className="text-base font-medium leading-snug text-stone-900">{section.title}</span>
                 {/* The band as a WORD, beside the colour — see the accessibility note at the top. */}
@@ -156,7 +259,16 @@ export function GenomeBuckets({
                   {band.label}
                 </span>
               </div>
-              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-stone-100">
+              {/* ⚠️ `overflow-hidden` LIVES ON THE TRACK, and the pulse therefore CANNOT go on the
+                  bar inside it — a glow is drawn outside the element's box and would be clipped
+                  away to nothing. So the animation sits on the track, and `text-*` sets the
+                  `currentColor` the keyframe glows with. This looked like it worked in the markup
+                  and would have shipped as an invisible feature. */}
+              <div
+                className={`mt-2 h-2 w-full rounded-full bg-stone-100 ${band.glow} ${
+                  justImproved ? 'kira-band-pulse' : ''
+                }`}
+              >
                 <div className={`h-full rounded-full ${band.bar} ${band.width}`} />
               </div>
               {section.coverage === 'empty' && (
