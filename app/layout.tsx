@@ -72,7 +72,19 @@ export default function RootLayout({
               exists to make this decision per page; giving it a thumb on the scale defeated it.
               The other half of that collision — the "Ask Kira" pill sitting on Next — is gone; see
               the note at the foot of app/business-valuation/page.tsx. */}
-          <main className="flex-1">{children}<SayFixWidget repo="kira" /></main>
+          <main className="flex-1">{children}{/* ⚠️ autoPlace OFF — the placement engine was drawing TWO launchers.
+            The operator screenshotted /my-genome carrying "Report a problem" pinned top-right AND a
+            second dark tab on the right edge, and reported it as a stray voice widget. It is neither
+            ours nor a voice widget: `@caistech/sayfix-embed` renders both strings itself
+            (`Report a problem` and `right-edge-tab` are both in its own dist), so one widget was
+            presenting two ways in.
+            `autoPlace={false}` is the package's documented opt-out — "the legacy static corner" —
+            and one launcher in a fixed place is worth more here than a clever one that sometimes
+            duplicates. Bottom-right because that is where a help control is looked for; the Talk FAB
+            has moved to bottom-LEFT so the product and the escape hatch no longer share a corner.
+            ⚠️ If two still render with this off, it is a package defect rather than a placement
+            choice, and belongs upstream rather than worked around again here. */}
+          <SayFixWidget repo="kira" autoPlace={false} position="bottom-right" /></main>
           <SiteFooter />
         </div>
       </body>
