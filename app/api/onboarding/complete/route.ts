@@ -53,11 +53,37 @@ export async function POST(request: NextRequest) {
     const svc = createServiceClient();
 
     // Create the account already confirmed. If it already exists, set the password they chose.
+    // TERMS ACCEPTANCE, FROM THE METADATA /plan PUT THERE BEFORE HE PAID.
+    //
+    // The DB trigger stamps `users.terms_accepted_at` only when `terms_accepted` is truthy in auth
+    // metadata, so this is the seam. Until this change the paid path passed only `first_name`, and
+    // every paying owner therefore reached a paid account with no recorded acceptance while free
+    // signups had one — inverted, for the only group with a contract.
+    //
+    // ⚠️ IT DEGRADES RATHER THAN REFUSING, and that asymmetry is deliberate. He has ALREADY PAID by
+    // the time this runs. A session created before this shipped, or by any other route, carries no
+    // acceptance — and refusing to create his account would take his money and leave him with
+    // nothing, to fix a record-keeping gap. So a missing value leaves `terms_accepted_at` NULL,
+    // exactly as it was, and the gate that can actually stop someone lives on /plan, before the
+    // money moves. The beta path CAN refuse, and does, because nothing has been paid there.
+    const acceptedTerms = String(m.terms_accepted ?? '') === 'true';
+    if (!acceptedTerms) {
+      console.warn(
+        `[api/onboarding/complete] no terms acceptance in session metadata for ${email} — account ` +
+          `created without one rather than refusing a paid customer. session=${session_id}`,
+      );
+    }
+
     const { data: created, error: createErr } = await svc.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
-      user_metadata: { first_name: firstName },
+      user_metadata: {
+        first_name: firstName,
+        ...(acceptedTerms
+          ? { terms_accepted: 'true', terms_version: String(m.terms_version ?? '') || 'unversioned' }
+          : {}),
+      },
     });
 
     if (createErr) {

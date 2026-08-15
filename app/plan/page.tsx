@@ -28,6 +28,7 @@ import { computeValuation } from '@/lib/valuation/model';
 import { formatMoneyApprox, formatPrice, taxSuffix, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { priceForProfit, PRICE_TIERS, FULL_RATE_PERIOD_CAP } from '@/lib/valuation/pricing';
 import { BetaRedeem } from '@/components/BetaRedeem';
+import { TermsAgreement, TERMS_VERSION } from '@/components/TermsAgreement';
 import { billingCopy } from '@/lib/billing/copy';
 import {
   decodeValuationParam,
@@ -71,6 +72,15 @@ export default function PlanPage() {
   // ⚠️ DELIBERATELY NOT A PRICING CARD. A "Beta — free" column beside a real monthly price turns the
   // price into an opening bid and every conversation into a negotiation about access. The people who
   // need this are told it exists; nobody else is shown a discount they can ask for.
+  // TERMS, BEFORE MONEY CHANGES HANDS.
+  //
+  // Acceptance used to be captured only by the /signup form, so every owner who arrived through
+  // checkout reached a paid account with `terms_accepted_at` NULL — the one group with a contract
+  // was the group with no recorded acceptance. It has to be collected HERE rather than at
+  // /onboarding, because by the time that page runs he has already paid, and a gate that can only
+  // refuse someone who has been charged is not a gate.
+  const [termsAccepted, setTermsAccepted] = useState(false);
+
   const [betaCode, setBetaCode] = useState<string | null>(null);
   const [betaOpen, setBetaOpen] = useState(false);
   useEffect(() => {
@@ -168,6 +178,11 @@ export default function PlanPage() {
           inputs: payload.inputs,
           currency: payload.currency,
           firstName: payload.firstName,
+          // Carried into Stripe session metadata and read back by /api/onboarding/complete, which
+          // is where the account is actually created and therefore the only place the DB trigger
+          // can see it.
+          termsAccepted: true,
+          termsVersion: TERMS_VERSION,
         }),
       });
       const data = await res.json();
@@ -416,10 +431,19 @@ export default function PlanPage() {
                   <p className="mt-1 text-sm text-stone-600 leading-relaxed">
                     {copy.confirmBody(`${money(model.quote.monthly)} ${tax}`)}
                   </p>
+                  {/* THE CHECKBOX SITS INSIDE THE CONFIRM STEP, not beside the first button.
+                      This is the screen that already says, in words, what is about to happen and
+                      what it will cost — which is the moment a legal agreement means something. Put
+                      on the outer CTA it would be one more thing to get past on the way to reading
+                      the confirmation, and he would tick it before he had been told the price. */}
+                  <TermsAgreement checked={termsAccepted} onChange={setTermsAccepted} id="terms-paid" />
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
                       onClick={startCheckout}
-                      disabled={loading}
+                      /* Disabled until ticked. The button says why below rather than failing
+                         silently on click, which is how a required checkbox becomes a dead button
+                         nobody can explain. */
+                      disabled={loading || !termsAccepted}
                       className="grad-coral text-white font-display font-bold px-6 py-3 rounded-full inline-flex items-center gap-2 min-h-[48px] disabled:opacity-60"
                     >
                       {loading ? <><Loader2 className="h-5 w-5 animate-spin" /> Starting…</> : <>Continue to Stripe <ArrowRight className="h-5 w-5" /></>}
@@ -431,6 +455,11 @@ export default function PlanPage() {
                       Not yet
                     </button>
                   </div>
+                  {!termsAccepted && (
+                    <p className="mt-2 text-sm text-stone-500">
+                      Tick the box above to continue.
+                    </p>
+                  )}
                 </div>
               )}
               <button

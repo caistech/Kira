@@ -25,6 +25,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ArrowRight, Loader2, CheckCircle2 } from 'lucide-react';
 
 import { PasswordInput } from '@/components/auth/PasswordInput';
+import { TermsAgreement, TERMS_VERSION } from '@/components/TermsAgreement';
 import { createClient } from '@/lib/supabase/browser';
 
 type Stage = 'code' | 'password' | 'done';
@@ -42,6 +43,7 @@ export function BetaRedeem({
   const [stage, setStage] = useState<Stage>('code');
   const [email, setEmail] = useState<string | null>(null);
   const [password, setPassword] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,13 +84,17 @@ export function BetaRedeem({
       setError('Please choose a password of at least 8 characters.');
       return;
     }
+    if (!termsAccepted) {
+      setError('Please agree to the Terms and Privacy Policy to continue.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
       const res = await fetch('/api/beta/redeem', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, password, firstName }),
+        body: JSON.stringify({ code, password, firstName, termsAccepted, termsVersion: TERMS_VERSION }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || 'Could not redeem that code.');
@@ -196,10 +202,13 @@ export function BetaRedeem({
               id="beta-password"
             />
           </div>
+          {/* The same control and the same wording as the paid path — one checkbox component, so
+              the two cannot drift into agreeing to different things. */}
+          <TermsAgreement checked={termsAccepted} onChange={setTermsAccepted} id="terms-beta" />
           <button
             type="submit"
-            disabled={busy}
-            className="mt-4 inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-stone-900 px-6 py-3.5 text-base font-bold text-white disabled:opacity-60"
+            disabled={busy || !termsAccepted}
+            className="mt-2 inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-stone-900 px-6 py-3.5 text-base font-bold text-white disabled:opacity-60"
           >
             {busy ? <><Loader2 className="h-5 w-5 animate-spin" /> Setting up…</> : <>Meet Kira <ArrowRight className="h-5 w-5" /></>}
           </button>

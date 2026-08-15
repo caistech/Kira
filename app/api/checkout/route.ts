@@ -10,6 +10,7 @@
 // lifecycle. The PRICE stays here - it is Kira's business logic, not the package's.
 
 import { createSubscriptionCheckoutSession } from '@caistech/subscription-billing';
+import { TERMS_VERSION } from '@/lib/terms';
 import { getCurrentAppUser } from '@/lib/auth';
 import { formatPrice, taxSuffix } from '@/lib/valuation/currency';
 import { NextRequest, NextResponse } from 'next/server';
@@ -77,6 +78,19 @@ export async function POST(request: NextRequest) {
       val_readiness: String(result.readiness),
       val_industry: inputs.industry.slice(0, 200),
       quoted_monthly: String(quote.monthly),
+      // TERMS ACCEPTANCE, CARRIED TO THE PLACE THE ACCOUNT IS ACTUALLY CREATED.
+      //
+      // The DB trigger reads `terms_accepted` / `terms_version` off auth user_metadata, and the only
+      // path that ever set them was the /signup form — so every owner who arrived through checkout
+      // ended up with a PAID account and `terms_accepted_at` NULL. Stripe metadata is the one
+      // carrier that survives the round trip to /onboarding, which is where createUser runs.
+      //
+      // The value is the CLIENT'S assertion that he ticked the box, which is what a checkbox is;
+      // there is no server-side way to observe a tick. What the server does guarantee is that the
+      // version recorded is the one WE are serving, never one the client named — otherwise the
+      // record would say he agreed to whatever he claimed to agree to.
+      terms_accepted: body?.termsAccepted === true ? 'true' : 'false',
+      terms_version: body?.termsAccepted === true ? TERMS_VERSION : '',
     };
 
     const session = await createSubscriptionCheckoutSession({

@@ -27,6 +27,7 @@ import { ATTRIBUTION_COOKIE, attachFirstTouch, attribution } from '@/lib/introdu
 import { claimBetaCode, linkBetaCodeToUser, releaseBetaCode } from '@/lib/billing/beta-codes';
 import { getBetaGate } from '@/lib/billing';
 import { createServiceClient } from '@/lib/supabase/server';
+import { TERMS_VERSION } from '@/lib/terms';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -45,7 +46,7 @@ const REJECTION_MESSAGE =
   'That code is not valid. Check it against the email we sent you — or reply to it and we will send a new one.';
 
 export async function POST(request: NextRequest) {
-  let body: { code?: unknown; password?: unknown; firstName?: unknown };
+  let body: { code?: unknown; password?: unknown; firstName?: unknown; termsAccepted?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -60,6 +61,26 @@ export async function POST(request: NextRequest) {
   }
   if (password.length < 8) {
     return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
+  }
+
+  // ⚠️ THIS PATH REFUSES, AND THE PAID PATH DOES NOT. The asymmetry is the point.
+  //
+  // /api/onboarding/complete degrades to creating the account without an acceptance record, because
+  // by the time it runs the owner has already been charged — a gate that can only turn away someone
+  // who has paid is not a gate, it is a way to take money and give nothing back. So there the real
+  // gate lives on /plan, before the money moves.
+  //
+  // Nothing has been paid here. There is no cost to refusing, and an account created without a
+  // recorded acceptance is exactly the defect this change exists to close, so a request without one
+  // is rejected rather than quietly accepted. The checkbox is required in the UI, so this is only
+  // reachable by a stale client or a direct call.
+  //
+  // The code is checked BEFORE the claim below, so a refusal here does not burn it.
+  if (body.termsAccepted !== true) {
+    return NextResponse.json(
+      { error: 'Please agree to the Terms and Privacy Policy to continue.' },
+      { status: 400 },
+    );
   }
 
   // Claimed FIRST, atomically — see claimBetaCode. A burnt code is recoverable by re-minting; a code
@@ -84,7 +105,13 @@ export async function POST(request: NextRequest) {
     email,
     password,
     email_confirm: true,
-    user_metadata: { first_name: firstName },
+    // The DB trigger stamps `users.terms_accepted_at` from these two, and records the VERSION rather
+    // than merely that a box was ticked — a product that can show someone agreed but not WHAT they
+    // agreed to has kept the half of the record that settles nothing.
+    //
+    // TERMS_VERSION is taken from OUR module, never from the request. The client asserts the tick,
+    // which is all a checkbox can ever be; it does not get to name the wording it agreed to.
+    user_metadata: { first_name: firstName, terms_accepted: 'true', terms_version: TERMS_VERSION },
   });
 
   if (createErr) {
