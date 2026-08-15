@@ -1,6 +1,9 @@
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
+import { ShareGenome } from '@/components/ShareGenome';
+import { GenomeBuckets } from '@/components/GenomeBuckets';
+import { getBusinessIdentity } from '@/lib/business-identity/store';
 import { formatMoney, formatMoneyApprox, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { RedactEntry } from '@/components/RedactEntry';
 import { PRIVATE_REASON_LABEL } from '@/lib/genome/private';
@@ -45,6 +48,7 @@ export default async function MyGenome() {
   }
 
   const g = await deriveOwnerGenome(appUser.id);
+  const identity = await getBusinessIdentity(appUser.id);
 
   // WHAT HE HAS, FIRST. The areas are held in buyer-priority order, which is right for the handover
   // document and wrong for the first thing he sees: it put empty sections above the ones with his
@@ -62,6 +66,18 @@ export default async function MyGenome() {
   return (
     <main className="max-w-3xl mx-auto px-5 py-10 pb-20">
       <h1 className="font-display text-3xl font-bold">Your Business Genome</h1>
+      {/* SHARE, at the top with the title, because it is the reason the document exists.
+          "Kira is a PROJECT, not a subscription — extraction is a migration; her job is to make
+          herself redundant." The moment this leaves for a broker or an accountant is the moment the
+          product has done what it promised, so the control belongs beside the heading rather than
+          buried under three hundred entries. */}
+      <div className="mt-4">
+        <ShareGenome
+          businessName={identity?.trading_name?.trim() || identity?.legal_name?.trim() || null}
+          ownerName={(appUser.first_name as string | null) ?? null}
+          hasDocument={!g.empty}
+        />
+      </div>
       <p className="text-lg text-stone-600 mt-4 leading-relaxed max-w-2xl">
         Everything Kira has captured about how your business actually runs, organised by the questions
         a buyer&apos;s advisor will ask you. It grows every time you talk to her — there is nothing to
@@ -106,7 +122,7 @@ export default async function MyGenome() {
           </a>
           <p className="text-sm text-stone-500 mt-6">
             Want to see what a filled-in one looks like?{' '}
-            <a href="/genome" className="underline underline-offset-4">See an example</a>.
+            <a href="/sample-genome" className="underline underline-offset-4">See an example</a>.
           </p>
         </div>
       ) : (
@@ -201,6 +217,28 @@ export default async function MyGenome() {
             own position. {WHO_CAN_SEE_IT} Anything here can be taken back — use{' '}
             <span className="font-semibold">Remove</span> on the entry itself.
           </p>
+
+          {/* THE SAME VISUAL AS THE DASHBOARD AND THE SAMPLE, on the page that is actually HIS.
+              It was mounted on /dashboard and /sample-genome and missed here, which is the one that
+              matters most — this is the page called "Your Business Genome", and it was the only one
+              of the three showing him the detail without the shape.
+              ⚠️ ORDER IS DELIBERATE AND DIFFERS FROM THE LIST BELOW. `sections` is sorted
+              populated-first so a man opening his own Genome does not lead on things he has not
+              done; the buckets keep the areas' own buyer-priority order, because a map whose regions
+              move between visits is not a map. Both are right for their job. */}
+          <div className="mt-8">
+            <GenomeBuckets
+              sections={g.sections.map((sec) => ({
+                key: sec.key,
+                title: sec.title,
+                coverage: sec.coverage,
+                baseline: sec.baseline
+                  ? { statement: sec.baseline.statement, ownerDependent: sec.baseline.ownerDependent }
+                  : null,
+              }))}
+              heading="Where the value is locked up"
+            />
+          </div>
 
           <div className="mt-6 space-y-3">
             {sections.map((s) => (

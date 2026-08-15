@@ -139,8 +139,7 @@ await sendKiraReadyEmail({
   userName: 'Dennis',
   userEmail: 'dennis@example.com',
   agentId: 'abc123',
-  journeyType: 'personal',
-  primaryGoal: 'planning a trip to Portugal',
+  journeyType: 'business',
 });
 ```
 
@@ -211,8 +210,7 @@ curl -X POST http://localhost:3000/api/kira/email/send-kira-ready \
   -H "Content-Type: application/json" \
   -d '{
     "user_id": "your-user-id",
-    "agent_id": "your-agent-id",
-    "primary_goal": "testing the email system"
+    "agent_id": "your-agent-id"
   }'
 ```
 

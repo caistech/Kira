@@ -96,7 +96,65 @@ export const AU_PUBLISHED_RANGES: AuPublishedRange[] = [
     note:
       'The one family where a US median sits ABOVE the AU range: Bars/Pubs/Taverns at 2.86 vs an AU ceiling of 2.5. AU hospitality carries lease risk and thin margins that the US figure does not price.',
   },
+  // ── Added 2026-08-14 — the Melis/LINK guide. See MELIS_BAND_RATIOS below for what it is FOR. ──
+  {
+    family: 'Electrical & trade services (Melis/LINK)',
+    low: 1.75,
+    high: 3.5,
+    basis: 'SDE',
+    source: 'Matteo Melis, LINK Brisbane — Australian SME Business Valuation Multiple Guide (industry table)',
+    url: 'docs/Australian SME Business Valuation Multiple Guide.pdf',
+    checks: ['Electrical & Mechanical Contracting', 'Plumbing', 'HVAC', 'Painting & Trade Contracting'],
+    note:
+      'Common 2.25–3.0x. ⚠️ A SECOND AU SOURCE THAT DISAGREES WITH THE FIRST AT THE FLOOR: businessforsale.com.au anchors an on-the-tools plumber at 2.0x, Melis puts trade Low at 1.75x for the same centre. Two broker guides, 0.25 of a turn apart, neither authoritative. The model lands 1.77 — inside the bracket they jointly describe, and near Melis.',
+  },
+  {
+    family: 'Construction & building (Melis/LINK)',
+    low: 1.5,
+    high: 3.0,
+    basis: 'SDE',
+    source: 'Matteo Melis, LINK Brisbane — Australian SME Business Valuation Multiple Guide (industry table)',
+    url: 'docs/Australian SME Business Valuation Multiple Guide.pdf',
+    checks: ['Residential Building & General Contracting', 'Carpentry & Joinery'],
+    note:
+      'Common 2.0–2.5x. Our Residential Building median of 2.90 sits at his HIGH rather than in his common range — recorded, not corrected, because a single guide is not grounds to move a median.',
+  },
 ];
+
+/**
+ * ⚠️ WHAT THE MELIS GUIDE IS ACTUALLY FOR — it is the only AU source we hold that publishes a
+ * THREE-POINT range (Low / Common / High) for enough sectors to measure the SHAPE of a band rather
+ * than just its endpoints. That is what `model.ts` fits its floor ratio to (A11).
+ *
+ * Its implied ratios across all 29 sectors, computed from Low ÷ mid-Common and High ÷ mid-Common:
+ *
+ *   CEILING ratio  mean 1.341  (range 1.280 – 1.429)   <- against our SECTOR_CEILING_RATIO of 1.35
+ *   FLOOR ratio    mean 0.688  (range 0.571 – 0.741)   <- against a flat 0.75, since replaced
+ *
+ * The ceiling ratio is a third independent Australian arrival at the number we already had. The
+ * floor ratio is not flat: it correlates with the sector's own level at **r = 0.935**, and the
+ * least-squares fit `0.4579 + 0.0834 × median` (R² = 0.875) is what `sectorFloorRatio()` uses.
+ *
+ * ⚠️ THE BASIS OF HIS SIZE TABLE IS UNRESOLVED AND DELIBERATELY NOT ENCODED HERE. He publishes a
+ * second table keyed on the LEVEL of maintainable earnings (common 1.3x at ≤$250k rising to 4.5x at
+ * $5–10m) which would, if adopted, be a far steeper size curve than `sizeAdjustment` applies — but
+ * he never states whether it is SDE or EBITDA-after-a-replacement-salary, and the three readings
+ * imply materially different corrections. Register A10; blocked on him, and NOTHING in this file
+ * encodes that table until he answers.
+ *
+ * What we could test ourselves points one way: on the INDUSTRY table, reading Low as SDE and Common
+ * as EBITDA implies a café manager costing 42.9% of SDE against a SaaS GM at 25.9% — backwards, and
+ * monotonically so across all 20 comparable rows. So the industry ratios above read as range widths,
+ * which is why A11 was safe to fit while A10 waits.
+ */
+export const MELIS_BAND_RATIOS = {
+  ceilingMean: 1.341,
+  floorMean: 0.688,
+  floorRatioVsLevelCorrelation: 0.935,
+  floorFitIntercept: 0.4579,
+  floorFitSlope: 0.0834,
+  floorFitRSquared: 0.875,
+} as const;
 
 /** Every US sector figure this file is able to check, and whether it falls inside. */
 export interface CrossCheckResult {

@@ -94,3 +94,65 @@ needed). The minter auto-matches the repo's installed `@supabase/ssr` version.
   Path (as admin-agent) → Cross-Path.
 - `/voice-auditor`: User voice surfaces (`/start`, `/discovery`, `/chat`) + Admin surfaces; the
   memory loop must be observed *working* (welcome-back recall fires), not just present.
+
+---
+
+## Beta invitation codes — how a tester gets INSIDE the product without a card
+
+**The gap this closes.** `TESTING_STANDARD` §4: a persona has a contract, and the contract bounds
+coverage. Kira's conversion persona will not create an account and will not pay — so **every run so
+far has ended at the paywall.** Three runs in, the funnel has been tested three times and the
+authenticated product zero times, roughly 8 of 42 routes. That is not a tester failing; it is the
+persona structurally being unable to reach the thing we charge for.
+
+A beta code is the way through. It creates a real, confirmed account with no card and no
+subscription, on the same funnel every owner walks.
+
+### ⚠️ Bind codes only to addresses with NO existing account
+
+A code is bound to one email when it is minted, and redeeming it for an address that already has an
+account hits the deliberate no-mutation branch: *"You already have an account with this email — your
+code has been used."* That is the guard working correctly, and a tester will file it as a blocker.
+
+**The two canonical QA identities BOTH already have accounts** (`dennis+qauser@…` since 2026-08-01,
+`dennis+qaadmin@…` since 2026-07-20), so **never bind a beta code to `QA_TEST_USER_EMAIL` or
+`QA_TEST_ADMIN_EMAIL`.** Check before minting:
+
+```sql
+select id from users where email = lower('<address>');   -- must return nothing
+```
+
+### Codes in play (2026-08-15)
+
+| Code | Bound to | For | Expires |
+|---|---|---|---|
+| `4GBG-9VV7-AFGF` | `dennis+betatest@factory2key.com.au` | operator smoke test | 2026-09-14 |
+| `6JUG-L7W3-94K4` | `dennis+betatester2@factory2key.com.au` | **naive-tester, authenticated persona** | 2026-09-14 |
+
+**One code per persona, decided before the run.** Two personas sharing one code means the second one
+meets the already-used branch and spends the run diagnosing it.
+
+**FRESH ACCOUNT, deliberately** (operator decision, 2026-08-15). The authenticated persona walks an
+account with nothing captured — nine empty Genome buckets, an empty export — because that is what
+every real invitee actually meets and what nobody has ever walked. Seeding it would test the
+populated surfaces at the cost of testing the one state guaranteed to occur.
+
+### Redeeming
+
+Either enter the code at `/plan` ("Been invited to the beta?"), or go straight to
+`/plan?code=<code without hyphens>`. Capitals and punctuation do not matter. Redemption is
+**single-use** — it burns the code, so re-running the same persona needs a fresh mint:
+
+```bash
+node --env-file=.env.local scripts/mint-beta-code.mjs \
+  --email <clean address> --label "<who, why, when>" --days 30
+node --env-file=.env.local scripts/mint-beta-code.mjs --list
+node --env-file=.env.local scripts/mint-beta-code.mjs --revoke <code>
+```
+
+### Before the run
+
+1. `npx portfolio-gate-deploy-status --public-url https://kiraexec.com --app-marker "Kira" --wait`
+   — gate zero. A green tester run against a stale build manufactures false confidence.
+2. Confirm both codes still read `open` (`--list`).
+3. Note which persona holds which code, here, before anyone starts.

@@ -15,9 +15,29 @@ import { createHmac } from 'node:crypto';
 
 export type DriveAccess = 'full' | 'readonly' | 'picked';
 
+/**
+ * How much of his mailbox, chosen by him — the twin of DriveAccess.
+ *
+ *   none  — she never sees his email.
+ *   draft — she can write into his drafts; he reviews and sends himself, from his own address.
+ *   read  — additionally read the mailbox, so "did Roger ever reply?" has an answer.
+ *
+ * `send` is deliberately not a level. Outbound goes through the compliant path that carries his
+ * identity, the Spam Act footer and the approval gate.
+ */
+export type GmailAccess = 'none' | 'draft' | 'read';
+
 export interface ConnectClaim {
   tenantId: string;
   access: DriveAccess;
+  /**
+   * Optional, and absent means 'none' on the far side.
+   *
+   * A ticket minted before this existed carries no value, and the safe reading of silence about a
+   * mailbox is "do not ask for it" — an owner who never chose Gmail must not meet a consent screen
+   * requesting his mail because a field was missing.
+   */
+  gmail?: GmailAccess;
   email?: string | null;
   returnTo?: string | null;
   exp: number;
@@ -50,6 +70,8 @@ export interface ConnectLinkResult {
 export function googleConnectLink(params: {
   tenantId: string;
   access: DriveAccess;
+  /** Omitted means 'none'. Never defaulted to "some" — asking for a mailbox nobody asked for. */
+  gmail?: GmailAccess;
   email?: string | null;
   returnTo?: string | null;
 }): ConnectLinkResult {
@@ -63,6 +85,7 @@ export function googleConnectLink(params: {
     {
       tenantId: params.tenantId,
       access: params.access,
+      gmail: params.gmail ?? 'none',
       email: params.email ?? null,
       returnTo: params.returnTo ?? null,
       exp: Math.floor(Date.now() / 1000) + TTL_SECONDS,

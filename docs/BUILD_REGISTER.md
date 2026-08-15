@@ -1,5 +1,54 @@
 # Build register — Kira
 
+> ## O. 2026-08-14 — a broker published his method, and the axis we never modelled is size
+>
+> **`docs/Australian SME Business Valuation Multiple Guide.pdf` — Matteo Melis, LINK Brisbane.**
+> Reviewed against `lib/valuation/`. **Nothing shipped this session; this is an assessment.** It is
+> a broker's guide with the same evidentiary weight as everything in `au-evidence.ts` — one QLD
+> broker, no sample size, no method, and listing collateral, so biased toward setting seller
+> expectations low. A **check**, never a source.
+>
+> **What it confirms.** Three tables (size · seller-involvement as explicit ±turns · 29 AU sectors
+> Low/Common/High). His implied **ceiling÷centre means 1.341** across all 29 — against our
+> `SECTOR_CEILING_RATIO = 1.35`. A third independent Australian arrival at the band's shape.
+>
+> **What it contradicts — three constants, all in the same direction, all worst where the ICP is.**
+>
+> | | |
+> |---|---|
+> | **A10** | His baseline is a **size** table: common 1.3× → 4.5×, a **3.5× swing**. `sizeAdjustment` moves the well-run multiple **25% across a 10× earnings range**, ceiling-only. **~⅙ his sensitivity.** |
+> | **A11** | `SECTOR_FLOOR_RATIO` is a constant 0.75; his floor ratios mean **0.688** and **scale with sector level (r = 0.935)**. Café 0.571, retail 0.625 vs SaaS 0.741. |
+> | **A12** | `SELLER_RESERVATION_FLOOR = 1.5` is asserted; he publishes café Low 1.0×, retail 1.25×, ≤$250k at 0.8×. |
+>
+> **Measured, not inferred** (`computeValuation` run directly): Kira's **weakest possible** electrical
+> business at $150k SDE is **2.33×**, above his **High** for that earnings bracket (2.2×). Across
+> readings, **Kira reads 1.6–2.9× high at ≤$250k SDE.**
+>
+> **A11 dissolves a residual that was shelved as unfixable.** The hospitality ~3.05× vs 1.5–2.5×
+> divergence was recorded as "AU lease risk the US median does not price" and parked pending AIBB
+> membership. It is better explained as a **constant-ratio artefact surfacing in the cheapest
+> sector** — fixable from data already held.
+>
+> **A13 was found while checking blast radius, and nobody had reported it.** The band closes against
+> `BUYER_CEILING` for rich sectors — **Marinas & Fishing runs floor 4.95 / ceiling 5.00, spread
+> 0.05** — and the gap collapses with it: **$8,756 against $131,344** for identical answers, on a
+> business valued at $1.49M, against a $999/mo band costing 137% of the gap per year.
+>
+> ⚠️ **TWO STALE CLAIMS CORRECTED, and both were read out of this register rather than the code**
+> (details before §B). **(1) `priceForGap` does not exist** — the only occurrence in the repo is this
+> file. `pricing.ts` bands on **reported profit**; the gap drives only the descriptive fraction. So
+> §A's *"inflating the gap overcharges"* argument describes a superseded model. **(2) The band does
+> not feed the gap either** — `DOCUMENTATION_UPLIFT` caps `claimedSpread`, so floor and ceiling drop
+> out. Both make A10–A12 **safer to ship**, not riskier.
+>
+> **The 1–1.5× quote has now been explained three different ways** (geography → basis → size
+> bracket). Two of those were recorded as settled at the time. **A9's email is the only thing that
+> ends it**, and its question has sharpened — see A9/A10.
+>
+> **⛔ Owed by the operator before any code moves:** the basis question. Three readings of his tables
+> are live and they imply materially different corrections; one of them would leave Kira roughly
+> right. **Do not act on A10 until it is answered.**
+>
 > ## N. 2026-08-10 — nobody ignored us, and the new-owner path finally got walked
 >
 > **The day started with "what else is needed considering the number of people holding access
@@ -171,7 +220,7 @@ turn to a turn, showing up mostly as a discount *not taken* and a shorter DD. It
 business into a 5× one — that needs a manager and recurring contracts, which is a different business
 rather than a written-down one.
 
-✅ **THE AU-MULTIPLES ITEM THAT SAT HERE IS CLOSED — 2026-08-08 — AND THE PREMISE WAS WRONG.**
+✅ **THE AU-MULTIPLES ITEM THAT SAT HERE CLOSED 2026-08-08 — AND THE PREMISE WAS WRONG.**
 This paragraph previously shouted that the outstanding work was an **input**: `sde-multiples.ts` is US
 BizBuySell data against a Finn Group broker's **1–1.5× for Australian trade businesses**. AU sources
 publishing on an **SDE basis** corroborate the US medians instead (plumbing 2.62 vs a published AU
@@ -179,11 +228,53 @@ publishing on an **SDE basis** corroborate the US medians instead (plumbing 2.62
 after a market salary, the same SDE-vs-EBITDA confusion as **A5**, arriving from outside. The real
 defect was the **flat band**, now sector-scaled (`lib/valuation/au-evidence.ts`). ⚠️ **It stayed
 loudest-in-the-section for a day after the L-header recorded it resolved**, in the section whose own
-banner is an apology for exactly that. Remaining in A: **A8** (a print stylesheet) and **A9** below.
+banner is an apology for exactly that.
+
+> ⚠️ **AND THAT CLOSURE WAS ONLY EVER ABOUT GEOGRAPHY — 2026-08-14 REOPENED THE SIZE AXIS.**
+> `docs/Australian SME Business Valuation Multiple Guide.pdf` (Matteo Melis, LINK Brisbane) is the
+> first AU source we hold that **brackets by business size**, and it is the axis none of the 08-08
+> sources examined — every one of them publishes a single un-bracketed range per sector, which is
+> why they could corroborate the US medians *and* still be an overstatement for a $200k-SDE business.
+> It **confirms `SECTOR_CEILING_RATIO = 1.35`** (his implied ceiling÷centre means **1.341** across 29
+> sectors — a third independent AU arrival at our band shape) and **contradicts three constants**:
+> **A10**, **A11**, **A12** below. ⚠️ It also reframes the 1–1.5× quote a **third** time: most likely
+> neither a basis error nor a geography gap, but **the small end of a size curve quoted without its
+> bracket** (his ≤$250k common is 1.3×, $250–500k is 1.6×). Same evidentiary weight as everything in
+> `au-evidence.ts` — one QLD broker, no sample size, no method, and it is listing collateral, so it
+> is biased toward setting seller expectations low. A **check**, not a source.
+> *(Reading it: `pdftotext -layout` column-shifts and orphans every table. Use `-raw`.)*
+
+Remaining in A: **A8** (a print stylesheet), **A9**, and **A10–A13** below.
 
 | ID | Item | Type | Sev | Detail |
 |---|---|---|---|---|
-| **A9** | The AU-multiples closure is **done and reasoned, not done and observed** | PROVE | 2 | Raised by an external read 2026-08-08, and it is right against this file's own rule. The closure rests on an **inference made at a desk about a number a working broker said out loud** — that Simon's 1–1.5× was quoted on EBIT rather than SDE. Probably correct; never put to him. Meanwhile two sectors still sit outside their published AU bands as pinned residuals (hospitality ~3.05× vs 1.5–2.5; Bars/Pubs 2.86 outside range), so the contradiction is not fully dissolved by the basis argument alone. **Fix is one email: *"when you said 1–1.5, was that on SDE, or on profit after a market salary?"*** Costs nothing, converts a reasoned closure into an observed one, and is the same correction-seeking move **N1** is built on — asking the expert to correct the number is the play, and this is the cheapest instance of it available. |
+| **A9** | The AU-multiples closure is **done and reasoned, not done and observed** | PROVE | 2 | Raised by an external read 2026-08-08, and it is right against this file's own rule. The closure rests on an **inference made at a desk about a number a working broker said out loud** — that Simon's 1–1.5× was quoted on EBIT rather than SDE. Probably correct; never put to him. Meanwhile two sectors still sit outside their published AU bands as pinned residuals (hospitality ~3.05× vs 1.5–2.5; Bars/Pubs 2.86 outside range), so the contradiction is not fully dissolved by the basis argument alone. **Fix is one email: *"when you said 1–1.5, was that on SDE, or on profit after a market salary?"*** Costs nothing, converts a reasoned closure into an observed one, and is the same correction-seeking move **N1** is built on — asking the expert to correct the number is the play, and this is the cheapest instance of it available. ⚠️ **STILL OPEN, and 08-14 both strengthened it and moved the target.** The Melis guide is a second broker publishing on this, and it makes the desk inference look *incomplete* rather than wrong — the size bracket is the likelier explanation of 1–1.5× than the basis. **The email is now worth more and has a sharper question** (see A10). |
+| **A10** | **No real size axis — `sizeAdjustment` is ~⅙ the sensitivity a published AU guide uses** | BUG | 2 | **The big one, and the reason A9's email matters.** Melis's baseline table is a **size** table: common multiple 1.3× (≤$250k) → 4.5× ($5–10m), a **3.5× swing**. `sizeAdjustment` is `clamp(1 + log10(SDE/250k)×0.25, 0.75, 1.25)` applied to the **ceiling only** — measured, it moves the well-run multiple **25% across a 10× earnings range**. Measured against the real model (`computeValuation`, not arithmetic on the comments): Kira's **weakest possible** electrical business at $150k SDE is **2.33×**, which **exceeds his High for that earnings bracket (2.2×)**; typical 2.79× vs his common 1.3×. ⚠️ **The direction is the one that matters — Kira reads 1.6–2.9× high at ≤$250k SDE, and the ICP lives there** ([[project-kira-icp]]: the 60–70yo owner). ⚠️ **Basis is NOT established** — three readings of his tables are live (his size table shifting SDE→EBITDA down the *rows*; Dennis's reading that Low is SDE and Common/High are EBITDA, which makes the divergence *larger and flatter*; and the one that would exonerate us, industry table = SDE at all sizes). **Do not act on this row before A9's email lands** — the three readings imply materially different corrections. |
+| **A11** | **`SECTOR_FLOOR_RATIO` is constant at 0.75; real AU floor ratios scale with sector level** | BUG | 2 | Melis's implied floor÷centre means **0.688** across 29 sectors and correlates with sector level at **r = 0.935** — cheap/risky sectors have proportionally *deeper* floors (café 0.571, retail 0.625) than rich ones (SaaS/childcare 0.741). Our 0.75 sits above 24 of his 29 rows. **This subsumes the pinned hospitality residual** (~3.05× vs a published 1.5–2.5×): that was recorded as "AU lease risk the US median does not price" and shelved pending AIBB membership, and it is better explained as a **constant-ratio artefact that surfaces worst in the cheapest sector** — i.e. fixable from data we already hold, not blocked on a paid dataset. ⚠️ Changing it fails `au-evidence.test.ts` by design; re-read the evidence rather than editing the assertion. |
+| **A12** | **`SELLER_RESERVATION_FLOOR = 1.5` is asserted, and published AU data contradicts it** | DEC | 3 | The constant's stated defence is *"below this he does not sell; he keeps working it"* — a reservation price, deliberately absolute and un-scaled. Melis publishes café Low **1.0×**, retail **1.25×**, and ≤$250k businesses at **0.8×**. ⚠️ And the argument is weakest **precisely for our ICP**: a 60–70-year-old selling because of age, health or exhaustion has no reservation price — that is the whole premise of the product. Operator decision, not a code fix: keep an asserted floor and defend it, or drop it and let sector×ratio run. |
+| **A13** | **The band collapses against `BUYER_CEILING` for rich sectors — and takes the PRICE with it** | BUG | 3 | Found while checking A10/A11's blast radius, not reported by anyone. `floor = sector × 0.75` and `ceiling = min(5.0, …)`, so as the sector median approaches ~6.67 the band closes to nothing: **Marinas & Fishing (6.60) runs floor 4.95 / ceiling 5.00, spread 0.05.** Transferability then moves the number almost not at all — and because `gap = profit × min(spread, 0.75) × captureHeadroom`, the gap collapses with it: identical answers at $300k SDE produce a **$131,344** gap in every normal sector and **$8,756** in Marinas. ⚠️ **The price is NOT affected — an earlier draft of this row said it was, citing `priceForGap`, which no longer exists** (`pricing.ts` picks the band from **reported profit**; the gap only drives the descriptive fraction). **The damage is to the pitch, and it is worse than a pricing bug:** that owner sees a $1.49M valuation, an $8,756 gap, and a $999/mo band whose *annual* cost is **137% of the gap**. `fractionWorthQuoting` correctly suppresses the "small fraction of what you unlock" line at that ratio, so the page degrades honestly — and what it degrades into is a bare price beside a valuation the product just said it can barely improve. Rubber & Plastic (5.11) is the same shape, milder. |
+
+⚠️ **THE BAND FEEDS NEITHER THE GAP NOR THE PRICE, AND THE PARAGRAPH ABOVE IS STALE ABOUT BOTH.**
+Two separate errors, both caught 2026-08-14, both from reasoning off this file instead of the code:
+
+1. **`priceForGap` DOES NOT EXIST.** It appears nowhere in the codebase — the only occurrence in the
+   repo is *this register*. `pricing.ts` selects the band from **reported annual profit**
+   (`priceForProfit`, `PRICE_TIERS` at $0/250k/750k/2M/5M), and the gap is used for **nothing except
+   the descriptive fraction** ("a year costs 0.3% of what's on the table"). That was changed
+   deliberately after a tester in the ICP said *"a company that gets paid more if the number is
+   bigger"* — the reasoning is in `pricing.ts`'s own header. **So "inflating the gap overcharges" is
+   no longer true, and the A1–A4 pricing argument above describes a model that has been replaced.**
+   It was correct when written on 08-02; it is not correct now.
+2. **The band does not move the gap either.** `claimedSpread` is
+   `min(spread, DOCUMENTATION_UPLIFT) × captureHeadroom`, and since `spread` is normally 1.2–1.9
+   while `DOCUMENTATION_UPLIFT` is 0.75, the uplift cap binds and floor and ceiling **drop out of
+   the gap entirely**. Verified across five sectors at $300k SDE spanning 2.28→6.60 medians:
+   **`today` ranged $641,425 → $1,489,494 while the gap was $131,344 in every one.**
+
+**Consequence for A10–A12: the change is far safer than it looks.** It moves the valuation an owner
+is shown and touches neither his gap nor his quote. **The one thing to check before shipping a size
+curve** is whether it pushes `spread` **below 0.75** at small SDE — at that point the uplift cap
+stops binding, the gap starts tracking the band, and **A13** arrives from the other end.
 
 ---
 
@@ -738,6 +829,24 @@ question this file exists to answer, and a tick with no evidence behind it is ho
 | **B7** | 2026-08-02 | `a30922e` | Against the live deployment, as the QA identity, all four halves reconcile: the handover document **no longer contains** *"considering selling… has not told anyone"* and states its own scope; it carries **3** entries where the page shows **6**; its closing counts recomputed to *"3 of 3 are dated…"* rather than reporting over everything held; the **raw data still contains all 6**, because it is his; and his page marks the withheld 3 as *"Yours only — kept out of the handover document, because it touches on that you are thinking about selling"*. Two regex defects were caught by tests before shipping, one of which would have withheld *"which jobs to walk away from"* — operating judgement that §1 lists as one of the five things a broker wants. ⚠️ Recall limit is real and tracked as **B13**; misclassified software facts still reaching the document are **B14**. |
 | **B12** | 2026-08-02 | `fe200fe` | `POST /api/kira/webhooks/facts_to_confirm?uid=<QA>` against the live deployment returned exactly two facts, and both handles resolve to `genome_section: 'only-you'` when checked against the database. The seven `none` rows now excluded are all about the SOFTWARE, not the business — *"The owner expects the assistant to act as a right hand"*, *"The owner authorizes the assistant to search connected…"* — which is what she would previously have read back to a 66-year-old for his handover document. Before the fix: 13 offerable rows, 7 of them `none`. The `neq`-drops-NULL claim in the code comment was verified against Postgres (`(NULL <> 'none') IS NULL` → true), not assumed. Test asserts the filter and is mutation-proven. |
 | **B1** | 2026-08-02 | `b47ff7c` | Against the live deployment, as the QA identity: `/my-genome` rendered *"2 have been read back to you and you agreed"* with two rows temporarily confirmed, the per-entry line *"Read back to you and confirmed on 2 August 2026"* appeared and **disappeared again on revert**, the zero state read *"Kira has not read any of these back to you yet…"*, and the Markdown export carried both *"(stated 1 August 2026; read back to the owner and confirmed 2 August 2026)"* and the zero-state closing paragraph. The two temporary confirmations were set on the **synthetic QA account only** and reverted in the same script; QA rows carrying `confirmed_at` afterwards: **0**. |
+
+---
+
+## Q. 2026-08-15 — from the orchestrator session's database audit
+
+Both raised by the orchestrator session while answering a different question (*does anything on its
+side block Kira?* — no; three databases, three owners, verified independently). Neither is theirs to
+fix. Full reply: `docs/BRIEF_ORCHESTRATOR_METERING_AND_GUARDS.md`.
+
+| ID | Item | Type | Sev | Detail |
+|---|---|---|---|---|
+| **Q1** | Kira meters **no** LLM spend — 7 runtime call sites, 12 with scripts | MISS | 2 | `grep` for `usage-meter\|observeAiCall\|USAGE_INGEST` across `lib/`, `app/`, `scripts/` returns **nothing**, and **neither `@caistech/usage-meter` nor `@caistech/ai-client` is a declared dependency**. Seven raw `api.openai.com` call sites in the runtime — `lib/embeddings/client.ts`, `lib/genome/derive.ts`, `lib/kira/memory-extract.ts`, `lib/kira/refusal-sweep.ts`, `lib/kira/structured-runner.ts`, `app/api/kira/chat/text/route.ts`, `app/api/valuation/match-industry/route.ts` — plus five in scripts. **This is not a new discovery: `SHARED_SERVICES.md` already names *"Kira ×7 call sites"*** among the OpenAI-direct products that "could not report a single token", and the count matches exactly. So the catalogue recorded it and nobody acted. Consequence: Kira's entire LLM spend is invisible to the cockpit cost dashboard, and every model/routing decision is being made without the data that would inform it. `usage-meter` 0.2.0 added the OpenAI adapter and 0.3.0 added `observeAiCall` (call-grain: latency, failures, `call_id`) — both exist and are unadopted. Adopt `ai-client`'s `runChat()` in the same change: it was **scoped from these very call sites** ("six hand-rolled OpenAI clients in Kira"). ⚠️ **BLOCKED ON ONE FACT, AND THE BLOCK IS THE POINT.** `usage-meter` is deliberately fail-soft — it no-ops until `USAGE_INGEST_*` is set, never throws, never blocks the call — so **a wired-but-not-receiving integration is indistinguishable from a working one**. Wiring it before anyone has watched a row arrive would produce exactly the inert-not-broken state that produced **the readiness score that never recomputes**, **the genome that was never seeded**, and **`ensureTrial`, which nothing in the product calls**. The orchestrator session reports the cockpit ingest route as freshly fixed and unverified (403 on the scope). **Precondition: observe one row land in `usage_events`. Then wire.** Whichever repo establishes it first saves the other. |
+| **Q2** | Migration guard checks a ref against itself | DEBT | 3 | Kira's push flow verifies the target by comparing `supabase/.temp/project-ref` against the ref in memory and in `.env.local`. **Three sources, all strings we already had** — they can prove consistency and cannot prove correctness. The orchestrator session's phrasing is the item: *"checking a ref against the ref you typed proves nothing: it is the same string twice."* Their `db-migrate.ts` instead fetches the project and refuses unless its **name** matches `--expect "orchestrator"`, which is an independent fact. ⚠️ **The stakes are why this is filed rather than shrugged at: the management token writes to 36 databases**, including `F2K Fund Tokenisation` and `Platform Trust`. A transposed ref does not error — it lands in someone else's schema, and the first sign is a table nobody can account for. Applied retroactively to today's `beta_codes` push (`GET /v1/projects` → `name="Kira"`, `ap-south-1`), which passed — but it passed *after* the fact, which is the wrong order. Adopt the `--expect` shape in Kira's flow before the next migration. Cheap; the orchestrator's implementation is the reference and needs nothing from them. |
+
+| **Q3** | The Gmail access levels are a type, a component nobody renders, and 9 passing tests | MISS | 2 | Found by the **orchestrator session** 2026-08-15 while reviewing `af33bbc`, and verified here. `GmailAccess = 'none' \| 'draft' \| 'read'` exists on `ConnectClaim`; `ConnectChoices.tsx` presents all six Drive×Gmail levels with the cost of each stated; `connect-choices.test.tsx` passes 9 tests. **None of it is reachable.** `grep ConnectChoices app components` returns only the file and its own test — **it is imported by nothing**. And `app/setup/drive/actions.ts` is the only caller of `googleConnectLink`, passing `tenantId`, `access`, `email`, `returnTo` and **never `gmail`** — so with `gmail` optional and absent meaning `'none'` on the far side (deliberate, and right), **every ticket minted today reaches the orchestrator as `gmail: 'none'`** and Gmail drafts cannot work whatever an owner picks. He cannot pick anything regardless; there is no screen. ⚠️ **`af33bbc`'s message overclaims it** — *"ConnectChoices puts the six levels in front of him"* is true of the file and false of the product; a banner at the top of the component records that rather than quietly correcting it. ⚠️ **This is the fourth instance this week of the same class** — alongside the readiness score that never recomputes, the genome that was never seeded, and `ensureTrial` which nothing calls. Each is a correct, tested, unreachable implementation, and in every case the tests passed. **Whatever check catches this class is worth more than the four fixes**: a component with tests and no importer is statically detectable, and so is an optional field on a claim type that no caller ever sets. Closing needs a change to `actions.ts` plus a surface that renders the component — not an edit to `ConnectChoices`, which is correct as written. |
+
+| **Q4** | An invitation was sent carrying a code that was never in the table | MISS | 1 | ✅ **CLOSED 2026-08-15, same day, by a mechanism rather than by care.** Found by the operator walking the product: he read `KIRA-7H2K-9QLM` out of the invitation email — a PLACEHOLDER passed as `--code` during a template test — typed it, and was told *"That code is not valid."* **Severity 1 because of the shape rather than the size.** The recipient did exactly the right thing; the message told him to *check it against the email we sent you*; he checked; it matched; and the only conclusion available to him was that the product is broken. **A real invitee has no second channel** — he cannot query `beta_codes` and does not know a placeholder is possible — so he tries twice and stops, which is the 2026-08-10 invitation audit repeating in new clothes: eight people who could not get in and never said so. **Fix:** `scripts/send-beta-invite.ts` now looks the code up before composing and **refuses to send** an unknown, revoked, redeemed or expired one, naming which. It already held a service-role connection, so this is one query. Runs **before `--dry` too**, so a dry run cannot bless a code a real send would fail on. It also prints a NOTE when the code's bound address differs from the recipient, because mailing a code to one person that creates an account for another should never be a surprise. **Proven both directions before it was trusted:** the dead code is refused by name, and the same command with a live code sent (`4dc69e44`). |
+| **Q5** | "Check it against the email" points at the artefact under suspicion | DEBT | 3 | The single rejection message — deliberately one sentence for all four causes, so an anonymous caller learns nothing about which codes exist — reads *"That code is not valid. Check it against the email we sent you — or reply to it and we will send a new one."* Good advice for a mistype. **Useless when the email is what is wrong**, which **Q4** proved can happen: he checks, it matches, and the message has sent him to the one place that cannot resolve the contradiction. The second clause (*reply to it*) is the escape hatch and it is doing real work — but it is subordinate, and it still depends on him having an email worth replying to. Worth a wording pass so the way out does not rest on the artefact under suspicion. ⚠️ **Do NOT fix by distinguishing the four causes** — that is the enumeration oracle the single message exists to prevent, and `beta-codes.ts` records why. This is a copy change to one string in two routes (`/api/beta/peek`, `/api/beta/redeem`), not a change to the branching. |
 
 ---
 

@@ -265,13 +265,23 @@ export default function StartPage() {
     setFraming(startFraming(params.get('from')));
   }, []);
 
-  const fromPaid = framing.isPaidArrival;
+  // ⚠️ `fromPaid` IS NOW DEAD AND KEPT DELIBERATELY, because deleting it would erase why.
+  //
+  // It framed this page as "Last step — let's set up your Kira", which was right while the paid
+  // path landed here directly. Since 2026-08-15 BOTH entry paths land on /dashboard and the gate
+  // sends him on with `from=app`, so nothing produces `from=paid` any more and the branch was
+  // rendering copy nobody could reach. The framing now lives on the gate, which is the surface that
+  // knows what he has just done.
+  //
+  // Left as a read so the shape of the old contract is visible to the next reader, and so the
+  // resume banner below (which also keys off `framing`) is not disturbed by a half-removal.
+  void framing.isPaidArrival;
   const cameFromApp = framing.cameFromApp;
 
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-stone-950 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-amber-50 flex items-center justify-center p-6">
         <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6 max-w-md text-center">
           <p className="text-red-400">{error}</p>
         </div>
@@ -280,14 +290,21 @@ export default function StartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-950 font-sans">
-      {/* Background gradient */}
+    <div className="min-h-screen bg-amber-50 font-sans">
+      {/* BACKGROUND GRADIENT — decoration only, and it must never receive a click.
+          It is `absolute inset-0` with no stacking of its own, so it painted over the nav that
+          `UserShell` renders around this page and swallowed every link on it. The page's own content
+          escaped because the div below is `relative`; the shell's nav had no such protection, so the
+          links rendered, looked fine, and did nothing.
+          `pointer-events-none` is the fix and `-z-10` is the belt: a full-bleed decorative layer
+          should be incapable of intercepting input, not merely arranged so that it currently does
+          not. Reported by the operator, 2026-08-12. */}
       <div
-        className="absolute inset-0"
+        className="pointer-events-none absolute inset-0 -z-10"
         style={{
           background: `
-            radial-gradient(ellipse at 50% 0%, rgba(251, 191, 36, 0.08) 0%, transparent 50%),
-            radial-gradient(ellipse at 100% 100%, rgba(244, 114, 182, 0.06) 0%, transparent 50%)
+            radial-gradient(ellipse at 50% 0%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+            radial-gradient(ellipse at 100% 100%, rgba(244, 114, 182, 0.05) 0%, transparent 50%)
           `
         }}
       />
@@ -300,7 +317,7 @@ export default function StartPage() {
             exists is how this page kept reading as the pre-Exec product. */}
         <div className="mb-8">
           <a href={cameFromApp ? '/dashboard' : '/'}
-            className="text-stone-500 hover:text-stone-300 text-sm transition-colors inline-flex items-center gap-2"
+            className="text-stone-600 hover:text-stone-900 text-sm transition-colors inline-flex items-center gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
             {cameFromApp ? 'Back to your dashboard' : 'Back to home'}
@@ -314,8 +331,8 @@ export default function StartPage() {
               <img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" />
             </div>
             <div className="text-left">
-              <h1 className="text-2xl font-bold text-white">Kira</h1>
-              <p className="text-stone-400 text-sm">Your part-time general manager</p>
+              <h1 className="text-2xl font-bold text-stone-900">Kira</h1>
+              <p className="text-stone-600 text-sm">Your part-time general manager</p>
             </div>
           </div>
 
@@ -323,19 +340,13 @@ export default function StartPage() {
               He has just paid and been sent here as step 2. Naming that is the difference between
               "one more page" and "the bit that makes her yours" — and it is the honest description,
               because until this conversation happens he has no agent at all. */}
-          <h2 className="text-3xl font-bold text-white mb-2">
-            {fromPaid
-              ? "Last step — let's set up your Kira"
-              : selectedJourney
-                ? "Tell her how the business actually runs"
-                : "What brings you here today?"}
+          <h2 className="text-3xl font-bold text-stone-900 mb-2">
+            {selectedJourney ? 'Talk to Kira' : 'What brings you here today?'}
           </h2>
-          <p className="text-stone-400">
-            {fromPaid
-              ? "About three minutes. Tell her how the work actually gets done and she writes it up for you to check — nothing is kept until you approve it."
-              : selectedJourney
-                ? "Have a quick chat and Kira will create a brief for you to review."
-                : "Choose your path and let's have a conversation"}
+          <p className="text-stone-600">
+            {selectedJourney
+              ? 'Tell her how the work actually gets done. She writes it up for you to check.'
+              : "Choose your path and let's have a conversation"}
           </p>
         </div>
 
@@ -344,13 +355,13 @@ export default function StartPage() {
           <div className="max-w-xl mx-auto">
             <button
               onClick={() => selectJourney('business')}
-              className="w-full bg-stone-900/50 border border-stone-800 hover:border-pink-500/50 rounded-2xl p-6 text-left transition-all hover:bg-stone-900/80 group"
+              className="w-full bg-white border border-stone-200 hover:border-violet-300 rounded-2xl p-6 text-left transition-all hover:bg-stone-50 group"
             >
               <div className="w-12 h-12 rounded-xl bg-pink-500/20 flex items-center justify-center mb-4 group-hover:bg-pink-500/30 transition-colors">
                 <Briefcase className="w-6 h-6 text-pink-400" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">Tell Kira about your business</h3>
-              <p className="text-stone-400 text-sm mb-4">
+              <h3 className="text-xl font-bold text-stone-900 mb-2">Tell Kira about your business</h3>
+              <p className="text-stone-600 text-sm mb-4">
                 What you do, how it runs, what you&apos;re trying to sort out. Have a quick chat and Kira
                 builds a brief for you to review — then becomes your part-time general manager.
               </p>
@@ -363,22 +374,21 @@ export default function StartPage() {
 
         {/* CONVERSATION INTERFACE (after journey selected) */}
         {selectedJourney && (
-          <div className="bg-stone-900/50 border border-stone-800 rounded-3xl p-8">
-            {/* Instructions */}
-            <div className="mb-8 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-              <div className="flex items-start gap-3">
-                <Sparkles className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-amber-200 font-medium mb-1">How it works:</p>
-                  <ol className="text-amber-200/70 text-sm space-y-1 list-decimal list-inside">
-                    <li>Kira starts talking — just answer as you would to a person</li>
-                    <li>Tell her how the work gets done, and what only you know</li>
-                    <li>She writes it up for you to check before anything is kept</li>
-                    <li>The button below turns green when there is something to read</li>
-                  </ol>
-                </div>
-              </div>
-            </div>
+          <div className="bg-white border border-stone-200 rounded-3xl p-8">
+            {/* ⚠️ THE FOUR-STEP "How it works" BOX WAS REMOVED HERE — 2026-08-15.
+                The operator arrived on this page by pressing "Talk to Kira" and objected to the
+                text as well as the palette. He is right, and the box was the worst of it: a man who
+                asked to TALK to someone was met by a numbered list explaining a process, in an
+                amber panel, on a page that looked like a different product. It read as a form to be
+                completed rather than a person to be spoken to — which is the one thing this product
+                promises it is not.
+                What survives is the single sentence that is genuinely useful and could not be
+                guessed: nothing is kept until he approves it. That is a reassurance, not an
+                instruction, and it belongs next to the mic rather than above it. */}
+            <p className="mb-6 text-base leading-relaxed text-stone-600">
+              Just talk to her the way you would to a person — she will ask as she goes. Nothing is
+              kept until you have read it back and approved it.
+            </p>
 
             {/* THE CANONICAL WIDGET — the migration this page was skipped by.
                 a4f0ee2 ("migrate coach + PubGuard voice onto canonical Morgan VoiceWidget") moved
@@ -426,7 +436,7 @@ export default function StartPage() {
                   transition-all duration-300 transform
                   ${draftReady
                     ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-stone-900 shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 hover:scale-105 cursor-pointer'
-                    : 'bg-stone-800 text-stone-500 border border-stone-700 cursor-not-allowed'
+                    : 'bg-stone-100 text-stone-400 border border-stone-200 cursor-not-allowed'
                   }
                 `}
               >
@@ -446,7 +456,7 @@ export default function StartPage() {
             </div>
 
             {/* Text fallback — no mic, noisy room, or just prefer to type */}
-            <div className="mt-6 border-t border-stone-800 pt-6">
+            <div className="mt-6 border-t border-stone-200 pt-6">
               {!showTextForm ? (
                 <div className="text-center">
                   <button
@@ -454,7 +464,7 @@ export default function StartPage() {
                       setShowTextForm(true);
                       setTextError(null);
                     }}
-                    className="text-stone-400 hover:text-amber-300 text-sm underline underline-offset-4 transition-colors"
+                    className="text-violet-700 hover:text-violet-900 text-sm underline underline-offset-4 transition-colors"
                   >
                     No microphone, or prefer to type? Write your brief instead
                   </button>
@@ -462,39 +472,39 @@ export default function StartPage() {
               ) : (
                 <div className="max-w-xl mx-auto space-y-4">
                   <div>
-                    <h3 className="text-white font-semibold">Type your brief</h3>
-                    <p className="text-stone-400 text-sm">
+                    <h3 className="text-stone-900 font-semibold">Type your brief</h3>
+                    <p className="text-stone-600 text-sm">
                       A few lines is enough — you can refine everything on the next screen before creating your Kira.
                     </p>
                   </div>
                   <div>
-                    <label className="block text-stone-300 text-sm mb-1">Your name</label>
+                    <label className="block text-stone-700 text-sm mb-1">Your name</label>
                     <input
                       type="text"
                       value={textName}
                       onChange={(e) => setTextName(e.target.value)}
                       placeholder="Your name"
-                      className="w-full px-4 py-3 rounded-xl bg-stone-800/60 border border-stone-600/40 text-stone-100 placeholder-stone-500 focus:border-amber-400/50 focus:outline-none"
+                      className="w-full px-4 py-3 rounded-xl bg-white border border-stone-300 text-stone-900 placeholder-stone-400 focus:border-violet-400 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-stone-300 text-sm mb-1">Location</label>
+                    <label className="block text-stone-700 text-sm mb-1">Location</label>
                     <input
                       type="text"
                       value={textLocation}
                       onChange={(e) => setTextLocation(e.target.value)}
                       placeholder="City, Country"
-                      className="w-full px-4 py-3 rounded-xl bg-stone-800/60 border border-stone-600/40 text-stone-100 placeholder-stone-500 focus:border-amber-400/50 focus:outline-none"
+                      className="w-full px-4 py-3 rounded-xl bg-white border border-stone-300 text-stone-900 placeholder-stone-400 focus:border-violet-400 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-stone-300 text-sm mb-1">What do you want to work on?</label>
+                    <label className="block text-stone-700 text-sm mb-1">What do you want to work on?</label>
                     <textarea
                       value={textObjective}
                       onChange={(e) => setTextObjective(e.target.value)}
                       rows={3}
                       placeholder="What are you trying to figure out or achieve?"
-                      className="w-full px-4 py-3 rounded-xl bg-stone-800/60 border border-stone-600/40 text-stone-100 placeholder-stone-500 focus:border-amber-400/50 focus:outline-none resize-none"
+                      className="w-full px-4 py-3 rounded-xl bg-white border border-stone-300 text-stone-900 placeholder-stone-400 focus:border-violet-400 focus:outline-none resize-none"
                     />
                   </div>
                   {textError && <p className="text-red-400 text-sm">{textError}</p>}
@@ -518,7 +528,7 @@ export default function StartPage() {
                     </button>
                     <button
                       onClick={() => setShowTextForm(false)}
-                      className="text-stone-500 hover:text-stone-300 text-sm transition-colors"
+                      className="text-stone-600 hover:text-stone-900 text-sm transition-colors"
                     >
                       Back to talking
                     </button>

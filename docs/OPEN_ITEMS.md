@@ -100,3 +100,43 @@ from you.
   (`scripts/split-genome-entity.mjs --restore --apply`). Deferred, not blocked.
 - **Migration ledger** — reconciled 2026-07-31; 39/39 recorded. Nothing outstanding, noted so the
   next session does not re-investigate it.
+
+---
+
+## EU AI Act — a one-week self-assessment, not yet started (logged 2026-08-11)
+
+*Source: "EU AI Act Exposure Checklist", Dhvani Puar. The eight steps below are hers; the
+Kira-specific readings under each are ours.*
+
+**TO REVIEW, not to panic about.** The reason it is not dismissible as "we're tiny": the Act attaches
+to systems placed on the EU market *or whose output is used in the EU* — and we already have an EU
+touchpoint. Carmen Plasencia signed up from `aromics.es` (Barcelona), holds an account, and was
+emailed on 2026-08-11. That is one user, but it is not zero, and "we don't operate in the EU" is
+therefore not the answer.
+
+The checklist, roughly a week of work and none of it needing a lawyer we do not have:
+
+1. **Provider or deployer?** Different obligations attach to each, and we are quietly both — we build
+   Kira (provider) and we deploy vendor models inside her (deployer).
+2. **List every AI system touching the product**, including bought tools, not just built ones.
+   Ours today: ElevenLabs (voice + STT), the LLM behind the agent, Anthropic/OpenAI in the app paths,
+   Mnemo (semantic memory), and whatever the valuation model counts as.
+3. **Bucket each one** — banned / high-risk / limited / minimal. Check rather than assume.
+4. **Disclose where a system talks to a user or generates content.** Partly done: the ADM disclosure
+   shipped ahead of 10 December, and the ElevenLabs consent modal fires before every call.
+5. **Anything touching credit, hiring, insurance or another high-risk category** is different
+   territory. ⚠️ Worth a hard look at the **valuation model** — it produces a number an owner may
+   rely on in a sale. Probably not high-risk as defined, but it is the one to check rather than wave
+   past.
+6. **Ask every AI vendor for their paperwork** — training data, failure modes, how to report a
+   problem. Where they cannot answer, record that; the absence is itself a finding.
+7. **Name one person who owns this.** One, not a working group.
+8. **Start logging now**, spreadsheet is fine. The history is the part that cannot be back-filled.
+
+**Related, already in flight:** [[project-kira-adm-disclosure]] (live, and the open question there —
+whether the Privacy Act applies to the entity at all via the related-to-a-larger-business limb — is
+the same shape of question as this one). Also `REGULATORY_INCLUSIONS.md`, which is the portfolio's
+canonical ruleset for what a product must show users, and which currently has nothing on the AI Act.
+
+⚠️ **Portfolio-wide, not Kira-specific.** Logged here because it surfaced here; it belongs in
+`cais-shared-services` once someone owns it.

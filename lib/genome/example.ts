@@ -87,7 +87,7 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
     key: 'pricing',
     title: 'How work is priced and quoted',
     question: 'Can someone else quote a job and get the same number?',
-    coverage: 'building',
+    coverage: 'covered',
     entries: [
       {
         title: 'Standard hourly rates, by job type',
@@ -121,7 +121,7 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
     key: 'operations',
     title: 'How the work actually gets done',
     question: 'Does the business run without the owner on site?',
-    coverage: 'thin',
+    coverage: 'covered',
     entries: [
       {
         title: 'Two crews, allocated each morning by the owner',
@@ -138,6 +138,23 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
           'licence class required. This is the single largest transferability constraint in the business.',
         confidence: 'confirmed',
         capturedFrom: 'Conversation, 26 March',
+      },
+      {
+        title: 'The Thursday run sheet, and who builds it',
+        detail:
+          'Jobs for the following week are allocated on Thursday afternoon from the whiteboard in the office. Since '
+          + 'March this has been done by Karen with the owner reviewing it, rather than by the owner from memory. Two '
+          + 'weeks in the last six months needed no changes at all.',
+        confidence: 'confirmed',
+        capturedFrom: 'Conversation, 5 June',
+      },
+      {
+        title: 'What happens when a job goes wrong on site',
+        detail:
+          'The apprentice calls Danny, not the owner. Danny has authority to spend up to $2,000 to keep a job moving '
+          + 'without asking. Written down in May after the Ridge job stalled for a day waiting on a phone call.',
+        confidence: 'confirmed',
+        capturedFrom: 'Conversation, 22 May',
       },
     ],
     stillOnlyInYourHead: [
@@ -163,6 +180,14 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
         confidence: 'captured',
         capturedFrom: 'Conversation, 2 April',
       },
+      {
+        title: 'Who chases, and at what point',
+        detail:
+          'Karen runs the aged debtors on the first Monday of the month and calls anything over 45 days. The owner is '
+          + 'only involved above 60 days or over $10,000. Before February he made every one of those calls himself.',
+        confidence: 'confirmed',
+        capturedFrom: 'Conversation, 5 June',
+      },
     ],
     stillOnlyInYourHead: ['Whether the Reece pricing survives a change of owner — it has never been tested'],
   },
@@ -184,6 +209,15 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
         confidence: 'confirmed',
         capturedFrom: 'Conversation, 14 April',
       },
+      {
+        title: 'The renewal calendar, and who watches it',
+        detail:
+          'Plumbing licence, two vehicle registrations, public liability and workers compensation, with renewal dates '
+          + 'and the broker’s contact. Karen holds the calendar; the owner is copied. Nothing has lapsed since it was '
+          + 'written down.',
+        confidence: 'confirmed',
+        capturedFrom: 'Conversation, 18 June',
+      },
     ],
     stillOnlyInYourHead: [],
   },
@@ -195,7 +229,7 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
     key: 'people',
     title: 'Who does the work',
     question: 'Who is critical, how long have they been with you, and who would leave on announcement?',
-    coverage: 'building',
+    coverage: 'covered',
     entries: [
       {
         title: 'Two of the nine are load-bearing, and only one has a contract',
@@ -211,6 +245,14 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
         confidence: 'captured',
         capturedFrom: 'Conversation, 22 April',
       },
+      {
+        title: 'Who would leave if the business changed hands',
+        detail:
+          'The owner believes Danny stays and the second-year apprentice follows him. Karen has said she would retire '
+          + 'rather than learn a new system. None of this is in any file, and all three are load-bearing.',
+        confidence: 'confirmed',
+        capturedFrom: 'Conversation, 18 June',
+      },
     ],
     stillOnlyInYourHead: [
       'Which of the nine would follow the leading hand if he left',
@@ -221,7 +263,7 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
     key: 'assets',
     title: 'What the business owns',
     question: 'What do you own, what do you lease, and what is held in your own name?',
-    coverage: 'thin',
+    coverage: 'covered',
     entries: [
       {
         title: 'Four vans owned outright, one on finance until 2027',
@@ -237,6 +279,15 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
         confidence: 'confirmed',
         capturedFrom: 'Conversation, 6 May',
       },
+      {
+        title: 'What is owned, financed, and held personally',
+        detail:
+          'Three utes and the trailer are owned outright; the 2023 ute is financed with 19 months remaining. The yard '
+          + 'is held in the owner’s super fund and leased to the business at below market rent — which a buyer will '
+          + 'normalise, and which is not in these figures.',
+        confidence: 'confirmed',
+        capturedFrom: 'Conversation, 2 July',
+      },
     ],
     stillOnlyInYourHead: [
       'Which plant is near end of life and what replacing it costs',
@@ -247,7 +298,7 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
     key: 'systems',
     title: 'What is run by them, and what they can tell you',
     question: 'Where do your records live, who can reach them, and what is written down?',
-    coverage: 'thin',
+    coverage: 'covered',
     entries: [
       {
         title: 'Jobs are scheduled in a whiteboard photo, sent nightly',
@@ -262,6 +313,15 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
           'The bookkeeper has Xero access. Quotes, variations and supplier agreements live in a personal inbox nobody else can search.',
         confidence: 'confirmed',
         capturedFrom: 'Documents + conversation, 13 May',
+      },
+      {
+        title: 'Where everything lives, and who can reach it',
+        detail:
+          'Accounts in Xero, jobs in simPRO, photographs on the office machine and on the owner’s phone. Karen and the '
+          + 'owner hold admin on both systems; nobody else does. The domain and the business email were registered in '
+          + 'the owner’s personal name in 2009 and have not been moved.',
+        confidence: 'confirmed',
+        capturedFrom: 'Conversation, 2 July',
       },
     ],
     stillOnlyInYourHead: [
@@ -278,7 +338,7 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
     key: 'customers',
     title: 'Who buys, and who owns the relationship',
     question: 'Revenue by customer, concentration, and who owns each relationship.',
-    coverage: 'empty',
+    coverage: 'covered',
     entries: [
       {
         title: 'Which customers pay and which need chasing',
@@ -295,6 +355,15 @@ export const EXAMPLE_GENOME: GenomeSection[] = [
           'work has never gone to tender. A buyer would have no way of knowing this mattered.',
         confidence: 'confirmed',
         capturedFrom: 'Conversation, 30 April',
+      },
+      {
+        title: 'Revenue by customer, three years, and who owns each one',
+        detail:
+          'Hartley 34%, Vaughan 16%, Ridge 11%, the two aged-care contracts 9% between them, domestic the remainder. '
+          + 'Hartley and the aged-care contracts are owned by the owner personally; Vaughan and Ridge have been handled '
+          + 'by Danny since last October and have not asked for the owner since.',
+        confidence: 'confirmed',
+        capturedFrom: 'Conversation, 12 June',
       },
     ],
     stillOnlyInYourHead: [

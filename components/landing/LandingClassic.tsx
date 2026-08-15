@@ -165,7 +165,7 @@ export function LandingClassic() {
           <div className="flex items-center gap-3 sm:gap-6">
             <a href="#how-it-works" className="font-body text-stone-600 hover:text-kira-600 transition-colors font-medium hidden md:block">How it works</a>
             <a href="#pricing" className="font-body text-stone-600 hover:text-kira-600 transition-colors font-medium hidden md:block">Pricing</a>
-            <a href="/genome" className="font-body text-stone-600 hover:text-kira-600 transition-colors font-medium hidden md:block">What you get</a>
+            <a href="/sample-genome" className="font-body text-stone-600 hover:text-kira-600 transition-colors font-medium hidden md:block">What you get</a>
             <a href="/advisors" className="font-body text-stone-600 hover:text-kira-600 transition-colors font-medium hidden md:block">Advisors</a>
             <a href="/about" className="font-body text-stone-600 hover:text-kira-600 transition-colors font-medium hidden md:block">About</a>
             <a href="/login" className="font-body flex min-h-[44px] items-center px-2 text-sm font-medium text-stone-700 hover:text-kira-600">Sign in</a>
@@ -192,7 +192,7 @@ export function LandingClassic() {
           <div className="md:hidden border-t border-kira-mist bg-white/95 backdrop-blur px-6 py-3 space-y-1">
             <a href="#how-it-works" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-kira-mist">How it works</a>
             <a href="#pricing" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-kira-mist">Pricing</a>
-            <a href="/genome" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-kira-mist">What you get</a>
+            <a href="/sample-genome" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-kira-mist">What you get</a>
             <a href="/advisors" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-kira-mist">Advisors</a>
             <a href="/about" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-3 text-base font-medium text-stone-700 hover:bg-kira-mist">About</a>
             {/* No Admin link. The operator console is not a customer destination, and putting it in
@@ -238,7 +238,7 @@ export function LandingClassic() {
               profitable business that runs on <span className="font-semibold text-stone-800">them</span>. Everything that matters is
               in your head, not on paper — so a buyer isn&apos;t buying an asset, they&apos;re buying you, and they
               price it accordingly. <span className="font-semibold text-stone-800">Kira</span> works alongside you day to day, in
-              conversation, and turns what you know into a documented <a href="/genome" className="font-semibold text-kira-600 underline decoration-kira-600 underline-offset-4 hover:decoration-kira-600">Business Genome</a> the
+              conversation, and turns what you know into a documented <a href="/sample-genome" className="font-semibold text-kira-600 underline decoration-kira-600 underline-offset-4 hover:decoration-kira-600">Business Genome</a> the
               business can be sold with. Most owners start this <span className="font-semibold text-stone-800">before they&apos;ve told anyone</span>.
             </p>
 
@@ -280,7 +280,7 @@ export function LandingClassic() {
                     through the actual calculator returns 1.75x, so the shop window oversold the shop
                     by well over double and the owner found out at the results page (naive-tester,
                     Ray, 2026-07-28). Whoever changes the model must change these with it.
-                    Same business as /genome and the demos — one story across every surface. */}
+                    Same business as /sample-genome and the demos — one story across every surface. */}
                 {/* P8 — EACH NUMBER SAYS WHAT IT MEANS.
                     "Walk away from what? From the sale? From the business?" He only found out deep
                     inside the valuation, where these three have always been explained properly. The
@@ -296,12 +296,12 @@ export function LandingClassic() {
                 </div>
                 <div className="rounded-2xl bg-kira-mist border border-kira-mist p-3">
                   <p className="text-sm uppercase tracking-wide text-stone-400 font-semibold">{HEADLINE_NUMBERS[1].shortLabel}</p>
-                  <p className="font-display font-bold text-stone-800 text-sm mt-1">$684k</p>
+                  <p className="font-display font-bold text-stone-800 text-sm mt-1">$626k</p>
                   <p className="text-sm text-stone-500 mt-1 leading-snug">{HEADLINE_NUMBERS[1].meaning}</p>
                 </div>
                 <div className="rounded-2xl bg-gradient-to-br from-kira-50 to-kira-50 border border-kira-mist p-3">
                   <p className="text-sm uppercase tracking-wide text-stone-400 font-semibold">{HEADLINE_NUMBERS[2].shortLabel}</p>
-                  <p className="font-display font-bold text-kira-600 text-sm mt-1">$879k</p>
+                  <p className="font-display font-bold text-kira-600 text-sm mt-1">$821k</p>
                   <p className="text-sm text-stone-500 mt-1 leading-snug">{HEADLINE_NUMBERS[2].meaning}</p>
                 </div>
               </div>

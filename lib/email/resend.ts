@@ -74,7 +74,6 @@ interface KiraReadyEmailParams {
   userEmail: string;
   agentId: string;
   journeyType: 'personal' | 'business';
-  primaryGoal?: string;
 }
 
 export async function sendKiraReadyEmail({
@@ -82,7 +81,6 @@ export async function sendKiraReadyEmail({
   userEmail,
   agentId,
   journeyType,
-  primaryGoal,
 }: KiraReadyEmailParams) {
   const chatUrl = `${APP_URL}/chat/${agentId}`;
   const firstName = userName.split(' ')[0];
@@ -119,7 +117,7 @@ export async function sendKiraReadyEmail({
               </p>
               
               <p style="font-size: 16px; color: #555; line-height: 1.6; margin: 0 0 24px 0;">
-                Great news — your personal Kira guide is all set up and ready to help you${primaryGoal ? ` with <strong>${primaryGoal}</strong>` : ''}.
+                Great news — your personal Kira guide is all set up and ready to help you${journeyType === 'business' ? ' with <strong>your business</strong>' : ' with whatever you need'}.
               </p>
               
               <p style="font-size: 16px; color: #555; line-height: 1.6; margin: 0 0 32px 0;">
@@ -141,6 +139,24 @@ export async function sendKiraReadyEmail({
               <p style="font-size: 14px; color: #888; text-align: center; margin: 24px 0 0 0;">
                 Or copy this link: <a href="${chatUrl}" style="color: #E8998D;">${chatUrl}</a>
               </p>
+            </td>
+          </tr>
+          
+          <!-- Google Drive Connection Notice -->
+          <tr>
+            <td style="padding: 0 40px 32px 40px;">
+              <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; border-radius: 8px; padding: 24px;">
+                <h3 style="color: #92400E; margin: 0 0 12px 0; font-size: 16px;">📌 About Connecting Google Drive</h3>
+                <p style="color: #78350F; font-size: 14px; line-height: 1.6; margin: 0 0 12px 0;">
+                  When Kira asks to connect to your Google Drive, Gmail, or Contacts, you'll see a Google security warning that says <em>"Google hasn't verified this app"</em>.
+                </p>
+                <p style="color: #78350F; font-size: 14px; line-height: 1.6; margin: 0 0 12px 0;">
+                  <strong>This is expected and safe to proceed.</strong> We're currently in Google's verification process (typically 3-7 days). Your data remains completely secure.
+                </p>
+                <p style="color: #78350F; font-size: 13px; line-height: 1.6; margin: 0;">
+                  <strong>To continue:</strong> Click "Advanced" → Click "Go to Kira (unsafe)" → Click "Allow"
+                </p>
+              </div>
             </td>
           </tr>
           

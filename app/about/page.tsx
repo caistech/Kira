@@ -166,7 +166,7 @@ export default function AboutPage() {
               See what it&apos;s worth
             </a>
             <a
-              href="/genome"
+              href="/sample-genome"
               className="inline-flex min-h-[44px] items-center justify-center px-2 text-[17px] text-kira-600 underline underline-offset-2 hover:text-kira-700"
             >
               Or see a real Genome

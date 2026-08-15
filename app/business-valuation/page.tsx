@@ -29,8 +29,21 @@ import {
 import {
   formatRunDate,
   summariseAnswers,
-  type SummaryStep,
 } from '@/lib/valuation/answer-summary';
+// THE QUESTION SET LIVES IN `lib/valuation/questions.ts`, not here.
+//
+// It was declared inline in this file, which meant the in-portal gate could not render the same
+// questions without forking a 1,955-line component — and two copies of a question set is two
+// genomes. The data moved; the drawing of it stayed. See that file's header for why the icons had
+// to become keys.
+import {
+  RECORD_STEPS,
+  SCREEN_COUNT,
+  STEPS,
+  type Answers,
+  type AnswerKey,
+  type IconKey,
+} from '@/lib/valuation/questions';
 import {
   EXIT_TIMEFRAME_OPTIONS,
   exitAdvice,
@@ -66,7 +79,12 @@ import { FULL_RATE_PERIOD_CAP, priceForProfit } from '@/lib/valuation/pricing';
 import { netPosition } from '@/lib/valuation/net-position';
 import { approxNumber, formatMoney, formatMoneyApprox, formatPrice, getCurrency, CURRENCIES, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { displayedFigures, displayedUplifts } from '@/lib/valuation/displayed';
-import { synonymGroup, synonymSector } from '@/lib/valuation/industry-synonyms';
+import {
+  INDUSTRY_NOT_LISTED,
+  INDUSTRY_OPTION_GROUPS,
+  isSelectableIndustry,
+} from '@/lib/valuation/industry-options';
+import { synonymSector } from '@/lib/valuation/industry-synonyms';
 import { forSharing, storeValuation, VALUATION_HANDOFF_KEY } from '@/lib/valuation/share';
 import {
   clearValuationLocal,
@@ -76,74 +94,27 @@ import {
 } from '@/lib/valuation/persist';
 
 /**
- * The answers held on the device.
+ * THE ICONS, mapped from the key the question set carries.
  *
- * WIDER THAN `ValuationInputs` BY EXACTLY ONE FIELD, and the widening is the H3 guard's structural
- * half. `exitTimeframe` is asked, shown back, and never travels: it is not an input to the model and
- * it is not part of the payload that becomes a row on his account at signup. Keeping it out of
- * `ValuationInputs` means it cannot arrive there by being passed along with everything else — see
- * `forSharing` in lib/valuation/share.ts, and the reasoning in lib/valuation/exit-timing.ts.
+ * The questions moved to `lib/valuation/questions.ts` as pure data so a server component and the
+ * in-portal gate can read them without pulling `lucide-react` in. An icon was the one field that
+ * could not travel — it was a `React.ReactNode`, which would have forced every importer to be a
+ * client component. So the data names an icon and this file draws it.
+ *
+ * ⚠️ `Record<IconKey, ...>` rather than a loose lookup, deliberately: adding a key to the question
+ * set without adding it here fails to compile, instead of rendering a question with no glyph.
  */
-type Answers = Partial<ValuationInputs> & { exitTimeframe?: ExitTimeframe };
-
-/** Any answer key the questionnaire can write, including the device-only one. */
-type AnswerKey = keyof ValuationInputs | 'exitTimeframe';
-
-interface ChoiceOption {
-  value: string;
-  label: string;
-  sub?: string;
-}
-
-/**
- * A questionnaire step.
- *
- * `record` IS REQUIRED ON EVERY VARIANT, and that is the mechanism rather than a convention. The
- * result page prints a record of what the number was worked out from (register P9), derived from
- * this array — so a question cannot be added without deciding what it is called on that document,
- * and the record cannot silently fall behind the questionnaire. A block hand-written in JSX would
- * have gone stale at the next question with nothing to say so; this fails to compile.
- *
- * `group` renders SEVERAL short questions on ONE screen. It exists because the thing Ray asked for
- * was literally "one more screen" — and the three-minute, no-signup, one-question-at-a-time shape is
- * the best-reviewed thing on the site, with the count quoted on the intro button. Three more steps
- * would have taken 12 questions to 15; one group step takes 12 screens to 13.
- */
-type Step =
-  | { id: keyof ValuationInputs; kind: 'industry'; icon: React.ReactNode; title: string; help: string; record: string }
-  | {
-      id: keyof ValuationInputs;
-      kind: 'money';
-      icon: React.ReactNode;
-      title: string;
-      help: string;
-      placeholder: string;
-      record: string;
-      /**
-       * Next stays enabled with the field empty.
-       *
-       * ⚠️ THIS WAS A LIVE DEFECT, found while adding the record block. The debt question's help says
-       * "Leave it blank if you would rather not say — everything else still works", and `canAdvance`
-       * disabled Next until a number was typed. The copy promised something the button refused, on
-       * the one question an owner is most likely to decline, in a product whose entire proposition is
-       * that it does not push.
-       */
-      optional?: boolean;
-    }
-  | { id: keyof ValuationInputs; kind: 'choice'; icon: React.ReactNode; title: string; help: string; options: ChoiceOption[]; record: string }
-  | {
-      id: 'closing';
-      kind: 'group';
-      icon: React.ReactNode;
-      title: string;
-      help: string;
-      fields: GroupField[];
-    };
-
-/** One question inside a `group` step. Same two shapes, without an icon or its own screen. */
-type GroupField =
-  | { id: AnswerKey; kind: 'money'; label: string; help: string; placeholder: string; record: string; optional?: boolean }
-  | { id: AnswerKey; kind: 'choice'; label: string; help: string; options: ChoiceOption[]; record: string; optional?: boolean };
+const ICONS: Record<IconKey, React.ReactNode> = {
+  'building-2': <Building2 className="h-6 w-6" />,
+  'trending-up': <TrendingUp className="h-6 w-6" />,
+  users: <Users className="h-6 w-6" />,
+  'user-cog': <UserCog className="h-6 w-6" />,
+  'file-stack': <FileStack className="h-6 w-6" />,
+  repeat: <Repeat className="h-6 w-6" />,
+  wrench: <Wrench className="h-6 w-6" />,
+  landmark: <Landmark className="h-6 w-6" />,
+  clock: <Clock className="h-6 w-6" />,
+};
 
 /** Where in-progress answers are parked so a reload resumes rather than restarting. */
 const PROGRESS_KEY = 'kira_valuation_progress';
@@ -176,257 +147,6 @@ export function amountInWords(n: number): string {
   return n.toLocaleString('en-AU');
 }
 
-const STEPS: Step[] = [
-  {
-    id: 'industry',
-    record: 'Sector',
-    kind: 'industry',
-    icon: <Building2 className="h-6 w-6" />,
-    title: 'What industry is your business in?',
-    help: 'Start typing and pick the closest match. This sets the multiple your sector can command when a business runs like a well-oiled machine.',
-  },
-  {
-    id: 'turnover',
-    record: 'Annual turnover',
-    kind: 'money',
-    icon: <TrendingUp className="h-6 w-6" />,
-    title: "Roughly what's your annual turnover?",
-    help: 'Total sales - everything the business invoices or takes in over a year, before any costs come out. We ask about profit on the next screen.',
-    placeholder: 'e.g. 2,000,000',
-  },
-  {
-    id: 'annualProfit',
-    record: 'Annual profit (SDE)',
-    kind: 'money',
-    icon: <TrendingUp className="h-6 w-6" />,
-    // NOT "PROFIT" in capitals (register P17). The shout was there to separate this question from
-    // the turnover one before it, and it is the wrong instrument: "I can read." The separation is
-    // carried by SDE_DEFINITION below, which says "Not turnover" in words, and by the fact that the
-    // previous screen just asked for turnover by name.
-    title: "And what's your annual profit?",
-    help: SDE_DEFINITION,
-    placeholder: 'e.g. 200,000',
-  },
-  {
-    id: 'profitTrend',
-    record: 'Profit over five years',
-    kind: 'choice',
-    icon: <TrendingUp className="h-6 w-6" />,
-    title: 'Over the last 5 years, profit has been…',
-    help: 'The direction of travel matters more than any single year.',
-    options: [
-      { value: 'growing_strongly', label: 'Growing strongly', sub: 'Up meaningfully most years' },
-      { value: 'growing', label: 'Growing steadily', sub: 'Up a bit most years' },
-      { value: 'flat', label: 'Flat', sub: 'Ticking along about the same' },
-      { value: 'declining', label: 'Declining', sub: 'Down more years than not' },
-    ],
-  },
-  {
-    id: 'marginTrend',
-    record: 'Margins',
-    kind: 'choice',
-    icon: <TrendingUp className="h-6 w-6" />,
-    title: 'And your margins?',
-    help: 'What you keep from every dollar of revenue.',
-    options: [
-      { value: 'improving', label: 'Improving', sub: 'Keeping more of every dollar' },
-      { value: 'stable', label: 'Holding steady', sub: 'About the same as always' },
-      { value: 'shrinking', label: 'Getting squeezed', sub: 'Costs rising faster than prices' },
-    ],
-  },
-  {
-    id: 'clientTrend',
-    record: 'Client base',
-    kind: 'choice',
-    icon: <Users className="h-6 w-6" />,
-    title: 'Your client base is…',
-    help: 'Whether demand is building or fading.',
-    options: [
-      { value: 'expanding', label: 'Expanding', sub: 'Winning new clients faster than losing them' },
-      { value: 'stable', label: 'Stable', sub: 'Winning about as many as we lose' },
-      { value: 'shrinking', label: 'Shrinking', sub: 'Losing more than we win' },
-    ],
-  },
-  {
-    id: 'clientConcentration',
-    record: 'Revenue spread',
-    kind: 'choice',
-    icon: <Users className="h-6 w-6" />,
-    title: 'How spread out is your revenue?',
-    help: 'A buyer worries when too much rides on a handful of clients - especially ones who deal with you personally.',
-    options: [
-      { value: 'diversified', label: 'Well spread', sub: 'No single client is more than ~10%' },
-      { value: 'moderate', label: 'A few big ones', sub: 'Top client is 10-30%' },
-      { value: 'concentrated', label: 'Concentrated', sub: 'One or two clients are most of it' },
-    ],
-  },
-  {
-    id: 'ownerDependence',
-    record: 'If you took three months off',
-    kind: 'choice',
-    icon: <UserCog className="h-6 w-6" />,
-    title: 'If you took a 3-month holiday tomorrow, what happens?',
-    help: 'This is the single biggest driver of what your business is worth - and the thing most owners never think about until they try to sell.',
-    options: [
-      { value: 'i_am_the_business', label: 'It would fall apart', sub: 'I am the business' },
-      { value: 'heavily_involved', label: 'It would struggle', sub: 'I am heavily involved day to day' },
-      { value: 'mostly_runs', label: 'It would mostly run', sub: 'A few things would need me' },
-      { value: 'fully_managed', label: 'It would run fine', sub: 'Fully under management' },
-    ],
-  },
-  {
-    id: 'systems',
-    record: 'Processes and know-how',
-    kind: 'choice',
-    icon: <FileStack className="h-6 w-6" />,
-    title: 'Your processes, pricing and know-how are…',
-    help: 'The operating system of the business. Where does it actually live?',
-    options: [
-      { value: 'documented_team', label: 'Documented, and a team runs them', sub: 'Written down, not just remembered' },
-      { value: 'some', label: 'Partly written down', sub: 'Some of it is, the rest is habit' },
-      { value: 'in_my_head', label: "Mostly in my head", sub: 'I just know how it all works' },
-    ],
-  },
-  {
-    id: 'recurringRevenue',
-    record: 'Revenue locked in ahead',
-    kind: 'choice',
-    icon: <Repeat className="h-6 w-6" />,
-    title: 'How much revenue is locked in ahead of time?',
-    help: 'Contracts, retainers, memberships, repeat accounts - anything a buyer can count on continuing.',
-    options: [
-      { value: 'strong', label: 'A lot', sub: 'Contracts / recurring accounts carry us' },
-      { value: 'some', label: 'Some', sub: 'A handful of accounts we can rely on' },
-      { value: 'none', label: 'Almost none', sub: 'We start each month from scratch' },
-    ],
-  },
-  {
-    id: 'tangibleAssets',
-    record: 'Gear, vehicles and stock',
-    kind: 'money',
-    icon: <Wrench className="h-6 w-6" />,
-    title: 'Rough value of your gear, vehicles and stock?',
-    help: 'Equipment, tools, vehicles, inventory - what you could sell if you simply closed up. A ballpark is fine; enter 0 if little applies.',
-    placeholder: 'e.g. 150000',
-  },
-  // THE TWELFTH QUESTION. Assets, then liabilities — they belong next to each other, and he is
-  // already in the frame of mind.
-  //
-  // WHY IT EXISTS. The result page used to end with a disclaimer telling him to do this himself:
-  // "Subtract any loans, equipment finance, lease obligations or tax owing to get to that." A
-  // 66-year-old with $380k of equipment finance: "you could have asked in one box and shown me the
-  // number I actually care about, which is what lands in my pocket... That's the number I'd
-  // screenshot and show my wife." Asking is one input; the arithmetic was already ours to do.
-  //
-  // WHY IT IS SAFE TO ADD. It changes nothing about the MODEL. `multiple × SDE` is the value of the
-  // business regardless of financing (enterprise value); what he keeps is that minus what the
-  // business owes. So debt is subtracted at the PAGE, comes off `today` and `potential` equally, and
-  // therefore leaves the GAP — and with it the multiple, MODEL_VERSION, every stored snapshot and
-  // the price he is quoted — completely untouched.
-  //
-  // ⚠️ It is only correct because SDE is PRE-debt-service. If an owner hands us a profit figure that
-  // has already absorbed his interest, this subtracts his debt a second time. That is why the
-  // interest add-back had to become visible in the worked example and the confirmation note before
-  // this question could ship — see lib/valuation/sde-copy.ts.
-  {
-    id: 'businessDebt',
-    record: 'What the business owes',
-    kind: 'money',
-    icon: <Landmark className="h-6 w-6" />,
-    title: 'Roughly what does the business owe?',
-    help: 'Vehicle and equipment finance, overdraft, ATO debt, outstanding leases. A rough figure is fine. Leave it blank if you would rather not say - everything else still works.',
-    placeholder: 'e.g. 380000',
-    // The help text has said "leave it blank" since this question shipped, and Next was disabled
-    // until a figure was typed. See the `optional` field on the Step type.
-    optional: true,
-  },
-  // ─── THE LAST SCREEN — the three questions that turn a valuation of the BUSINESS into what he
-  //     would actually walk away with (register P7).
-  //
-  // "The entire product is aimed at a man in his sixties and never once asks how long he's got."
-  // "WIP and retentions — real money on other people's balance sheets." "He owns the yard through
-  // his super fund; for a trade business often the biggest single question in the deal."
-  //
-  // ONE SCREEN, NOT THREE, and the shape is the decision. His own framing was "one more screen turns
-  // an indicative valuation of the business into roughly what you'd walk away with — that's the
-  // number I'd screenshot and show my wife." Three more steps would have taken the questionnaire
-  // from 12 to 15 on the strength of a fix to a complaint about it being incomplete, and the
-  // eleven-questions-in-three-minutes shape is the best-reviewed thing on the site.
-  //
-  // EACH ANSWER IS TREATED DIFFERENTLY, and the differences are the honest part:
-  //   WIP        adds to every figure, the mirror image of debt. Nothing about the model moves.
-  //   PREMISES   changes NO number at all. It buys a disclosure — the property is not in these
-  //              figures, and a buyer will normalise the rent. Pricing it would need a market rent
-  //              we do not have (see `Premises` in lib/valuation/model.ts).
-  //   TIMEFRAME  changes no number and never leaves this device (H3 — lib/valuation/exit-timing.ts).
-  {
-    id: 'closing',
-    kind: 'group',
-    icon: <Clock className="h-6 w-6" />,
-    title: 'Three last things',
-    help: 'These do not change what the business is worth. They change what you would actually be left with, and what the number above means for you.',
-    fields: [
-      {
-        id: 'workInProgress',
-        kind: 'money',
-        record: 'Work in progress and retentions',
-        label: 'Roughly how much is owed to you for work already done?',
-        help: 'Work in progress, invoices out, retentions held on jobs. Money that is yours but not in the bank yet. Leave blank if it does not apply.',
-        placeholder: 'e.g. 95000',
-        optional: true,
-      },
-      {
-        id: 'premises',
-        kind: 'choice',
-        record: 'Premises',
-        label: 'The yard, workshop or office — who owns it?',
-        help: 'Including through a self-managed super fund, which for a lot of trade businesses is where the property sits.',
-        options: [
-          { value: 'owns', label: 'I do', sub: 'Personally, or through my super fund' },
-          { value: 'rents', label: 'We rent it', sub: 'From someone else' },
-          { value: 'none', label: 'No premises', sub: 'We work out of vehicles or from home' },
-        ],
-        optional: true,
-      },
-      {
-        id: 'exitTimeframe',
-        kind: 'choice',
-        record: 'When you would like to be out',
-        label: 'How long would you like to keep running it?',
-        // The promise this makes is kept by `forSharing` in lib/valuation/share.ts, and pinned by a
-        // test. Saying it here is also the most persuasive thing on the screen for a man deciding
-        // whether to answer this honestly at all.
-        help: 'Two years and eight years are completely different advice, so it changes what we tell you below. This one answer stays on this device — it is not sent anywhere, not attached to any account, and it changes none of the figures.',
-        options: EXIT_TIMEFRAME_OPTIONS.map((o) => ({ value: o.value, label: o.label, sub: o.sub })),
-        optional: true,
-      },
-    ],
-  },
-];
-
-/**
- * The questionnaire, flattened for the record block — group fields hoisted to the top level.
- *
- * Derived from `STEPS` rather than written out, so the record cannot fall behind the questions. See
- * lib/valuation/answer-summary.ts for why that invariant is the one worth holding.
- */
-const RECORD_STEPS: SummaryStep[] = STEPS.flatMap<SummaryStep>((step) =>
-  step.kind === 'group'
-    ? step.fields.map<SummaryStep>((f) => ({
-        id: f.id,
-        kind: f.kind,
-        record: f.record,
-        options: 'options' in f ? f.options : undefined,
-      }))
-    : [
-        {
-          id: step.id,
-          kind: step.kind,
-          record: step.record,
-          options: 'options' in step ? step.options : undefined,
-        },
-      ],
-);
 
 
 export default function BusinessValuationPage() {
@@ -602,7 +322,22 @@ export default function BusinessValuationPage() {
       const lower = raw.toLowerCase();
       const alreadyKnown =
         SECTOR_MULTIPLES.some((s) => s.name.toLowerCase() === lower) || Boolean(synonymSector(lower));
-      if (raw && !alreadyKnown && llmTried !== raw) {
+
+      // ⚠️ THE SENTINEL MUST NEVER REACH THE LLM. Since the question became a dropdown this branch
+      // is only for a RESUMED free-text answer typed before that change — but "My industry is not
+      // listed" is not a sector name and not in the synonym table, so it would sail through
+      // `alreadyKnown` and be handed to the matcher, which would dutifully return its best guess for
+      // a sentence that is not an industry. The one answer whose entire meaning is "none of these"
+      // would come back as a sector, priced off a median the owner explicitly declined to claim.
+      const isSentinel = raw === INDUSTRY_NOT_LISTED;
+
+      if (raw && !isSentinel && !alreadyKnown && llmTried !== raw) {
+        // KEEP HIS ORIGINAL WORDS FOR THE RECORD BLOCK. `resolveIndustry` overwrites
+        // `answers.industry` with the matched sector, and the record line ("Plumbing — matched from
+        // 'sparky'") reads the original out of `industryQuery`. That used to be the search box; with
+        // a dropdown there is no box, so a resumed free-text answer would be silently rewritten to a
+        // sector with nothing on the summary saying where it came from.
+        setIndustryQuery(raw);
         await resolveIndustry(raw);
       }
     }
@@ -765,7 +500,11 @@ export default function BusinessValuationPage() {
             </h1>
             <p className="text-stone-600 text-base leading-relaxed">
               For most owners, their business is their biggest asset — and the hardest thing to value.
-              Answer {STEPS.length} short questions and see three honest numbers, plus the gap that&apos;s
+              {/* ⚠️ SCREENS, NOT QUESTIONS — the same number this always rendered, now named
+                  honestly. `SCREEN_COUNT` is 13; `QUESTION_COUNT` is 15, because the closing screen
+                  holds three. Whether the copy should quote the larger number is a decision about
+                  what a cold visitor is being promised, not a refactor, so it is left alone here. */}
+              Answer {SCREEN_COUNT} short questions and see three honest numbers, plus the gap that&apos;s
               hiding inside your own head. About 3 minutes. Nothing to sign up for.
             </p>
           </div>
@@ -828,7 +567,7 @@ export default function BusinessValuationPage() {
               onClick={next}
               className="grad-coral text-white font-display font-bold px-7 py-4 rounded-full text-lg inline-flex items-center gap-2 min-h-[52px] shadow-lg shadow-pink-200 hover:opacity-95"
             >
-              Start the {STEPS.length} questions <ArrowRight className="h-5 w-5" />
+              Start the {SCREEN_COUNT} questions <ArrowRight className="h-5 w-5" />
             </button>
             <p className="text-base text-stone-500 mt-4">
               Indicative estimate for guidance only — not a formal business valuation. Your answers are kept
@@ -842,7 +581,10 @@ export default function BusinessValuationPage() {
         {step && (
           <div className="bg-white rounded-3xl p-6 sm:p-9 shadow-sm border border-amber-100">
             <div className="flex items-center gap-3 mb-1 text-stone-400 text-sm font-medium">
-              <span className="grad-genome text-white w-9 h-9 rounded-xl flex items-center justify-center">{step.icon}</span>
+              {/* `step.icon` is a KEY now, not a node — see ICONS above. Rendering it directly
+                  typechecks perfectly well (a string is a valid ReactNode) and puts the literal
+                  text "building-2" on the screen, which is why the mapping is not optional. */}
+              <span className="grad-genome text-white w-9 h-9 rounded-xl flex items-center justify-center">{ICONS[step.icon]}</span>
               Question {stepIndex + 1} of {total}
               {/* The other half of keeping his figures on the machine. Telling him his answers are
                   saved obliges us to give him a way to unsave them — and it belongs here, where he
@@ -907,125 +649,66 @@ export default function BusinessValuationPage() {
             <p className="text-stone-500 text-sm sm:text-base mb-7 leading-relaxed">{step.help}</p>
 
             {/* Industry — filtered dropdown (a real picker, not a fickle datalist) */}
+            {/* INDUSTRY — A DROPDOWN, NOT A SEARCH BOX. See lib/valuation/industry-options.ts.
+                It was free text with a typeahead, and typing something the table did not know
+                ("aviation") matched nothing and quietly priced the business off the 2.5x market
+                average with one grey sentence of explanation. It failed OPEN, on the single most
+                load-bearing input in the model — the sector multiple every other answer scales.
+                A native <select> cannot do that: every answer is a sector we hold a real median
+                for, or an explicit "not listed" that says what it costs him.
+
+                NATIVE, not a custom combobox. On a phone this renders as the platform's own picker
+                with group headings and first-letter jumping, which a 66-year-old has used a
+                thousand times, and it needs no JS to be correct. */}
             {step.kind === 'industry' && (() => {
-              const q = industryQuery.trim().toLowerCase();
-              // The suggestion list must know the same words the MULTIPLE does.
-              //
-              // Fixing lookupSdeMultiple alone made this worse, not better: the valuation quietly
-              // used the correct Plumbing multiple while the screen still said "No sector match".
-              // The number was right and the message was lying, which is harder to trust than
-              // being wrong consistently. So the synonym layer feeds the visible list too.
-              const synonymHit = q ? synonymSector(q) : null;
-              // A word can point at a GROUP rather than one sector — "builder" is the case that
-              // matters, because the data has no residential-building bucket and the old table
-              // answered "Heavy Construction", i.e. roads and earthworks, at the highest multiple in
-              // the group. Showing him the seven construction sectors puts a real sourced multiple
-              // one tap away instead of our guess about which one he is.
-              const groupHit = q ? synonymGroup(q) : null;
-              const matches = (q
-                ? SECTOR_MULTIPLES.filter(
-                    (s) =>
-                      s.name.toLowerCase().includes(q) ||
-                      s.group.toLowerCase().includes(q) ||
-                      (synonymHit ? s.name === synonymHit : false),
-                    )
-                : SECTOR_MULTIPLES
-              ).concat(
-                q && groupHit
-                  ? SECTOR_MULTIPLES.filter((s) => s.group === groupHit)
-                  : [],
-              );
-              const seenNames = new Set<string>();
-              const shown = matches.filter((s) => !seenNames.has(s.name) && seenNames.add(s.name)).slice(0, 8);
-              const exact = SECTOR_MULTIPLES.some((s) => s.name.toLowerCase() === q);
+              const current = typeof answers.industry === 'string' ? answers.industry : '';
+              // A RESUMED ANSWER THE LIST CANNOT REPRESENT is preserved and offered back, not
+              // dropped and not silently rewritten to "not listed". It is his answer, typed before
+              // this shipped, and quietly replacing it would change his valuation without telling
+              // him. Shown in its own group so it is obvious what it is.
+              const legacy = current && !isSelectableIndustry(current) ? current : null;
               return (
                 <div>
-                  <input
-                    value={industryQuery}
-                    onChange={(e) => {
-                      setIndustryQuery(e.target.value);
-                      setAnswer('industry', e.target.value);
-                      // Forget the previous answer the moment the question changes.
-                      //
-                      // Without this, llmSector stuck: the green "Matched to X" panel kept showing
-                      // the sector resolved for an EARLIER phrase, and — worse — the blur guard
-                      // treats a set llmSector as "already handled", so the backstop never fired
-                      // again for anything typed afterwards. Type "motor", get Auto Repair, clear
-                      // the box, type "it development", and the screen still says Auto Repair while
-                      // silently never asking about the new words. Both phrases match correctly at
-                      // the API; only the display was stuck, which is indistinguishable from the
-                      // matcher being badly wrong.
-                      if (llmSector || llmTried) {
-                        setLlmSector(null);
-                        setLlmTried(null);
-                      }
-                    }}
-                    onBlur={() => {
-                      // The LLM backstop, and ONLY here: the mechanical layers (exact name, the
-                      // Australian synonym table, loose substring) have already run and missed.
-                      // On blur rather than per keystroke — a model call on the first field an
-                      // owner touches would add latency and cost to every visitor.
-                      const q = industryQuery.trim();
-                      if (!q || exact || shown.length > 0 || llmSector || llmTried === q) return;
-                      // Fire early so the answer is usually on screen before Next is pressed; next()
-                      // awaits the same call as a backstop when it isn't.
-                      void resolveIndustry(q);
-                    }}
-                    placeholder="Start typing your industry…"
-                    className="w-full text-base rounded-2xl border-2 border-amber-200 focus:border-pink-400 focus:outline-none px-4 py-4 min-h-[52px] bg-amber-50/40"
-                    autoFocus
-                    autoComplete="off"
-                  />
-                  {industryQuery && !exact && shown.length > 0 && (
-                    <div className="mt-2 rounded-2xl border border-amber-200 bg-white overflow-hidden max-h-64 overflow-y-auto shadow-sm">
-                      {shown.map((s) => (
-                        <button
-                          key={s.name}
-                          type="button"
-                          onClick={() => {
-                            setIndustryQuery(s.name);
-                            setAnswer('industry', s.name);
-                            // An explicit pick beats any model answer — and must not leave the
-                            // previous one on screen underneath it.
-                            setLlmSector(null);
-                            setLlmTried(null);
-                          }}
-                          className="w-full text-left px-4 py-3 min-h-[44px] hover:bg-amber-50 flex items-center justify-between gap-3 border-b border-amber-50 last:border-0"
-                        >
-                          <span className="text-stone-800">{s.name}</span>
-                          <span className="text-sm text-stone-400 flex-shrink-0">{s.group}</span>
-                        </button>
-                      ))}
-                    </div>
+                  <select
+                    value={current}
+                    onChange={(e) => setAnswer('industry', e.target.value)}
+                    className="w-full rounded-2xl border-2 border-stone-200 bg-white px-4 py-4 text-base text-stone-900 focus:border-violet-400 focus:outline-none min-h-[52px]"
+                  >
+                    <option value="" disabled>
+                      Choose the closest match…
+                    </option>
+                    {legacy && (
+                      <optgroup label="Your earlier answer">
+                        <option value={legacy}>{legacy}</option>
+                      </optgroup>
+                    )}
+                    {INDUSTRY_OPTION_GROUPS.map((g) => (
+                      <optgroup key={g.group} label={g.group}>
+                        {g.options.map((name) => (
+                          <option key={name} value={name}>
+                            {name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                    <optgroup label="None of these">
+                      <option value={INDUSTRY_NOT_LISTED}>{INDUSTRY_NOT_LISTED}</option>
+                    </optgroup>
+                  </select>
+
+                  {/* SAYS WHAT IT COSTS, at the moment he chooses it — not afterwards in grey. */}
+                  {current === INDUSTRY_NOT_LISTED && (
+                    <p className="mt-3 text-sm leading-relaxed text-amber-800">
+                      We&apos;ll use the overall market average of 2.5&times; instead of a figure for
+                      your sector. Everything else still works, but the number will be rougher than it
+                      would be for a business we hold data on — so if anything above is close, it is
+                      worth picking.
+                    </p>
                   )}
-                  {/* Told at the QUESTION, not just on the result. "Underwater basket weaving" used to
-                      sail straight through with Next enabled and no signal that a market-average
-                      multiple had been substituted (naive-tester, 2026-07-27). */}
-                  {exact ? (
-                    <p className="mt-2 rounded-xl bg-emerald-50 px-4 py-3 text-base text-stone-700">
-                      Matched to <span className="font-semibold">{industryQuery.trim()}</span> — we&apos;ll
-                      use that sector&apos;s average multiple.
-                    </p>
-                  ) : llmSector ? (
-                    <p className="mt-2 rounded-xl bg-emerald-50 px-4 py-3 text-base text-stone-700">
-                      Matched to <span className="font-semibold">{llmSector}</span> — that&apos;s the
-                      sector average we&apos;ll use. Not right? Pick another from the list.
-                    </p>
-                  ) : llmPending ? (
-                    /* Never leave the field looking dead while a model call is in flight — silence
-                       here is indistinguishable from the matcher being broken, which is precisely
-                       how it was reported. */
-                    <p className="mt-2 rounded-xl bg-stone-100 px-4 py-3 text-base text-stone-600">
-                      Checking &ldquo;{industryQuery.trim()}&rdquo; against our sector list…
-                    </p>
-                  ) : industryQuery.trim() && !exact && matches.length === 0 ? (
-                    <p className="mt-2 rounded-xl bg-amber-100/70 px-4 py-3 text-base text-stone-700">
-                      No sector match for &ldquo;{industryQuery.trim()}&rdquo;. You can carry on — we&apos;ll
-                      use the overall market-average multiple — but a closer match gives a better number.
-                    </p>
-                  ) : (
-                    <p className="text-base text-stone-500 mt-2">
-                      Pick the closest match from the list — we&apos;ll use its sector-average multiple.
+                  {legacy && current === legacy && (
+                    <p className="mt-3 text-sm leading-relaxed text-stone-500">
+                      That&apos;s what you told us last time. If one of the listed sectors is closer,
+                      pick it — the number will be better for it.
                     </p>
                   )}
                 </div>

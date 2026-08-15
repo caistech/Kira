@@ -59,7 +59,7 @@ import { HEADLINE_NUMBERS } from '@/lib/valuation/headline-numbers';
  *
  * Whoever changes the model must change these with it, and the test is what says so out loud.
  */
-const LANDING_EXAMPLE_FIGURES = ['$220k', '$684k', '$879k'] as const;
+const LANDING_EXAMPLE_FIGURES = ['$220k', '$626k', '$821k'] as const;
 
 // The PUBLIC, no-account agent — the same one /start uses. A landing page visitor has no session
 // and must not need one: the whole product claim is that you only ever talk to her, and until now
@@ -77,10 +77,10 @@ const LANDING_EXAMPLE_FIGURES = ['$220k', '$684k', '$879k'] as const;
 
 const NAV = [
   { href: '#how-it-works', label: 'How it works' },
-  // "See a real one" rather than "What you get". Ray called /genome the most convincing thing on
+  // "See a real one" rather than "What you get". Ray called /sample-genome the most convincing thing on
   // the site and nearly never opened it, because "What you get" reads as a feature list and he
   // skipped it on the way past. It is also in the hero now, as a second door.
-  { href: '/genome', label: 'See a real one' },
+  { href: '/sample-genome', label: 'See a real one' },
   { href: '#pricing', label: 'Pricing' },
   { href: '/about', label: 'About' },
 ];
@@ -263,14 +263,14 @@ export function LandingNew() {
           matters is in your head, not on paper — so a buyer isn&apos;t buying an asset, they&apos;re buying
           you, and they price it accordingly. Kira works alongside you day to day, in conversation,
           and turns what you know into a documented{' '}
-          <a href="/genome" className="ln-link font-medium text-kira-600 underline underline-offset-4 hover:text-kira-700">
+          <a href="/sample-genome" className="ln-link font-medium text-kira-600 underline underline-offset-4 hover:text-kira-700">
             Business Genome
           </a>{' '}
           the business can be sold with. Most owners start this before they&apos;ve told anyone.
         </p>
 
         {/* TWO DOORS, not one. Ray wanted to see the thing before typing anything into it, and the
-            only route to /genome was a text link on the pricing page — two steps past the point he
+            only route to /sample-genome was a text link on the pricing page — two steps past the point he
             had already decided whether to bother. */}
         <div className="mt-10 flex flex-wrap items-center gap-4">
           <a
@@ -280,7 +280,7 @@ export function LandingNew() {
             Find out in 3 minutes
           </a>
           <a
-            href="/genome"
+            href="/sample-genome"
             className="ln-link inline-flex min-h-[52px] items-center rounded-md border border-kira-line bg-white px-7 text-[17px] font-medium text-kira-dark hover:border-kira-600 hover:text-kira-600"
           >
             See a real one
