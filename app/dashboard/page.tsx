@@ -326,7 +326,18 @@ export default async function DashboardPage({
           figure says how much is locked up, the buckets say where. Rendered for anyone with an
           account — including an owner who never ran a valuation, for whom this is the only picture
           of his own coverage there is. */}
-      {genome && <GenomeBuckets sections={genome.sections} />}
+      {genome && (
+        <GenomeBuckets
+          /* `baseline` rides along so an area he has ANSWERED FOR reads as located rather than
+             empty. It is never folded into coverage — see BucketSection.baseline. */
+          sections={genome.sections.map((s) => ({
+            key: s.key,
+            title: s.title,
+            coverage: s.coverage,
+            baseline: s.baseline ? { statement: s.baseline.statement, ownerDependent: s.baseline.ownerDependent } : null,
+          }))}
+        />
+      )}
 
       {/* ONE KIRA, NOT A LIST.
           "My Kiras · start a new Kira for a different goal" contradicted the entire pitch — one exec

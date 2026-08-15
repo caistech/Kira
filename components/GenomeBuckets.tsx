@@ -123,6 +123,34 @@ export interface BucketSection {
   key: string;
   title: string;
   coverage: 'empty' | 'thin' | 'building' | 'covered';
+  /**
+   * What his own thirteen answers say about this area, or null.
+   *
+   * ⚠️ NEVER FOLDED INTO `coverage`, and that separation is the honest half of this component.
+   * `deriveOwnerGenome` refuses to let a self-reported answer lift an area out of 'empty' — "a
+   * self-reported answer is not a captured fact… letting one do so would manufacture progress from
+   * a form he filled in before he paid". That rule is right and stays.
+   *
+   * But the consequence was a man who had just answered thirteen questions about his own business
+   * being shown nine bars reading "Nothing yet" — which is a different lie, told in the other
+   * direction. So the baseline is SHOWN and shown DIFFERENTLY: a distinct state that says "you told
+   * us this" rather than "Kira captured this". Located, not captured. §3.2's rule made visible.
+   */
+  baseline?: { statement: string; ownerDependent: boolean } | null;
+}
+
+/**
+ * What to DRAW for a bucket — coverage, widened by whether the owner has located it himself.
+ *
+ * Pure and exported so the one rule that matters is testable without a DOM: a baseline can only
+ * lift the EMPTY state. The moment Kira has actually captured something, capture is what is shown,
+ * because a self-report can never outrank a fact.
+ */
+export type BucketDisplay = 'empty' | 'located' | 'thin' | 'building' | 'covered';
+
+export function bucketDisplay(section: BucketSection): BucketDisplay {
+  if (section.coverage === 'empty' && section.baseline) return 'located';
+  return section.coverage;
 }
 
 /**
@@ -143,6 +171,18 @@ const BANDS = {
     // component whose whole design decision is that there are no percentages here, and the test
     // caught it. A fixed width says the same thing without reintroducing the idea of a denominator.
     width: 'w-1.5',
+  },
+  located: {
+    // "YOU TOLD US" — not "started", because Kira has captured nothing here yet. The distinction is
+    // the whole point of the state and the label is where a reader meets it.
+    label: 'You told us',
+    dot: 'bg-amber-400',
+    chip: 'bg-white text-amber-800 border-amber-300',
+    // Outlined rather than solid, so it reads as an OUTLINE OF THE SHAPE rather than as progress —
+    // the visual grammar of "this is where it sits" against "this is what we hold".
+    bar: 'bg-amber-300',
+    glow: 'text-amber-400',
+    width: 'w-1/4',
   },
   thin: {
     label: 'Just started',
@@ -253,7 +293,8 @@ export function GenomeBuckets({
 
       <ul className="mt-5 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
         {ordered.map((section, index) => {
-          const band = BANDS[section.coverage];
+          const display = bucketDisplay(section);
+          const band = BANDS[display];
           const justImproved = improved.has(section.key);
           return (
             <li
@@ -286,9 +327,14 @@ export function GenomeBuckets({
               >
                 <div className={`h-full rounded-full ${band.bar} ${band.width}`} />
               </div>
-              {section.coverage === 'empty' && (
+              {display === 'located' && section.baseline ? (
+                /* HIS OWN WORDS, not our summary of them. `AreaBaseline.statement` is written
+                   "addressed to the owner, in his own words as far as possible", which is what makes
+                   this read as a receipt for what he told us rather than as a claim we are making. */
+                <p className="mt-1.5 text-sm text-stone-600">{section.baseline.statement}</p>
+              ) : display === 'empty' ? (
                 <p className="mt-1.5 text-sm text-stone-500">{emptyReason(section.key)}</p>
-              )}
+              ) : null}
             </li>
           );
         })}

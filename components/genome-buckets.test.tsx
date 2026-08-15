@@ -10,7 +10,7 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { emptyReason, improvedSince, type BucketSection } from './GenomeBuckets';
+import { bucketDisplay, emptyReason, improvedSince, type BucketSection } from './GenomeBuckets';
 import { GENOME_AREAS } from '@/lib/genome/areas';
 
 const at = (coverage: BucketSection['coverage']): BucketSection[] => [
@@ -44,8 +44,11 @@ describe('colour is never the only signal', () => {
   // NOT GENERIC ACCESSIBILITY BOX-TICKING. Red/green colour blindness affects roughly one man in
   // twelve and this product's stated ICP is men aged 60-70, so a traffic light whose meaning is
   // carried entirely by hue is unreadable to a real slice of the people paying for it.
-  it('gives all four bands a word, not just a colour', () => {
-    for (const label of ['Nothing yet', 'Just started', 'Building up', 'Well covered']) {
+  it('gives EVERY band a word, not just a colour', () => {
+    // ⚠️ 'You told us' was added in a later change and this list did not grow with it, which is how
+    // an accessibility guard quietly stops covering the newest state. Derived would be better; a
+    // named list at least fails loudly when someone adds a sixth and reads this.
+    for (const label of ['Nothing yet', 'You told us', 'Just started', 'Building up', 'Well covered']) {
       expect(source).toContain(label);
     }
   });
@@ -157,6 +160,36 @@ describe('the band-change pulse only fires when something was actually achieved'
     // localStorage is shared, writable by anything on the origin, and survives deploys. A corrupt
     // or stale value must degrade to no pulse — never to a pulse.
     expect(improvedSince({ pricing: 'banana' }, at('covered')).size).toBe(0);
+  });
+});
+
+describe('a self-report is shown, and can never outrank a captured fact', () => {
+  const sec = (over: Partial<BucketSection>): BucketSection => ({
+    key: 'pricing', title: 'How work is priced and quoted', coverage: 'empty', ...over,
+  });
+  const told = { statement: 'You told us the pricing lives in your head', ownerDependent: true };
+
+  it('lifts an EMPTY area to located when he has answered for it', () => {
+    // The defect this closes: a man who had just answered thirteen questions about his own business
+    // was shown nine bars reading "Nothing yet".
+    expect(bucketDisplay(sec({ coverage: 'empty', baseline: told }))).toBe('located');
+  });
+
+  it('leaves an area with NO answer empty', () => {
+    // `people` and `compliance` get no baseline — nothing in the thirteen questions speaks to who
+    // does the work or to licences. They stay red, honestly, and that IS the "still only in your
+    // head" signal rather than a gap in the display.
+    expect(bucketDisplay(sec({ coverage: 'empty', baseline: null }))).toBe('empty');
+    expect(bucketDisplay(sec({ coverage: 'empty' }))).toBe('empty');
+  });
+
+  it('NEVER lets a self-report outrank something Kira actually captured', () => {
+    // The load-bearing rule. Once there are real entries, capture is what is shown — a baseline may
+    // only ever lift the empty state. Getting this wrong would let a form he filled in before he
+    // paid dress itself up as captured knowledge, which is the exact overclaim `coverage` refuses.
+    for (const coverage of ['thin', 'building', 'covered'] as const) {
+      expect(bucketDisplay(sec({ coverage, baseline: told })), coverage).toBe(coverage);
+    }
   });
 });
 
