@@ -79,7 +79,12 @@ import { FULL_RATE_PERIOD_CAP, priceForProfit } from '@/lib/valuation/pricing';
 import { netPosition } from '@/lib/valuation/net-position';
 import { approxNumber, formatMoney, formatMoneyApprox, formatPrice, getCurrency, CURRENCIES, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { displayedFigures, displayedUplifts } from '@/lib/valuation/displayed';
-import { synonymGroup, synonymSector } from '@/lib/valuation/industry-synonyms';
+import {
+  INDUSTRY_NOT_LISTED,
+  INDUSTRY_OPTION_GROUPS,
+  isSelectableIndustry,
+} from '@/lib/valuation/industry-options';
+import { synonymSector } from '@/lib/valuation/industry-synonyms';
 import { forSharing, storeValuation, VALUATION_HANDOFF_KEY } from '@/lib/valuation/share';
 import {
   clearValuationLocal,
@@ -317,7 +322,22 @@ export default function BusinessValuationPage() {
       const lower = raw.toLowerCase();
       const alreadyKnown =
         SECTOR_MULTIPLES.some((s) => s.name.toLowerCase() === lower) || Boolean(synonymSector(lower));
-      if (raw && !alreadyKnown && llmTried !== raw) {
+
+      // ⚠️ THE SENTINEL MUST NEVER REACH THE LLM. Since the question became a dropdown this branch
+      // is only for a RESUMED free-text answer typed before that change — but "My industry is not
+      // listed" is not a sector name and not in the synonym table, so it would sail through
+      // `alreadyKnown` and be handed to the matcher, which would dutifully return its best guess for
+      // a sentence that is not an industry. The one answer whose entire meaning is "none of these"
+      // would come back as a sector, priced off a median the owner explicitly declined to claim.
+      const isSentinel = raw === INDUSTRY_NOT_LISTED;
+
+      if (raw && !isSentinel && !alreadyKnown && llmTried !== raw) {
+        // KEEP HIS ORIGINAL WORDS FOR THE RECORD BLOCK. `resolveIndustry` overwrites
+        // `answers.industry` with the matched sector, and the record line ("Plumbing — matched from
+        // 'sparky'") reads the original out of `industryQuery`. That used to be the search box; with
+        // a dropdown there is no box, so a resumed free-text answer would be silently rewritten to a
+        // sector with nothing on the summary saying where it came from.
+        setIndustryQuery(raw);
         await resolveIndustry(raw);
       }
     }
@@ -629,125 +649,66 @@ export default function BusinessValuationPage() {
             <p className="text-stone-500 text-sm sm:text-base mb-7 leading-relaxed">{step.help}</p>
 
             {/* Industry — filtered dropdown (a real picker, not a fickle datalist) */}
+            {/* INDUSTRY — A DROPDOWN, NOT A SEARCH BOX. See lib/valuation/industry-options.ts.
+                It was free text with a typeahead, and typing something the table did not know
+                ("aviation") matched nothing and quietly priced the business off the 2.5x market
+                average with one grey sentence of explanation. It failed OPEN, on the single most
+                load-bearing input in the model — the sector multiple every other answer scales.
+                A native <select> cannot do that: every answer is a sector we hold a real median
+                for, or an explicit "not listed" that says what it costs him.
+
+                NATIVE, not a custom combobox. On a phone this renders as the platform's own picker
+                with group headings and first-letter jumping, which a 66-year-old has used a
+                thousand times, and it needs no JS to be correct. */}
             {step.kind === 'industry' && (() => {
-              const q = industryQuery.trim().toLowerCase();
-              // The suggestion list must know the same words the MULTIPLE does.
-              //
-              // Fixing lookupSdeMultiple alone made this worse, not better: the valuation quietly
-              // used the correct Plumbing multiple while the screen still said "No sector match".
-              // The number was right and the message was lying, which is harder to trust than
-              // being wrong consistently. So the synonym layer feeds the visible list too.
-              const synonymHit = q ? synonymSector(q) : null;
-              // A word can point at a GROUP rather than one sector — "builder" is the case that
-              // matters, because the data has no residential-building bucket and the old table
-              // answered "Heavy Construction", i.e. roads and earthworks, at the highest multiple in
-              // the group. Showing him the seven construction sectors puts a real sourced multiple
-              // one tap away instead of our guess about which one he is.
-              const groupHit = q ? synonymGroup(q) : null;
-              const matches = (q
-                ? SECTOR_MULTIPLES.filter(
-                    (s) =>
-                      s.name.toLowerCase().includes(q) ||
-                      s.group.toLowerCase().includes(q) ||
-                      (synonymHit ? s.name === synonymHit : false),
-                    )
-                : SECTOR_MULTIPLES
-              ).concat(
-                q && groupHit
-                  ? SECTOR_MULTIPLES.filter((s) => s.group === groupHit)
-                  : [],
-              );
-              const seenNames = new Set<string>();
-              const shown = matches.filter((s) => !seenNames.has(s.name) && seenNames.add(s.name)).slice(0, 8);
-              const exact = SECTOR_MULTIPLES.some((s) => s.name.toLowerCase() === q);
+              const current = typeof answers.industry === 'string' ? answers.industry : '';
+              // A RESUMED ANSWER THE LIST CANNOT REPRESENT is preserved and offered back, not
+              // dropped and not silently rewritten to "not listed". It is his answer, typed before
+              // this shipped, and quietly replacing it would change his valuation without telling
+              // him. Shown in its own group so it is obvious what it is.
+              const legacy = current && !isSelectableIndustry(current) ? current : null;
               return (
                 <div>
-                  <input
-                    value={industryQuery}
-                    onChange={(e) => {
-                      setIndustryQuery(e.target.value);
-                      setAnswer('industry', e.target.value);
-                      // Forget the previous answer the moment the question changes.
-                      //
-                      // Without this, llmSector stuck: the green "Matched to X" panel kept showing
-                      // the sector resolved for an EARLIER phrase, and — worse — the blur guard
-                      // treats a set llmSector as "already handled", so the backstop never fired
-                      // again for anything typed afterwards. Type "motor", get Auto Repair, clear
-                      // the box, type "it development", and the screen still says Auto Repair while
-                      // silently never asking about the new words. Both phrases match correctly at
-                      // the API; only the display was stuck, which is indistinguishable from the
-                      // matcher being badly wrong.
-                      if (llmSector || llmTried) {
-                        setLlmSector(null);
-                        setLlmTried(null);
-                      }
-                    }}
-                    onBlur={() => {
-                      // The LLM backstop, and ONLY here: the mechanical layers (exact name, the
-                      // Australian synonym table, loose substring) have already run and missed.
-                      // On blur rather than per keystroke — a model call on the first field an
-                      // owner touches would add latency and cost to every visitor.
-                      const q = industryQuery.trim();
-                      if (!q || exact || shown.length > 0 || llmSector || llmTried === q) return;
-                      // Fire early so the answer is usually on screen before Next is pressed; next()
-                      // awaits the same call as a backstop when it isn't.
-                      void resolveIndustry(q);
-                    }}
-                    placeholder="Start typing your industry…"
-                    className="w-full text-base rounded-2xl border-2 border-amber-200 focus:border-pink-400 focus:outline-none px-4 py-4 min-h-[52px] bg-amber-50/40"
-                    autoFocus
-                    autoComplete="off"
-                  />
-                  {industryQuery && !exact && shown.length > 0 && (
-                    <div className="mt-2 rounded-2xl border border-amber-200 bg-white overflow-hidden max-h-64 overflow-y-auto shadow-sm">
-                      {shown.map((s) => (
-                        <button
-                          key={s.name}
-                          type="button"
-                          onClick={() => {
-                            setIndustryQuery(s.name);
-                            setAnswer('industry', s.name);
-                            // An explicit pick beats any model answer — and must not leave the
-                            // previous one on screen underneath it.
-                            setLlmSector(null);
-                            setLlmTried(null);
-                          }}
-                          className="w-full text-left px-4 py-3 min-h-[44px] hover:bg-amber-50 flex items-center justify-between gap-3 border-b border-amber-50 last:border-0"
-                        >
-                          <span className="text-stone-800">{s.name}</span>
-                          <span className="text-sm text-stone-400 flex-shrink-0">{s.group}</span>
-                        </button>
-                      ))}
-                    </div>
+                  <select
+                    value={current}
+                    onChange={(e) => setAnswer('industry', e.target.value)}
+                    className="w-full rounded-2xl border-2 border-stone-200 bg-white px-4 py-4 text-base text-stone-900 focus:border-violet-400 focus:outline-none min-h-[52px]"
+                  >
+                    <option value="" disabled>
+                      Choose the closest match…
+                    </option>
+                    {legacy && (
+                      <optgroup label="Your earlier answer">
+                        <option value={legacy}>{legacy}</option>
+                      </optgroup>
+                    )}
+                    {INDUSTRY_OPTION_GROUPS.map((g) => (
+                      <optgroup key={g.group} label={g.group}>
+                        {g.options.map((name) => (
+                          <option key={name} value={name}>
+                            {name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                    <optgroup label="None of these">
+                      <option value={INDUSTRY_NOT_LISTED}>{INDUSTRY_NOT_LISTED}</option>
+                    </optgroup>
+                  </select>
+
+                  {/* SAYS WHAT IT COSTS, at the moment he chooses it — not afterwards in grey. */}
+                  {current === INDUSTRY_NOT_LISTED && (
+                    <p className="mt-3 text-sm leading-relaxed text-amber-800">
+                      We&apos;ll use the overall market average of 2.5&times; instead of a figure for
+                      your sector. Everything else still works, but the number will be rougher than it
+                      would be for a business we hold data on — so if anything above is close, it is
+                      worth picking.
+                    </p>
                   )}
-                  {/* Told at the QUESTION, not just on the result. "Underwater basket weaving" used to
-                      sail straight through with Next enabled and no signal that a market-average
-                      multiple had been substituted (naive-tester, 2026-07-27). */}
-                  {exact ? (
-                    <p className="mt-2 rounded-xl bg-emerald-50 px-4 py-3 text-base text-stone-700">
-                      Matched to <span className="font-semibold">{industryQuery.trim()}</span> — we&apos;ll
-                      use that sector&apos;s average multiple.
-                    </p>
-                  ) : llmSector ? (
-                    <p className="mt-2 rounded-xl bg-emerald-50 px-4 py-3 text-base text-stone-700">
-                      Matched to <span className="font-semibold">{llmSector}</span> — that&apos;s the
-                      sector average we&apos;ll use. Not right? Pick another from the list.
-                    </p>
-                  ) : llmPending ? (
-                    /* Never leave the field looking dead while a model call is in flight — silence
-                       here is indistinguishable from the matcher being broken, which is precisely
-                       how it was reported. */
-                    <p className="mt-2 rounded-xl bg-stone-100 px-4 py-3 text-base text-stone-600">
-                      Checking &ldquo;{industryQuery.trim()}&rdquo; against our sector list…
-                    </p>
-                  ) : industryQuery.trim() && !exact && matches.length === 0 ? (
-                    <p className="mt-2 rounded-xl bg-amber-100/70 px-4 py-3 text-base text-stone-700">
-                      No sector match for &ldquo;{industryQuery.trim()}&rdquo;. You can carry on — we&apos;ll
-                      use the overall market-average multiple — but a closer match gives a better number.
-                    </p>
-                  ) : (
-                    <p className="text-base text-stone-500 mt-2">
-                      Pick the closest match from the list — we&apos;ll use its sector-average multiple.
+                  {legacy && current === legacy && (
+                    <p className="mt-3 text-sm leading-relaxed text-stone-500">
+                      That&apos;s what you told us last time. If one of the listed sectors is closer,
+                      pick it — the number will be better for it.
                     </p>
                   )}
                 </div>
