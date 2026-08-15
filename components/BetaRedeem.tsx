@@ -108,7 +108,7 @@ export function BetaRedeem({
           'You already have an account with this email — your code has been used. Sign in with your ' +
             'existing password, or use "Forgot password" if you need to reset it.',
         );
-        setTimeout(() => window.location.assign('/login?next=/start%3Fjourney%3Dbusiness%26from%3Dpaid'), 4000);
+        setTimeout(() => window.location.assign('/login?next=/dashboard'), 4000);
         return;
       }
 
@@ -117,9 +117,13 @@ export function BetaRedeem({
       if (signInError) throw signInError;
 
       setStage('done');
-      // Into the flow that actually creates her — never onto the dashboard, which has no Kira behind
-      // it yet. Identical to the paid path's landing, and for the identical reason.
-      window.location.assign('/start?journey=business&from=paid');
+      // ⚠️ /dashboard, NOT /start. This used to send him into the brief directly, on the reasoning
+      // that the dashboard had no Kira behind it yet — which was true, and the wrong fix. The
+      // operator walked it and landed on a page he had not asked for, in a different palette, and
+      // said so twice. The dashboard now GATES on state (lib/onboarding/gate.ts) and offers the
+      // brief as a step inside its own shell, so there is one destination and the difference between
+      // a new owner and an established one is content rather than which page he is on.
+      window.location.assign('/dashboard?welcome=1');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
       setBusy(false);

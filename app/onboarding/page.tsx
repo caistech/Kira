@@ -68,7 +68,7 @@ export default function OnboardingPage() {
           'You already have an account with this email. Your payment is recorded — sign in with ' +
             'your existing password, or use "Forgot password" if you need to reset it.',
         );
-        setTimeout(() => window.location.assign('/login?next=/start%3Fjourney%3Dbusiness%26from%3Dpaid'), 4000);
+        setTimeout(() => window.location.assign('/login?next=/dashboard'), 4000);
         return;
       }
 
@@ -97,7 +97,13 @@ export default function OnboardingPage() {
       // /api/kira/create makes a NEW agent per draft (create/route.ts:11), so provisioning here
       // would hand him a second one the moment he finished the brief — the duplicate-agent state
       // D2 recorded, where which agent an owner gets is decided by a name collision.
-      window.location.assign('/start?journey=business&from=paid');
+      // ⚠️ /dashboard, NOT /start — see lib/onboarding/gate.ts. The long note above records why this
+      // pointed at /start: paying does not create an agent, so an owner landing on the dashboard had
+      // no Kira and the button fell back silently. That was true and is now fixed at the dashboard
+      // rather than by routing around it — it gates on state and offers the brief as a step. Sending
+      // the two entry paths to different places is what made the ROUTE decide what he saw instead of
+      // his state, which is precisely backwards.
+      window.location.assign('/dashboard?welcome=1');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
       setBusy(false);

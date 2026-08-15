@@ -10,6 +10,8 @@ import { shouldInviteBaseline } from '@/lib/valuation/baseline-invite';
 import { readTaskLedger } from '@/lib/kira/swarm/open-tasks';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { GenomeBuckets } from '@/components/GenomeBuckets';
+import { OnboardingGate } from '@/components/OnboardingGate';
+import { nextOnboardingStep, onboardingProgress } from '@/lib/onboarding/gate';
 
 export const metadata = { title: 'Overview · Kira' };
 export const dynamic = 'force-dynamic';
@@ -95,26 +97,30 @@ export default async function DashboardPage({
         .maybeSingle()
     : { data: null as Valuation | null };
 
-  // AN EMPTY ACCOUNT IS LED IN, NOT LEFT ON A DASHBOARD WITH A BUTTON ON IT.
+  // WHAT HE STILL OWES US — decided by STATE, drawn in place, never redirected.
   //
-  // The paid path goes straight into the flow that creates her (app/onboarding/page.tsx:100).
-  // Nothing did that for anyone who arrived any other way, so an invited owner signed in, landed
-  // here, and met a screen reporting on a business we know nothing about — with the one control
-  // that would have introduced him to Kira sitting among several others. Measured 2026-08-10 across
-  // the whole table: 21 of 33 accounts have no agent behind them, and the one invited person who
-  // actually signed in (2026-07-31) left with no agent, no draft and no valuation.
+  // This replaced `if (list.length === 0 && !valuation) redirect('/start?journey=business&from=app')`,
+  // and the redirect was wrong in three separate ways that only became visible when someone walked
+  // it. It sent a brand-new owner — paid or beta — to a page he had not asked for, styled dark
+  // against an otherwise light product, so his first impression after paying was of two different
+  // applications. It made the ROUTE decide what he saw rather than his state, which is the opposite
+  // of the specification. And a redirect chain over several conditions is how this codebase already
+  // produced a thirteen-hop loop and a door a real customer could not pass.
   //
-  // ⚠️ SCOPED TO AN ACCOUNT WITH NOTHING IN IT — no agent AND no valuation — and that scoping is the
-  // whole safety of it. A redirect on this surface has already produced a thirteen-hop loop
-  // (app/setup/layout.tsx) and the locked door Shah hit (UserShell, 2026-08-06), and BOTH bounced
-  // people away from content that was theirs. There is nothing here to bounce anyone away from: the
-  // gap figure is precisely why a valuation-first owner came, so he keeps his dashboard and the
-  // named `!hasMetKira` copy below leads him instead of moving him.
-  //
-  // It cannot loop, and that is checked rather than assumed: /start never returns here — it goes
-  // forward to /setup/draft/<id> (start:201, start:227) — and UserShell's own redirect is only the
-  // unauthenticated one to /login.
-  if (user && list.length === 0 && !valuation) redirect('/start?journey=business&from=app');
+  // `nextOnboardingStep` cannot loop: it is evaluated once and the answer is rendered inside the
+  // shell we already have. See lib/onboarding/gate.ts for why the order is what it is, and why the
+  // identity check is deliberately NOT `canSend`.
+  const gateStep = user
+    ? nextOnboardingStep({
+        hasBaseline: Boolean(valuation),
+        // The ROW, not `canSend`. `canSend` needs an 11-digit ABN and an Australian state, and
+        // gating on it would rebuild the exact door that trapped a real customer outside Australia.
+        // Whether what he entered is enough to SEND is the sender's judgement and is surfaced
+        // separately by `cannotSendYet` below, as a prompt he can read and walk past.
+        hasIdentity: Boolean(identity?.legal_name?.trim()),
+        hasAgent: list.length > 0,
+      })
+    : null;
 
   const { data: profile } = user
     ? await svc
@@ -282,10 +288,35 @@ export default async function DashboardPage({
         </section>
       )}
 
+      {/* THE OUTSTANDING STEP, FIRST AND ABOVE EVERYTHING.
+          Placed here rather than lower because the surfaces below report on data he has not given
+          yet — the gap block, the buckets, the task ledger — and a report on nothing, sitting above
+          the thing that would fill it, is what made an invited owner leave in July.
+          ⚠️ It does not REPLACE the page. The nav, Settings and Sign out stay reachable, and the
+          blocks below still render when they have something to say, because a man who has just paid
+          must never be somewhere he cannot get out of. */}
+      {gateStep && (
+        <OnboardingGate
+          step={gateStep}
+          progress={onboardingProgress({
+            hasBaseline: Boolean(val),
+            hasIdentity: Boolean(identity?.legal_name?.trim()),
+            hasAgent: list.length > 0,
+          })}
+          firstName={user?.first_name as string | undefined}
+        />
+      )}
+
       {/* NO BASELINE AT ALL — the straight-in signup.
           Gated on the ROW, not on the gap: a valuation that computed to zero is still a baseline he
           gave us, and telling that owner he has not done this yet would be a plain falsehood. */}
-      {!val && showBaselineInvite && <NoBaselineYet />}
+      {/* ⚠️ SUPPRESSED WHILE THE GATE IS ASKING. Both invite him to the same eleven questions, and
+          shown together they read as the page not knowing what it has already asked — the exact
+          duplicate-invitation defect the "Meet Kira" card had to be fixed for. The card survives for
+          the case the gate does NOT cover: an owner who is fully onboarded and simply has no
+          baseline, which happens on the broker channel where a client signs up on his introducer's
+          word rather than on the strength of a number. */}
+      {!gateStep && !val && showBaselineInvite && <NoBaselineYet />}
 
       {val && val.gap > 0 && (
         <GapDashboard valuation={val} money={money} talkHref={talkHref} isWelcome={isWelcome} hasMetKira={list.length > 0} firstName={user?.first_name as string | undefined} />
