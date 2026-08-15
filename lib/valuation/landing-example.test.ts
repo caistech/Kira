@@ -65,8 +65,17 @@ describe('the landing example matches the calculator', () => {
     // plumbing business was priced BELOW anything Australian guidance describes (published floor
     // 2.0x, "on the tools, one residential builder"). The overclaim at the top of the band had a
     // matching under-claim at the bottom, and this example was sitting in it.
+    //
+    // ⚠️ MOVED AGAIN, $684k -> $626k on 2026-08-14 (MODEL_VERSION 2026-08-14.1). Same plumber, same
+    // $325k SDE, same $220k of gear, `walkAway` untouched. The multiple went 2.10x -> 1.93x because
+    // the floor ratio stopped being a flat 0.75 and now scales with the sector's level (register
+    // A11), and because the absolute 1.5x seller floor was retired (A12).
+    //
+    // ⚠️ THE GAP DID NOT MOVE — $195k before and after — which is the property worth noticing here:
+    // `DOCUMENTATION_UPLIFT` caps the claim, so the band moves what the owner is WORTH and not what
+    // Kira claims to add. `potential` moved by exactly the same $58k as `today`.
     expect(short(v.walkAway)).toBe('$220k');
-    expect(short(v.today)).toBe('$684k');
+    expect(short(v.today)).toBe('$626k');
   });
 
   for (const page of PAGES) {

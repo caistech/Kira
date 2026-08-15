@@ -61,6 +61,16 @@ const RESCORE_REASONS = {
     'pricing every trade against the same universal band. Two limits still apply on top — below ' +
     'about 1.5x an owner keeps working the business rather than sell it, and no buyer pays more ' +
     'than five years of profit for a small one. Same answers, re-read.',
+  '2026-08-14.1':
+    'Rescored onto the 2026-08-14 rubric, after an Australian business broker published his own ' +
+    'valuation method and we checked ours against it. Two things changed. The bottom of the range ' +
+    'now depends on the sector: in a lower-priced industry the gap between a struggling business ' +
+    'and a strong one is proportionally wider than in a high-priced one, and the model had been ' +
+    'treating that spread as the same everywhere. And the old rule that no business sells below ' +
+    'about 1.5 times its earnings has been removed, because published Australian figures show ' +
+    'smaller businesses regularly changing hands below that. For most owners this moves today\'s ' +
+    'figure down somewhat. What you could unlock by capturing what is in your head is unchanged — ' +
+    'that was never derived from the range. Same answers, re-read.',
 }
 
 const RESCORE_REASON = RESCORE_REASONS[MODEL_VERSION]

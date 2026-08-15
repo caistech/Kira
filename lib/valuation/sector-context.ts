@@ -18,6 +18,17 @@
 //     ceiling = min(5.0, 2.94 x 1.35 x 1.066)      = 4.23
 //     low band tops out at 2.21 + 0.34 x 2.02      = 2.90    <- essentially AT the median, not below
 //
+// ⚠️ THAT WORKED EXAMPLE NO LONGER REPRODUCES, and the derivation is kept anyway. Under the
+// 2026-08-14 band (A11: the floor ratio scales with the sector's level) the same business computes
+// floor 2.07 / ceiling 4.23, and the low band reaches 2.55 against a 2.94 median — comfortably
+// below it. Because the floor is now always `median x ratio` with ratio < 1, a low-readiness owner
+// lands under his median far more often than before.
+//
+// So the specific counterexample is gone. The DISCIPLINE stays, for two reasons: the direction is
+// cheap to compute and free to be right, and the band has now been rebuilt four times in eleven days
+// — an asserted direction would have been silently wrong through at least one of those. A claim that
+// happens to be true today is not the same as a claim that is checked.
+//
 // Printing the numbers is what makes that visible, so the direction is now DERIVED rather than
 // asserted. This is the same discipline as `displayed.ts`: the words are computed from the figures
 // the reader is looking at, so the two cannot contradict each other.

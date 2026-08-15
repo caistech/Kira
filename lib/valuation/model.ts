@@ -192,7 +192,7 @@ const CLIENT_TREND_SCORE: Record<ClientTrend, number> = { shrinking: 0, stable: 
  *
  * Format: date of the change + a counter for same-day revisions.
  */
-export const MODEL_VERSION = '2026-08-08.1';
+export const MODEL_VERSION = '2026-08-14.1';
 
 /**
  * THE RUBRIC. Ten points, split across the three questions a buyer is actually asking.
@@ -287,10 +287,14 @@ const TOTAL_WEIGHT =
  * which is a poor answer to an Australian owner and a worse one to his broker. This is our rubric,
  * and it derives from the two reservation prices that actually bound a deal:
  *
- *   THE SELLER'S FLOOR — 1.5x. Below this he does not sell; he keeps working it. A year and a half
- *   of profit is not worth handing over a business he could simply continue to run, and no argument
- *   about market comparables changes that. It is a reservation price, not a computed value, which is
- *   why it is absolute and does not scale with sector.
+ *   ⚠️ THE SELLER'S FLOOR — 1.5x — WAS RETIRED 2026-08-14, and this paragraph is kept because the
+ *   argument it made is the one a future session will re-derive. It read: "below this he does not
+ *   sell; he keeps working it… a reservation price, not a computed value, which is why it is
+ *   absolute and does not scale with sector." Published Australian data disagrees (café 1.0x, retail
+ *   1.25x, sub-$250k 0.8x), and the argument assumes a seller who HAS the option to keep working it
+ *   — which the owner this product is built for does not. See `SELLER_RESERVATION_FLOOR` below.
+ *
+ *   The floor now scales off the sector, per A11.
  *
  *   THE BUYER'S CEILING — 5.0x. No buyer pays more than four or five years of profit for a small
  *   business, and only reaches the top when THREE things are true at once: it is well run, it is
@@ -312,8 +316,59 @@ const TOTAL_WEIGHT =
  * and that keeps earning. Five only comes with the growth story on top. That is the psychology the
  * band was built from, reproduced by the arithmetic rather than asserted beside it.
  */
-const SELLER_RESERVATION_FLOOR = 1.5;
+/**
+ * ⚠️ `SELLER_RESERVATION_FLOOR = 1.5` WAS REMOVED 2026-08-14. Operator decision: drop it and let
+ * sector × ratio run.
+ *
+ * Its defence was a reservation price — "below about 1.5x he does not sell, he keeps working it" —
+ * asserted, absolute, and deliberately not scaled by sector. Two things retired it:
+ *
+ *   1. PUBLISHED AU DATA CONTRADICTS IT. The Melis/LINK guide (docs/Australian SME Business
+ *      Valuation Multiple Guide.pdf) puts café Low at 1.0x, retail at 1.25x, and any business under
+ *      $250k of maintainable earnings at 0.8x. Businesses demonstrably change hands below 1.5x.
+ *   2. THE ARGUMENT IS WEAKEST FOR THE OWNER THIS PRODUCT IS FOR. "He would rather keep working it"
+ *      assumes a seller with the option to keep working it. A 60-70-year-old selling because of age,
+ *      health or exhaustion has no reservation price — that is the entire premise of Kira.
+ *
+ * It bound on six sectors (median < 2.0): Routes 1.51, Cell Phone Repair 1.78, Jewelry 1.86, Legal
+ * 1.87, Nail Salons 1.88, Breweries 1.97. Those now derive their floor like every other sector.
+ */
+
+/**
+ * THE BUYER'S CEILING — no buyer pays more than four or five years of profit for a small business,
+ * and only reaches the top when three things are true at once: it is well run, it is easy to take
+ * over, and he believes he can add his own spin. Unchanged, and still the hard cap over everything.
+ */
 const BUYER_CEILING = 5.0;
+
+/**
+ * ⚠️ A13 — THE HIGHEST SECTOR MEDIAN THE BAND MAY BE DERIVED FROM. Added 2026-08-14.
+ *
+ * THE DEFECT: floor scaled off the raw median while the ceiling was capped at `BUYER_CEILING`, so a
+ * rich sector's band CLOSED. Marinas & Fishing (median 6.60) ran floor 4.95 / ceiling 5.00 — a
+ * spread of 0.05, meaning transferability moved the number essentially not at all, and the gap
+ * collapsed with it: identical answers at $300k SDE produced a $131,344 gap in every normal sector
+ * and $8,756 in Marinas. An owner there saw a $1.49M valuation, a gap smaller than a year of the
+ * product, and nothing the product could claim to fix. Found by inspection, never reported.
+ *
+ * THE FIX, and why this shape: derive BOTH ends from `min(median, BUYER_CEILING / CEILING_RATIO)`.
+ * A median whose implied ceiling is already above the hard cap is a median this model cannot use at
+ * this scale — so cap the median, not just the ceiling, and the band keeps its shape.
+ *
+ * IT IS ALSO THE AU-EVIDENCE-CONSISTENT MOVE, which is what decided it over the alternatives
+ * (flooring `spread`, or raising `BUYER_CEILING`). Eleven medians in `sde-multiples.ts` sit at or
+ * above 4.0x — Marinas 6.60, Rubber & Plastic 5.11, Car Washes 4.73, Storage 4.60, Medical Billing
+ * 4.41, Dog Daycare 4.40, Funeral Homes 4.36, Industrial Machinery 4.20, Nursery & Garden 4.15,
+ * Laundromats 4.12, Hotels 4.02 — and they are EXACTLY the sectors with no Australian corroboration:
+ * the Melis table has no Common above 3.75x and no High above 4.5x anywhere. One change closes the
+ * collapsed band and pulls the uncorroborated sectors inside the AU envelope, using no new data.
+ *
+ * A side effect worth knowing: for those sectors the size adjustment becomes LIVE again. It had been
+ * inert — the ceiling was pinned at 5.00 from $150k to $1.5m alike, because the cap bound before
+ * size could move anything.
+ *
+ * Declared below `SECTOR_CEILING_RATIO`, which it is derived from.
+ */
 
 /**
  * The sector median's endpoints, as fractions of the median itself.
@@ -331,11 +386,57 @@ const BUYER_CEILING = 5.0;
  * because AU hospitality carries lease risk the US median does not price. Recorded, not tuned away —
  * a per-family correction needs better data than a broker guide.
  */
-const SECTOR_FLOOR_RATIO = 0.75;
+/**
+ * ⚠️ A11 — THE FLOOR RATIO IS NO LONGER A CONSTANT. Changed 2026-08-14.
+ *
+ * It was a flat `0.75` for every sector. The Melis/LINK guide publishes Low / Common / High for 29
+ * Australian SME sectors, and its implied floor÷centre ratios are NOT flat — they **scale with the
+ * sector's own level**, correlation **r = 0.935**:
+ *
+ *   café 0.571 · retail 0.625 · trades & construction 0.667 · professional 0.696 · SaaS 0.741
+ *
+ * Cheap, risky sectors have proportionally DEEPER floors than rich ones. A constant ratio cannot
+ * express that, and 0.75 sat above 24 of his 29 rows — so the model's floor was too high everywhere
+ * and most wrong exactly where the range is widest.
+ *
+ * Least-squares over all 29 rows: **ratio = 0.4579 + 0.0834 × median** (R² = 0.875, max residual
+ * 0.034). Fitted, not chosen; `au-evidence.test.ts` pins the fit.
+ *
+ * ⚠️ THIS SURVIVES THE COMPETING READING OF HIS TABLES, which is why it could ship before he
+ * answers. The operator's hypothesis is that his Low column is SDE while Common/High are PEBITDA —
+ * under which this ratio would be a basis conversion (a replacement-salary haircut) rather than a
+ * range width, and fitting it here would be meaningless. Applied to the INDUSTRY table that reading
+ * implies a café manager costs 42.9% of SDE against a SaaS GM at 25.9% — at $300k SDE, a $129k café
+ * manager and a $78k SaaS GM. That is backwards, monotonically, across all 20 comparable rows. So
+ * the ratio reads as a range width. (It may still hold for his SIZE table, where the ratio rises
+ * with size exactly as a shrinking salary fraction would — see register A10, still blocked.)
+ */
+const FLOOR_RATIO_INTERCEPT = 0.4579;
+const FLOOR_RATIO_SLOPE = 0.0834;
+
 const SECTOR_CEILING_RATIO = 1.35;
 
-/** Kept for the copy layer's "nothing outside a sane range" clamps. */
-const OWNER_DEPENDENT_FLOOR = SELLER_RESERVATION_FLOOR;
+/**
+ * See `BUYER_CEILING` above — A13. The highest median either end may be derived from.
+ */
+const EFFECTIVE_MEDIAN_CAP = BUYER_CEILING / SECTOR_CEILING_RATIO;
+
+/**
+ * The floor ratio for a sector, from its (capped) median. See A11 above.
+ *
+ * Clamped into the range the fit was observed over, so an extrapolation far outside the Australian
+ * evidence cannot produce a ratio the data never supported — at the top a floor above the ceiling,
+ * at the bottom a floor near zero.
+ */
+function sectorFloorRatio(effectiveMedian: number): number {
+  return clamp(FLOOR_RATIO_INTERCEPT + FLOOR_RATIO_SLOPE * effectiveMedian, 0.55, 0.78);
+}
+
+// `OWNER_DEPENDENT_FLOOR` was REMOVED 2026-08-14 along with `SELLER_RESERVATION_FLOOR`. Its comment
+// claimed it was "kept for the copy layer's clamps"; a repo-wide grep found the copy layer never
+// imported it, and nothing else read it either. It had been dead for as long as it existed — the
+// same shape as the SDE_FLOOR/SDE_CAP removal noted below, and deleted for the same reason: a live
+// constant that reads as load-bearing and is not costs the next reader more than it saves.
 
 /**
  * The most Kira may claim to add, in turns of SDE, however large the gap to the ceiling.
@@ -513,20 +614,31 @@ export function computeValuation(inputs: ValuationInputs): ValuationResult {
   // has discarded the sector before it starts.
   //
   // THE RATIOS ARE CALIBRATED TO REPRODUCE PUBLISHED RANGES, and au-evidence.test.ts fails if they
-  // drift out: 0.75 x 2.62 = 1.97 and 1.35 x 2.62 = 3.54, against a published 2.0-3.5.
+  // drift out. ⚠️ 2026-08-14: the CEILING ratio survived contact with a second Australian source
+  // (the Melis/LINK guide's implied ceiling÷centre means 1.341 across 29 sectors, against our 1.35 —
+  // a third independent AU arrival at it). The FLOOR ratio did not: it was flat at 0.75 and the
+  // evidence says it scales with the sector's level. Replaced by `sectorFloorRatio()`, fitted.
   //
-  // Two guards survive from the universal band because their reasoning is sector-independent:
-  //   SELLER_RESERVATION_FLOOR — below ~1.5x he does not sell, he keeps working it. That argument
-  //     does not soften because his sector is cheap, so it is a hard floor under the sector floor.
+  // One guard survives from the universal band because its reasoning is sector-independent:
   //   BUYER_CEILING — no buyer pays more than four or five years of profit for a small business,
-  //     however rich the sector median. A hard cap over the sector ceiling.
+  //     however rich the sector median. A hard cap over the sector ceiling, and since 08-14 also the
+  //     source of EFFECTIVE_MEDIAN_CAP, so a median implying a ceiling above it cannot silently
+  //     close the band (A13).
+  //
+  // ⚠️ SELLER_RESERVATION_FLOOR is GONE (A12). There is no absolute floor under the sector floor.
   //
   // Size still limits how far UP the range a business can reach and never lifts the floor: a smaller
   // business has fewer buyers, no management layer and worse financing.
-  const sectorFloor = Math.max(SELLER_RESERVATION_FLOOR, sdeMultiple * SECTOR_FLOOR_RATIO);
+  // ⚠️ REVISED 2026-08-14 — three changes, each documented at its constant above:
+  //   A13  both ends now derive from an EFFECTIVE median, capped at BUYER_CEILING / CEILING_RATIO,
+  //        so a rich sector's band can no longer close against the hard cap.
+  //   A11  the floor ratio SCALES with the sector's level instead of sitting flat at 0.75.
+  //   A12  SELLER_RESERVATION_FLOOR is gone — no absolute floor under the sector floor.
+  const effectiveMedian = Math.min(sdeMultiple, EFFECTIVE_MEDIAN_CAP);
+  const sectorFloor = effectiveMedian * sectorFloorRatio(effectiveMedian);
   const sectorCeiling = Math.min(
     BUYER_CEILING,
-    sdeMultiple * SECTOR_CEILING_RATIO * sizeAdjustment(inputs.annualProfit),
+    effectiveMedian * SECTOR_CEILING_RATIO * sizeAdjustment(inputs.annualProfit),
   );
   // A cheap sector at a small size can push the scaled ceiling under the hard floor. Order them
   // rather than let `spread` go negative and invert the whole band.
@@ -747,11 +859,15 @@ export function buildBuyerRationale(result: ValuationResult): BuyerRationale {
         `Right now they would look at your business and see that ${weak}. From the outside most of that is invisible - they are taking your word for how it all holds together.`,
         // ⚠️ THE DIRECTION IS DERIVED, NOT ASSERTED (P4). This sentence used to end "which is why
         // the multiple sits below your sector's average, not at it" — a claim about a number it did
-        // not print and did not check. It is reachably FALSE: an owner who answers "I am the
-        // business" in a cheap sector is priced ABOVE his sector median, because the absolute
-        // seller's floor (1.5x) sits above that sector's scaled floor. Routes at 1.51x on $120k SDE
-        // comes out at 1.6x — the weakest possible business, told it was being marked down below a
-        // median it is in fact above. See sector-context.ts.
+        // not print and did not check, and one that was reachably FALSE: the absolute 1.5x seller's
+        // floor sat ABOVE a cheap sector's scaled floor, so Routes at a 1.51x median on $120k SDE
+        // came out at 1.6x — the weakest possible business, told it was marked down below a median
+        // it was in fact above.
+        //
+        // ⚠️ 2026-08-14: THAT SPECIFIC CASE IS GONE, because the absolute floor is gone (A12). The
+        // same Routes business now computes 0.88x against a 1.51x median — below it, as the old
+        // sentence assumed. The derivation stays regardless; see sector-context.ts for why a claim
+        // that happens to be true today is not the same as one that is checked.
         `It is the same as buying a car sight unseen on the seller's promises: you would knock the price down to cover the unknown unknowns, because you are the one who wears it if things turn out worse than described. A buyer does exactly that here - ${sector.clause}`,
         "The more of that you make visible and transferable - documented, systemised, running without you - the less there is to discount for. The gap above isn't extra profit; it's risk you have taken off the buyer's table.",
       ],

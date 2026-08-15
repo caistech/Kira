@@ -299,9 +299,13 @@ describe('buyer rationale — narrative consistency', () => {
     expect(owned.potential).toBeGreaterThan(owned.today);
   });
 
-  it('honours both reservation prices — nothing below 1.5x, nothing above 5x', () => {
-    // The two numbers the whole band is derived from. If either is ever breached the rubric has
-    // stopped describing a deal either side would actually sign.
+  it('the worst business sits exactly on its sector floor, and the best never breaches 5x', () => {
+    // ⚠️ RENAMED AND REWRITTEN 2026-08-14. It was "honours both reservation prices — nothing below
+    // 1.5x, nothing above 5x", and the seller's 1.5x reservation price no longer exists: published
+    // Australian data has businesses changing hands below it (cafe 1.0x, retail 1.25x, sub-$250k
+    // 0.8x), and the argument behind it — "he would rather keep working it" — assumes a seller who
+    // has that option, which the owner this product is built for does not. Register A12, operator
+    // decision. The BUYER's ceiling survives unchanged; only one of the two was ever a hard bound.
     const worst = computeValuation({
       ...base,
       ownerDependence: 'i_am_the_business',
@@ -313,14 +317,33 @@ describe('buyer rationale — narrative consistency', () => {
       clientTrend: 'shrinking',
     });
     expect(worst.readiness).toBe(0);
-    // ⚠️ UPDATED 2026-08-08 with the sector-scaled band. This used to assert EXACTLY 1.5x, which was
-    // a property of the flat band rather than the invariant the test is named for. The floor is now
-    // the SECTOR's floor — for HVAC (2.8 median) that is 2.1 — and 1.5x is the hard guard UNDER it,
-    // binding only where a sector is cheap enough to fall through. The invariant survives; the
-    // equality was incidental, and re-asserting it would have meant reverting the change.
-    expect(worst.appliedMultipleToday).toBeGreaterThanOrEqual(1.5);
+    // The invariant the test is actually for: a readiness-0 business is priced AT its floor, whatever
+    // that floor turns out to be. That has survived every rewrite of the band and is the thing worth
+    // pinning; the specific number has changed three times and was never the point.
     expect(worst.appliedMultipleToday).toBeCloseTo(worst.floorMultiple, 4);
-    expect(worst.floorMultiple).toBeCloseTo(2.8 * 0.75, 4);
+
+    // The floor is now the sector's median times a ratio that SCALES with that median (A11), where
+    // it used to be a flat 0.75. HVAC at 2.8: ratio = 0.4579 + 0.0834 x 2.8 = 0.6914, floor = 1.936.
+    // Asserted from the constants rather than as a literal, so a deliberate refit of the ratio moves
+    // this with it while an accidental change to the FORMULA still fails.
+    const hvacRatio = 0.4579 + 0.0834 * 2.8;
+    expect(worst.floorMultiple).toBeCloseTo(2.8 * hvacRatio, 4);
+
+    // And it is now BELOW the retired 1.5x seller floor for cheap sectors — the change A12 made, so
+    // a sector priced under it is no longer lifted. Routes (median 1.51) is the clearest case.
+    const cheapWorst = computeValuation({
+      ...base,
+      industry: 'Routes (vending/distribution)',
+      annualProfit: 120_000,
+      ownerDependence: 'i_am_the_business',
+      systems: 'in_my_head',
+      recurringRevenue: 'none',
+      clientConcentration: 'concentrated',
+      profitTrend: 'declining',
+      marginTrend: 'shrinking',
+      clientTrend: 'shrinking',
+    });
+    expect(cheapWorst.appliedMultipleToday).toBeLessThan(1.5);
 
     const bestPossible = computeValuation({
       ...base,
