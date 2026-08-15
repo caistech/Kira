@@ -161,51 +161,63 @@ export function bucketDisplay(section: BucketSection): BucketDisplay {
  */
 const BANDS = {
   empty: {
+    rule: 'border-l-rose-500',
+    surface: 'bg-rose-50/70',
     label: 'Nothing yet',
     dot: 'bg-rose-500',
-    chip: 'bg-rose-50 text-rose-800 border-rose-200',
+    chip: 'bg-rose-100 text-rose-900 border-rose-300',
     bar: 'bg-rose-500',
     glow: 'text-rose-500',
-    // A FIXED SLIVER, not a percentage. An entirely grey bar is hard to scan as "this row is the
-    // red one", so empty still shows a mark — but `w-[6%]` would have been a percentage in a
-    // component whose whole design decision is that there are no percentages here, and the test
-    // caught it. A fixed width says the same thing without reintroducing the idea of a denominator.
-    width: 'w-1.5',
+    track: 'bg-rose-100',
+    // A FIXED SLIVER, not a percentage — a bare grey bar is hard to scan as "this row is the red
+    // one", but `w-[6%]` would have been a percentage in a component whose whole design decision is
+    // that there are none, and the test caught it.
+    width: 'w-2',
   },
   located: {
-    // "YOU TOLD US" — not "started", because Kira has captured nothing here yet. The distinction is
-    // the whole point of the state and the label is where a reader meets it.
+    rule: 'border-l-amber-500',
+    surface: 'bg-amber-50/70',
+    // "YOU TOLD US" — not "started". Kira has captured nothing here; he answered for it. The
+    // distinction is the point of the state and the label is where a reader meets it.
     label: 'You told us',
-    dot: 'bg-amber-400',
-    chip: 'bg-white text-amber-800 border-amber-300',
-    // Outlined rather than solid, so it reads as an OUTLINE OF THE SHAPE rather than as progress —
-    // the visual grammar of "this is where it sits" against "this is what we hold".
-    bar: 'bg-amber-300',
-    glow: 'text-amber-400',
+    dot: 'bg-amber-500',
+    chip: 'bg-amber-100 text-amber-900 border-amber-300',
+    bar: 'bg-amber-500',
+    glow: 'text-amber-500',
+    track: 'bg-amber-100',
     width: 'w-1/4',
   },
   thin: {
+    rule: 'border-l-orange-500',
+    surface: 'bg-orange-50/70',
     label: 'Just started',
-    dot: 'bg-amber-500',
-    chip: 'bg-amber-50 text-amber-900 border-amber-200',
-    bar: 'bg-amber-500',
-    glow: 'text-amber-500',
+    dot: 'bg-orange-500',
+    chip: 'bg-orange-100 text-orange-900 border-orange-300',
+    bar: 'bg-orange-500',
+    glow: 'text-orange-500',
+    track: 'bg-orange-100',
     width: 'w-1/3',
   },
   building: {
+    rule: 'border-l-lime-600',
+    surface: 'bg-lime-50/70',
     label: 'Building up',
-    dot: 'bg-lime-500',
-    chip: 'bg-lime-50 text-lime-900 border-lime-300',
-    bar: 'bg-lime-500',
-    glow: 'text-lime-500',
+    dot: 'bg-lime-600',
+    chip: 'bg-lime-100 text-lime-900 border-lime-400',
+    bar: 'bg-lime-600',
+    glow: 'text-lime-600',
+    track: 'bg-lime-100',
     width: 'w-2/3',
   },
   covered: {
+    rule: 'border-l-emerald-600',
+    surface: 'bg-emerald-50/70',
     label: 'Well covered',
     dot: 'bg-emerald-600',
-    chip: 'bg-emerald-50 text-emerald-900 border-emerald-300',
+    chip: 'bg-emerald-100 text-emerald-900 border-emerald-400',
     bar: 'bg-emerald-600',
     glow: 'text-emerald-600',
+    track: 'bg-emerald-100',
     width: 'w-full',
   },
 } as const;
@@ -299,7 +311,12 @@ export function GenomeBuckets({
           return (
             <li
               key={section.key}
-              className="kira-rise-in"
+              /* ⚠️ THE CARD CARRIES THE COLOUR, not just the bar. The first pass put the whole
+                 signal in an 8px pale bar and an outlined chip, and at real page width nine rows
+                 read as grey with slivers on them — the operator asked three times where the colour
+                 scheme was, and he was looking straight at it. A tinted surface and a coloured left
+                 rule make the state legible before anyone reads a word. */
+              className={`kira-rise-in rounded-xl border-l-4 ${band.rule} ${band.surface} p-3`}
               /* THE STAGGER — 45ms apart, so the grid assembles rather than appearing.
                  CAPPED at the 8th item: the delay is per-position, and an uncapped ramp would put
                  the last of nine buckets 400ms behind the first, which stops reading as one motion
@@ -321,7 +338,7 @@ export function GenomeBuckets({
                   `currentColor` the keyframe glows with. This looked like it worked in the markup
                   and would have shipped as an invisible feature. */}
               <div
-                className={`mt-2 h-2 w-full rounded-full bg-stone-100 ${band.glow} ${
+                className={`mt-2 h-3 w-full rounded-full ${band.track} ${band.glow} ${
                   justImproved ? 'kira-band-pulse' : ''
                 }`}
               >
