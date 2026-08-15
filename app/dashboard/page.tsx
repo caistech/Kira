@@ -516,8 +516,24 @@ function GapDashboard({
           That&apos;s the value locked in your head today — the difference between {figures.todayText} (a business that needs you)
           and {figures.potentialText} (one that runs without you). We close it together, a conversation at a time.
         </p>
-        <div className="mt-4 inline-flex items-center gap-2 text-sm bg-white/15 rounded-full px-4 py-1.5">
-          Transferability today: {readinessPct}/100 — we grow this every week
+        {/* ⚠️ "WE GROW THIS EVERY WEEK" WAS REMOVED — 2026-08-15. It was false for every owner who
+            has ever read it, on the home screen of a product he is paying for.
+            `readiness` has exactly TWO writers (app/api/onboarding/complete and
+            app/api/valuation/claim) and both run at signup. Nothing recomputes it — no cron, no
+            genome write path, no confirmation. So the figure is the baseline, permanently, and the
+            sentence beside it promised a weekly movement that no code performs.
+            It is named as the baseline instead, which is what it is and what the paragraph below
+            already says ("It stays fixed so progress is measured from one starting point"). The two
+            were contradicting each other on the same screen.
+            ⚠️ AND IT POINTS AT WHAT DOES MOVE. The nine Genome areas fill as she captures, and that
+            is now visible — so the promise is transferred to the thing that keeps it rather than
+            deleted and replaced with nothing. Making this figure move is the separate, larger piece
+            of work; until then this must not claim it. */}
+        <div className="mt-4 inline-flex flex-wrap items-center gap-x-2 gap-y-1 text-sm bg-white/15 rounded-full px-4 py-1.5">
+          <span>Transferability at your baseline: {readinessPct}/100</span>
+          <Link href="/my-genome" className="underline underline-offset-2 hover:text-white">
+            See what has moved
+          </Link>
         </div>
 
         {/* WHERE THIS NUMBER CAME FROM, AND HOW TO REPLACE IT.
