@@ -21,6 +21,21 @@
 // surface remembering to pass it, which is the class of rule that holds until someone adds a route
 // at 1am.
 
+// ⚠️ BOTTOM-LEFT, NOT BOTTOM-RIGHT — 2026-08-15, and it is a concession to another component's
+// engine rather than a design preference.
+//
+// This sat at `bottom-5 right-5` and collided with the SayFix reporter, which the operator saw as
+// two buttons stacked in one corner. SayFix auto-places itself and DOES treat a fixed element as an
+// obstacle — but its scoring gives the preferred corner +8 and then a REMEMBERED bonus of +14 once
+// a choice is stored in localStorage, so a browser that picked bottom-right before this FAB existed
+// keeps picking it. Ours is the one that can move without argument.
+//
+// It also separates the two by MEANING, which is the better reason: "talk to Kira" is the product
+// and "report a problem" is the escape hatch, and a reader should not have to read two labels in one
+// corner to tell them apart.
+//
+// ⚠️ The third floating thing the operator counted is real and is NOT fixed here: conversation
+// surfaces mount a voice widget of their own, which is why this component hides on them entirely.
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -35,7 +50,7 @@ export function TalkFab() {
     <Link
       href="/talk"
       aria-label="Talk to Kira"
-      className="fixed bottom-5 right-5 z-40 inline-flex min-h-[56px] items-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-orange-500 px-5 py-3 text-white shadow-xl shadow-rose-200 transition-transform hover:scale-105 active:scale-95"
+      className="fixed bottom-5 left-5 z-40 inline-flex min-h-[56px] items-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-orange-500 px-5 py-3 text-white shadow-xl shadow-rose-200 transition-transform hover:scale-105 active:scale-95"
     >
       <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path

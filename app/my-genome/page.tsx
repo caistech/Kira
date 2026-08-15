@@ -106,6 +106,27 @@ export default async function MyGenome() {
         </section>
       )}
 
+      {/* THE NINE AREAS, ABOVE THE EMPTY/NOT-EMPTY FORK — and the placement is the fix.
+          This block was written INSIDE the non-empty branch, so an owner with nothing captured saw
+          "Nothing captured yet" and no map at all. That is exactly backwards: the buckets are MOST
+          useful when empty, because empty is when they are a picture of what is missing rather than
+          a report on what is held. Every account walked during testing hit that branch, which is why
+          the operator asked three times where the visual was — it was mounted and unreachable.
+          Above the fork, it cannot happen again. */}
+      <div className="mt-8">
+        <GenomeBuckets
+          sections={g.sections.map((sec) => ({
+            key: sec.key,
+            title: sec.title,
+            coverage: sec.coverage,
+            baseline: sec.baseline
+              ? { statement: sec.baseline.statement, ownerDependent: sec.baseline.ownerDependent }
+              : null,
+          }))}
+          heading="Where the value is locked up"
+        />
+      </div>
+
       {g.empty ? (
         <div className="mt-8 rounded-2xl border border-dashed border-amber-300 p-8 text-center">
           <p className="font-display text-xl font-bold">Nothing captured yet</p>
@@ -217,28 +238,6 @@ export default async function MyGenome() {
             own position. {WHO_CAN_SEE_IT} Anything here can be taken back — use{' '}
             <span className="font-semibold">Remove</span> on the entry itself.
           </p>
-
-          {/* THE SAME VISUAL AS THE DASHBOARD AND THE SAMPLE, on the page that is actually HIS.
-              It was mounted on /dashboard and /sample-genome and missed here, which is the one that
-              matters most — this is the page called "Your Business Genome", and it was the only one
-              of the three showing him the detail without the shape.
-              ⚠️ ORDER IS DELIBERATE AND DIFFERS FROM THE LIST BELOW. `sections` is sorted
-              populated-first so a man opening his own Genome does not lead on things he has not
-              done; the buckets keep the areas' own buyer-priority order, because a map whose regions
-              move between visits is not a map. Both are right for their job. */}
-          <div className="mt-8">
-            <GenomeBuckets
-              sections={g.sections.map((sec) => ({
-                key: sec.key,
-                title: sec.title,
-                coverage: sec.coverage,
-                baseline: sec.baseline
-                  ? { statement: sec.baseline.statement, ownerDependent: sec.baseline.ownerDependent }
-                  : null,
-              }))}
-              heading="Where the value is locked up"
-            />
-          </div>
 
           <div className="mt-6 space-y-3">
             {sections.map((s) => (
