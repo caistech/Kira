@@ -1,6 +1,8 @@
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
+import { ShareGenome } from '@/components/ShareGenome';
+import { getBusinessIdentity } from '@/lib/business-identity/store';
 import { formatMoney, formatMoneyApprox, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { RedactEntry } from '@/components/RedactEntry';
 import { PRIVATE_REASON_LABEL } from '@/lib/genome/private';
@@ -45,6 +47,7 @@ export default async function MyGenome() {
   }
 
   const g = await deriveOwnerGenome(appUser.id);
+  const identity = await getBusinessIdentity(appUser.id);
 
   // WHAT HE HAS, FIRST. The areas are held in buyer-priority order, which is right for the handover
   // document and wrong for the first thing he sees: it put empty sections above the ones with his
@@ -62,6 +65,18 @@ export default async function MyGenome() {
   return (
     <main className="max-w-3xl mx-auto px-5 py-10 pb-20">
       <h1 className="font-display text-3xl font-bold">Your Business Genome</h1>
+      {/* SHARE, at the top with the title, because it is the reason the document exists.
+          "Kira is a PROJECT, not a subscription — extraction is a migration; her job is to make
+          herself redundant." The moment this leaves for a broker or an accountant is the moment the
+          product has done what it promised, so the control belongs beside the heading rather than
+          buried under three hundred entries. */}
+      <div className="mt-4">
+        <ShareGenome
+          businessName={identity?.trading_name?.trim() || identity?.legal_name?.trim() || null}
+          ownerName={(appUser.first_name as string | null) ?? null}
+          hasDocument={!g.empty}
+        />
+      </div>
       <p className="text-lg text-stone-600 mt-4 leading-relaxed max-w-2xl">
         Everything Kira has captured about how your business actually runs, organised by the questions
         a buyer&apos;s advisor will ask you. It grows every time you talk to her — there is nothing to
