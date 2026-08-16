@@ -249,11 +249,18 @@ export default async function SettingsPage() {
         ) : (
           <>
             <p className="mt-4 text-base text-gray-600">Nothing connected yet.</p>
+            {/*
+              The front door is the CHOOSER, not the Google form. An owner on Microsoft — roughly two
+              thirds of the known contact base — met a button offering Google Drive and had nowhere to
+              go. The "Change access or reconnect" link above deliberately still points straight at
+              /setup/drive: he is already on Google, and re-asking which provider he uses would be a
+              question he has answered.
+            */}
             <Link
-              href="/setup/drive"
+              href="/setup/documents"
               className="mt-4 inline-block min-h-[44px] rounded-lg bg-violet-600 px-4 py-2.5 text-base font-semibold text-white"
             >
-              Connect Google Drive
+              Connect your documents
             </Link>
           </>
         )}
