@@ -124,3 +124,38 @@ describe('the rule file contains no mangled escapes', () => {
     expect(src).not.toMatch(/[\u0008\u000c]/);
   });
 });
+
+// ⚠️ A REPEATED RISK IS STILL A RISK — arguably more of one.
+//
+// The duplicate early-return in handleKiraSaveMemory sat above the ask_this_now block, so a fact she
+// had heard before could never produce the stop signal. Ray worked that out from the outside:
+//
+//   "It exists — it just does not fire on the facts I actually asked her to notice, only on ones she
+//    has not heard before. Which means the behaviour is a lottery and I cannot tell from my side
+//    which pull I am getting." — 2026-08-17
+describe('the repeat path carries the same question', () => {
+  it('the duplicate branch runs the risk check before returning', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('lib/kira/uid-tools.ts', 'utf8');
+    const dupBranch = src.slice(src.indexOf('if (duplicate) {'), src.indexOf('ANOTHER COMPANY'));
+    expect(dupBranch).toContain('keyRiskFollowUp(content)');
+    expect(dupBranch).toContain('ask_this_now');
+  });
+});
+
+// The licence in his own name — in a trade, the thing that decides whether a sale completes.
+describe('personal-licence', () => {
+  it.each([
+    'The electrical contractor’s licence is held in my own name, not the company’s.',
+    'The registration is personally held and always has been.',
+    'The licence is in his name rather than the business’s.',
+  ])('fires on: %s', (fact) => {
+    expect(keyRiskFollowUp(fact)?.id).toBe('personal-licence');
+  });
+
+  it('stays quiet on an ordinary mention of a licence', () => {
+    // Narrow on purpose: it needs the instrument AND the personal holding.
+    expect(keyRiskFollowUp('The public liability insurance renews in March each year.')).toBeNull();
+    expect(keyRiskFollowUp('All the electricians hold their own tickets and we keep copies.')).toBeNull();
+  });
+});

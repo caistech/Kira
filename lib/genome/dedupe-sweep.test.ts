@@ -137,3 +137,41 @@ describe('what it must never drop', () => {
     expect(swallowedIds([])).toEqual([]);
   });
 });
+
+// ⚠️ TELLING HER SOMETHING TWICE MUST NOT MAKE THE RECORD WORSE.
+//
+// A re-told fact arrives unfiled, because classification runs after the conversation. Section-blind,
+// the sweep would park the copy already sitting in "How work is priced and quoted" and keep the raw
+// new one — so the area emptied and the pile grew.
+//
+//   "Before I typed anything today the page said 5 things captured, across 3 of the 9 areas. After I
+//    told her the same facts again, the same page says 10 things captured, across 1 of the 9 areas…
+//    I have made my own Genome go backwards by talking to her." — Ray, 2026-08-17
+describe('a filed fact outranks an unfiled twin', () => {
+  const filedShort = { id: 'filed', content: 'Service work is charged at $118 an hour.', confirmed: false, filed: true };
+  const unfiledLong = {
+    id: 'unfiled',
+    content: 'Service work is charged at $118 an hour plus materials at cost.',
+    confirmed: false,
+    filed: false,
+  };
+
+  it('drops the unfiled copy, not the filed one', () => {
+    const dropped = swallowedIds([filedShort, unfiledLong]);
+    expect(dropped).toEqual(['unfiled']);
+  });
+
+  it('⚠️ still drops a FILED paragraph that swallows FILED sentences', () => {
+    // The original rule must survive: when both sides are filed, length decides as before, so a
+    // paragraph does not sit in one area while its own sentences fill the others.
+    const paragraph = { id: 'para', content: 'Gary prices jobs. Sharon does payroll.', confirmed: false, filed: true };
+    const sentence = { id: 'one', content: 'Gary prices jobs.', confirmed: false, filed: true };
+    expect(swallowedIds([paragraph, sentence])).toEqual(['para']);
+  });
+
+  it('treats a missing flag as unfiled, which is the safe reading', () => {
+    const a = { id: 'a', content: 'Gary prices jobs and knows the mine loading.', confirmed: false };
+    const b = { id: 'b', content: 'Gary prices jobs.', confirmed: false };
+    expect(swallowedIds([a, b])).toEqual(['a']);
+  });
+});

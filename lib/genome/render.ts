@@ -171,6 +171,10 @@ export function renderAreas(genome: OwnerGenome, audience: Audience, timeZone: s
       ? buyerView<OwnerEntry, OwnerSection>({ sections: genome.sections, unsorted: genome.unsorted })
       : { sections: genome.sections, unsorted: genome.unsorted };
 
+  // How many facts are waiting to be sorted. Read before the sections render, because an empty
+  // section's wording depends on whether the pile below it is holding anything.
+  const unplacedCount = view.unsorted.length;
+
   const docs: RenderedDocument[] = view.sections.map((section) => ({
     key: section.key,
     title: section.title,
@@ -179,8 +183,20 @@ export function renderAreas(genome: OwnerGenome, audience: Audience, timeZone: s
       `    <section class="area" id="${escapeHtml(section.key)}">`,
       `      <h2>${escapeHtml(section.title)}</h2>`,
       `      <p class="q">${escapeHtml(audience === 'owner' ? section.ownerQuestion : section.question)}</p>`,
+      // ⚠️ NOT "NOTHING RECORDED HERE YET" WHEN THE FACTS ARE NINE LINES BELOW.
+      //
+      // Ray: "Under How work is priced and quoted it says Nothing recorded here yet. Nine lines
+      // further down, in the unsorted pile, are all five of my pricing numbers. Same page. If I send
+      // that to my broker he reads the section headings, sees six of nine say nothing recorded, and
+      // forms a view before he gets to the bottom."
+      //
+      // Both sentences were true and the document argued with itself. When something is waiting to
+      // be sorted, an empty section says so instead of asserting an absence the same page disproves.
       section.entries.length === 0
-        ? '      <p class="gap">Nothing recorded here yet. This is still carried by the owner alone.</p>'
+        ? unplacedCount > 0
+          ? '      <p class="gap">Not yet sorted into this section. Some of what the owner has told us is ' +
+            'still being placed — see the final section.</p>'
+          : '      <p class="gap">Nothing recorded here yet. This is still carried by the owner alone.</p>'
         : `      <ul>\n${section.entries.map((e) => entryHtml(e, timeZone)).join('\n')}\n      </ul>`,
       '    </section>',
     ].join('\n'),

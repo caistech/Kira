@@ -138,6 +138,24 @@ const RULES: Rule[] = [
       'walk out with one person.',
   },
   {
+    // ⚠️ THE LICENCE IN HIS OWN NAME. In a trade this is not a compliance detail, it is whether the
+    // sale completes at all — a buyer cannot switch the lights on the Monday after settlement
+    // without it. Ray told her and got back: "That's an important compliance detail. Anything you'd
+    // like me to capture or act on around that?"
+    //
+    //   "It is not a compliance detail, it is the reason the sale falls over."
+    //
+    // Deliberately narrow: it needs the instrument AND the personal-holding, so an ordinary mention
+    // of insurance or a certificate does not trip it.
+    id: 'personal-licence',
+    subject: /\b(licen[cs]e|registration|accreditation|certification|ticket|permit|authority)\b/i,
+    risk: /\b(in|under)\s+(my|his|the owner'?s?|your)\s+(own\s+)?(name|personal)\b|\bpersonally\s+held\b|\bheld\s+(by|in)\s+(me|him|my|his)\b|\bnot\s+(in\s+)?the\s+(company|business)'?s?\b/i,
+    question:
+      'Stop there — that one decides whether a sale completes. Can it be transferred to the company, ' +
+      'or would a buyer have to qualify someone of their own before they could trade? That is worth ' +
+      'finding out before anything else on this list.',
+  },
+  {
     // Succession. The thing this whole product is about, said out loud and then filed.
     id: 'no-successor',
     subject: /\b(retire|retiring|retirement|step back|stepping back|hand ?over|succession|when i (go|leave|stop))\b/i,

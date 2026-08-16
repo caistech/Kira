@@ -322,9 +322,16 @@ export default function PlanPage() {
               {FULL_RATE_PERIOD_CAP} months you move to a third of the rate whether or not the work
               is done.
             </p>
+            {/* ⚠️ "ON THIS DEVICE" WAS THE WRONG PROMISE, AND HE READ IT EXACTLY AS WRITTEN.
+                Ray on his phone: "So the number is not attached to me, it is attached to the laptop
+                I happened to sit at in August… If I am on the toilet at six in the morning working
+                up the courage to put a card in, that is the phone, and the phone tells me I have no
+                number and sends me back to the start."
+                The figure now comes from the ACCOUNT first and the device second (see the fetch
+                above), so the sentence says what actually happens. */}
             <p className="mt-3 text-sm text-stone-500">
-              Your own figure is worked out from the valuation on this device, and appears in a
-              moment.
+              Your own figure is taken from your account — or from this device if you have not signed
+              in — and appears in a moment.
             </p>
           </div>
         </main>
@@ -360,9 +367,18 @@ export default function PlanPage() {
           )}
 
           <h1 className="font-display text-2xl font-bold mb-3">
-            {betaCode ? 'First, your number' : "Let's find your number first"}
+            {betaCode ? 'First, your number' : signedIn ? 'We could not read your number' : "Let's find your number first"}
           </h1>
-          <p className="text-stone-600 mb-8">This page is built around the value gap in your business. Take the 3-minute valuation and it&apos;ll bring you right back here.</p>
+          {/* ⚠️ DOES NOT SAY "LET'S FIND YOUR NUMBER FIRST" TO A MAN WHO HAS ONE ON FILE.
+              This state is reached when neither the account nor the device produced a valuation — an
+              anonymous visitor, or a signed-in owner whose lookup failed. For the second, being told
+              to start over is the worst possible answer, so the copy no longer asserts he has not
+              done it. Ray: "say we have $270,000 from 16 August, do you want to redo it?" */}
+          <p className="text-stone-600 mb-8">
+            This page is built around the value gap in your business. We could not read one just now
+            — if you have run the valuation before, sign in and it will be here; otherwise it takes
+            about three minutes and brings you right back.
+          </p>
           <a href="/business-valuation" className="grad-coral text-white font-display font-bold px-8 py-4 rounded-full inline-flex items-center gap-2 min-h-[52px]">Find my gap <ArrowRight className="h-5 w-5" /></a>
         </main>
       )}

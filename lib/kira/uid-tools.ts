@@ -150,6 +150,31 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
     priorContents.some((prior) => normaliseFact(prior) === key) ||
     priorContents.some((prior) => isNearDuplicate(prior, content));
   if (duplicate) {
+    // ⚠️ THE RISK CHECK RUNS HERE TOO, AND ITS ABSENCE MADE THE WHOLE FEATURE A LOTTERY.
+    //
+    // This early return sat above the `ask_this_now` block at the end of the function, so a fact she
+    // had heard before could never produce the stop signal. Ray worked that out from the outside
+    // without seeing a line of code:
+    //
+    //   "It exists — it just does not fire on the facts I actually asked her to notice, only on ones
+    //    she has not heard before. Which means the behaviour is a lottery and I cannot tell from my
+    //    side which pull I am getting."
+    //
+    // He is right, and the fix is not a special case: a 61-year-old sole pricer does not stop being
+    // the biggest risk in the business because he mentioned it twice. If anything the repetition is
+    // the signal — he has now told us four times and nobody has engaged with it.
+    const repeatedRisk = keyRiskFollowUp(content);
+    if (repeatedRisk) {
+      console.info(`[save_memory] key-risk on a repeat: ${repeatedRisk.id}`);
+      return json(200, {
+        success: true,
+        already: true,
+        ask_this_now:
+          `You already have this one. Do not thank him for it again — say you have it, then ask him ` +
+          `this, in your own voice: "${repeatedRisk.question}" He has told you this before and nobody ` +
+          `has engaged with it, which is why it matters more rather than less.`,
+      });
+    }
     // Reported honestly rather than as a save. She can then say "I already had that" instead of
     // claiming to have written something down for the second time.
     return json(200, { success: true, already: true });

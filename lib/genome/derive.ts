@@ -386,6 +386,24 @@ HOW "about" CONSTRAINS "section":
 - about=personal  → still choose a real section when the fact bears on the business at all (a plan to
   sell, a health reason behind it, who has not been told). Only use "none" for personal life with no
   bearing on the business whatsoever — a van being repaired, holiday plans, chit-chat.
+
+  ⚠️ HOW MUCH THE BUSINESS DEPENDS ON HIM IS NEVER "personal life with no bearing". "I have never
+  taken more than two weeks off in a row" was filed "none" and dropped out of the Genome and both
+  documents. It is not chit-chat about his holidays — it is the single strongest piece of evidence
+  for owner-dependence, which is the whole thing this manual measures. Ray, 2026-08-17: "That
+  sentence IS the business. Thirty-five years, never two weeks off in a row — that is the whole
+  diagnosis in eleven words, and it is the single line a buyer's advisor would circle. You have filed
+  it as personal chit-chat."
+
+  The test is not whether the sentence mentions him. It is whether a buyer would price it. Never
+  taking a holiday, doing every quote himself, being the only one who can open the yard — all of
+  that is operating knowledge wearing a personal sentence.
+
+  ⚠️ A LICENCE, REGISTRATION OR ACCREDITATION HELD IN HIS OWN NAME IS THE SAME TRAP, and in a trade
+  it is the deal itself. "The electrical contractor's licence is in my name, not the company's" was
+  acknowledged in conversation as "an important compliance detail" and never reached the record at
+  all. A buyer cannot trade the Monday after settlement without it. File it under licences — never
+  "none", never "personal".
 - about=business  → choose the area that fits.
 
 "owner_dependent" — DOES THIS LIVE ONLY IN HIS HEAD?

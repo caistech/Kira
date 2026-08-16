@@ -29,6 +29,18 @@ export interface SweepableMemory {
   content: string;
   /** A fact he has read back and agreed with is evidence. Never dropped, whatever it overlaps. */
   confirmed: boolean;
+  /**
+   * Has this one been sorted into an area of the business yet?
+   *
+   * ⚠️ A FILED FACT OUTRANKS AN UNFILED TWIN, ALWAYS. Without this the sweep is section-blind, and
+   * a re-told fact could park the copy that was already in "How work is priced and quoted" and leave
+   * the raw new one sitting in the pile — so telling her something a second time made the record
+   * WORSE. Ray, 2026-08-17: "It went from three areas filled to one… I have made my own Genome go
+   * backwards by talking to her."
+   *
+   * Optional so existing callers are unaffected; absent means unfiled, which is the safe reading.
+   */
+  filed?: boolean;
 }
 
 /**
@@ -54,6 +66,9 @@ export function swallowedIds(memories: readonly SweepableMemory[]): string[] {
       (other) =>
         other.id !== candidate.id &&
         !dropped.has(other.id) &&
+        // Never drop a FILED row in favour of an unfiled one. The filed copy carries the work the
+        // classifier already did; the unfiled twin is the same fact with that work thrown away.
+        !(candidate.filed && !other.filed) &&
         // Strictly shorter, so two equal-length restatements never delete each other and leave
         // nothing behind — the failure mode that turns a dedupe into data loss.
         other.content.length < candidate.content.length &&

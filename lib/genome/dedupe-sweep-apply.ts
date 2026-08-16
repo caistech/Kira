@@ -44,7 +44,7 @@ export async function sweepDuplicateMemories(
       // ⚠️ `confirmed_at`, NOT `genome_confirmed_at`. The first version named a column that does not
       // exist, so the query errored into the catch below and the sweep did nothing — a caller that
       // reads exactly like a working one. Verified against the live table before wiring.
-      .select('id, content, confirmed_at')
+      .select('id, content, confirmed_at, genome_section')
       .eq('user_id', userId)
       .eq('active', true)
       .limit(500);
@@ -55,6 +55,9 @@ export async function sweepDuplicateMemories(
       content: String(row.content ?? ''),
       // A fact he has read back and agreed with is evidence, and is never dropped.
       confirmed: Boolean(row.confirmed_at),
+      // Sorted into an area already. `none` is a real classification meaning "not about the
+      // business", so it counts as filed — the classifier looked at it and decided.
+      filed: row.genome_section != null,
     }));
 
     const drop = swallowedIds(memories);

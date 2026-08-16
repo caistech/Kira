@@ -38,6 +38,8 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { sweepConversationForRefusals } from '@/lib/kira/refusal-sweep';
 import { parkedOtherBusinesses } from '@/lib/kira/other-businesses';
 import { forgetParkedEntityLeaks } from '@/lib/kira/entity-sweep';
+import { classifyPendingMemories } from '@/lib/genome/derive';
+import { sweepDuplicateMemories } from '@/lib/genome/dedupe-sweep-apply';
 import { refileAssistantCapabilityClaims } from '@/lib/kira/capability-sweep';
 import { readTaskLedger } from '@/lib/kira/swarm/open-tasks';
 
@@ -345,6 +347,36 @@ export async function POST(req: NextRequest) {
       // completeConversationMemory inserts straight into the table.
       const refiled = await refileAssistantCapabilityClaims(agent.user_id as string, KIRA_CONVAI_TABLES.memory);
       if (refiled) console.log(`[chat/text] re-filed ${refiled} capability claim(s) as assistant state`);
+
+      // ⚠️ THE TEXT TRANSPORT DISTILLED AND NEVER CLASSIFIED, so everything an owner TYPED stayed
+      // unfiled forever. The voice path has called `classifyPendingMemories` since it was written;
+      // this one did not, and nothing pointed at the difference — the facts are all saved, the
+      // banner correctly says filing is still running, and it never finishes.
+      //
+      // Measured on Ray's account, 2026-08-17: nine facts written by a typed conversation, all with
+      // `genome_section` null, unchanged twenty-five minutes later. What he saw:
+      //
+      //   "Before I typed anything today the page said 5 things captured, across 3 of the 9 areas.
+      //    After I told her the same facts again, the same page says 10 things captured, across 1 of
+      //    the 9 areas… I have made my own Genome go backwards by talking to her."
+      //
+      // The older facts had come from VOICE calls, which classified them. The new ones came from
+      // typing, which did not — so the ratio got worse every time he used the transport he prefers.
+      //
+      // ⚠️ THE DEDUPE SWEEP RUNS AFTER IT, not before: an unclassified row has no section to lose,
+      // and parking a filed row in favour of an unfiled twin is exactly how a filed fact falls back
+      // into the pile.
+      try {
+        const filed = await classifyPendingMemories(agent.user_id as string);
+        if (filed.deferred) {
+          console.warn(`[chat/text] ${filed.deferred} memories left unclassified — the sweep will retry.`);
+        }
+      } catch (error) {
+        // Fail-soft, exactly as the voice path does: a classification problem must never cost a fact.
+        console.error('[chat/text] genome classification failed (memories are safe):', error);
+      }
+
+      await sweepDuplicateMemories(agent.user_id as string, KIRA_CONVAI_TABLES.memory);
 
 
       // Stamped AFTER the pipeline returns, so a failed run is retried by the next trigger rather
