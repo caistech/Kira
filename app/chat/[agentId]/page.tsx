@@ -145,6 +145,30 @@ export default function ChatPage({
   const [typedConversationId, setTypedConversationId] = useState<string | null>(null);
   const [typing, setTyping] = useState(false);
 
+  // HYDRATE THE TRANSCRIPT HE CAME BACK TO READ.
+  //
+  // `typed` was client-only, so navigating away and back showed an empty box while the voice panel
+  // beside it said "Welcome back — Kira remembers where you left off". The messages were never lost;
+  // nothing read them. Ray: "she remembers, the page doesn't show it, and the counter says it never
+  // happened."
+  //
+  // Only ever ADDS to an empty transcript — if he has already typed something this visit, that is
+  // the live conversation and history must not land on top of it.
+  useEffect(() => {
+    if (!agentId) return;
+    let cancelled = false;
+    fetch(`/api/kira/chat/history?agentId=${encodeURIComponent(agentId)}`)
+      .then((r) => (r.ok ? r.json() : { messages: [] }))
+      .then((d: { messages?: { role: 'user' | 'assistant'; text: string }[] }) => {
+        if (cancelled || !d.messages?.length) return;
+        setTyped((current) => (current.length ? current : d.messages!));
+      })
+      .catch(() => {
+        // A missing receipt is a smaller loss than a broken screen. He can still talk to her.
+      });
+    return () => { cancelled = true; };
+  }, [agentId]);
+
   /**
    * What she last worked on with him — only if it is sayable.
    *

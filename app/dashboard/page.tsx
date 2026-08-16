@@ -87,6 +87,29 @@ export default async function DashboardPage({
 
   const list = agents ?? [];
 
+  // ⚠️ THE COUNT IS DERIVED, BECAUSE THE STORED COLUMN HAS NO WRITER.
+  //
+  // `kira_agents.total_conversations` is read in three places and incremented in NONE, so it sits
+  // at 0 forever. Ray had a full conversation with her, came back, and his agent card said
+  // "0 conversations" — alongside a transcript that had vanished. "She remembers, the page does not
+  // show it, and the counter says it never happened."
+  //
+  // Derived rather than back-filled with a writer: a counter incremented at one call site drifts the
+  // moment a second path creates a conversation (the voice webhook and the typed route both do),
+  // and a wrong number is worse than a query. This is the same defect class as readiness never
+  // recomputing and ensureTrial having no caller — see feedback-correct-tested-and-unreachable.
+  const conversationCounts = new Map<string, number>();
+  if (user && list.length) {
+    const { data: convRows } = await svc
+      .from('conversations')
+      .select('kira_agent_id')
+      .eq('user_id', user.id);
+    for (const row of convRows ?? []) {
+      const key = String((row as { kira_agent_id?: string }).kira_agent_id ?? '');
+      if (key) conversationCounts.set(key, (conversationCounts.get(key) ?? 0) + 1);
+    }
+  }
+
   const { data: valuation } = user
     ? await svc
         .from('business_valuations')
@@ -359,7 +382,7 @@ export default async function DashboardPage({
                 </span>
               </div>
               <p className="mt-2 text-sm text-gray-500">
-                {Number(a.total_conversations ?? 0)} conversation{Number(a.total_conversations ?? 0) === 1 ? '' : 's'}
+                {conversationCounts.get(String(a.id)) ?? 0} conversation{(conversationCounts.get(String(a.id)) ?? 0) === 1 ? '' : 's'}
                 {/* en-AU explicitly. A bare toLocaleDateString() takes the SERVER's locale in a
                     server component, which on Vercel is en-US — so an Australian owner was shown
                     03/08/2026 as 8/3/2026 on his own dashboard. */}

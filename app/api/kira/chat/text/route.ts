@@ -530,6 +530,17 @@ export async function POST(req: NextRequest) {
   // forgotten: on a serverless runtime a floating promise means "maybe", which is how the task
   // mirror lost six rows.
   const now = new Date().toISOString();
+  // ⚠️ `kira_agent_id` IS CORRECT HERE — do not "fix" it to `agent_id`.
+  //
+  // `conversation_messages` carries BOTH columns, and this one is the populated one (4,258 rows,
+  // measured 2026-08-16). A session investigating "the transcript vanished" probed `kira_messages`
+  // — a different, long-dead table whose last write was in January — found zero rows, and was one
+  // step from renaming this and breaking a path that works. The tables are:
+  //
+  //   conversation_messages  the live transcript, written here and by the voice path
+  //   kira_messages          dead since 2026-01, keyed by the ElevenLabs `conv_…` string
+  //
+  // Persistence is FINE. The transcript was missing because nothing READ it back — see the chat page.
   const stamp = { user_id: agent.user_id, kira_agent_id: agent.id, conversation_id: conversationId };
   const { error: writeError } = await supabase.from(KIRA_CONVAI_TABLES.messages).insert([
     { ...stamp, role: 'user', content: message, created_at: now },
