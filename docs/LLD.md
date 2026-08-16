@@ -409,6 +409,64 @@ absent field means she never asked and the point of the gate is that silence is 
 
 ---
 
+## 6B. Genome scoring — the checklist, the assessment, and the second number
+
+Design: `docs/SPEC_GENOME_CHECKLIST_AND_PATHWAYS.md`. Architecture: HLD §6.
+
+### Modules
+
+| File | Does |
+|---|---|
+| `lib/genome/checklist.ts` | 52 items over the nine areas. Each carries `required`, a `SubstanceTest`, a `factor` (or null) and `closes: fact\|document\|change`. **Data, not prose** — a disputed item is a config change and a re-score, never a rebuild. |
+| `lib/genome/checklist-bands.ts` | Band from item status. `empty` / `thin` (any answered) / `building` (>half required) / `covered` (**all** required). ⚠️ A `weak` item counts as NOT answered. |
+| `lib/genome/checklist-assess.ts` | One LLM call **per AREA**, not per entry — substance depends on everything he has said, and two entries can jointly answer an item neither answers alone. Degrades to all-open; never guesses `answered`. |
+| `lib/valuation/evidenced-readiness.ts` | The arithmetic. Blends the baseline sub-score with the evidenced one in proportion to coverage. |
+| `lib/valuation/recompute-readiness.ts` | The caller. Reads the valuation, re-derives the baseline factors from stored `inputs`, writes `readiness_now`. |
+| `lib/genome/pathway.ts` | Gate 4. `evidencedItemKeys` is the scorer's only door and reads `evidencedAt` and nothing else. |
+| `lib/kira/area-agenda.ts` + `area-agenda-tool-def.mjs` | The `area_agenda` tool — up to three outstanding questions, **weak first**. |
+| `lib/kira/area-focus.ts` | The opener when he arrives from `/my-genome/[area]`. Carries the AREA only. |
+
+### Four things that are not obvious and will be got wrong
+
+1. **The factor map is per ITEM, not per area, and `factor: null` is the common case.** Nine areas do
+   not map onto the model's five factors — owner-dependence is the *axis* (measured per area, not an
+   area), and Assets and Compliance evidence none of them. Mapping per area forces you to pretend
+   Assets moves the multiple. This is also what lets the panel say *"two of these move your number,
+   the rest complete your handover document."*
+2. **`readiness` is never recomputed in place.** It is the baseline he was shown when he paid.
+   `recompute-readiness.ts` re-derives the five sub-scores by re-running `computeValuation` on the
+   stored `inputs` (only the composite was ever persisted) and **self-checks**: if the recomputed
+   composite no longer matches the stored one the model has moved, and it REFUSES — a delta that is
+   partly evidence and partly a re-weighting cannot be separated afterwards.
+   ⚠️ **Finiteness is checked BEFORE the drift comparison.** `Math.abs(a - b) > 0.005` passes
+   silently on NaN, so a malformed `inputs` row would have read as "no drift" and written NaN.
+   ⚠️ **`model_version` is on `valuation_snapshots`, not `business_valuations`** — selecting it here
+   errors, and would surface only at runtime as "the number never moves".
+3. **A plan moves nothing.** For `closes: 'change'` items only a milestone with `evidenced_at` set
+   counts, and **partial progress counts for zero**: half a successor is not half a business that
+   runs without him.
+4. **All-open is what an OUTAGE looks like.** `computeEvidencedReadiness` treats a set with no
+   verdict at all as *unassessed* and leaves the baseline alone; the assess action likewise stores
+   nothing. Reading all-open as "everything is missing" would crater a valuation over a missing API
+   key.
+
+### Reaching the fleet
+
+A prompt section added to `prompts.ts` changes what the NEXT agent is minted with and touches nothing
+live. Tools flow through `scripts/reprovision-kira-agents.mjs` (which reads `toolDefsFor`, so a new
+manifest entry is automatic); a prompt section needs its own additive patch script —
+`scripts/patch-agent-area-work.mjs`, anchored at the confirmation heading, dry-run by default,
+read-back after write, and it **refuses rather than appending** when the anchor is absent.
+
+⚠️ **`setAgentTools` REPLACES the list.** Two pending fleet changes from different trees means
+whoever reprovisions second drops the other's tools, and it looks exactly like a clean run.
+
+⚠️ **Live prompts run ~2,600 characters LARGER than source** and that is expected: `confirmationSection`
+and `KNOWLEDGE_BUILDING` were trimmed in source and trims only reach new agents. Never "fix" it by
+regenerating a live prompt — that discards owner-specific context built at creation.
+
+---
+
 ## 7. Data model
 
 Principal tables (`supabase/migrations/` is the **only** canonical location — the file at
@@ -421,7 +479,8 @@ Principal tables (`supabase/migrations/` is the **only** canonical location — 
 | Knowledge | `kira_knowledge`, `kira_knowledge_chunks` (pgvector), `knowledge_files`, `knowledge_urls` |
 | Work | `kira_tasks`, `kira_drafts`, `kira_research_sessions` |
 | Write-back | `drive_documents` (where each area of the manual lives in the owner's own storage — the idempotency map, §6A) |
-| Commercial | `business_valuations`, `beta_trials`, `beta_usage`, `stripe_webhook_events`, `loi_commitments` |
+| Genome scoring | `genome_item_status` (one verdict per owner per checklist item), `genome_pathways`, `genome_pathway_milestones` (§6B) |
+| Commercial | `business_valuations` (⚠️ `readiness` = frozen baseline; `readiness_now` = evidenced, §6B), `beta_trials`, `beta_usage`, `stripe_webhook_events`, `loi_commitments` |
 | Channel | `introducers`, `introducer_magic_links`, `introductions`, `attribution_overrides`, `advisor_enquiries` |
 | Email | `email_logs`, `email_suppressions` |
 | PubGuard | `pubguard_scans`, `pubguard_reports` |
@@ -435,6 +494,11 @@ Principal tables (`supabase/migrations/` is the **only** canonical location — 
    wrong place.
 4. **Columns are `snake_case`; TypeScript is `PascalCase`/`camelCase`.** Dual naming is accepted
    only at the API boundary and normalised immediately inside it.
+5. **Genome tables key on `users.id`, NEVER `auth.users.id`.** Every agent / conversation /
+   `kira_memory` row references `users.id` (see `20260720100000_auth_link.sql`), and the Genome is
+   derived by app user id throughout. A table keyed the other way joins to nothing and its RLS
+   silently matches no rows — caught in review on `genome_item_status`, which was drafted against
+   `auth.users` and would have returned an empty panel to every owner forever.
 
 ---
 
@@ -497,6 +561,18 @@ Before a change ships:
 - [ ] Touched email? Commercial sends carry the footer and consult suppression
 - [ ] Migration written idempotent, and the **linked project ref verified** before push
 - [ ] Fixed a bug? Recorded in the bug-knowledge protocol so the next occurrence is one search away
+- [ ] **Touched `prompts.ts` or `tool-manifest.mjs`? A source change reaches NO live agent.** Tools
+      need `reprovision-kira-agents.mjs`; a prompt section needs its own additive patch script. Then
+      read one agent back by hand — a tool-less agent looks completely normal
+- [ ] **Added a prompt section? It is a raise, and `prompt-size.test.ts` will say so.** The answer is
+      the relocation tranche, not a bigger ceiling: move tool-usage prose onto the tool description
+      she reads at the moment of choosing, and ratchet the ceiling DOWN by what you saved
+- [ ] **Wrote a guard with a numeric comparison? Prove it can fire on the worst input.**
+      `Math.abs(a - b) > threshold` passes silently on NaN, because every comparison with NaN is
+      false. A guard that cannot fail on garbage is not a guard
+- [ ] **Built something with tests and no caller?** Grep for the **importer**, not the export. A
+      component nothing renders, an optional field no caller sets and a branch nothing reaches are
+      all invisible to tsc, vitest and the build — this is the repo's most common defect class
 
 **The rule that generates most of the above:** if a shared `@caistech/*` package covers what you
 are about to write, consume it. A local copy is not a shortcut — it is the defect the next person

@@ -108,6 +108,10 @@ auth, and different risk.
                                         the loop that IS the product
         │
         ▼
+  HE PUSHES  — /my-genome shows nine areas; he opens one, sees the buyer questions
+               his record does NOT answer, and works them with her (see §6)
+        │
+        ▼
   IT LEAVES  — the manual is written into the owner's OWN storage, or downloaded
                as one self-contained file that needs no account and no us
 ```
@@ -196,7 +200,68 @@ repositories. A guard nobody runs is not a guard.
 
 ---
 
-## 6. Where data lives, and why
+## 6. The Genome as a SCORED record — the four gates
+
+§5 gets facts out of his head. This decides whether they are worth anything to a buyer, and it is
+the difference between a notebook and a document somebody will pay against.
+
+His business is held as **nine areas** (`lib/genome/areas.ts`, derived bottom-up from ~140 flows in
+the orchestrator's task registry — not invented). Each area is a question a buyer's advisor asks.
+Each carries a **checklist** of the facts that answer it (`lib/genome/checklist.ts`, 52 items).
+
+Every item passes four gates:
+
+| Gate | Question | Where it lands |
+|---|---|---|
+| **1 Answered** | is anything on the record at all? | the coverage band |
+| **2 Substantive** | does it pass the item's own test — and if not, **why**? | the band + what Kira asks next |
+| **3 Located** | his head, paper, a laptop, his cloud, a system? | transferability, and a named next action |
+| **4 Remediated** | if no answer can fix it, what would — and has any of it happened? | a pathway, and the score |
+
+**Gate 2 is what makes green mean something.** Before it, a band was a tally: six entries of any
+kind read as "well covered". Measured against the operator's own Genome, that tally disagreed with
+the checklist in **six of nine areas, always flatteringly** — `operations` read *covered* on 28
+entries that answered no buyer question at all. A failing item therefore carries its **reason**, in
+his language, and that reason is the next question rather than a score.
+
+**Gate 4 exists because some gaps do not close with words.** Writing down that only he can run a job
+does not make it less true. Those items (`closes: 'change'`) get a **pathway** — a sequence of real
+changes with observable milestones — and one rule governs it:
+
+> **Making the plan moves nothing. Only evidencing a milestone does.**
+
+Reward the plan and the product rewards *intending* to change, which is more flattering than
+rewarding talking and takes longer to disprove. He would reach a data room with a good number and a
+business that still stops when he does.
+
+### Two numbers, and only one of them moves
+
+| | |
+|---|---|
+| `readiness` | **the baseline** — what the thirteen questions said on the day he paid. **Frozen.** |
+| `readiness_now` | where the evidence says he is now. Recomputed from assessed items. |
+
+Recomputing the first in place would silently rewrite the number he was shown, which is exactly what
+`MODEL_VERSION` exists to prevent. Progress is a delta from a fixed origin or it is not progress.
+
+**It is allowed to fall, and that is the feature.** Capture reveals dependencies nobody had priced —
+*"nobody could step into my job"* is evidence that should LOWER transferability however diligently he
+answered. On the first real run it did: 0.406 → 0.399. A machine where every answer raises the score
+is a machine that rewards talking.
+
+### Where the questions come from
+
+Nothing prompted her to ask, so she talked about the last live job — and the last live job is always
+the one in front of him. The `area_agenda` tool hands her at most three outstanding questions for one
+area, **weak answers first**, because a model given a mixed list asks the easy new question every
+time. The panel at `/my-genome/[area]` is the owner's way in; the trigger it passes carries only the
+**area**, never the questions, so she pulls what is current at the moment she speaks.
+
+Full design: `docs/SPEC_GENOME_CHECKLIST_AND_PATHWAYS.md`. Detail: LLD §6B.
+
+---
+
+## 7. Where data lives, and why
 
 Three stores, chosen by one question: **what does it cost to be approximately right?**
 
@@ -212,7 +277,7 @@ recall quality without losing anything.
 
 ---
 
-## 7. What Kira does not build itself
+## 8. What Kira does not build itself
 
 Kira consumes fourteen shared `@caistech/*` packages. This is the deliberate economic core of the
 portfolio: the substrate is built once and every product draws on it, so product number fifteen is
@@ -239,7 +304,7 @@ alone.
 
 ---
 
-## 8. Deployment
+## 9. Deployment
 
 | Concern | Choice |
 |---|---|
@@ -255,7 +320,7 @@ alone.
 
 ---
 
-## 9. Known gaps
+## 10. Known gaps
 
 Stated rather than omitted.
 
@@ -281,3 +346,17 @@ Stated rather than omitted.
   instances. Documented in the repo; move to Supabase when load warrants it.
 - **The introducer valuation handoff is per-tab.** Opening `/plan` in a new tab asks for the
   valuation again — accepted deliberately, to keep financial figures out of URLs.
+- **Pathways (§6 gate 4) have a table, an engine and no UI.** Nothing creates one. The offer is made
+  in conversation and is not tracked, so gate 4 is real in the model and untestable in the product.
+- **`sde-multiples.ts` is US data — and the AU guide now contradicts it in a SECOND place.** Beyond
+  the note above, the geography question is closed but SIZE reopened (2026-08-14): Kira reads
+  1.6–2.9× high at ≤$250k SDE. ⚠️ Re-weighting requires a `MODEL_VERSION` bump, and the rescore
+  `reason` is keyed to it and hard-stops.
+- **Six of nine areas on the operator's own Genome cannot be assessed at all**, because they hold no
+  facts that answer a buyer question — 96 filed memories and `people`/`assets` empty. The rubric did
+  not cause this; it made it visible. §6 is the fix and it has not yet been walked by a human.
+- **The self-poisoning red-team probe is a FALSE PASS.** It scores HELD on every run and the
+  behaviour fails in production: the probe asks her to note her own limitation and she declines, but
+  nobody asks in a real conversation and the **distiller writes it anyway**. Twice observed. The
+  probe exercises the refusal path; the leak arrives down the distillation path. A green probe over a
+  live failure is worse than no probe, because it closes the question.

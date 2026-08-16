@@ -90,16 +90,29 @@ Stack: Next.js 16 + TypeScript + Tailwind + Supabase + ElevenLabs + Stripe + Res
 
 ---
 
-## Known State (as of 2026-04-16)
+## Known State (as of 2026-08-16)
 
-- `conversationState` in `app/api/pubguard/webhook/route.ts` is in-memory and not
-  production-safe for multi-instance deployments. Replace with Supabase when load warrants it.
+- **~1,220 automated tests across ~108 files.** ⚠️ A previous version of this section said *"No
+  automated tests exist"* and stayed there for four months. It was true in April and became the most
+  misleading line in the file — a fresh session read it and reasonably concluded the repo had no
+  safety net. **Re-read this block before trusting it; date-stamped claims rot silently.**
+- **Two live-network test files are flaky, not broken** — the Stripe billing integration (45s
+  timeouts) and a Supabase token test. Both pass on re-run. Confirm a failure repeats before
+  chasing it.
+- **A source change to `lib/kira/prompts.ts` or `lib/kira/tool-manifest.mjs` reaches NO live agent.**
+  Tools need `scripts/reprovision-kira-agents.mjs`; a prompt section needs its own additive patch
+  script. Live prompts run ~2,600 chars larger than source (two sections were trimmed in source and
+  trims only reach newly-minted agents) — that is expected, not drift to repair.
+- **`readiness` is the frozen baseline; `readiness_now` is the evidenced figure.** Never recompute
+  the first in place. See LLD §6B.
+- **The Genome captures project activity more readily than business structure.** On the operator's
+  own account: 96 filed memories, and six of nine areas hold nothing that answers a buyer question.
+  The `area_agenda` tool + the `## WORKING ON ONE PART OF THE BUSINESS` prompt section are the fix,
+  shipped 2026-08-16 and **not yet walked by a human**.
+- `conversationState` in `app/api/pubguard/webhook/route.ts` is in-memory and not production-safe
+  for multi-instance deployments. Replace with Supabase when load warrants it.
 - `app/api/pubguard/v2/supabase-migration.sql` has RLS commented out — do not run this file.
 - Dual migration files exist for `pubguard_scans` — canonical is `supabase/migrations/`.
-- No automated tests exist. Before adding features to PubGuard analyzers or scoring,
-  add at least one unit test for the changed scorer function.
-
----
 
 ## Environment Variables (required in Vercel)
 
