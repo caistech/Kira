@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createServiceClient } from '@/lib/supabase/server';
+import { getAuthUser } from '@/lib/auth';
+import { recordGenomeView } from '@/lib/genome/access-log';
 import { formatMoneyApprox, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 
 export const metadata = { title: 'Manage Exec user · Admin' };
@@ -16,6 +18,24 @@ export default async function ExecUserManagePage({ params }: { params: Promise<{
     .eq('id', userId)
     .maybeSingle();
   if (!user) notFound();
+
+  // ⚠️ THE RECORD BEHIND THE PROMISE. Our privacy copy tells the owner our support team can see what
+  // Kira has captured. Ray accepted that and asked the obvious next question: "I'd want a page that
+  // lists it — who looked, and when. For a man who hasn't told his wife yet, 'someone might look'
+  // without 'here's when they did' is the sort of thing I'd lie awake on."
+  //
+  // Written HERE rather than in the layout, because this is the page that shows an owner's memories,
+  // his valuation and his documents — the layout also covers surfaces that show nobody's record, and
+  // logging those would fill his page with views that never looked at him.
+  //
+  // Awaited rather than fire-and-forget: on a serverless instance an un-awaited insert can die with
+  // the response. It never throws (see access-log.ts) and it never blocks the operator.
+  const operator = await getAuthUser();
+  await recordGenomeView({
+    userId: String(user.id),
+    viewedBy: operator?.email ?? 'unknown operator',
+    surface: 'admin-exec',
+  });
 
   const [{ data: val }, { data: agents }, { data: docs }, { data: memory }] = await Promise.all([
     sb.from('business_valuations').select('gap, worth_today, worth_potential, readiness, currency, industry').eq('user_id', userId).maybeSingle(),

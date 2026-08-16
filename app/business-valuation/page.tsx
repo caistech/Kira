@@ -80,6 +80,7 @@ import { FULL_RATE_PERIOD_CAP, priceForProfit } from '@/lib/valuation/pricing';
 import { netPosition } from '@/lib/valuation/net-position';
 import { approxNumber, formatMoney, formatMoneyApprox, formatPrice, getCurrency, CURRENCIES, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { displayedFigures, displayedUplifts } from '@/lib/valuation/displayed';
+import { whatIf } from '@/lib/valuation/what-if';
 import {
   INDUSTRY_NOT_LISTED,
   INDUSTRY_OPTION_GROUPS,
@@ -1049,6 +1050,26 @@ function ResultView({
    * never once stated it. Derived from the SAME helper the rationale below uses, so the sentence
    * under the cards and the sentence in the essay can never disagree about which way he sits.
    */
+  // The what-if picker (see the block under the factor cards). Local state only — it never writes
+  // and never changes the stored baseline, which is the one figure that must stay fixed.
+  const [whatIfFixed, setWhatIfFixed] = useState<string[]>([]);
+  // ⚠️ THROUGH displayedFigures, LIKE EVERY OTHER FIGURE ON THIS PAGE. The movement is derived from
+  // the ROUNDED pair, so "worth today would be X, which is Y more" adds up in the numbers he can
+  // see. Rounding the difference separately is the $270,000/$271,000 defect in a new place.
+  const whatIfRaw = whatIf(answers as ValuationInputs, whatIfFixed);
+  const whatIfFigures = displayedFigures(
+    { worthToday: whatIfRaw.today, worthPotential: whatIfRaw.potential },
+    currency,
+  );
+  const todayFigures = displayedFigures(
+    { worthToday: result.today, worthPotential: result.potential },
+    currency,
+  );
+  const whatIfMovement = formatMoneyApprox(
+    Math.max(0, whatIfFigures.today - todayFigures.today),
+    currency,
+  );
+
   // The email-it-to-me control (see the form below). Local to the result view — nothing about it
   // outlives the tab, which is the point.
   const [emailOpen, setEmailOpen] = useState(false);
@@ -1395,6 +1416,48 @@ function ResultView({
                     </div>
                   </div>
                 ))}
+              </div>
+
+              {/* ⚠️ TICK ONE AND WATCH THE FIGURE MOVE — his words, and his reason for paying.
+                  "Right now I take the $270k entirely on faith." The cards above cost each piece of
+                  locked-in knowledge; this lets him see what fixing a chosen one is actually worth
+                  on his own numbers. RECOMPUTED, never summed — see lib/valuation/what-if.ts for why
+                  adding the uplifts overstates every combination, always flatteringly. */}
+              <div className="mt-4 rounded-2xl border-2 border-violet-200 bg-violet-50 p-5">
+                <h3 className="font-display font-semibold text-stone-900">What if you fixed one of these?</h3>
+                <p className="mt-1 max-w-prose text-sm leading-relaxed text-stone-600">
+                  Tick what you would put right and the figure moves. Nothing is saved, and it does
+                  not change your result above.
+                </p>
+                <div className="mt-3 space-y-2">
+                  {capturable.map((f) => (
+                    <label
+                      key={f.key}
+                      htmlFor={`whatif-${f.key}`}
+                      className="flex min-h-[44px] items-center gap-3 text-base text-stone-800"
+                    >
+                      <input
+                        id={`whatif-${f.key}`}
+                        type="checkbox"
+                        className="h-5 w-5"
+                        checked={whatIfFixed.includes(f.key)}
+                        onChange={(e) =>
+                          setWhatIfFixed((prev) =>
+                            e.target.checked ? [...prev, f.key] : prev.filter((k) => k !== f.key),
+                          )
+                        }
+                      />
+                      {f.label}
+                    </label>
+                  ))}
+                </div>
+                {whatIfFixed.length > 0 && (
+                  <p className="mt-4 border-t border-violet-200 pt-3 text-base text-stone-800">
+                    Worth today would be{' '}
+                    <strong className="font-display text-xl text-stone-900">{whatIfFigures.todayText}</strong>{' '}
+                    — <strong>{whatIfMovement}</strong> more than today, on the same answers you gave.
+                  </p>
+                )}
               </div>
             </div>
           )}

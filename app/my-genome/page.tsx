@@ -9,6 +9,7 @@ import { displayedFigures } from '@/lib/valuation/displayed';
 import { RedactEntry } from '@/components/RedactEntry';
 import { PRIVATE_REASON_LABEL } from '@/lib/genome/private';
 import { WHO_CAN_SEE_IT } from '@/lib/privacy';
+import { readGenomeViews } from '@/lib/genome/access-log';
 import { buyerEntryCount } from '@/lib/genome/buyer-view';
 
 export const dynamic = 'force-dynamic';
@@ -84,6 +85,9 @@ export default async function MyGenome() {
       Date.now() - new Date(lastConversation.started_at as string).getTime() < FILING_WINDOW_MS,
   );
   const identity = await getBusinessIdentity(appUser.id);
+  // Scoped to HIS id from the session — this table names operators, so an id from anywhere else
+  // would let one owner enumerate who works here.
+  const views = await readGenomeViews(String(appUser.id));
 
   // WHAT HE HAS, FIRST. The areas are held in buyer-priority order, which is right for the handover
   // document and wrong for the first thing he sees: it put empty sections above the ones with his
@@ -323,6 +327,44 @@ export default async function MyGenome() {
             own position. {WHO_CAN_SEE_IT} Anything here can be taken back — use{' '}
             <span className="font-semibold">Remove</span> on the entry itself.
           </p>
+
+          {/* ⚠️ THE HALF OF THAT SENTENCE THAT WAS MISSING — and the block above names this exact
+              build as "the considered version… that would earn the original sentence back".
+
+              Ray, 2026-08-16: "I accept that, but I'd want a page that lists it — who looked, and
+              when. For a man who hasn't told his wife yet, 'someone might look' without 'here's when
+              they did' is the sort of thing I'd lie awake on."
+
+              ⚠️ IT STATES ITS OWN SCOPE. It lists operator views of this record and nothing else, and
+              says so — a log that implies completeness it cannot deliver is worse than none, because
+              the reader then trusts an empty list. The empty state is deliberately NOT "nobody has
+              ever looked at your data": it is "nobody has opened this record", which is what the
+              rows actually establish. */}
+          <div className="mt-5 border-t border-stone-200 pt-4">
+            <h3 className="text-base font-semibold text-stone-900">Who has opened your record</h3>
+            {views.length === 0 ? (
+              <p className="mt-1 max-w-prose text-base text-stone-600">
+                Nobody at our end has opened it. If anyone does, it is listed here with the date —
+                every time, automatically.
+              </p>
+            ) : (
+              <>
+                <p className="mt-1 max-w-prose text-base text-stone-600">
+                  Every time someone at our end opens your record, it is listed here.
+                </p>
+                <ul className="mt-3 space-y-1 text-base text-stone-700">
+                  {views.map((view) => (
+                    <li key={`${view.viewedBy}-${view.viewedAt}`}>
+                      <span className="font-medium text-stone-900">{view.viewedBy}</span>{' '}
+                      <span className="text-stone-500">
+                        · {new Date(view.viewedAt).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
 
           <div className="mt-6 space-y-3">
             {sections.map((s) => (
