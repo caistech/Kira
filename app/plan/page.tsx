@@ -82,13 +82,48 @@ export default function PlanPage() {
   // refuse someone who has been charged is not a gate.
   const [termsAccepted, setTermsAccepted] = useState(false);
 
+  // Where the code is parked so it survives the trip to the valuator and back.
+  const BETA_CODE_KEY = 'kira_beta_code';
+
   const [betaCode, setBetaCode] = useState<string | null>(null);
   const [betaOpen, setBetaOpen] = useState(false);
+  // ⚠️ THE CODE MUST SURVIVE THE ROUND TRIP THROUGH THE VALUATION.
+  //
+  // It was read from the URL and held in state only. `/plan?code=…` promised, in a box he liked,
+  // "we have kept WE6EDRWEF3WM and will use it when you get to the end — there is nothing to pay and
+  // no card to enter." He was then sent to the valuation, came back to a bare `/plan`, and the code
+  // was gone: no banner, a $999 card checkout, and the redeem path in small print at the bottom.
+  //
+  // Ray, 2026-08-16: "You explicitly promised me you'd kept it. Two screens later you hadn't. That's
+  // the first thing on the whole visit and it's a promise broken in under three minutes… for thirty
+  // seconds I was looking at a page asking me for a card, on a product I'd been told was free to me.
+  // If I hadn't been the sort to poke about, I'd have closed the tab thinking bait-and-switch."
+  //
+  // sessionStorage, matching where the valuation itself is parked — same tab, same visit, and it
+  // never enters a URL. A code is not a secret (it is bound to one email and single-use), but it has
+  // no business in browser history either.
   useEffect(() => {
     const fromUrl = new URLSearchParams(window.location.search).get('code');
     if (fromUrl) {
       setBetaCode(fromUrl);
       setBetaOpen(true);
+      try {
+        window.sessionStorage.setItem(BETA_CODE_KEY, fromUrl);
+      } catch {
+        // Private mode or a full quota. He still has the code in this tab; the promise only breaks
+        // if he navigates away, which is strictly better than breaking it every time.
+      }
+      return;
+    }
+    try {
+      const kept = window.sessionStorage.getItem(BETA_CODE_KEY);
+      if (kept) {
+        setBetaCode(kept);
+        setBetaOpen(true);
+      }
+    } catch {
+      // Nothing to restore. He can still use the link in the small print, which is where he ended up
+      // before this existed.
     }
   }, []);
 
@@ -377,7 +412,14 @@ export default function PlanPage() {
                 // "only you, and anyone you choose, can ever see it" was the second overclaim on this page.
                 // What is true and still worth saying: it is not shown to a buyer, not shared with an
                 // introducer, and the handover document leaves out his own position.
-                { icon: <ShieldCheck className="h-5 w-5" />, t: 'Your knowledge stays yours', b: `It is never shown to a buyer and never shared with anyone who referred you. The handover document leaves out your own position — your plans, your circumstances, what you would accept. ${WHO_CAN_SEE_IT}` },
+                // ⚠️ WHO_CAN_SEE_IT IS SAID ONCE ON THIS PAGE, IN THE INTRO ABOVE — NOT AGAIN HERE.
+                // It was printed twice within a screen of itself, and repetition reads as anxiety
+                // rather than reassurance. Ray, on the man who has told nobody he is selling: "The
+                // privacy paragraph says the same thing twice in slightly different words. When a
+                // page protests that much I start wondering what it is protesting about."
+                // This card carries what the intro does NOT say — the buyer, the introducer, and
+                // what the handover document leaves out.
+                { icon: <ShieldCheck className="h-5 w-5" />, t: 'Your knowledge stays yours', b: 'It is never shown to a buyer and never shared with anyone who referred you. The handover document leaves out your own position — your plans, your circumstances, what you would accept.' },
               ].map((s, i, arr) => (
                 <div key={i} className="flex gap-4 items-start bg-white rounded-2xl p-5 border border-amber-100">
                   <div className="grad-coral text-white w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0">{s.icon}</div>

@@ -96,10 +96,18 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
 
       <header className="mt-4">
         <h1 className="text-2xl font-bold text-stone-900">{def.title}</h1>
-        {/* The buyer's own question, third person, exactly as it appears in the handover document —
-            so what he is working towards and what a buyer eventually reads are visibly the same. */}
+        {/* ⚠️ THE OWNER-FACING WORDING, ON THE OWNER'S OWN PAGE.
+            This rendered buyerQuestion — third person, because it is written for the handover
+            document where the reader is an advisor and the subject is someone else. On his own screen
+            it read "Could someone else reach HIS number?" and "Does the work happen without HIM on
+            site?". Ray: "Whose number? It is my number… it reads as though the software is discussing
+            me with someone else. Given everything else on the page is about how private this is,
+            that is a bad note to strike."
+            areas.ts already carries ownerFacingQuestion for exactly this — a deliberate rewrite
+            rather than a you/your substitution, because several change shape when the subject becomes
+            the reader. It existed; this page was not using it. */}
         <p className="mt-2 text-base leading-relaxed text-stone-700">
-          A buyer&apos;s advisor asks: {def.buyerQuestion}
+          What a buyer&apos;s advisor will ask you: {def.ownerFacingQuestion}
         </p>
         {!neverAssessed && (
           <p className="mt-3 inline-block rounded-full border border-stone-300 bg-stone-50 px-3 py-1 text-sm font-semibold text-stone-700">

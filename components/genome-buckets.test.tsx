@@ -230,7 +230,10 @@ describe('⚠️ the picture Ray could not read — none of it comes back', () =
     // "There's no number. I cannot tell whether I'm at the start, a third of the way, or nearly
     // there, and there's nowhere on the page that tells me."
     expect(rendered).toMatch(/of 4 levels/);
-    expect(rendered).toMatch(/well covered so far/);
+    // "so far" was dropped when the summary gained the STARTED count beside the covered one —
+    // "0 of 9 well covered" sat above a grid with three visibly filled, and one number could not
+    // tell the truth about three states. The assertion tracks the surviving half of that sentence.
+    expect(rendered).toMatch(/well covered/);
   });
 
   it('says out loud that an area can be opened', () => {

@@ -49,6 +49,39 @@ export default async function MyGenome() {
   }
 
   const g = await deriveOwnerGenome(appUser.id);
+
+  // ⚠️ SHE IS STILL FILING, AND THE PAGE HAS TO SAY SO.
+  //
+  // Distillation happens after the call ends and takes a few minutes. Ray finished talking, came
+  // straight here, and every area read "Nothing yet" — with the zero-state copy telling him this was
+  // expected BEFORE his first conversation, which he had just had. "She had just told me she had got
+  // it. The page said she had not. I only found out it works because I came back later for an
+  // unrelated reason. Most owners will not come back later — they will conclude it does not work,
+  // which is exactly what I concluded for about twenty minutes."
+  //
+  // ⚠️ started_at, NOT ended_at — AND THAT IS THE WHOLE CORRECTNESS OF THIS CHECK.
+  //
+  // `conversations.ended_at` exists in the schema and NOTHING IN THIS CODEBASE EVER WRITES IT. A
+  // version of this keyed on it typechecked, built, and could never once have been true — the same
+  // class as the three guards found dead this week, and it would have shipped as a fix for a
+  // finding it silently did nothing about. `started_at` defaults to NOW() on insert, so it is the
+  // only timestamp here that is real.
+  //
+  // Twenty-five minutes, measured from the START: the call itself is part of the wait, and a long
+  // first conversation runs to twenty. Wide enough to cover talk-plus-distil, short enough that it
+  // stops claiming she is busy on a page opened the next morning.
+  const FILING_WINDOW_MS = 25 * 60 * 1000;
+  const { data: lastConversation } = await svc
+    .from('conversations')
+    .select('started_at')
+    .eq('user_id', appUser.id)
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const justTalked = Boolean(
+    lastConversation?.started_at &&
+      Date.now() - new Date(lastConversation.started_at as string).getTime() < FILING_WINDOW_MS,
+  );
   const identity = await getBusinessIdentity(appUser.id);
 
   // WHAT HE HAS, FIRST. The areas are held in buyer-priority order, which is right for the handover
@@ -139,6 +172,7 @@ export default async function MyGenome() {
              page selling a finished one. */
           areaHref="/my-genome"
           unfiledCount={g.unsorted.length}
+          stillFiling={justTalked}
         />
       </div>
 

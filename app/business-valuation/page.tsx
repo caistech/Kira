@@ -1334,10 +1334,17 @@ function ResultView({
             <div className="mt-4 inline-flex items-center gap-2 text-sm bg-white/15 rounded-full px-4 py-1.5">
               <Brain className="h-4 w-4" /> Transferability score: {readinessPct}/100
             </div>
+            {/* ⚠️ NEVER START THIS LINE WITH A BARE DIGIT.
+                It sits directly under a pill ending "…/100", and Ray read the two as one string:
+                "It says 30/100, then immediately under it 0 means — so for a second I read thirty
+                out of a thousand, which would be a catastrophic score. I had to look twice at the
+                one number the whole page is built around."
+                Naming the scale first ("A score of 0…") costs three words and makes the collision
+                impossible. */}
             <p className="mt-2 text-sm text-white/80 max-w-xl">
-              0 means the business is you — nothing runs without you in it. 100 means it runs, and
-              sells, without you. It is built from the same answers listed below, so every one you
-              change moves it. This is the number to watch go up.
+              A score of 0 means the business is you — nothing runs without you in it. A score of 100
+              means it runs, and sells, without you. It is built from the same answers listed below,
+              so every one you change moves it. This is the number to watch go up.
             </p>
           </div>
 

@@ -23,7 +23,7 @@ describe('sectorContext — the printed figures and the words agree', () => {
     expect(c.direction).toBe('below');
     // 2.9 - 2.8 = 0.1, which is what a reader subtracting the two printed figures gets.
     expect(c.turns).toBe(0.1);
-    expect(c.sentence).toContain('0.1 of a turn below');
+    expect(c.sentence).toContain('0.1 below that');
   });
 
   it('the stated difference is EXACTLY the subtraction of the two printed figures', () => {
@@ -52,7 +52,7 @@ describe('sectorContext — the printed figures and the words agree', () => {
   it('reports ABOVE when he is above, instead of asserting he is below', () => {
     const c = sectorContext({ sectorMultiple: 2.62, appliedMultiple: 3.4, matched: true });
     expect(c.direction).toBe('above');
-    expect(c.sentence).toContain('0.8 of a turn above');
+    expect(c.sentence).toContain('0.8 above that');
   });
 
   it('never calls the market average "your sector" when no sector matched', () => {

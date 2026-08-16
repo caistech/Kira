@@ -235,6 +235,35 @@ export function emptyReason(key: string): string {
     : 'Only you can tell her this';
 }
 
+/**
+ * The key's own tile — the same four stacked blocks, at legend size.
+ *
+ * ⚠️ A KEY THAT DOES NOT LOOK LIKE THE THING IT EXPLAINS IS NOT A KEY. The levels were listed as
+ * "1 you mentioned it / 2 she has the basics / …" beside numerals, which asked him to hold a
+ * mapping in his head while looking at a grid of shapes. Ray: "There is a key under the grid now,
+ * which helps, but it is words and numbers next to a picture made of blocks. Put the blocks in the
+ * key and I would not have to work anything out."
+ *
+ * Drawn from the same LEVELS and the same green as the tiles, so the two cannot drift apart.
+ */
+function KeyGlyph({ filled }: { filled: number }) {
+  return (
+    <svg viewBox="0 0 20 24" className="h-6 w-5 shrink-0" aria-hidden="true">
+      {LEVELS.map((i) => (
+        <rect
+          key={i}
+          x={2}
+          y={(3 - i) * 6}
+          width={16}
+          height={5}
+          rx={1}
+          fill={i < filled ? GREEN : '#e7e5e4'}
+        />
+      ))}
+    </svg>
+  );
+}
+
 export function GenomeBuckets({
   sections,
   /** Compact = the dashboard strip. Full = the standalone view with the legend. */
@@ -245,6 +274,7 @@ export function GenomeBuckets({
   intro,
   areaHref,
   unfiledCount = 0,
+  stillFiling = false,
 }: {
   sections: BucketSection[];
   variant?: 'full' | 'compact';
@@ -281,6 +311,21 @@ export function GenomeBuckets({
    * whole story instead of half of it.
    */
   unfiledCount?: number;
+  /**
+   * ⚠️ SHE FILES AFTER THE CALL, AND THE PAGE MUST SAY SO WHILE SHE IS DOING IT.
+   *
+   * Distillation runs when the conversation ends and takes a few minutes, so an owner who walks
+   * straight here from a good conversation sees nine empty bars and a sentence telling him that is
+   * expected before his first conversation — which he has just had.
+   *
+   * Ray, 2026-08-16: "She had just told me she had got it. The page said she had not… Most owners
+   * will not come back later — they will conclude it does not work, which is exactly what I
+   * concluded for about twenty minutes."
+   *
+   * Set by the page from the last conversation's end time. It never claims she is busy on a page
+   * opened the next day.
+   */
+  stillFiling?: boolean;
 }) {
   // ORDER IS THE AREAS' OWN RANK, NOT "MOST FULL FIRST".
   //
@@ -306,6 +351,11 @@ export function GenomeBuckets({
   //
   // Naming the third quantity is what lets one sentence tell the whole truth instead of a third of it.
   const located = sections.filter((s) => bucketDisplay(s) === 'located').length;
+  // ⚠️ BOTH NUMBERS. "0 of 9 well covered so far" sat directly above a grid where three visibly had
+  // green in them. Ray: "I understand what you mean — well covered is a high bar. But the headline
+  // number a man reads is zero, and the picture underneath says three… the summary contradicts the
+  // picture and the picture is the honest one."
+  const started = sections.filter((s) => s.coverage !== 'empty').length;
 
   return (
     <section className="mb-8 rounded-2xl border border-stone-200 bg-white p-5 sm:p-6">
@@ -329,7 +379,7 @@ export function GenomeBuckets({
           claim about what the business is worth or whether it is ready to sell. */}
       <p className="mt-1 max-w-prose text-base leading-relaxed text-stone-600">
         {intro ??
-          `Your business, in the nine areas a buyer's advisor works through. Each one fills up as Kira captures what answers it — that is how much she holds, not how good that part of the business is. ${covered} of ${sections.length} well covered so far. Tap any area to work on it.`}
+          `Your business, in the nine areas a buyer's advisor works through. Each one fills up as Kira captures what answers it — that is how much she holds, not how good that part of the business is. ${started} of ${sections.length} started, ${covered} well covered. Tap any area to work on it.`}
       </p>
 
       <ul className="mt-6 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3">
@@ -437,14 +487,33 @@ export function GenomeBuckets({
       {/* THE KEY. Four boxes with nothing saying what they mean is, in Ray's words, "a progress
           bar for a journey nobody has described… I am guessing, and a man guessing about his own
           business is not the feeling you are selling." Four words per level, once, under the grid. */}
-      <ol className="mt-6 flex flex-wrap gap-x-5 gap-y-1 border-t border-stone-100 pt-4 text-base text-stone-600 sm:text-sm">
-        <li><span className="font-semibold text-stone-900">1</span> you mentioned it</li>
-        <li><span className="font-semibold text-stone-900">2</span> she has the basics</li>
-        <li><span className="font-semibold text-stone-900">3</span> most of it is written down</li>
-        <li><span className="font-semibold text-stone-900">4</span> a buyer could use it</li>
+      <ol className="mt-6 flex flex-wrap gap-x-5 gap-y-2 border-t border-stone-100 pt-4 text-base text-stone-600 sm:text-sm">
+        {[
+          'you mentioned it',
+          'she has the basics',
+          'most of it is written down',
+          'a buyer could use it',
+        ].map((label, i) => (
+          <li key={label} className="flex items-center gap-2">
+            <KeyGlyph filled={i + 1} />
+            {label}
+          </li>
+        ))}
       </ol>
       {variant === 'full' && (
         <div className="mt-6 border-t border-stone-100 pt-4">
+          {/* SAID FIRST, AND SAID BEFORE THE COUNTS — because the counts are what is wrong.
+              A man who has just finished talking is looking at bars that have not moved, and the
+              only honest reading of that screen is "it did not work". One line converts twenty
+              minutes of that into a wait. It is deliberately above the summary rather than beside
+              it: he needs the reason before he reads the numbers, not after. */}
+          {stillFiling && (
+            <p className="mb-3 max-w-prose rounded-2xl bg-violet-50 px-4 py-3 text-base text-violet-900">
+              She is still writing up your last conversation — that takes a few minutes after you
+              finish talking. The areas below will not have moved yet. Nothing is lost; check back
+              shortly.
+            </p>
+          )}
           {/* WRITTEN TO READ WELL AT ZERO, which is where every owner starts.
               The baseline from the questionnaire is deliberately never counted toward coverage — a
               self-reported answer is not a captured fact — so a man who has just paid sees nine

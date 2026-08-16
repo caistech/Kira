@@ -326,14 +326,22 @@ export default function StartPage() {
 
         {/* Header */}
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-3 mb-4">
-            <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-amber-400/50">
-              <img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" />
-            </div>
-            <div className="text-left">
-              <h1 className="text-2xl font-bold text-stone-900">Kira</h1>
-              <p className="text-stone-600 text-sm">Your part-time general manager</p>
-            </div>
+          {/* ⚠️ HER FACE APPEARS ONCE ON THIS PAGE. IT USED TO APPEAR TWICE.
+              This header carried a 64px circle of /female_avatar.jpeg, and the VoiceWidget below
+              renders the SAME file at its own size. Same photograph, two different crops —
+              `object-cover` inside a small circle takes the face, the widget's larger frame keeps
+              the shoulders and the headset — and the two read as two people.
+
+              Ray, 2026-08-16: "The avatar at the top of the setup page and the big picture in the
+              card below it are not the same photograph — one's wearing a headset and one isn't, and
+              the faces differ. If she's a person, she has one face."
+
+              He was looking at one file. Matching the crops would fix the symptom and leave the
+              duplication; removing the copy fixes both, and the name and the role are already said
+              in words directly underneath. */}
+          <div className="mb-4">
+            <h1 className="text-2xl font-bold text-stone-900">Kira</h1>
+            <p className="text-stone-600 text-sm">Your part-time general manager</p>
           </div>
 
           {/* THE PAID OWNER IS BEING SET UP, NOT BROWSING.
@@ -455,7 +463,17 @@ export default function StartPage() {
               </button>
             </div>
 
-            {/* Text fallback — no mic, noisy room, or just prefer to type */}
+            {/* ⚠️ TYPING IS A ROUTE, NOT A FAILURE PATH — AND IT IS BILLED LIKE ONE.
+                It was small underlined text reading "No microphone, or prefer to type?" beneath a
+                greyed button: an apology, offered to a man presumed to be broken.
+
+                Ray, 2026-08-16: "the typed-brief route worked well and I'd guess more of your ICP
+                will use it than you think… Give it equal billing. Half of us are in a truck with
+                the radio on, and the other half don't want the office hearing."
+
+                He is the ICP, and both of his reasons are about the ROOM rather than the equipment.
+                So: a real button, sized like the one above it, offering the choice rather than
+                excusing it. The word "instead" is gone — it framed this as the second-best thing. */}
             <div className="mt-6 border-t border-stone-200 pt-6">
               {!showTextForm ? (
                 <div className="text-center">
@@ -464,10 +482,14 @@ export default function StartPage() {
                       setShowTextForm(true);
                       setTextError(null);
                     }}
-                    className="text-violet-700 hover:text-violet-900 text-sm underline underline-offset-4 transition-colors"
+                    className="inline-flex min-h-[52px] w-full max-w-xs items-center justify-center rounded-full border-2 border-stone-300 px-6 py-3 text-base font-semibold text-stone-800 transition-colors hover:border-stone-400 hover:bg-stone-50"
                   >
-                    No microphone, or prefer to type? Write your brief instead
+                    Type it instead
                   </button>
+                  <p className="mt-2 text-sm text-stone-600">
+                    Just as good, and often easier — in a vehicle, or anywhere you would rather not
+                    be overheard.
+                  </p>
                 </div>
               ) : (
                 <div className="max-w-xl mx-auto space-y-4">
@@ -537,11 +559,18 @@ export default function StartPage() {
               )}
             </div>
 
-            {/* Status indicator */}
-            {sessionStartTime && !draftReady && (
+            {/* ⚠️ ONLY WHEN SOMETHING IS ACTUALLY LISTENING.
+                sessionStartTime is set when the WIDGET LOADS, not when a call connects, so this sat
+                on screen permanently — including on the typed-brief form, where nothing is listening
+                to anything. Ray, 2026-08-16: "On a product whose entire pitch to me is she is
+                recording what I say, a permanent Listening... with no way to stop it is not a
+                cosmetic bug. I looked at it twice."
+                Hidden once he chooses to type, and the wording no longer claims an ear that is not
+                open. */}
+            {sessionStartTime && !draftReady && !showTextForm && (
               <p className="text-center text-stone-500 text-sm mt-4">
                 <Loader2 className="w-4 h-4 inline animate-spin mr-2" />
-                Listening...
+                Listening — talk whenever you are ready
               </p>
             )}
 

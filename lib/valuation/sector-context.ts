@@ -106,10 +106,18 @@ export function sectorContext(input: SectorContextInput): SectorContext {
     ? `Businesses in your sector typically change hands at ${fmt(sectorMultiple)}× SDE.`
     : `Priced off the overall market average of ${fmt(sectorMultiple)}× SDE, since we could not place your sector.`;
 
+  // ⚠️ "OF A TURN" IS BROKER LANGUAGE AND THE OWNER IS NOT A BROKER.
+  //
+  // Ray, 2026-08-16: "'0.2 of a turn below' — a turn of what? I have been in business thirty-five
+  // years and I have never used that phrase. It is the language of the people I am trying to
+  // negotiate with, which makes me wonder whose side this is on."
+  //
+  // The quantity is worth keeping; the unit is not. Against a sentence that has just said what a
+  // typical business fetches, "0.2 below that" is the same fact in words he already owns.
   const standing =
     direction === 'at'
       ? `You are at ${fmt(appliedMultiple)}× today — level with that.`
-      : `You are at ${fmt(appliedMultiple)}× today — ${fmt(turns)} of a turn ${direction}.`;
+      : `You are at ${fmt(appliedMultiple)}× today — ${fmt(turns)} ${direction} that.`;
 
   const clause =
     direction === 'below'
@@ -121,7 +129,7 @@ export function sectorContext(input: SectorContextInput): SectorContext {
   const strongClause =
     direction === 'below'
       ? `which is why you are near the top of what a buyer will pay for a business this size — ${fmt(appliedMultiple)}×. The ${fmt(sectorMultiple)}× median for ${benchmarkNoun} is reached by much larger deals than this one.`
-      : `which is why you are at ${fmt(appliedMultiple)}× — ${direction === 'at' ? 'level with' : `${fmt(turns)} of a turn above`} the ${fmt(sectorMultiple)}× a typical business in ${benchmarkNoun} fetches.`;
+      : `which is why you are at ${fmt(appliedMultiple)}× — ${direction === 'at' ? 'level with' : `${fmt(turns)} above`} the ${fmt(sectorMultiple)}× a typical business in ${benchmarkNoun} fetches.`;
 
   return {
     sectorMultiple,

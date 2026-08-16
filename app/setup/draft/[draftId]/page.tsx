@@ -245,8 +245,8 @@ export default function DraftReviewPage() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-stone-950 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-violet-600 animate-spin" />
       </div>
     );
   }
@@ -254,11 +254,11 @@ export default function DraftReviewPage() {
   // Error state (draft not found)
   if (!draft) {
     return (
-      <div className="min-h-screen bg-stone-950 flex items-center justify-center p-6">
-        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6 max-w-md text-center">
-          <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-3" />
-          <p className="text-red-400">{error || 'Draft not found'}</p>
-          <a href="/start" className="text-amber-400 hover:underline mt-4 block">
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center p-6">
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-6 max-w-md text-center">
+          <AlertCircle className="w-8 h-8 text-red-700 mx-auto mb-3" />
+          <p className="text-red-700">{error || 'Draft not found'}</p>
+          <a href="/start" className="text-violet-600 hover:underline mt-4 block">
             Start over
           </a>
         </div>
@@ -267,7 +267,7 @@ export default function DraftReviewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-950 font-sans">
+    <div className="min-h-screen bg-stone-50 font-sans">
       {/* Background */}
       <div
         className="absolute inset-0"
@@ -287,17 +287,17 @@ export default function DraftReviewPage() {
               <img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" />
             </div>
             <div className="text-left">
-              <h1 className="text-2xl font-bold text-stone-100">Check we have this right</h1>
-              <p className="text-stone-400 text-sm">Change anything that is wrong, then set her up</p>
+              <h1 className="text-2xl font-bold text-stone-900">Check we have this right</h1>
+              <p className="text-stone-600 text-sm">Change anything that is wrong, then set her up</p>
             </div>
           </div>
         </div>
 
         {/* Error Alert */}
         {error && (
-          <div className="mb-6 bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-            <p className="text-red-400">{error}</p>
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-red-700 flex-shrink-0" />
+            <p className="text-red-700">{error}</p>
           </div>
         )}
 
@@ -305,11 +305,11 @@ export default function DraftReviewPage() {
         <div className="space-y-6">
 
           {/* Email Field - REQUIRED AND PROMINENT */}
-          <div id="email-field" className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-2xl p-6">
-            <label className="flex items-center gap-2 text-amber-400 mb-3">
+          <div id="email-field" className="bg-gradient-to-r from-violet-50 to-violet-100 border border-violet-200 rounded-2xl p-6">
+            <label className="flex items-center gap-2 text-violet-800 mb-3">
               <Mail className="w-5 h-5" />
               <span className="font-medium">Your Email</span>
-              <span className="text-red-400 text-sm">*required</span>
+              <span className="text-red-700 text-sm">*required</span>
             </label>
             <input
               type="email"
@@ -317,18 +317,18 @@ export default function DraftReviewPage() {
               onChange={handleEmailChange}
               onBlur={handleEmailBlur}
               readOnly={!!authEmail}
-              className={`w-full px-4 py-3 rounded-xl bg-stone-800/50 border text-stone-100 placeholder-stone-500 focus:outline-none transition-colors ${
+              className={`w-full px-4 py-3 rounded-xl bg-white border text-stone-900 placeholder-stone-400 focus:outline-none transition-colors ${
                 authEmail ? 'opacity-70 cursor-not-allowed' : ''
               } ${
                 emailError
-                  ? 'border-red-500/50 focus:border-red-500'
-                  : 'border-stone-600/30 focus:border-amber-400/50'
+                  ? 'border-red-400 focus:border-red-500'
+                  : 'border-stone-300 focus:border-violet-500'
               }`}
               placeholder="you@example.com"
               required
             />
             {emailError ? (
-              <p className="text-red-400 text-sm mt-2 flex items-center gap-1">
+              <p className="text-red-700 text-sm mt-2 flex items-center gap-1">
                 <AlertCircle className="w-4 h-4" />
                 {emailError}
               </p>
@@ -342,31 +342,31 @@ export default function DraftReviewPage() {
           </div>
 
           {/* Name */}
-          <div className="bg-stone-900/50 border border-stone-700/50 rounded-2xl p-6">
-            <label className="flex items-center gap-2 text-stone-400 mb-3">
-              <Sparkles className="w-5 h-5 text-amber-400" />
+          <div className="bg-white border border-stone-200 rounded-2xl p-6">
+            <label className="flex items-center gap-2 text-stone-600 mb-3">
+              <Sparkles className="w-5 h-5 text-violet-600" />
               <span className="font-medium">Your Name</span>
             </label>
             <input
               type="text"
               value={userName}
               onChange={(e) => setUserName(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-stone-800/50 border border-stone-600/30 text-stone-100 placeholder-stone-500 focus:border-amber-400/50 focus:outline-none"
+              className="w-full px-4 py-3 rounded-xl bg-white border border-stone-300 text-stone-900 placeholder-stone-400 focus:border-violet-500 focus:outline-none"
               placeholder="Your name"
             />
           </div>
 
           {/* Location */}
-          <div className="bg-stone-900/50 border border-stone-700/50 rounded-2xl p-6">
-            <label className="flex items-center gap-2 text-stone-400 mb-3">
-              <MapPin className="w-5 h-5 text-amber-400" />
+          <div className="bg-white border border-stone-200 rounded-2xl p-6">
+            <label className="flex items-center gap-2 text-stone-600 mb-3">
+              <MapPin className="w-5 h-5 text-violet-600" />
               <span className="font-medium">Location</span>
             </label>
             <input
               type="text"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-stone-800/50 border border-stone-600/30 text-stone-100 placeholder-stone-500 focus:border-amber-400/50 focus:outline-none"
+              className="w-full px-4 py-3 rounded-xl bg-white border border-stone-300 text-stone-900 placeholder-stone-400 focus:border-violet-500 focus:outline-none"
               placeholder="City, Country"
             />
           </div>
@@ -379,23 +379,23 @@ export default function DraftReviewPage() {
               API contract is unchanged. */}
 
           {/* Primary Objective */}
-          <div className="bg-stone-900/50 border border-stone-700/50 rounded-2xl p-6">
-            <label className="flex items-center gap-2 text-stone-400 mb-3">
-              <Target className="w-5 h-5 text-amber-400" />
+          <div className="bg-white border border-stone-200 rounded-2xl p-6">
+            <label className="flex items-center gap-2 text-stone-600 mb-3">
+              <Target className="w-5 h-5 text-violet-600" />
               <span className="font-medium">What do you want to sort out?</span>
             </label>
             <textarea
               value={primaryObjective}
               onChange={(e) => setPrimaryObjective(e.target.value)}
               rows={3}
-              className="w-full px-4 py-3 rounded-xl bg-stone-800/50 border border-stone-600/30 text-stone-100 placeholder-stone-500 focus:border-amber-400/50 focus:outline-none resize-none"
+              className="w-full px-4 py-3 rounded-xl bg-white border border-stone-300 text-stone-900 placeholder-stone-400 focus:border-violet-500 focus:outline-none resize-none"
               placeholder="In your own words — what is the thing you want off your plate?"
             />
           </div>
 
           {/* Key Context */}
-          <div className="bg-stone-900/50 border border-stone-700/50 rounded-2xl p-6">
-            <label className="text-stone-400 font-medium mb-3 block">Anything she should know</label>
+          <div className="bg-white border border-stone-200 rounded-2xl p-6">
+            <label className="text-stone-600 font-medium mb-3 block">Anything she should know</label>
             <div className="space-y-3">
               {keyContext.map((context, index) => (
                 <div key={index} className="flex gap-2">
@@ -403,13 +403,13 @@ export default function DraftReviewPage() {
                     type="text"
                     value={context}
                     onChange={(e) => updateContextPoint(index, e.target.value)}
-                    className="flex-1 px-4 py-3 rounded-xl bg-stone-800/50 border border-stone-600/30 text-stone-100 placeholder-stone-500 focus:border-amber-400/50 focus:outline-none"
+                    className="flex-1 px-4 py-3 rounded-xl bg-white border border-stone-300 text-stone-900 placeholder-stone-400 focus:border-violet-500 focus:outline-none"
                     placeholder="Context point..."
                   />
                   <button
                     type="button"
                     onClick={() => removeContextPoint(index)}
-                    className="p-3 rounded-xl bg-stone-800/50 border border-stone-600/30 text-stone-400 hover:text-red-400 hover:border-red-400/30 transition-colors"
+                    className="p-3 rounded-xl bg-white border border-stone-300 text-stone-600 hover:text-red-700 hover:border-red-300 transition-colors"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -418,7 +418,7 @@ export default function DraftReviewPage() {
               <button
                 type="button"
                 onClick={addContextPoint}
-                className="flex items-center gap-2 text-amber-400 hover:text-amber-300 transition-colors"
+                className="flex items-center gap-2 text-violet-700 hover:text-violet-900 transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 Add context point
@@ -427,20 +427,20 @@ export default function DraftReviewPage() {
           </div>
 
           {/* Success Definition */}
-          <div className="bg-stone-900/50 border border-stone-700/50 rounded-2xl p-6">
-            <label className="text-stone-400 font-medium mb-3 block">What would good look like? (Optional)</label>
+          <div className="bg-white border border-stone-200 rounded-2xl p-6">
+            <label className="text-stone-600 font-medium mb-3 block">What would good look like? (Optional)</label>
             <textarea
               value={successDefinition}
               onChange={(e) => setSuccessDefinition(e.target.value)}
               rows={2}
-              className="w-full px-4 py-3 rounded-xl bg-stone-800/50 border border-stone-600/30 text-stone-100 placeholder-stone-500 focus:border-amber-400/50 focus:outline-none resize-none"
+              className="w-full px-4 py-3 rounded-xl bg-white border border-stone-300 text-stone-900 placeholder-stone-400 focus:border-violet-500 focus:outline-none resize-none"
               placeholder="How will you know you've succeeded?"
             />
           </div>
 
           {/* Constraints */}
-          <div className="bg-stone-900/50 border border-stone-700/50 rounded-2xl p-6">
-            <label className="text-stone-400 font-medium mb-3 block">Anything that gets in the way (Optional)</label>
+          <div className="bg-white border border-stone-200 rounded-2xl p-6">
+            <label className="text-stone-600 font-medium mb-3 block">Anything that gets in the way (Optional)</label>
             <div className="space-y-3">
               {constraints.map((constraint, index) => (
                 <div key={index} className="flex gap-2">
@@ -448,13 +448,13 @@ export default function DraftReviewPage() {
                     type="text"
                     value={constraint}
                     onChange={(e) => updateConstraint(index, e.target.value)}
-                    className="flex-1 px-4 py-3 rounded-xl bg-stone-800/50 border border-stone-600/30 text-stone-100 placeholder-stone-500 focus:border-amber-400/50 focus:outline-none"
+                    className="flex-1 px-4 py-3 rounded-xl bg-white border border-stone-300 text-stone-900 placeholder-stone-400 focus:border-violet-500 focus:outline-none"
                     placeholder="Time, money, someone you need to keep out of it..."
                   />
                   <button
                     type="button"
                     onClick={() => removeConstraint(index)}
-                    className="p-3 rounded-xl bg-stone-800/50 border border-stone-600/30 text-stone-400 hover:text-red-400 hover:border-red-400/30 transition-colors"
+                    className="p-3 rounded-xl bg-white border border-stone-300 text-stone-600 hover:text-red-700 hover:border-red-300 transition-colors"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -463,7 +463,7 @@ export default function DraftReviewPage() {
               <button
                 type="button"
                 onClick={addConstraint}
-                className="flex items-center gap-2 text-amber-400 hover:text-amber-300 transition-colors"
+                className="flex items-center gap-2 text-violet-700 hover:text-violet-900 transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 Add constraint
@@ -478,7 +478,7 @@ export default function DraftReviewPage() {
               "So am I about to create a second? Am I about to overwrite the first? Nothing on the
               screen says. I sat looking at it for a while before pressing it."
               PRODUCT_STANDARDS §9: an irreversible action names its consequence before the click. */}
-          <p className="pt-4 text-base leading-relaxed text-stone-400">
+          <p className="pt-4 text-base leading-relaxed text-stone-600">
             This sets up a Kira for the business described above. It does not replace or delete any
             Kira you already have — if you run more than one business, each gets its own, and you
             choose between them from your overview.
@@ -491,8 +491,8 @@ export default function DraftReviewPage() {
               disabled={isSubmitting}
               className={`w-full py-4 rounded-xl font-medium text-lg transition-all ${
                 isSubmitting
-                  ? 'bg-stone-700 text-stone-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-amber-400 to-orange-500 text-stone-900 hover:scale-[1.02] hover:shadow-lg hover:shadow-amber-500/20'
+                  ? 'bg-stone-300 text-stone-600 cursor-not-allowed'
+                  : 'bg-stone-900 text-white hover:bg-stone-800'
               }`}
             >
               {isSubmitting ? (
@@ -503,7 +503,10 @@ export default function DraftReviewPage() {
               ) : (
                 <span className="flex items-center justify-center gap-2">
                   <CheckCircle className="w-5 h-5" />
-                  Create My Kira
+                  {/* Sentence case. "Create My Kira" reads as a menu command from a 1990s
+                      application — Ray: "the capital M makes it look like something the software
+                      does to itself rather than something I am doing." */}
+                  Create my Kira
                 </span>
               )}
             </button>
@@ -513,7 +516,7 @@ export default function DraftReviewPage() {
           <div className="text-center mt-6">
             <a
               href="/start"
-              className="text-stone-500 hover:text-stone-300 text-sm"
+              className="text-stone-500 hover:text-stone-700 text-sm"
             >
               ← Start over
             </a>

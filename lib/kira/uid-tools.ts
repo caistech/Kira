@@ -12,6 +12,7 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { mnemoAdd } from '@/lib/kira/mnemo';
 import { readTaskLedger } from '@/lib/kira/swarm/open-tasks';
 import { unconfirmedFacts } from '@/lib/kira/confirm';
+import { keyRiskFollowUp } from '@/lib/kira/key-risk';
 import { isAssistantCapabilityClaim } from './poison-detect.mjs';
 
 const uidFrom = (req: Request) => new URL(req.url).searchParams.get('uid') || '';
@@ -331,6 +332,28 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
 
   // Dual-write to Mnemo (the semantic lane) so an explicit mid-call save is deep-recallable too.
   await mnemoAdd(uid, [content]);
+
+  // ⚠️ SHE STOPS ON THIS ONE, RATHER THAN FILING IT AND ASKING WHETHER TO CONTINUE.
+  //
+  // Ray disclosed the largest hole in his business — a 61-year-old sole permit signatory with no
+  // written contract — and got back a tidy summary and "Want to cover more on your key people?".
+  // "A buyer's advisor hearing that stops the meeting."
+  //
+  // Carried on the tool return rather than in the prompt on purpose: it reaches her at the exact
+  // turn the risk was disclosed, which is the only turn on which the question lands as insight
+  // instead of as an interrogation. Same mechanism as the wrap-up warning in the voice standard.
+  const risk = keyRiskFollowUp(content);
+  if (risk) {
+    console.info(`[save_memory] key-risk follow-up: ${risk.id}`);
+    return json(200, {
+      success: true,
+      // Named as an instruction, not as data, because everything else she reads off a successful
+      // save is bookkeeping and she skims it.
+      ask_this_now:
+        `Saved. Now ask him this, in your own voice, before moving to anything else: "${risk.question}" ` +
+        'Do not offer to move on to another area until he has answered it.',
+    });
+  }
   return json(200, { success: true });
 }
 

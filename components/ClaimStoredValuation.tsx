@@ -180,7 +180,7 @@ export function ClaimStoredValuation() {
   }
 
   return (
-    <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-5">
+    <div id="claim-valuation" className="mb-6 scroll-mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-5">
       <h2 className="text-base font-semibold text-stone-900">There&apos;s a business valuation saved on this device</h2>
       <p className="mt-1 max-w-prose text-base text-stone-700">
         {headline

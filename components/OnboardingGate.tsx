@@ -1,3 +1,8 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { readStoredValuation } from '@/lib/valuation/share';
+
 // components/OnboardingGate.tsx
 //
 // The outstanding step, drawn INSIDE the dashboard shell.
@@ -59,7 +64,9 @@ const COPY: Record<Exclude<OnboardingStep, null>, StepCopy> = {
       'A short conversation so she learns how the work actually gets done — the things only you know. She writes it up for you to check, and nothing is kept until you approve it.',
     cta: 'Start talking to Kira',
     href: '/start?journey=business&from=app',
-    note: 'No microphone? You can type your brief instead.',
+    // Typing is a choice, not a fallback for a broken microphone — same correction as the button
+    // this step leads to (app/start/page.tsx).
+    note: 'You can talk to her or type it — both work, and you can switch.',
   },
 };
 
@@ -72,7 +79,40 @@ export function OnboardingGate({
   progress: { done: number; total: number };
   firstName?: string;
 }) {
-  const copy = COPY[step];
+  // ⚠️ DO NOT ASK HIM TO DO THE VALUATION HE HAS JUST DONE.
+  //
+  // hasBaseline reads business_valuations, and a valuation taken before signup sits on the DEVICE
+  // until he confirms it is his (ClaimStoredValuation, mounted on UserShell). So a man who was
+  // REQUIRED to answer thirteen questions to reach the plan page arrived at his own Overview and was
+  // told to start with where the business stands today.
+  //
+  // Ray, 2026-08-16 — the only thing in three walkthroughs that made him swear: "I did those
+  // thirteen questions. They were compulsory. You would not let me past the plan page without doing
+  // them — that is how I got the gap figure this whole product is built around. Now the app
+  // home screen tells me I have not started… For a man who has just handed you his numbers, being
+  // asked for them again is the single clearest signal that the thing is not really joined up."
+  //
+  // The claim prompt is already on screen, so the honest step is CONFIRM, not repeat. Client-side
+  // because sessionStorage is the only place that answer lives at this moment.
+  const [deviceValuation, setDeviceValuation] = useState(false);
+  useEffect(() => {
+    try { setDeviceValuation(Boolean(readStoredValuation())); } catch { setDeviceValuation(false); }
+  }, []);
+
+  // The baseline step becomes a CONFIRM when the answers are already sitting on the device. Every
+  // other step is unaffected.
+  const copy: StepCopy =
+    step === 'baseline' && deviceValuation
+      ? {
+          eyebrow: 'First thing',
+          title: 'Confirm the valuation you just did',
+          body:
+            'You answered the thirteen questions before signing up, and the figures are still on this device. Say they are yours and they become your baseline — there is nothing to answer again.',
+          cta: 'It is just above — say it is yours',
+          href: '#claim-valuation',
+          note: 'That figure becomes the starting point everything from here is measured against, and it stays fixed once set.',
+        }
+      : COPY[step];
 
   return (
     <section className="mb-10">
