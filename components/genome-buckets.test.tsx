@@ -12,6 +12,7 @@ import { describe, expect, it } from 'vitest';
 
 import { bucketDisplay, emptyReason, improvedSince, type BucketSection } from './GenomeBuckets';
 import { GENOME_AREAS } from '@/lib/genome/areas';
+import { stripComments } from '@/lib/source-scan';
 
 const at = (coverage: BucketSection['coverage']): BucketSection[] => [
   { key: 'pricing', title: 'How work is priced and quoted', coverage },
@@ -199,5 +200,46 @@ describe('the zero state', () => {
     // coverage — so the first thing a paying customer sees is nine empty bars. It must read as the
     // gap with locations on it, not as a report card on his business.
     expect(prose).toContain('that is expected before your first conversation');
+  });
+});
+
+describe('⚠️ the picture Ray could not read — none of it comes back', () => {
+  // Every assertion here is a defect he found on 2026-08-16, walking production as the ICP.
+  const rendered = stripComments(source);
+
+  it('has no red anywhere', () => {
+    // "Nine red-bottomed shapes is nine warning lights on a dashboard." The caption said the colour
+    // measures capture; the picture won. And on /sample-genome a FINISHED area was still red at the
+    // bottom, so red was permanent — "a traffic light, not a gauge".
+    expect(rendered).not.toMatch(/#ef4444|#dc2626|bg-rose-|text-rose-|border-rose-/);
+  });
+
+  it('is not a funnel — no interpolated widths', () => {
+    // "Every funnel I've seen in thirty-five years is a picture of LOSS." A shape whose width is
+    // derived from its own y is the funnel returning under another name.
+    expect(rendered).not.toMatch(/segmentPath|TOP_W|BOT_W|halfAt/);
+  });
+
+  it('draws equal levels, so one of four looks like one of four', () => {
+    // The fill used to sit at the narrow end, where progress was nearly invisible.
+    expect(rendered).toMatch(/levelRect/);
+    expect(rendered).toMatch(/<rect/);
+  });
+
+  it('carries a count for anyone who cannot see the picture', () => {
+    // "There's no number. I cannot tell whether I'm at the start, a third of the way, or nearly
+    // there, and there's nowhere on the page that tells me."
+    expect(rendered).toMatch(/of 4 levels/);
+    expect(rendered).toMatch(/well covered so far/);
+  });
+
+  it('says out loud that an area can be opened', () => {
+    // "The funnels are clickable, but nothing says so… A bloke my age doesn't go poking at pictures."
+    expect(rendered).toMatch(/Open this area/);
+  });
+
+  it('does not offer a link to the page you are already on', () => {
+    // "I clicked it three times." A link that does nothing costs more than a missing one.
+    expect(rendered).toMatch(/variant === 'compact'/);
   });
 });

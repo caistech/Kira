@@ -160,49 +160,58 @@ export function bucketDisplay(section: BucketSection): BucketDisplay {
  * rather than about quality ("this area is strong"), because capture is what the band measures.
  */
 /**
- * THE FOUR SEGMENTS OF THE FUNNEL, bottom to top.
+ * THE VESSEL — four equal levels, filling UPWARD, in one colour.
  *
- * These are the operator's own thresholds, drawn rather than described: red at the bottom, amber,
- * light green, bright green at the top. An area fills from the bottom up, so a glance across nine
- * funnels shows which parts of the business have climbed and which have not.
+ * ⚠️ THIS REPLACED A FUNNEL, AND EVERY CHANGE HERE IS A DEFECT RAY FOUND ON 2026-08-16. He is the
+ * ICP. He looked at nine funnels and said: "Do I understand what they're telling me? No. I
+ * understood the words underneath them, and I ignored the pictures."
+ *
+ *   1. RED MEANT BAD. "Nine red-bottomed shapes is nine warning lights on a dashboard." The caption
+ *      said the colour shows how much is CAPTURED, not how good the business is — and the picture
+ *      won. There is now no red anywhere. Red returns only when something is actually wrong.
+ *   2. A FUNNEL MEANS LEAKAGE. Every funnel he has met in 35 years — sales, enquiry — is a picture
+ *      of LOSS: wide at the top, most of it does not make it through. We were using that shape to
+ *      mean a container filling. A straight-sided vessel has no such second meaning.
+ *   3. THE FILL WAS AT THE NARROW END, so progress was nearly invisible. Equal levels now, so one
+ *      level of four looks like one level of four.
+ *   4. RED WAS PERMANENT. He checked /sample-genome and found a FINISHED area still red at the
+ *      bottom — "a traffic light, not a gauge. Complete and empty both have red in them." A single
+ *      colour getting more of it cannot do that.
+ *
+ * Amber for "you told us" is his prescription verbatim: "Amber for 'you mentioned it', green for
+ * 'done', grey for 'nothing', and nothing red at all until something is actually wrong."
  */
-const SEGMENTS = [
-  { fill: '#ef4444', label: 'Nothing yet' },       // bottom — narrowest
-  { fill: '#c2703a', label: 'You told us' },
-  { fill: '#bbe5c3', label: 'Building up' },
-  { fill: '#3cbf5c', label: 'Well covered' },      // top — widest
-] as const;
+const EMPTY_FILL = '#f5f5f4';
+const EMPTY_STROKE = '#d6d3d1';
+const GREEN = '#3cbf5c';
+const AMBER = '#f0a533';
 
-/** How many segments are filled, and what to call the state. */
+/** How many levels are filled, what to call the state, and — for `located` only — a different colour. */
 const BANDS = {
   // ⚠️ `empty` FILLS NOTHING. An outline with no colour is the honest picture of an area Kira has
-  // never been told anything about, and it is visibly different from one he has answered for.
-  empty: { filled: 0, label: 'Nothing yet', chip: 'bg-rose-100 text-rose-900 border-rose-300' },
-  // "YOU TOLD US" — he answered for it in the thirteen questions; Kira has captured nothing. The
-  // distinction is the point of this state and the label is where a reader meets it.
-  located: { filled: 1, label: 'You told us', chip: 'bg-amber-100 text-amber-900 border-amber-300' },
-  thin: { filled: 2, label: 'Just started', chip: 'bg-orange-100 text-orange-900 border-orange-300' },
-  building: { filled: 3, label: 'Building up', chip: 'bg-lime-100 text-lime-900 border-lime-400' },
-  covered: { filled: 4, label: 'Well covered', chip: 'bg-emerald-100 text-emerald-900 border-emerald-400' },
+  // never been told anything about. It is GREY, not red: nothing is wrong, nothing has happened yet.
+  empty: { filled: 0, fill: EMPTY_FILL, label: 'Nothing yet', chip: 'bg-stone-100 text-stone-700 border-stone-300' },
+  // "YOU TOLD US" — he answered for it in the thirteen questions; Kira has captured nothing. Amber,
+  // because he HAS done something, and grey would tell him he had not.
+  located: { filled: 1, fill: AMBER, label: 'You told us', chip: 'bg-amber-100 text-amber-900 border-amber-300' },
+  thin: { filled: 2, fill: GREEN, label: 'Just started', chip: 'bg-emerald-50 text-emerald-900 border-emerald-300' },
+  building: { filled: 3, fill: GREEN, label: 'Building up', chip: 'bg-emerald-100 text-emerald-900 border-emerald-400' },
+  covered: { filled: 4, fill: GREEN, label: 'Well covered', chip: 'bg-emerald-200 text-emerald-900 border-emerald-500' },
 } as const;
 
+/** The four levels of the vessel, bottom to top. Equal heights — see defect 3 above. */
+const LEVELS = [0, 1, 2, 3] as const;
+
 /**
- * One segment of the funnel as an SVG path.
+ * One level of the vessel as an SVG rect.
  *
- * The funnel is an inverted trapezoid — widest at the top, narrowest at the bottom — so each slice
- * is a trapezoid whose width is interpolated from its own y position. Drawn per-slice rather than as
- * one clipped shape because the segments have GAPS between them, which is what makes it read as a
- * stack of levels rather than a single filling vessel.
+ * Straight-sided and equal-height, deliberately: the previous trapezoid interpolated its width from
+ * its own y, which is what made the bottom level a sliver and progress invisible. `index` 0 is the
+ * BOTTOM level, matching the direction it fills.
  */
-function segmentPath(index: number): string {
-  const TOP_W = 92, BOT_W = 30, H = 120, SLICE = H / 4, GAP = 3;
-  // index 0 is the TOP slice in draw order; the array is bottom-to-top, so flip.
-  const yTop = (3 - index) * SLICE;
-  const yBot = yTop + SLICE - GAP;
-  const halfAt = (y: number) => (TOP_W - ((TOP_W - BOT_W) * y) / H) / 2;
-  const [tl, tr] = [50 - halfAt(yTop), 50 + halfAt(yTop)];
-  const [bl, br] = [50 - halfAt(yBot), 50 + halfAt(yBot)];
-  return `M ${tl} ${yTop} L ${tr} ${yTop} L ${br} ${yBot} L ${bl} ${yBot} Z`;
+function levelRect(index: number): { x: number; y: number; width: number; height: number } {
+  const W = 64, H = 116, LEVEL = H / 4, GAP = 4;
+  return { x: (100 - W) / 2, y: (3 - index) * LEVEL, width: W, height: LEVEL - GAP };
 }
 
 /**
@@ -235,6 +244,7 @@ export function GenomeBuckets({
   heading = 'Where the value is locked up',
   intro,
   areaHref,
+  unfiledCount = 0,
 }: {
   sections: BucketSection[];
   variant?: 'full' | 'compact';
@@ -261,6 +271,16 @@ export function GenomeBuckets({
    * the example must not behave as though it were his.
    */
   areaHref?: string;
+  /**
+   * Things Kira holds that are not yet filed into any area.
+   *
+   * ⚠️ WITHOUT IT THIS SENTENCE CONTRADICTS THE PAGE IT SITS ON. Ray found four statements about the
+   * same thing on one screen: "Nothing is filled in yet" / "8 things captured" / nine areas
+   * "Not captured" / "Not yet filed (8)". Nothing was untrue and the page was incoherent, which for
+   * a man deciding whether to trust it is worse. Knowing the number lets the one sentence tell the
+   * whole story instead of half of it.
+   */
+  unfiledCount?: number;
 }) {
   // ORDER IS THE AREAS' OWN RANK, NOT "MOST FULL FIRST".
   //
@@ -280,12 +300,17 @@ export function GenomeBuckets({
     <section className="mb-8 rounded-2xl border border-stone-200 bg-white p-5 sm:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="text-lg font-semibold text-stone-900">{heading}</h2>
-        <Link
-          href={href}
-          className="inline-flex min-h-[44px] items-center text-base font-semibold text-violet-700 underline underline-offset-4"
-        >
-          Open your Genome
-        </Link>
+        {/* ⚠️ COMPACT ONLY. On /my-genome this link pointed at the page it was already on. Ray
+            clicked it three times: "and it goes to the page I'm already on. Nothing happens."
+            A link that does nothing costs more trust than a missing one. */}
+        {variant === 'compact' && (
+          <Link
+            href={href}
+            className="inline-flex min-h-[44px] items-center text-base font-semibold text-violet-700 underline underline-offset-4"
+          >
+            Open your Genome
+          </Link>
+        )}
       </div>
 
       {/* THE EXPLANATORY HEADER (§5 of the product standards) — what this is, what to do, why it
@@ -293,7 +318,7 @@ export function GenomeBuckets({
           claim about what the business is worth or whether it is ready to sell. */}
       <p className="mt-1 max-w-prose text-base leading-relaxed text-stone-600">
         {intro ??
-          "Your business broken into the nine areas a buyer's advisor works through. The colour shows how much of each one Kira has captured so far — not how good that part of the business is. Every conversation fills one of these in."}
+          `Your business, in the nine areas a buyer's advisor works through. Each one fills up as Kira captures what answers it — that is how much she holds, not how good that part of the business is. ${covered} of ${sections.length} well covered so far. Tap any area to work on it.`}
       </p>
 
       <ul className="mt-6 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3">
@@ -333,16 +358,21 @@ export function GenomeBuckets({
                    red from green get the state as a sentence; the funnel is the fast path, not the
                    only one. Red/green blindness affects roughly one man in twelve and this ICP is
                    men aged 60-70, so that is closer to the median user than an edge case. */
-                aria-label={`${section.title}: ${band.label}`}
+                aria-label={`${section.title}: ${band.label} — ${band.filled} of 4 levels`}
               >
-                {SEGMENTS.map((seg, i) => {
+                {LEVELS.map((i) => {
                   const isFilled = i < band.filled;
+                  const r = levelRect(i);
                   return (
-                    <path
-                      key={seg.label}
-                      d={segmentPath(i)}
-                      fill={isFilled ? seg.fill : '#ffffff'}
-                      stroke={isFilled ? '#1c1917' : '#d6d3d1'}
+                    <rect
+                      key={i}
+                      x={r.x}
+                      y={r.y}
+                      width={r.width}
+                      height={r.height}
+                      rx={4}
+                      fill={isFilled ? band.fill : EMPTY_FILL}
+                      stroke={isFilled ? '#1c1917' : EMPTY_STROKE}
                       strokeWidth={1.5}
                     />
                   );
@@ -357,6 +387,15 @@ export function GenomeBuckets({
               >
                 {band.label}
               </span>
+
+              {/* ⚠️ SAY IT IS CLICKABLE. Ray found it by accident: "nothing says so. No underline,
+                  no arrow, no 'view'… A bloke my age doesn't go poking at pictures to see if they
+                  do something." A hover state is not an affordance for someone who never hovers. */}
+              {areaHref && (
+                <span className="mt-1 text-xs font-semibold text-violet-700 underline underline-offset-2">
+                  Open this area
+                </span>
+              )}
 
               {display === 'located' && section.baseline ? (
                 /* HIS OWN WORDS. `AreaBaseline.statement` is written "addressed to the owner, in his
@@ -383,10 +422,12 @@ export function GenomeBuckets({
               state (you are at zero). */}
           <p className="max-w-prose text-base text-stone-600">
             {untouched === sections.length
-              ? 'Nothing is filled in yet — that is expected before your first conversation. What you told us during the valuation gave Kira a starting point, but she counts nothing as captured until you have actually talked it through.'
+              ? unfiledCount > 0
+                ? `No area is filled in yet — but Kira is holding ${unfiledCount} ${unfiledCount === 1 ? 'thing' : 'things'} you have told her, and files each one once she is sure where it belongs. Nothing is lost in the meantime.`
+                : 'Nothing is filled in yet — that is expected before your first conversation. What you told us during the valuation gave Kira a starting point, but she counts nothing as captured until you have actually talked it through.'
               : covered === sections.length
                 ? 'Every area is well covered. From here the work is confirming what Kira holds — a fact she has read back to you and you have agreed with is the form a buyer cannot discount.'
-                : `${covered} of ${sections.length} areas are well covered. The red ones are where the most value is still tied up in you.`}
+                : `${covered} of ${sections.length} areas are well covered. The empty ones are where the most value is still tied up in you.`}
           </p>
         </div>
       )}

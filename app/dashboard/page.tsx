@@ -463,7 +463,7 @@ function NoBaselineYet() {
         href="/business-valuation?from=app"
         className="mt-5 inline-flex min-h-[44px] items-center rounded-full bg-stone-900 px-6 py-3 text-base font-semibold text-white hover:bg-stone-800"
       >
-        Answer the eleven questions
+        Answer the thirteen questions
       </Link>
     </section>
   );

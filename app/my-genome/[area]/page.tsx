@@ -106,7 +106,52 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
             {BAND_LABEL[result.band]}
           </p>
         )}
+
+        {/*
+          ⚠️ THE BASELINE, BECAUSE ITS ABSENCE MADE TWO SCREENS CONTRADICT EACH OTHER.
+          The card on /my-genome shows `section.baseline.statement` — "You told us your client base is
+          steady" — and this panel showed none of it, so one click later the same area said "Kira has
+          not captured anything about this part of your business yet." Ray: "Which is it? I told you
+          or I didn't. That's not a subtlety I'm going to work out; it's just wrong."
+
+          It is shown as HIS OWN WORDS and deliberately NOT counted as coverage: a self-report from
+          the thirteen questions is not a captured fact, and letting one lift an area out of empty
+          would manufacture progress from a form he filled in before he paid (see OwnerSection).
+        */}
+        {section?.baseline && (
+          <p className="mt-3 rounded-xl border border-stone-200 bg-stone-50 p-4 text-base leading-relaxed text-stone-700">
+            <span className="font-medium">From your answers:</span> {section.baseline.statement}
+          </p>
+        )}
       </header>
+
+      {/*
+        ⚠️ THE PRIMARY ACTION IS OUTSIDE THE FORK, AND THAT IS THE WHOLE FIX.
+        It used to live in the assessed branch, so on a new account — the ONLY state a new owner is
+        ever in — it could not render, and the single control on screen was a DISABLED button with no
+        explanation. Nine areas, nine identical dead ends. Ray, 2026-08-16: "Not homework I'll never
+        do — homework doesn't have a door. This is a room with no door at all."
+
+        This is the second time in one day: the funnels on /my-genome were mounted inside
+        `g.empty ? … : …` for the same reason. A branch is not a layout decision — putting an action
+        inside one silently decides WHO gets to take it, and the state you build in is never the
+        state a new owner arrives in. See feedback-correct-tested-and-unreachable.
+      */}
+      <section className="mt-6 rounded-2xl border border-violet-200 bg-violet-50 p-5">
+        <h2 className="text-lg font-semibold text-stone-900">
+          {entryCount > 0 ? 'Pick this up with Kira' : 'Tell Kira about this'}
+        </h2>
+        <p className="mt-1 text-base leading-relaxed text-stone-700">
+          She opens on this part of the business and asks the questions a buyer would — one at a
+          time, in your own words. Nothing here is a form.
+        </p>
+        <Link
+          href={`/talk?area=${area}`}
+          className="mt-4 inline-flex min-h-[48px] items-center rounded-full bg-violet-700 px-6 text-base font-semibold text-white"
+        >
+          Tell Kira about {def.title.toLowerCase()}
+        </Link>
+      </section>
 
       {neverAssessed ? (
         <section className="mt-6 rounded-2xl border border-stone-200 bg-white p-5">
@@ -114,11 +159,20 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
           <p className="mt-1 text-base leading-relaxed text-stone-700">
             {entryCount > 0
               ? `Kira holds ${entryCount} ${entryCount === 1 ? 'thing' : 'things'} about this part of your business. Checking it reads them against the questions a buyer always asks, and tells you which ones you have genuinely answered.`
-              : 'Kira has not captured anything about this part of your business yet. Once she has, checking it will tell you which of a buyer’s questions you have actually answered.'}
+              : 'Once you have talked to her about it, checking this area will tell you which of a buyer’s questions you have actually answered.'}
           </p>
-          <div className="mt-4">
-            <AssessAreaButton area={area} disabled={entryCount === 0} />
-          </div>
+          {/*
+            ⚠️ NO DISABLED BUTTON, EVER. The old version rendered it greyed with nothing said, which
+            Ray read — correctly — as "software that isn't finished", and it made the honest refusal
+            message ("Nothing could be checked yet…") permanently unreachable, because the control
+            that produces it could not be pressed. If there is nothing to check, do not offer to
+            check; offer the thing that WOULD give her something to check.
+          */}
+          {entryCount > 0 && (
+            <div className="mt-4">
+              <AssessAreaButton area={area} />
+            </div>
+          )}
         </section>
       ) : (
         <>
@@ -184,21 +238,16 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
             </section>
           )}
 
-          <section className="mt-8 rounded-2xl border border-violet-200 bg-violet-50 p-5">
-            <h2 className="text-lg font-semibold text-stone-900">Work through these with Kira</h2>
-            <p className="mt-1 text-base leading-relaxed text-stone-700">
+          {/* The Talk button is NOT repeated here — it is above, outside the fork, where every
+              state can reach it. What belongs here is only what depends on having been assessed. */}
+          <section className="mt-8 rounded-2xl border border-stone-200 bg-white p-5">
+            <p className="text-base leading-relaxed text-stone-700">
               {split.movesNumber > 0 && split.completesDocument > 0
                 ? `${split.movesNumber} of these move your number. The other ${split.completesDocument} complete your handover document.`
                 : split.movesNumber > 0
                   ? `${split.movesNumber} of these move your number.`
                   : 'These complete your handover document. They do not change what a buyer would pay.'}
             </p>
-            <Link
-              href={`/talk?area=${area}`}
-              className="mt-4 inline-flex min-h-[48px] items-center rounded-full bg-violet-700 px-6 text-base font-semibold text-white"
-            >
-              Talk to Kira about {def.title.toLowerCase()}
-            </Link>
             <div className="mt-4">
               <AssessAreaButton area={area} label="Check this area again" />
             </div>

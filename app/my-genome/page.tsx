@@ -128,6 +128,7 @@ export default async function MyGenome() {
              invented business — linking those through would open a real owner's empty bucket from a
              page selling a finished one. */
           areaHref="/my-genome"
+          unfiledCount={g.unsorted.length}
         />
       </div>
 
@@ -160,7 +161,15 @@ export default async function MyGenome() {
                 empty section read as a fault rather than as the honest remainder. Naming the number
                 of areas makes an empty one expected — and it stays true as the model widens. */}
             {g.totalCaptured} {g.totalCaptured === 1 ? 'thing' : 'things'} captured
-            {populated > 0 ? `, across ${populated} of the ${g.sections.length} areas below` : ''}
+            {populated > 0
+              ? `, across ${populated} of the ${g.sections.length} areas below`
+              : /* ⚠️ SAY WHERE THEY ARE WHEN THE ANSWER IS "NOWHERE YET". With populated at zero this
+                   clause used to vanish, leaving "8 things captured" above nine areas all reading
+                   "Not captured" and a separate box headed "Not yet filed (8)". Three true statements
+                   that read as a contradiction. */
+                g.unsorted.length > 0
+                ? ', none of them filed into an area yet — Kira does that once she is sure where each belongs'
+                : ''}
             {g.documents > 0 ? `, plus ${g.documents} document${g.documents === 1 ? '' : 's'} you have shared` : ''}.
             {/* THE COUNT HAS TO ACCOUNT FOR THE UNDATED ONES, or it reads as a contradiction.
                 This said "5 of them are dated to the conversation you said them in — that is what a
@@ -454,9 +463,24 @@ export default async function MyGenome() {
             /* Shown, never hidden. A memory the owner gave us that appears nowhere is exactly the
                failure this product exists to prevent. */
             <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
-              <p className="font-display font-bold">Not yet filed ({g.unsorted.length})</p>
-              <p className="text-sm text-stone-500 mt-1">
-                Kira has these but has not worked out where they belong yet. They are not lost.
+              <p className="font-display font-bold">
+                {g.unsorted.length} {g.unsorted.length === 1 ? 'thing' : 'things'} I have picked up but not filed yet
+              </p>
+              {/* ⚠️ SECOND PERSON, AND AN EXPLANATION OF THE VOICE BELOW IT.
+                  Ray read this block on 2026-08-16 and it is the moment the product frightened him:
+                  "I'm reading it referring to me as 'the owner' and 'he'… It stopped feeling like
+                  something I own and started feeling like a file somebody's keeping on me." He has
+                  told nobody he is selling, and the landing page works hard to disarm exactly that.
+
+                  The entries ARE third person, deliberately and correctly — they are written to be
+                  lifted into the handover document a buyer's advisor reads, where "you" would be
+                  wrong. The defect was never the voice; it was showing him that voice with no
+                  explanation, so it read as surveillance instead of as his own manual being drafted.
+                  Saying whose words they are, before he reads them, is the whole fix. */}
+              <p className="text-sm text-stone-600 mt-1 leading-relaxed">
+                Have a look and tell me if I have got them right. They are written the way they will
+                appear in your handover document — about the business rather than to you — which is
+                why they read a little formally.
               </p>
               <ul className="mt-3 space-y-2">
                 {g.unsorted.slice(0, 10).map((e) => (

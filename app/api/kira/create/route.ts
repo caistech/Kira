@@ -671,13 +671,24 @@ export async function POST(req: NextRequest) {
           .limit(1)
           .maybeSingle();
         if (val) {
+          // ⚠️ NO INSTRUCTION TO THE MODEL IN HERE, AND NO THIRD PERSON. This seed is a MEMORY ROW,
+          // and memory rows are rendered to the owner on /my-genome. The previous version ended
+          // `These are HIS figures from HIS answers — never ask him to send them to me.` — a note
+          // the machine had written to itself, in capitals, about him, on his own screen.
+          //
+          // Ray, reading it 2026-08-16: "It stopped feeling like something I own and started
+          // feeling like a file somebody's keeping on me." He is a man who has told nobody he is
+          // selling, and the landing page goes to real trouble to disarm exactly that fear.
+          //
+          // Anything the AGENT must be told belongs in the PROMPT, which he never sees. Anything
+          // stored as memory is written for HIM to read. Also: it said "eleven questions" and there
+          // are thirteen, advertised on three separate pages.
           seeds.push({
             content:
-              `His own valuation, from the eleven questions he answered before signing up` +
+              `Your own valuation, from the thirteen questions you answered before signing up` +
               `${val.industry ? ` (${val.industry})` : ''}: worth today ${formatMoneyApprox(Number(val.worth_today) || 0)}, ` +
-              `worth once his knowledge is captured ${formatMoneyApprox(Number(val.worth_potential) || 0)}, ` +
-              `so the gap is ${formatMoneyApprox(Number(val.gap) || 0)}. ` +
-              `These are HIS figures from HIS answers — never ask him to send them to me.`,
+              `worth once your knowledge is captured ${formatMoneyApprox(Number(val.worth_potential) || 0)}, ` +
+              `so the gap is ${formatMoneyApprox(Number(val.gap) || 0)}.`,
             tags: ['valuation', 'owner'],
             importance: 9,
           });
