@@ -129,6 +129,7 @@ export function LandingNew() {
    * nothing after the callback, so the acknowledgement has to come from here.
    */
   const [askState, setAskState] = React.useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [askText, setAskText] = React.useState('');
 
   // Same derivation as the classic page: never type a price that the bands can move underneath.
   const currency = DEFAULT_CURRENCY;
@@ -239,8 +240,8 @@ export function LandingNew() {
           "this is a person you decide whether to talk to, and the page that sells her should show
           her." Below `lg:` nothing changes: the small avatar stays inline beside the eyebrow, where
           it has been through three walkthroughs. */}
-      <section className="mx-auto max-w-5xl xl:max-w-6xl px-6 pb-16 pt-16 lg:grid lg:grid-cols-12 lg:gap-12 lg:pt-24">
-        <div className="lg:col-span-7">
+      <section className="mx-auto max-w-5xl xl:max-w-6xl px-6 pb-16 pt-16 lg:pt-24">
+        <div>
         <div className="mb-8 flex items-center gap-4">
           <span className="block h-16 w-16 shrink-0 overflow-hidden rounded-full ring-1 ring-kira-line lg:hidden">
             <img src="/female_avatar.jpeg" alt="Kira" className="h-full w-full object-cover" />
@@ -296,11 +297,23 @@ export function LandingNew() {
             how your business really works, and that is a decision about a person.
             `aria-hidden` — the eyebrow above already names her, and a screen reader does not need
             the same portrait announced twice for a purely compositional image. */}
-        <div className="hidden lg:col-span-5 lg:flex lg:items-start lg:justify-end" aria-hidden="true">
-          <span className="block aspect-square w-full max-w-[340px] overflow-hidden rounded-2xl ring-1 ring-kira-line">
-            <img src="/female_avatar.jpeg" alt="" className="h-full w-full object-cover" />
-          </span>
-        </div>
+        {/* ⚠️ THE LARGE PORTRAIT IS GONE, AND TWO TESTERS DISAGREED ABOUT IT.
+            The comment above records the case FOR it — "this is a person you decide whether to talk
+            to, and the page that sells her should show her" — and it is a good argument, kept here
+            because a future session will re-derive it.
+
+            Ray, who IS the ICP, read the same image completely differently: "It's a young woman in
+            a headset and it's plainly not a real person — the sort of picture that ends up on a call
+            centre's brochure. Everything else on the page is written like a person talking to me and
+            then there's a made-up face at the top of it. I'd sooner see the yard, a switchboard, or
+            nothing at all."
+
+            His reading wins on this one surface, for a reason narrower than taste: the image is
+            `aria-hidden` and purely compositional — it carries no information at all — so it can
+            only help or harm the tone, and for the buyer it is aimed at it harms it. The small
+            avatar beside her name stays: at 36px it is an identity mark rather than a portrait, and
+            it is what makes the header read as "her" instead of a logo. When there is a real
+            photograph of a yard or a switchboard, this is the slot for it. */}
       </section>
 
       {/* MEET HER — the voice agent, in the page flow, in the shape the rest of the portfolio uses.
@@ -334,10 +347,73 @@ export function LandingNew() {
           </h2>
           <p className="ln-measure mt-3 text-[17px] leading-[1.65] text-kira-charcoal">
             No account, no card, nothing saved to your business. Ask her what she does, how the
-            valuation works, or who can see what you tell her. If you would rather type, you can.
+            valuation works, or who can see what you tell her. Type it, or talk to her — both work.
           </p>
 
-          <div className="mt-8">
+          {/* ⚠️ TYPING FIRST, MICROPHONE SECOND. The order is the fix.
+              This section led with a button that opened a live microphone. Ray pressed it because
+              the page promised he could type, got Mute and End instead, and his browser tab then
+              died twice: "I clicked the one thing on the page that promised I could type, it started
+              listening to my office instead, and then it fell over. That's the moment a bloke like
+              me shuts the laptop."
+
+              His conclusion is the one that matters, and it is about the ROOM rather than the
+              equipment: "Everyone you're aiming at is sixty-plus and half of us are in an open
+              office, a ute, or a house with a wife in the next room who doesn't know about any of
+              this yet. Typing isn't the fallback for your customer. It's the default."
+
+              The widget's own textFallback still exists and is still correct — but it appears only
+              after a connection fails or stalls for eight seconds, which is eight seconds of nothing
+              for the visitor least willing to wait. This box needs no connection at all. */}
+          <form
+            className="mt-8 rounded-lg border border-kira-line bg-white p-5"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              const value = askText.trim();
+              if (!value) return;
+              setAskState('sending');
+              setAskText('');
+              try {
+                const r = await fetch('/api/kira/ask', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ question: value }),
+                });
+                setAskState(r.ok ? 'sent' : 'error');
+              } catch {
+                setAskState('error');
+              }
+            }}
+          >
+            <label htmlFor="ask-kira" className="block text-[17px] font-semibold text-kira-dark">
+              Type your question
+            </label>
+            <p className="mt-1 text-[15px] leading-[1.5] text-kira-soft">
+              Nothing is recorded and nothing is saved about you or your business.
+            </p>
+            <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+              <input
+                id="ask-kira"
+                value={askText}
+                onChange={(e) => setAskText(e.target.value)}
+                placeholder="What does she actually do?"
+                className="min-h-[52px] w-full rounded-md border border-kira-line px-4 py-3 text-[17px] text-kira-dark"
+              />
+              <button
+                type="submit"
+                className="min-h-[52px] shrink-0 rounded-md bg-kira-dark px-6 py-3 text-[17px] font-semibold text-white"
+              >
+                Ask
+              </button>
+            </div>
+          </form>
+
+          <p className="mt-6 text-[17px] leading-[1.65] text-kira-charcoal">
+            Or talk to her out loud — you will need a microphone, and she will ask before she starts
+            listening.
+          </p>
+
+          <div className="mt-3">
             <VoiceWidget
               placement="inline"
               avatarUrl="/female_avatar.jpeg"

@@ -63,6 +63,7 @@ import {
   Landmark,
   Sparkles,
   Printer,
+  Mail,
   Brain,
   Clock,
 } from 'lucide-react';
@@ -1048,6 +1049,12 @@ function ResultView({
    * never once stated it. Derived from the SAME helper the rationale below uses, so the sentence
    * under the cards and the sentence in the essay can never disagree about which way he sits.
    */
+  // The email-it-to-me control (see the form below). Local to the result view — nothing about it
+  // outlives the tab, which is the point.
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState('');
+  const [emailState, setEmailState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+
   const sector = sectorContext({
     sectorMultiple: result.sdeMultiple,
     appliedMultiple: result.appliedMultipleToday,
@@ -1455,8 +1462,82 @@ function ResultView({
           <button onClick={() => window.print()} className="print:hidden text-stone-500 hover:text-stone-800 inline-flex items-center gap-1.5 min-h-[44px]">
             <Printer className="h-4 w-4" /> Print, or save as a PDF
           </button>
+          <button
+            type="button"
+            onClick={() => setEmailOpen((v) => !v)}
+            className="print:hidden text-stone-500 hover:text-stone-800 inline-flex items-center gap-1.5 min-h-[44px]"
+          >
+            <Mail className="h-4 w-4" /> Email it to me
+          </button>
           <a href="/business-valuation" className="print:hidden text-stone-500 hover:text-stone-800 min-h-[44px] inline-flex items-center">Start over</a>
         </div>
+
+        {/* ⚠️ HE RAN IT ON THE OFFICE COMPUTER, and printing it puts it on the office printer.
+            Ray: "I'd want to read it again at home at nine at night when there's nobody about, and
+            the only copy of it is on the machine my bookkeeper uses."
+            For a man who has told nobody he is selling, that is not an inconvenience — it is a
+            reason to close the tab. The address is typed, used once, and not kept; the note under
+            the field says so, because for this reader the absence of a list is the whole point. */}
+        {emailOpen && (
+          <form
+            className="print:hidden mx-auto mt-4 max-w-md rounded-2xl border border-stone-200 bg-white p-4 text-left"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              const address = emailTo.trim();
+              if (!address) return;
+              setEmailState('sending');
+              try {
+                const r = await fetch('/api/valuation/email', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    email: address,
+                    worthToday: result.today,
+                    worthPotential: result.potential,
+                    industry: matchedSector || typedSector || '',
+                    currency,
+                  }),
+                });
+                setEmailState(r.ok ? 'sent' : 'error');
+              } catch {
+                setEmailState('error');
+              }
+            }}
+          >
+            <label htmlFor="valuation-email" className="block text-base font-medium text-stone-800">
+              Where should it go?
+            </label>
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+              <input
+                id="valuation-email"
+                type="email"
+                value={emailTo}
+                onChange={(e) => setEmailTo(e.target.value)}
+                placeholder="you@example.com"
+                className="min-h-[48px] w-full rounded-xl border border-stone-300 px-4 py-3 text-base"
+              />
+              <button
+                type="submit"
+                disabled={emailState === 'sending'}
+                className="min-h-[48px] shrink-0 rounded-xl bg-stone-900 px-5 py-3 text-base font-semibold text-white disabled:opacity-60"
+              >
+                {emailState === 'sending' ? 'Sending…' : 'Send'}
+              </button>
+            </div>
+            <p className="mt-2 text-sm text-stone-500">
+              Used once to send this, then discarded. You are not added to anything and nobody
+              follows up.
+            </p>
+            {emailState === 'sent' && (
+              <p className="mt-2 text-sm font-medium text-emerald-700">Sent. Check your inbox.</p>
+            )}
+            {emailState === 'error' && (
+              <p className="mt-2 text-sm font-medium text-red-700">
+                That did not send. Print or save the page instead.
+              </p>
+            )}
+          </form>
+        )}
       </div>
 
       {/* ─── THE RECORD (register P9) ──────────────────────────────────────────────
