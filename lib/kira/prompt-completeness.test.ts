@@ -29,6 +29,7 @@ import {
   ENTITY_SEPARATION_MARKER,
   CONFIDENTIALITY_MARKER,
   CONFIRMATION_MARKER,
+  AREA_WORK_MARKER,
   TASK_LEDGER_MARKER,
   LEAD_WITH_WHAT_YOU_HOLD_MARKER,
   type KiraFramework,
@@ -44,6 +45,9 @@ const REQUIRED_IN_BUSINESS: Array<[string, string]> = [
   ['entity separation', ENTITY_SEPARATION_MARKER],
   ['confidentiality', CONFIDENTIALITY_MARKER],
   ['confirmation loop', CONFIRMATION_MARKER],
+  // The agenda. Without it she has no reason to ask about a part of the business, so she talks about
+  // the last live job — measured: 96 memories, zero answers to what a buyer asks about Customers.
+  ['area work', AREA_WORK_MARKER],
   ['task ledger', TASK_LEDGER_MARKER],
   ['lead with what you hold', LEAD_WITH_WHAT_YOU_HOLD_MARKER],
 ];

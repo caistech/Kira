@@ -45,7 +45,26 @@ const framework = (journeyType: JourneyType): KiraFramework => ({
 // CHECKING WHAT YOU HAVE GOT RIGHT, THE ADDRESS IS THE ONE THING YOU MUST CHECK, READING THEIR
 // ACCOUNTS) sitting thousands of characters away from the tool it describes. Moving each into its
 // tool's description is the next tranche, and should take this under 15k.
-const BUDGET = { business: 38_500, personal: 12_500 } as const;
+// ⚠️ RATCHETED DOWN 38,500 -> 37,000 and 12,500 -> 10,200 on 2026-08-16. Measured 36,713 / 9,823.
+//
+// THE TRANCHE, AT LAST — and it happened because a new section needed room and the note below says
+// in as many words that the next section should not be a raise. It was not.
+//
+// `## WORKING ON ONE PART OF THE BUSINESS` (1,534) was added, and paid for twice over by relocating
+// two pieces of tool-usage prose that no longer earned their place:
+//
+//   CHECKING WHAT YOU HAVE GOT RIGHT   1,699 -> 393. Roughly 95% of it was VERBATIM in the
+//     facts_to_confirm / confirm_fact descriptions — the hearsay sentence, "one or two, woven in",
+//     the three outcomes, "I'm not sure is not a denial". Relocation, not deletion: the operative
+//     text still reaches her, on the tool, at the moment she chooses it.
+//   BUILDING YOUR KNOWLEDGE BASE       2,548 -> 693. Written before she had tools. It instructed her
+//     to ask him to upload documents she can now FETCH with search_drive / read_document /
+//     search_knowledge — the same shape as telling an owner she cannot see his email while holding
+//     fourteen Google tools.
+//
+// Net: the business prompt is 1,719 characters SMALLER than before the new section was added, and
+// the ceiling moves with the measurement so that saving cannot be quietly given back.
+const BUDGET = { business: 37_000, personal: 10_200 } as const;
 
 // ⚠️ THE BUSINESS CEILING WENT BACK UP, from 28,000 to 36,000, and that is not backsliding.
 //

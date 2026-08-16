@@ -9,6 +9,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { VoiceWidget } from '@caistech/elevenlabs-convai/react';
 import { buildWelcomeBackFirstMessage } from '@/lib/kira/welcome-back';
+import { buildAreaFocusFirstMessage } from '@/lib/kira/area-focus';
 
 // Icons as inline SVGs to avoid lucide-react dependency issues.
 // (The voice controls — mic/pause/play/stop — now live inside the canonical VoiceWidget.)
@@ -116,7 +117,11 @@ interface AgentInfo {
  *   PWA start_url — and it only redirected here because the component could not be reached without
  *   a route param.
  */
-export default function ChatPage({ agentId: agentIdProp }: { agentId?: string } = {}) {
+export default function ChatPage({
+  agentId: agentIdProp,
+  focusArea = null,
+  firstName = null,
+}: { agentId?: string; focusArea?: string | null; firstName?: string | null } = {}) {
   const params = useParams();
   const agentId = agentIdProp ?? (params.agentId as string);
 
@@ -223,6 +228,7 @@ export default function ChatPage({ agentId: agentIdProp }: { agentId?: string } 
 
   // The spoken opener, rendered from the context we already loaded. null → no history yet, so the
   // agent's own first-time greeting stands.
+  const areaFocusMessage = buildAreaFocusFirstMessage(focusArea, firstName);
   const welcomeBack = buildWelcomeBackFirstMessage(
     agentInfo?.first_name || agentInfo?.agent_name?.split('_')[1] || '',
     context,
@@ -509,10 +515,19 @@ export default function ChatPage({ agentId: agentIdProp }: { agentId?: string } 
               // WAITED to be asked. Rendering the opener here makes the first sentence deterministic.
               // Returns null when there is no history, so a genuine first-timer keeps the agent's own
               // new-user greeting (never a faked "welcome back").
+              /* AREA FOCUS BEATS WELCOME-BACK, deliberately.
+                 `buildWelcomeBackFirstMessage` opens on what they last discussed, which is the right
+                 default everywhere else and exactly wrong here: he has just pressed a button saying
+                 he wants to work on his people, and "last time we went through the Herrings plumbing
+                 quote" puts him back in the groove this feature exists to break. Measured — she
+                 opened on that quote three days running.
+                 The override carries the TRIGGER only; she pulls the questions via area_agenda. */
               overrides={
-                welcomeBack
-                  ? { agent: { firstMessage: welcomeBack } }
-                  : undefined
+                areaFocusMessage
+                  ? { agent: { firstMessage: areaFocusMessage } }
+                  : welcomeBack
+                    ? { agent: { firstMessage: welcomeBack } }
+                    : undefined
               }
               getSignedUrl={getSignedUrl}
               onConnect={() => {

@@ -194,7 +194,7 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
                   : 'These complete your handover document. They do not change what a buyer would pay.'}
             </p>
             <Link
-              href={`/dashboard?focus_area=${area}`}
+              href={`/talk?area=${area}`}
               className="mt-4 inline-flex min-h-[48px] items-center rounded-full bg-violet-700 px-6 text-base font-semibold text-white"
             >
               Talk to Kira about {def.title.toLowerCase()}
