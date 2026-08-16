@@ -45,6 +45,18 @@ const OWN_CHROME_BOTH = [
   '/start',
   '/discovery',
   '/setup',
+  // ⚠️ `/talk` IS NOT `/chat`, AND THAT IS EXACTLY HOW IT WAS MISSED.
+  //
+  // `/talk` RENDERS the chat page as a component rather than redirecting to `/chat/<id>` — done
+  // deliberately, so a returning owner does not land on a wall of machine identifier ("I know that
+  // doesn't matter. It still looks like something has gone wrong." — naive-tester). The consequence
+  // is that the same screen exists at two paths, only one of which was listed here, so `/talk`
+  // served the marketing header and footer ON TOP of UserShell's nav.
+  //
+  // Ray, 2026-08-16: "The chat page carries two lots of chrome. Marketing header on top, app
+  // navigation underneath, and two footers. It looks like two websites glued together." Every Talk
+  // control in the product points at `/talk`, so this is the version most owners actually see.
+  '/talk',
   '/admin',
 ];
 
