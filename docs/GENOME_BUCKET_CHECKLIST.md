@@ -77,7 +77,7 @@ Required items are **bold**. Everything else is supporting.
 - How long the main ones have been buying
 - Anything unusual about how a big one is served
 
-*Matteo factor: customer concentration — the single largest discount a buyer applies.*
+*AU multiple guide: customer concentration — the single largest discount a buyer applies.*
 
 ### Pricing — *"could someone else reach his number?"* (rank 4)
 - **How a price is actually arrived at** — list, cost-plus, market, or judgement
@@ -87,7 +87,7 @@ Required items are **bold**. Everything else is supporting.
 - Where the price list lives, if there is one
 - When prices last moved and what triggered it
 
-*Matteo factor: earnings consistency.*
+*AU multiple guide: earnings consistency.*
 
 ### Operations — *"does the work happen without him on site?"* (rank 5)
 - **The steps of a standard job, start to finish**
@@ -97,7 +97,7 @@ Required items are **bold**. Everything else is supporting.
 - What goes wrong most often, and the fix
 - Any job type only you can run
 
-*Matteo factor: seller involvement, transferability.*
+*AU multiple guide: seller involvement, transferability.*
 
 ### People — *"who does the work"* (rank 6)
 - **Everyone who works in the business, named, with their role**
@@ -108,7 +108,7 @@ Required items are **bold**. Everything else is supporting.
 - Who has a written contract; who has a restraint
 - Who would leave if the business sold
 
-*Matteo factor: management structure — the +0.5x to +1.0x line on his table.*
+*AU multiple guide: management structure — the +0.5x to +1.0x line on its table.*
 
 ### Compliance — *"what must not lapse, and who is watching it?"* (rank 7)
 - **Every licence and registration held, with its expiry**
@@ -130,7 +130,7 @@ checklist covers what he HAS. A gap analysis is a separate product with a separa
 - Roughly how much is tied up in stock and unbilled work at any time
 - Anything the business owes beyond what the valuation captured
 
-*Matteo factor: working capital — named twice in his guide, captured nowhere in ours.*
+*AU multiple guide: working capital — named twice there, captured nowhere in ours.*
 
 ### Assets — *"what the business owns"* (rank 9)
 - **What is owned outright**
@@ -186,7 +186,7 @@ stays open and Kira has something to ask about — which is the good outcome, no
 ## 5. What this does NOT settle
 
 - **Whether "all green" may be described as sale-ready.** It may not, on today's data, and the
-  component test enforces that. Even with a full checklist, Matteo's own tables put **sector and size
+  component test enforces that. Even with a full checklist, the AU multiple guide's own tables put **sector and size
   first**: a perfectly systemised café is still 1.0–2.5x. The defensible claim is *"the top of your
   sector's range"*, which is exactly what the model already computes.
 - **Whether a confirmed item outranks a captured one.** `GENOME_BUYER_FORMAT` §2 says verifiable
@@ -194,9 +194,18 @@ stays open and Kira has something to ask about — which is the good outcome, no
   item answered-but-unconfirmed and one answered-and-confirmed are not the same asset. Probably: the
   checklist drives the *bucket*, confirmation drives the *buyer's document*.
 - **Who ratifies the list.** These items are my drafting from each area's existing `buyerQuestion`.
-  They should be reviewed by someone who does this for a living — and Matteo Melis is the obvious
-  reviewer, since his guide is already the source for half the model. Asking him is also a
-  relationship move rather than only a technical one.
+
+  ⚠️ **Corrected 2026-08-15.** An earlier draft of this section nominated Matteo Melis as the
+  reviewer and called it "a relationship move". **He is not a reviewer and there is no relationship
+  to move.** He is a broker who supplied a published guide, which we read; that is the whole of it.
+  Treating an information source as a collaborator is how a citation quietly becomes a claimed
+  endorsement, and this product's credibility rests on not doing that — the same reason the landing
+  page's invented testimonials were removed.
+
+  So the list is ratified **the way `areas.ts` was**: derived from a source, held as data, and
+  corrected when it is challenged. The real test is not a name on a review — it is that the first
+  broker who disputes a green bucket produces a **config change and a re-score, not a rebuild**.
+  Write each item so a challenge can falsify it, and the reviewer is whoever turns up.
 
 ---
 
