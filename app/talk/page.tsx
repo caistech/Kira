@@ -3,6 +3,7 @@
 // the coach — so "Talk to Kira" is always ONE action away (no dashboard → find → open → tap). This is
 // the target of the persistent TalkFab and the installed PWA's start_url.
 
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getCurrentAppUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
@@ -128,5 +129,47 @@ export default async function TalkPage({
   // owner "falls through to /dashboard, which carries the right empty state for him (saved
   // valuation, the eleven questions)". That comment described behaviour this file did not implement,
   // and the two disagreed for six days. Reported by the operator, 2026-08-12.
-  redirect('/dashboard');
+  //
+  // ⚠️ UPDATED 2026-08-16 — IT NO LONGER REDIRECTS SILENTLY, AND THAT IS THE WHOLE FIX.
+  //
+  // Everything above is still true about WHERE an agent-less owner belongs. What was wrong was
+  // doing it without a word. `/talk` is the target of ten primary buttons — the nine area panels
+  // and the Genome empty state — and on a brand-new account, which is every account for the first
+  // ten minutes, all ten landed him back on the page he came from with no message and no error.
+  //
+  // Ray, walking it as the ICP: "Ten buttons, all of them the primary action on their screen, all
+  // of them landing me back where I started… I would have closed the tab. I only didn't because you
+  // asked me to look properly."
+  //
+  // The irony is that the fix that CREATED this was fitting the door he said was missing. A button
+  // that goes nowhere is worse than no button, because he presses it and learns the product is
+  // broken rather than that the feature is absent.
+  //
+  // So: say what is happening, and put the one thing that works in front of him. This is not a
+  // gate — he can leave in one click — it is the honest version of the redirect.
+  return (
+    <div className="mx-auto w-full max-w-2xl px-5 py-16">
+      <h1 className="text-2xl font-bold text-stone-900">Kira isn&apos;t set up yet</h1>
+      <p className="mt-3 text-base leading-relaxed text-stone-700">
+        Before you can talk to her she needs a few minutes of setting up — your name, where you are,
+        and what you want to get sorted. It takes about two minutes and you only do it once.
+      </p>
+      {focusArea && isAreaKey(focusArea) && (
+        <p className="mt-3 text-base leading-relaxed text-stone-700">
+          Once that is done, come back to this and she will open on it.
+        </p>
+      )}
+      <Link
+        href={`/start?journey=business&from=app${focusArea && isAreaKey(focusArea) ? `&area=${focusArea}` : ''}`}
+        className="mt-6 inline-flex min-h-[52px] items-center rounded-full bg-violet-700 px-8 text-base font-semibold text-white"
+      >
+        Set Kira up
+      </Link>
+      <p className="mt-4">
+        <Link href="/dashboard" className="text-base text-stone-600 underline underline-offset-4">
+          Back to your overview
+        </Link>
+      </p>
+    </div>
+  );
 }

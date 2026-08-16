@@ -10,6 +10,7 @@ import { useParams } from 'next/navigation';
 import { VoiceWidget } from '@caistech/elevenlabs-convai/react';
 import { buildWelcomeBackFirstMessage } from '@/lib/kira/welcome-back';
 import { buildAreaFocusFirstMessage } from '@/lib/kira/area-focus';
+import { GENOME_AREAS } from '@/lib/genome/areas';
 
 // Icons as inline SVGs to avoid lucide-react dependency issues.
 // (The voice controls — mic/pause/play/stop — now live inside the canonical VoiceWidget.)
@@ -229,6 +230,11 @@ export default function ChatPage({
   // The spoken opener, rendered from the context we already loaded. null → no history yet, so the
   // agent's own first-time greeting stands.
   const areaFocusMessage = buildAreaFocusFirstMessage(focusArea, firstName);
+  // The area's own words, for the typed path's heading and opening line.
+  const areaFocusTitle = focusArea ? (GENOME_AREAS.find((a) => a.key === focusArea)?.title ?? null) : null;
+  const areaFocusQuestion = focusArea
+    ? (GENOME_AREAS.find((a) => a.key === focusArea)?.ownerFacingQuestion ?? null)
+    : null;
   const welcomeBack = buildWelcomeBackFirstMessage(
     agentInfo?.first_name || agentInfo?.agent_name?.split('_')[1] || '',
     context,
@@ -384,8 +390,22 @@ export default function ChatPage({
                 greeting now references what SHE last worked on with him — the data is already there
                 (conversations.last_topic, which the connect-time recall reads) — and falls back to
                 something plain rather than something jaunty. */}
+            {/* ⚠️ THE AREA HE PRESSED, ON THE TYPED PATH TOO.
+                `areaFocusMessage` was wired into the VoiceWidget's `overrides.agent.firstMessage`
+                and nowhere else — so an owner who arrived from an area panel and typed (which is
+                every owner without a microphone, and the private option this page argues for above)
+                got "Ready when you are" and a blank box. Ray: "If I press a button saying tell her
+                about pricing, she should open her mouth first, on pricing."
+
+                The heading and the line under it name the area; `handleTypedMessage` is seeded with
+                it below so her first reply is about that part of the business rather than about
+                whatever he happens to type. */}
             <h2 className="text-2xl font-bold text-gray-800 mb-1">
-              {lastTopic ? 'Picking up where you left off' : 'Ready when you are'}
+              {areaFocusTitle
+                ? `Let's look at ${areaFocusTitle}`
+                : lastTopic
+                  ? 'Picking up where you left off'
+                  : 'Ready when you are'}
             </h2>
             {/* BOTH WAYS IN, NAMED. This said "Tap the mic below to talk with Kira" and nothing
                 else, so typing existed but was invisible until you clicked the mic — and on a
@@ -396,9 +416,11 @@ export default function ChatPage({
                 device, it is him clicking Block on the permission prompt. Typing is the PRIVATE
                 option, not the fallback, and it should not be behind the one door he just shut. */}
             <p className="text-base text-gray-600">
-              {lastTopic
-                ? `Last time you talked about ${lastTopic}. Pick it up by voice or by typing.`
-                : 'Talk to Kira, or type to her — whichever suits where you are.'}
+              {areaFocusQuestion
+                ? `${areaFocusQuestion} Tell her by voice or by typing — whichever suits where you are.`
+                : lastTopic
+                  ? `Last time you talked about ${lastTopic}. Pick it up by voice or by typing.`
+                  : 'Talk to Kira, or type to her — whichever suits where you are.'}
             </p>
           </div>
 

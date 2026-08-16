@@ -279,7 +279,35 @@ export default function PlanPage() {
       {ready && !model && (
         <main className="max-w-2xl mx-auto px-5 py-24 text-center">
           <div className="grad-genome w-14 h-14 rounded-2xl flex items-center justify-center text-white mx-auto mb-6"><Brain className="h-7 w-7" /></div>
-          <h1 className="font-display text-2xl font-bold mb-3">Let&apos;s find your number first</h1>
+
+          {/* ⚠️ ACKNOWLEDGE THE CODE HE ARRIVED WITH, BEFORE ASKING HIM FOR ANYTHING.
+              `?code=` was read into state above and the panel that shows it lives inside the
+              `model &&` branch — so a man who followed his invitation link and had not yet done the
+              valuation was met with "Let's find your number first" and not one word about the code
+              in his hand. Ray, 2026-08-16: "you sent me a code and the code's own URL pretends not
+              to know about it."
+
+              Structurally the same defect as the area panel's missing button: content that can only
+              render in one branch of a fork, and the branch a new arrival is actually in is the
+              other one.
+
+              ⚠️ IT SAYS "KEPT", NOT "VALID". Nothing has checked it at this point — redemption
+              happens after the valuation — and claiming it is good and then rejecting it later is
+              worse than saying nothing. */}
+          {betaCode && (
+            <div className="mb-6 rounded-2xl border border-violet-200 bg-violet-50 p-4 text-left">
+              <p className="font-semibold text-stone-900">Your invitation code is saved</p>
+              <p className="mt-1 text-base leading-relaxed text-stone-700">
+                We have kept <span className="font-mono font-semibold">{betaCode}</span> and will use
+                it when you get to the end — there is nothing to pay and no card to enter. First,
+                three minutes on the numbers, because the rest of it is built around them.
+              </p>
+            </div>
+          )}
+
+          <h1 className="font-display text-2xl font-bold mb-3">
+            {betaCode ? 'First, your number' : "Let's find your number first"}
+          </h1>
           <p className="text-stone-600 mb-8">This page is built around the value gap in your business. Take the 3-minute valuation and it&apos;ll bring you right back here.</p>
           <a href="/business-valuation" className="grad-coral text-white font-display font-bold px-8 py-4 rounded-full inline-flex items-center gap-2 min-h-[52px]">Find my gap <ArrowRight className="h-5 w-5" /></a>
         </main>

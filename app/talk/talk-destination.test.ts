@@ -44,14 +44,40 @@ describe('/talk when the owner has no Kira yet', () => {
   //
   // So the destination decision moved to the ONE surface that knows what else he has. This file now
   // pins the composition rather than the hop.
-  it('sends him home, and lets the dashboard decide where home is', () => {
-    expect(talk).toMatch(/redirect\(\s*['"`]\/dashboard['"`]\s*\)/);
+  // ⚠️ UPDATED 2026-08-16. It no longer redirects at all — and the concern above is preserved by a
+  // different mechanism, which is why these assertions changed rather than being deleted.
+  //
+  // WHAT WENT WRONG WITH THE REDIRECT. `/talk` is the target of TEN primary buttons — the nine area
+  // panels and the Genome empty state — and on a brand-new account, which is every account for the
+  // first ten minutes, all ten landed him back where he started with no message. Ray, walking it as
+  // the ICP: "Ten buttons, all of them the primary action on their screen, all of them landing me
+  // back where I started… I would have closed the tab."
+  //
+  // THE OLD CONCERN STILL HOLDS AND IS STILL MET. The worry was a returning owner being dropped into
+  // setup and having "a gap figure someone came for snatched away". That was a worry about a SILENT
+  // FORCED ROUTE. This is a screen that says what is happening and offers both doors, so nothing is
+  // snatched — he chooses. The dashboard link below is what keeps that true, and is asserted.
+  it('does not silently redirect an agent-less owner anywhere', () => {
+    expect(talk).not.toMatch(/redirect\(\s*['"`]\/dashboard['"`]\s*\)/);
   });
 
-  it('does NOT route around the dashboard into setup', () => {
-    // The regression this replaces. Going straight to /start skips the one surface that knows
-    // whether he has a valuation waiting, and sends a returning owner into onboarding.
-    expect(talk).not.toMatch(/redirect\(\s*['"`]\/start\?journey=business['"`]\s*\)/);
+  it('tells him why he cannot talk to her yet', () => {
+    // A button that goes nowhere is worse than no button: he presses it and learns the product is
+    // broken rather than that the feature is not set up.
+    expect(talk).toMatch(/isn&apos;t set up yet|isn't set up yet/);
+  });
+
+  it('still does NOT force him into setup — it offers it', () => {
+    // The regression this replaces was a REDIRECT into /start. A link he can decline is a different
+    // thing, and the difference is the whole reason this file changed rather than reverted.
+    expect(talk).not.toMatch(/redirect\(\s*['"`]\/start/);
+    expect(talk).toMatch(/href=\{`\/start\?journey=business&from=app/);
+  });
+
+  it('always leaves a way back to the gap figure he came for', () => {
+    // ⚠️ THE LOAD-BEARING ONE, and the reason the old scoping is not lost. Without this link the
+    // screen becomes the forced route it replaced, just politer.
+    expect(talk).toMatch(/href="\/dashboard"/);
   });
 
   it('the composition still terminates', () => {
