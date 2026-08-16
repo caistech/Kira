@@ -268,6 +268,44 @@ export function isAssistantState(tags: unknown): boolean {
   return list.some((t) => typeof t === 'string' && t.trim().toLowerCase() === ASSISTANT_STATE_TAG);
 }
 
+/**
+ * Does this note name one of OUR OWN surfaces? Then it is about the software, whatever the model said.
+ *
+ * ⚠️ A CONTENT MATCHER WAS REJECTED ONCE, FOR A GOOD REASON, AND THIS IS NOT THAT MATCHER. The
+ * rejected one keyed on business-systems vocabulary, where "bank accounts are not reconciled against
+ * Xero" is a real fact that must keep travelling and is lexically near-identical to a note about a
+ * tool. This keys on OUR PRODUCT'S OWN NOUNS — the Genome, Kira herself. No fact about an electrical
+ * contracting business legitimately describes something as being "saved into the Genome", because
+ * the Genome is a thing we made and it did not exist until he signed up.
+ *
+ * WHY IT IS NEEDED ON TOP OF THE TAG. `isAssistantState` is authoritative and correct when it fires
+ * (18/18 measured), but it only fires when the DISTILLER tagged the row. Measured on Ray's account
+ * 2026-08-16, four notes about Kira's own filing behaviour reached `about=business, section=pricing`
+ * untagged, and one of them — "The owner prefers not to have pricing and quoting guides emailed and
+ * insists on retaining control of document distribution" — landed in the handover document a broker
+ * would read. His words: "It reads like it is working for itself… characterised me to a stranger as
+ * someone who insists on things."
+ *
+ * Deliberately NARROW. It does not try to judge whether a sentence is "really" about the business —
+ * that is the model's job and it is mostly right. It catches the one case a model cannot be talked
+ * out of getting wrong occasionally, and where being wrong reaches a buyer.
+ */
+// WRITTEN WITH THE RegExp CONSTRUCTOR, NOT A LITERAL, AND NOT VIA A SHELL HEREDOC.
+//
+// The first version of this line was written through a heredoc and its word-boundary escapes were
+// stored as literal BACKSPACE bytes (0x08). The regex compiled, tsc passed, the build passed, and
+// it matched NOTHING. Only `cat -A` revealed it. Fourth escape-mangling in one day, and already a
+// memory note — the lesson is not "be careful", it is: assert the BEHAVIOUR, because reading the
+// source back looked completely correct.
+const OUR_OWN_SURFACES = new RegExp(
+  ['(?:the|your|his|her|my)\\s+genome', 'genome\\s+(?:system|page|entry|record)'].join('|'),
+  'i',
+);
+
+export function namesOurOwnProduct(content: string): boolean {
+  return OUR_OWN_SURFACES.test(String(content ?? ''));
+}
+
 /** A stored key, resolved to a current area — carrying legacy keys forward. See the call site. */
 function resolveSection(stored: string): SectionKey | 'unsorted' {
   if (SECTION_KEYS.includes(stored)) return stored as SectionKey;
@@ -436,7 +474,9 @@ export async function classifyPendingMemories(userId: string, limit = 50): Promi
       // Filed `none`, not deleted: `none` is what the owner's "everything else you have told me"
       // list renders, so he can still see it and remove it, while the buyer's handover never
       // carries it. Deleting would be the product quietly editing his record.
-      if (isAssistantState(m.tags)) {
+      // The tag when the distiller set it; the product-noun backstop when it did not. Same
+      // consequence either way — filed `none`, kept visible to him, kept out of the buyer's copy.
+      if (isAssistantState(m.tags) || namesOurOwnProduct(String(m.content ?? ''))) {
         await supabase
           .from('kira_memory')
           .update({

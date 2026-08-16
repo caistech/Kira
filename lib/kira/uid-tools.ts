@@ -6,6 +6,7 @@
 // context-fetch and fact-saving work, not just the page-rendered welcome-back opener.
 
 import { normaliseFact } from '@caistech/mnemo';
+import { isNearDuplicate } from '@/lib/genome/similar';
 
 import { createServiceClient } from '@/lib/supabase/server';
 import { mnemoAdd } from '@/lib/kira/mnemo';
@@ -123,7 +124,31 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
     .eq('user_id', uid)
     .neq('active', false)
     .limit(500);
-  if ((priorFacts ?? []).some((row) => normaliseFact(String(row.content ?? '')) === key)) {
+  //
+  // ⚠️ EXACT EQUALITY ON THE NORMALISED FORM WAS NOT ENOUGH, AND THE MARGIN WAS ENORMOUS.
+  //
+  // Measured on Ray's walkthrough account, 2026-08-16: eighteen memories from ONE conversation about
+  // pricing, of which SIX were the same fact —
+  //
+  //   "The business prices jobs using an hourly rate that has not changed in three years."
+  //   "Jobs are priced using a stable hourly rate unchanged for three years, plus materials at 20%."
+  //   "Jobs are priced using a fixed hourly rate unchanged for three years, plus materials…"
+  //
+  // — and three more were one fact about who may quote. Every pair normalises differently, so the
+  // equality check passed all of them through. He then opened the handover document and read the
+  // same sentence three times: "That is the same fact three times. The hourly rate appears twice…
+  // three phrasings of one fact makes it look like a machine wrote it, which is the one thing a
+  // buyer must not think."
+  //
+  // `isNearDuplicate` is the existing, CALIBRATED answer — containment ≥ 0.8, measured against the
+  // real corpus (0 false merges on the live Genome) and guarded by `identifiersConflict`, which is
+  // what stops "Lot 91" and "Lot 442" collapsing into each other. It was already used for the parked
+  // lane below and never for the main one.
+  const priorContents = (priorFacts ?? []).map((row) => String(row.content ?? ''));
+  const duplicate =
+    priorContents.some((prior) => normaliseFact(prior) === key) ||
+    priorContents.some((prior) => isNearDuplicate(prior, content));
+  if (duplicate) {
     // Reported honestly rather than as a save. She can then say "I already had that" instead of
     // claiming to have written something down for the second time.
     return json(200, { success: true, already: true });

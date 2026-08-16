@@ -79,6 +79,20 @@ THE TEST IS WHOSE LIMITATION IT IS. If the sentence would stop being true the mo
 connected to something, or if it describes what you searched, found, opened, sent or could not
 reach, it is about YOU. If it would still be true with no assistant involved at all, it is his.
 
+NEVER RETURN THE SAME FACT TWICE IN DIFFERENT WORDS. One conversation about pricing must not produce
+"the hourly rate has not changed in three years" and "jobs are priced using a stable hourly rate
+unchanged for three years" and "jobs are priced using a fixed hourly rate unchanged for three years".
+That is one memory. Pick the fullest phrasing and return it once. The owner reads these in the
+document he hands a buyer, and the same sentence three times is what makes a document look
+machine-written — which is the one thing a buyer must not think about his manual.
+
+THE SAME TEST APPLIES TO INSTRUCTIONS HE GIVES YOU. "Don't email that", "save it in the Genome
+instead", "put that under pricing", "read it back to me first" — those are about how YOU should
+work, not about how his business runs, and his business ran the same way before you existed. Tag
+them too. This is the limb that was missing: an owner telling you not to email a document became
+"The owner insists on retaining control of document distribution" in his handover manual, which
+describes him to a buyer as difficult over something he never said about his business.
+
 STILL RETURN THESE — you need them so you do not retry next session what already failed — but give
 each one the tag "${ASSISTANT_STATE_TAG}", exactly, as one of its tags. That tag is what keeps it
 out of his handover document; it stays visible to him and he can still remove it. When in doubt
