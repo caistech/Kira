@@ -287,8 +287,8 @@ export default function DraftReviewPage() {
               <img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" />
             </div>
             <div className="text-left">
-              <h1 className="text-2xl font-bold text-stone-100">Review Your Framework</h1>
-              <p className="text-stone-400 text-sm">Make any changes, then create your Kira</p>
+              <h1 className="text-2xl font-bold text-stone-100">Check we have this right</h1>
+              <p className="text-stone-400 text-sm">Change anything that is wrong, then set her up</p>
             </div>
           </div>
         </div>
@@ -382,20 +382,20 @@ export default function DraftReviewPage() {
           <div className="bg-stone-900/50 border border-stone-700/50 rounded-2xl p-6">
             <label className="flex items-center gap-2 text-stone-400 mb-3">
               <Target className="w-5 h-5 text-amber-400" />
-              <span className="font-medium">Primary Objective</span>
+              <span className="font-medium">What do you want to sort out?</span>
             </label>
             <textarea
               value={primaryObjective}
               onChange={(e) => setPrimaryObjective(e.target.value)}
               rows={3}
               className="w-full px-4 py-3 rounded-xl bg-stone-800/50 border border-stone-600/30 text-stone-100 placeholder-stone-500 focus:border-amber-400/50 focus:outline-none resize-none"
-              placeholder="What do you want to achieve?"
+              placeholder="In your own words — what is the thing you want off your plate?"
             />
           </div>
 
           {/* Key Context */}
           <div className="bg-stone-900/50 border border-stone-700/50 rounded-2xl p-6">
-            <label className="text-stone-400 font-medium mb-3 block">Key Context</label>
+            <label className="text-stone-400 font-medium mb-3 block">Anything she should know</label>
             <div className="space-y-3">
               {keyContext.map((context, index) => (
                 <div key={index} className="flex gap-2">
@@ -428,7 +428,7 @@ export default function DraftReviewPage() {
 
           {/* Success Definition */}
           <div className="bg-stone-900/50 border border-stone-700/50 rounded-2xl p-6">
-            <label className="text-stone-400 font-medium mb-3 block">Success Definition (Optional)</label>
+            <label className="text-stone-400 font-medium mb-3 block">What would good look like? (Optional)</label>
             <textarea
               value={successDefinition}
               onChange={(e) => setSuccessDefinition(e.target.value)}
@@ -440,7 +440,7 @@ export default function DraftReviewPage() {
 
           {/* Constraints */}
           <div className="bg-stone-900/50 border border-stone-700/50 rounded-2xl p-6">
-            <label className="text-stone-400 font-medium mb-3 block">Constraints (Optional)</label>
+            <label className="text-stone-400 font-medium mb-3 block">Anything that gets in the way (Optional)</label>
             <div className="space-y-3">
               {constraints.map((constraint, index) => (
                 <div key={index} className="flex gap-2">
@@ -449,7 +449,7 @@ export default function DraftReviewPage() {
                     value={constraint}
                     onChange={(e) => updateConstraint(index, e.target.value)}
                     className="flex-1 px-4 py-3 rounded-xl bg-stone-800/50 border border-stone-600/30 text-stone-100 placeholder-stone-500 focus:border-amber-400/50 focus:outline-none"
-                    placeholder="Budget, timeline, etc..."
+                    placeholder="Time, money, someone you need to keep out of it..."
                   />
                   <button
                     type="button"

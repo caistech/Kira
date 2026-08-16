@@ -531,8 +531,12 @@ function GapDashboard({
             of work; until then this must not claim it. */}
         <div className="mt-4 inline-flex flex-wrap items-center gap-x-2 gap-y-1 text-sm bg-white/15 rounded-full px-4 py-1.5">
           <span>Transferability at your baseline: {readinessPct}/100</span>
+          {/* ⚠️ NAMED AFTER WHAT IT DOES. "See what has moved" went to a page showing the same
+              baseline and no delta — Ray: "Nothing has moved and nothing shows a delta. Do not name a
+              link after something it does not do." The nine areas DO fill as she captures, so the
+              link is right and only the label was a promise. */}
           <Link href="/my-genome" className="underline underline-offset-2 hover:text-white">
-            See what has moved
+            See where it is locked up
           </Link>
         </div>
 

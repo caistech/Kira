@@ -541,7 +541,7 @@ export default function StartPage() {
             {sessionStartTime && !draftReady && (
               <p className="text-center text-stone-500 text-sm mt-4">
                 <Loader2 className="w-4 h-4 inline animate-spin mr-2" />
-                Listening for your framework...
+                Listening...
               </p>
             )}
 

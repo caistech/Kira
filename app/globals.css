@@ -154,3 +154,25 @@ html {
     animation: none;
   }
 }
+
+/* THE SUPPORT BUTTON MUST NOT SIT ON THE CONTENT.
+ *
+ * `@caistech/sayfix-embed` auto-places its launcher by hit-testing a handful of candidate corners,
+ * and its own catalog entry records the limit: `collectObstacles` gathers only positioned elements
+ * and interactive controls, so PLAIN TEXT IN A DIV IS INVISIBLE TO IT. The content pass added in
+ * 0.7.0 samples about nine points per candidate, which is better and still not a layout engine.
+ *
+ * Ray hit it twice on 2026-08-16: the button covered the end of the explanation on an area panel at
+ * 375px, and on the Genome page it sat across the Transferability figure — one of three headline
+ * numbers, obscured by a support control.
+ *
+ * Fixed here rather than in the package because the package cannot know which of OUR text matters.
+ * Raising the bottom offset on small screens clears the content without moving the button somewhere
+ * a thumb cannot reach. If the shared engine later gains real content-awareness, delete this.
+ */
+@media (max-width: 640px) {
+  [data-sayfix-launcher],
+  .sayfix-launcher {
+    bottom: 5.5rem !important;
+  }
+}

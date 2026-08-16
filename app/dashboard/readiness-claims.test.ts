@@ -50,7 +50,11 @@ describe('the readiness figure claims only what it is', () => {
     // The promise was transferred rather than deleted. The nine Genome areas fill as she captures,
     // and that is visible — so removing the false claim did not leave the screen saying nothing
     // about progress, which would have been a different kind of wrong.
-    expect(dashboard).toMatch(/See what has moved/);
+    // ⚠️ THE LABEL CHANGED, THE RULE DID NOT. It read "See what has moved" and went to a page
+    // showing the same baseline and no delta — Ray, 2026-08-16: "Nothing has moved and nothing shows
+    // a delta. Do not name a link after something it does not do." The nine areas genuinely do fill
+    // as she captures, so the destination was right and only the promise was wrong.
+    expect(dashboard).toMatch(/See where it is locked up/);
   });
 });
 

@@ -89,7 +89,14 @@ export function UsageMeter({
             What was missing was never the tax line, it was what the number IS. */}
         <p className="text-base text-gray-900">
           <span className="font-semibold">{money(usedUsd)}</span>
-          <span className="text-gray-500"> of {money(capUsd)} included usage</span>
+          <span className="text-gray-500"> of {money(capUsd)} included</span>
+        </p>
+        {/* SAY WHAT THE TWENTY DOLLARS IS. Ray: "Twenty dollars of what? It is the only figure in
+            the app with no explanation attached." A bare allowance on a billing page reads as a
+            charge he has not understood, on the one screen where that is most expensive. */}
+        <p className="text-base text-gray-500">
+          That is the cost of talking to Kira — the voice and the thinking behind it. It is included,
+          not billed to you, and it resets each month.
         </p>
         <p className="text-base text-gray-500">{clockLabel(trialState, daysLeft)}</p>
       </div>

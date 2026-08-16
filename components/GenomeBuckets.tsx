@@ -434,6 +434,15 @@ export function GenomeBuckets({
         })}
       </ul>
 
+      {/* THE KEY. Four boxes with nothing saying what they mean is, in Ray's words, "a progress
+          bar for a journey nobody has described… I am guessing, and a man guessing about his own
+          business is not the feeling you are selling." Four words per level, once, under the grid. */}
+      <ol className="mt-6 flex flex-wrap gap-x-5 gap-y-1 border-t border-stone-100 pt-4 text-base text-stone-600 sm:text-sm">
+        <li><span className="font-semibold text-stone-900">1</span> you mentioned it</li>
+        <li><span className="font-semibold text-stone-900">2</span> she has the basics</li>
+        <li><span className="font-semibold text-stone-900">3</span> most of it is written down</li>
+        <li><span className="font-semibold text-stone-900">4</span> a buyer could use it</li>
+      </ol>
       {variant === 'full' && (
         <div className="mt-6 border-t border-stone-100 pt-4">
           {/* WRITTEN TO READ WELL AT ZERO, which is where every owner starts.

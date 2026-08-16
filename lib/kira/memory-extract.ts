@@ -79,6 +79,10 @@ THE TEST IS WHOSE LIMITATION IT IS. If the sentence would stop being true the mo
 connected to something, or if it describes what you searched, found, opened, sent or could not
 reach, it is about YOU. If it would still be true with no assistant involved at all, it is his.
 
+AUSTRALIAN ENGLISH. "authorised", "organised", "recognised", "labour" — not the American spellings.
+These end up in a document carrying an ABN, handed to an Australian buyer's advisor, and an American
+spelling in it reads as boilerplate somebody bought rather than a record of his business.
+
 NEVER RETURN THE SAME FACT TWICE IN DIFFERENT WORDS. One conversation about pricing must not produce
 "the hourly rate has not changed in three years" and "jobs are priced using a stable hourly rate
 unchanged for three years" and "jobs are priced using a fixed hourly rate unchanged for three years".
