@@ -17,6 +17,26 @@
 
 /** Australian (and British) trade words → the exact `SECTOR_MULTIPLES` name they belong to. */
 export const INDUSTRY_SYNONYMS: Record<string, string> = {
+  // ⚠️ MINING SERVICES, CIVIL, TRANSPORT AND AG CONTRACTING — the four Ray named as missing, and in
+  // Western Australia they are a large slice of exactly who this product is for. Each is genuinely
+  // priced by a row that already exists; nothing in the list was ever WORDED the way he would say
+  // it, so he scrolled, found nothing, and concluded the tool was American.
+  'mining services': 'Heavy Construction',
+  'mine services': 'Heavy Construction',
+  'mining contractor': 'Heavy Construction',
+  'mine site services': 'Heavy Construction',
+  'shutdown services': 'Heavy Construction',
+  'civil contractor': 'Heavy Construction',
+  'civil construction': 'Heavy Construction',
+  roadworks: 'Heavy Construction',
+  earthworks: 'Landscaping & Earthmoving',
+  // `earthmoving`, `civil` and `civil works` were ALREADY here — the table knew the words and the
+  // dropdown never showed them, which is the whole shape of this defect.
+  // transport / trucking / haulage / freight were already mapped further down — same shape again.
+  'ag contracting': 'Landscaping & Earthmoving',
+  'agricultural contracting': 'Landscaping & Earthmoving',
+  'farm contracting': 'Landscaping & Earthmoving',
+
   // Trades — the core of this ICP
   plumber: 'Plumbing',
   plumbing: 'Plumbing',

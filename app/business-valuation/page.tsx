@@ -82,6 +82,7 @@ import { displayedFigures, displayedUplifts } from '@/lib/valuation/displayed';
 import {
   INDUSTRY_NOT_LISTED,
   INDUSTRY_OPTION_GROUPS,
+  industryLabel,
   isSelectableIndustry,
 } from '@/lib/valuation/industry-options';
 import { synonymSector } from '@/lib/valuation/industry-synonyms';
@@ -690,9 +691,12 @@ export default function BusinessValuationPage() {
                     )}
                     {INDUSTRY_OPTION_GROUPS.map((g) => (
                       <optgroup key={g.group} label={g.group}>
+                        {/* ⚠️ LABEL AUSTRALIAN, VALUE UNCHANGED. The option's value is still the
+                            table's own name, so the multiple lookup and every stored answer are
+                            untouched — only the words he reads change. See industryLabel(). */}
                         {g.options.map((name) => (
                           <option key={name} value={name}>
-                            {name}
+                            {industryLabel(name)}
                           </option>
                         ))}
                       </optgroup>
@@ -1048,6 +1052,9 @@ function ResultView({
     sectorMultiple: result.sdeMultiple,
     appliedMultiple: result.appliedMultipleToday,
     matched: result.sectorMatched,
+    // The second landmark. Without it the headline can only say how far he is from the median,
+    // which for an owner-dependent business reads as a suspiciously small haircut.
+    floorMultiple: result.floorMultiple,
   });
 
   return (

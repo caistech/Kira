@@ -119,3 +119,30 @@ describe('sectorContext — against every valuation the model can produce', () =
     expect(notBelow.length).toBeGreaterThan(0);
   });
 });
+
+// ⚠️ THE SECOND LANDMARK — added after the sentence read as flattery on real numbers.
+//
+// Ray's business: 30/100 transferability, applied 2.75×, sector median 2.94×, sector floor 2.07×.
+// The sentence said "2.7× today — 0.2 below that" and he read a seven per cent haircut on a business
+// he had just described as unsellable without him. The arithmetic was right; the sentence gave him
+// one landmark, and one landmark can only produce a distance.
+describe('the floor is named, so the number is a position rather than a distance', () => {
+  const RAY = { sectorMultiple: 2.94, appliedMultiple: 2.755, matched: true, floorMultiple: 2.067 };
+
+  it('names what an entirely owner-run business of this kind fetches', () => {
+    const c = sectorContext(RAY);
+    expect(c.sentence).toContain('2.1×');
+    expect(c.sentence).toContain('entirely its owner');
+  });
+
+  it('says nothing extra when no floor is supplied — existing callers are unaffected', () => {
+    const c = sectorContext({ sectorMultiple: 2.94, appliedMultiple: 2.755, matched: true });
+    expect(c.sentence).not.toContain('entirely its owner');
+  });
+
+  it('stays silent when he is AT or BELOW the floor, where the clause would be false', () => {
+    // "You are already well clear of the bottom" must never print for a business sitting on it.
+    const c = sectorContext({ sectorMultiple: 2.94, appliedMultiple: 2.067, matched: true, floorMultiple: 2.067 });
+    expect(c.sentence).not.toContain('well clear');
+  });
+});

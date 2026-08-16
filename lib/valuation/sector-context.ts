@@ -51,6 +51,26 @@ export interface SectorContextInput {
   appliedMultiple: number;
   /** `ValuationResult.sectorMatched`. False means this is the market average, NOT his sector. */
   matched: boolean;
+  /**
+   * The bottom of his band — what a business of this kind and size fetches when it is entirely the
+   * owner. `ValuationResult.floorMultiple`. Optional so existing callers are unaffected.
+   *
+   * ⚠️ WITHOUT IT, THE SENTENCE IS TRUE AND READS AS A LIE. Ray's business scored 30/100 on
+   * transferability — "would struggle without me", "mostly in my head" — and the page told him he
+   * was at 2.7× against a 2.9× median. That is a 7% discount, and he did the only arithmetic
+   * available to him:
+   *
+   *   "Seven per cent, for a business that is admittedly 70% me… My broker knocked a third off in
+   *    his head and told me why. Your calculator knocked off seven per cent. One of you is wrong and
+   *    I know which one I'd bet on, and it isn't the one telling me what I want to hear."
+   *
+   * The maths is not wrong. His sector's floor is 2.07×, so 2.7× is a THIRD above the floor, and the
+   * median sits at 38/100 on this rubric rather than at 50 — the average business that actually
+   * sells is more owner-dependent than the midpoint of our scale. All of that was on the page, four
+   * screens down, inside the audit trail. The headline sentence gave him one landmark, and a single
+   * landmark can only produce a distance, never a position.
+   */
+  floorMultiple?: number;
 }
 
 export interface SectorContext {
@@ -114,10 +134,22 @@ export function sectorContext(input: SectorContextInput): SectorContext {
   //
   // The quantity is worth keeping; the unit is not. Against a sentence that has just said what a
   // typical business fetches, "0.2 below that" is the same fact in words he already owns.
+  // ⚠️ TWO LANDMARKS, NOT ONE. Against the median alone, "2.7× versus 2.9×" reads as a seven per
+  // cent haircut for a business its owner has just described as unsellable without him — and the
+  // reader concludes, reasonably, that the tool is flattering him. Naming the floor turns the same
+  // two numbers into a position: 2.7× is a third ABOVE what his sector fetches when the business is
+  // entirely the owner, and short of the typical sold business. Nothing is re-weighted; the
+  // arithmetic is unchanged and the honest reading is finally available at the point he reads it.
+  const floor = input.floorMultiple != null ? toPrinted(input.floorMultiple) : null;
+  const floorClause =
+    floor != null && floor < appliedMultiple
+      ? ` A business of this kind and size that is entirely its owner fetches about ${fmt(floor)}×, so you are already well clear of the bottom of the range.`
+      : '';
+
   const standing =
     direction === 'at'
-      ? `You are at ${fmt(appliedMultiple)}× today — level with that.`
-      : `You are at ${fmt(appliedMultiple)}× today — ${fmt(turns)} ${direction} that.`;
+      ? `You are at ${fmt(appliedMultiple)}× today — level with that.${floorClause}`
+      : `You are at ${fmt(appliedMultiple)}× today — ${fmt(turns)} ${direction} that.${floorClause}`;
 
   const clause =
     direction === 'below'

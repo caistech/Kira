@@ -98,7 +98,49 @@ export async function GET(request: Request) {
   // name does not read as a lesser handover, it reads as an unfinished one, and it is going to the
   // person already looking for reasons to discount him. "This business" is plain and costs nothing;
   // his identity is carried by the prepared-by line and the ABN, where it belongs.
-  const businessName = (identity ? displayName(identity) : '') || 'This business';
+  // ⚠️ THE MIDDLE RUNG IS WHAT HE ACTUALLY ANSWERED, and until 2026-08-16 there was no middle rung.
+  //
+  // The chain is: business identity (set when he wires up sending) → the name he gave at setup →
+  // the placeholder. Ray reached the placeholder because nothing in the product had ever asked, and
+  // was about to send his broker a document headed "This business" about an unnamed company. Setup
+  // now asks (kira_drafts.business_name), so the placeholder is a genuine last resort rather than
+  // the normal case.
+  //
+  // ⚠️ THE PLACEHOLDER ITSELF STAYS. An earlier fallback ended at his own first name and titled a
+  // real handover document "Ray". A document named after a person reads as unfinished to the one
+  // reader already looking for reasons to discount him.
+  // ⚠️ VIA THE AGENT, BECAUSE `kira_drafts` HAS NO `user_id`. The obvious query —
+  // `.eq('user_id', appUser.id)` on the drafts table — compiles, typechecks, and errors at runtime
+  // into the catch below, leaving the name silently empty forever. That is the same shape as the
+  // `ended_at` column nothing writes: a fix that ships, reads correctly, and does nothing. The link
+  // is `kira_agents.draft_id`, which is the only thing joining an owner to the draft he approved.
+  let draftedName = '';
+  try {
+    const { data: agents } = await svc
+      .from('kira_agents')
+      .select('draft_id')
+      .eq('user_id', appUser.id)
+      .not('draft_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(5);
+    const draftIds = (agents ?? []).map((a) => String(a.draft_id)).filter(Boolean);
+    if (draftIds.length > 0) {
+      const { data: draft } = await svc
+        .from('kira_drafts')
+        .select('business_name, created_at')
+        .in('id', draftIds)
+        .not('business_name', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      draftedName = String(draft?.business_name ?? '').trim();
+    }
+  } catch (error) {
+    // Never fatal — a placeholder title is a lesser document; no document is a broken promise.
+    console.error('[genome-manual] draft business name unavailable:', error);
+  }
+
+  const businessName = (identity ? displayName(identity) : '') || draftedName || 'This business';
 
   // HIS clock, not the server's. On Vercel the server is UTC, which for a third of every day
   // dated an Australian handover a day behind — in the one document whose value is that its dates

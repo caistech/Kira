@@ -220,51 +220,6 @@ export default async function DashboardPage({
           It names the ABN out loud on purpose: for an owner outside Australia that sentence is the
           whole explanation, and the alternative is him filling the form three times wondering which
           field is being rejected. */}
-      {cannotSendYet && !identityUnsynced && (
-        <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-5">
-          <p className="text-base font-semibold text-stone-900">
-            Kira can&apos;t send email as you yet — everything else is ready.
-          </p>
-          <p className="mt-1 max-w-prose text-base text-stone-700">
-            She can talk with you, learn your business and draft whatever you need right now. To send
-            anything on your behalf she has to sign it with your business name, ABN and address —
-            Australian law requires that on the bottom of every commercial email, and it identifies
-            you, not us. Takes a minute, and you can do it whenever you like.
-          </p>
-          <Link
-            href="/setup/business"
-            className="mt-3 inline-block min-h-[44px] rounded-full bg-stone-900 px-5 py-3 text-base font-semibold text-white"
-          >
-            Add your business details
-          </Link>
-        </div>
-      )}
-
-      {identityUnsynced && (
-        <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-5">
-          {/* Ray, on day one: "'the sending system doesn't yet' is your plumbing, not my problem,
-              and 'this usually clears on its own' tells me it happens often enough to have a usual.
-              At the top of the page I paid for, that reads as: the thing I'm buying doesn't work."
-              He was right on both counts. It named our internals, it admitted a recurring fault, and
-              it gave him nothing to do. Now it says what he can do and what still works, in his
-              terms — and it no longer appears the instant he arrives (see the grace period above). */}
-          <p className="text-base font-semibold text-stone-900">
-            Emails can&apos;t go out yet — everything else is working.
-          </p>
-          <p className="mt-1 text-base text-stone-700">
-            Kira can draft for you and keep everything on your list; she just can&apos;t send until
-            your business details finish registering. Nothing you&apos;ve done is lost. Open your
-            business details and save them once more, and that usually does it.
-          </p>
-          <Link
-            href="/settings#business"
-            className="mt-3 inline-block min-h-[44px] rounded-full bg-stone-900 px-5 py-3 text-base font-semibold text-white"
-          >
-            Try again
-          </Link>
-        </div>
-      )}
-
       {ledger.openCount > 0 && (
         <section className="mb-8 rounded-2xl border border-stone-200 bg-white p-5">
           <h2 className="text-lg font-semibold text-stone-900">Waiting on you</h2>
@@ -336,6 +291,62 @@ export default async function DashboardPage({
         />
       )}
 
+      {/* ⚠️ THE PLUMBING GOES BELOW THE WORK. These two banners used to be the FIRST thing on the
+          page, so a man who had just paid opened his home screen and read an explanation of
+          something the product cannot do.
+
+          Ray, 2026-08-16: "The dashboard opens on a limitation. The first thing on my home screen is
+          a yellow box explaining that she can't send email as me. I didn't come here to send email. I
+          came to get what's in my head onto paper. Lead with the work, not the plumbing."
+
+          They are still amber, still unmissable, and still one tap from the fix — they are simply no
+          longer the greeting. Nothing about what they say has changed; only when he meets them. */}
+      {cannotSendYet && !identityUnsynced && (
+        <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-5">
+          <p className="text-base font-semibold text-stone-900">
+            Kira can&apos;t send email as you yet — everything else is ready.
+          </p>
+          <p className="mt-1 max-w-prose text-base text-stone-700">
+            She can talk with you, learn your business and draft whatever you need right now. To send
+            anything on your behalf she has to sign it with your business name, ABN and address —
+            Australian law requires that on the bottom of every commercial email, and it identifies
+            you, not us. Takes a minute, and you can do it whenever you like.
+          </p>
+          <Link
+            href="/setup/business"
+            className="mt-3 inline-block min-h-[44px] rounded-full bg-stone-900 px-5 py-3 text-base font-semibold text-white"
+          >
+            Add your business details
+          </Link>
+        </div>
+      )}
+
+      {identityUnsynced && (
+        <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-5">
+          {/* Ray, on day one: "'the sending system doesn't yet' is your plumbing, not my problem,
+              and 'this usually clears on its own' tells me it happens often enough to have a usual.
+              At the top of the page I paid for, that reads as: the thing I'm buying doesn't work."
+              He was right on both counts. It named our internals, it admitted a recurring fault, and
+              it gave him nothing to do. Now it says what he can do and what still works, in his
+              terms — and it no longer appears the instant he arrives (see the grace period above). */}
+          <p className="text-base font-semibold text-stone-900">
+            Emails can&apos;t go out yet — everything else is working.
+          </p>
+          <p className="mt-1 text-base text-stone-700">
+            Kira can draft for you and keep everything on your list; she just can&apos;t send until
+            your business details finish registering. Nothing you&apos;ve done is lost. Open your
+            business details and save them once more, and that usually does it.
+          </p>
+          <Link
+            href="/settings#business"
+            className="mt-3 inline-block min-h-[44px] rounded-full bg-stone-900 px-5 py-3 text-base font-semibold text-white"
+          >
+            Try again
+          </Link>
+        </div>
+      )}
+
+
       {/* NO BASELINE AT ALL — the straight-in signup.
           Gated on the ROW, not on the gap: a valuation that computed to zero is still a baseline he
           gave us, and telling that owner he has not done this yet would be a plain falsehood. */}
@@ -361,8 +372,13 @@ export default async function DashboardPage({
           who learns YOUR business over months — in the first screen after paying. An owner does not
           want a fleet of assistants; he wants the one that knows him, and being offered another
           quietly says the first one is disposable. */}
+      {/* ⚠️ ONE NAME FOR ONE PLACE. The sidebar said "Overview", the page called itself "Kira", and
+          two other screens sent him back to "your dashboard" — three names for the same screen.
+          Ray, 2026-08-16: "the sidebar calls it Overview, while the page I land on calls itself your
+          dashboard. Two names for one place, and one of them is a word I'd never use."
+          The sidebar wins, because that is the word he navigates by. */}
       <header className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Kira</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Overview</h1>
         <p className="mt-1 text-base text-gray-600">
           {list.length === 0
             ? 'Have a short conversation and Kira starts learning how the business runs.'

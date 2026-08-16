@@ -93,3 +93,57 @@ export function isSelectableIndustry(value: string | undefined | null): boolean 
   if (!value) return false;
   return value === INDUSTRY_NOT_LISTED || INDUSTRY_OPTIONS.includes(value);
 }
+
+/**
+ * What each sector is CALLED in Australia — display only.
+ *
+ * ⚠️ THE VALUE IS NEVER TRANSLATED. Only the visible text changes; the option's value stays the
+ * table's own name, so the multiple lookup, every stored answer and every historical snapshot are
+ * untouched. No MODEL_VERSION bump, no rescore. This is the same constraint the rest of this file
+ * works under, and it is what makes the fix safe to ship today.
+ *
+ * THE FINDING. Ray scrolled the list looking for what he does and read: Gas Stations. Jewelry
+ * Stores. Medical Billing. Day Care & Child Care. Routes (vending/distribution).
+ *
+ *   "That's an American list with American spelling. We have service stations and jewellers and
+ *    centres. 'Medical Billing' isn't a business here… I spent thirty seconds scrolling and thinking
+ *    THIS IS AN AMERICAN TOOL WITH AUSTRALIA PASTED ON THE FRONT. You then tell me the sector sets
+ *    my multiple. If the list is borrowed, the multiple is borrowed."
+ *
+ * That last sentence is the cost. The list is the first thing he touches, and it is where he decides
+ * whether the number that follows is about his country or somebody else's.
+ *
+ * Only entries that genuinely read wrong to an Australian are listed; everything else falls through
+ * unchanged, because a translation table nobody needs is a second thing to keep in step.
+ */
+const AU_LABEL: Record<string, string> = {
+  'Gas Stations': 'Service Stations',
+  'Jewelry Stores': 'Jewellers',
+  'Medical Billing': 'Medical Billing & Practice Administration',
+  'Day Care & Child Care': 'Childcare & Early Learning',
+  'Routes (vending/distribution)': 'Vending & Distribution Runs',
+  'Gyms & Fitness Centers': 'Gyms & Fitness Centres',
+  'Nursery & Garden Centers': 'Nurseries & Garden Centres',
+  'Hair Salons & Barber Shops': 'Hairdressers & Barbers',
+  'Liquor Stores': 'Bottle Shops',
+  'Grocery Stores': 'Supermarkets & Grocers',
+  'Convenience Stores': 'Convenience Stores & Milk Bars',
+  'Car Dealerships': 'Car Dealerships',
+  'Home Health Care': 'Home Care & Disability Support',
+  'Assisted Living & Nursing Homes': 'Aged Care & Residential Care',
+  'Dog Daycare & Boarding': 'Boarding Kennels & Dog Day Care',
+  'Ice Cream & Frozen Yogurt': 'Ice Creamery & Frozen Yoghurt',
+  'Cell Phone & Computer Repair': 'Phone & Computer Repair',
+  // The two that cost him most: nothing in the list said mining services or civil, which in Western
+  // Australia is a large slice of exactly who this product is for. Both are genuinely priced by
+  // these rows; they were simply never named in words he would search for.
+  'Heavy Construction': 'Civil & Heavy Construction (incl. mining services)',
+  'Landscaping & Earthmoving': 'Earthmoving & Site Works',
+  'Equipment Rental & Dealers': 'Plant & Equipment Hire',
+  'Industrial & Commercial Machinery': 'Industrial & Mining Equipment',
+};
+
+/** The label to SHOW for a sector. Falls through to the table's own name. */
+export function industryLabel(name: string): string {
+  return AU_LABEL[name] ?? name;
+}

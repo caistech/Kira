@@ -828,6 +828,9 @@ export function buildBuyerRationale(result: ValuationResult): BuyerRationale {
     sectorMultiple: result.sdeMultiple,
     appliedMultiple: result.appliedMultipleToday,
     matched: result.sectorMatched,
+    // The second landmark. Without it the headline can only say how far he is from the median,
+    // which for an owner-dependent business reads as a suspiciously small haircut.
+    floorMultiple: result.floorMultiple,
   });
 
   // WHICH STORY WE TELL. Narrative only — `readiness` still drives every figure on the page, and

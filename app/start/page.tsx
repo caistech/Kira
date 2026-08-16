@@ -320,7 +320,7 @@ export default function StartPage() {
             className="text-stone-600 hover:text-stone-900 text-sm transition-colors inline-flex items-center gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
-            {cameFromApp ? 'Back to your dashboard' : 'Back to home'}
+            {cameFromApp ? 'Back to your Overview' : 'Back to home'}
           </a>
         </div>
 

@@ -17,7 +17,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { createClient as createSessionBrowserClient } from '@/lib/supabase/browser';
-import { Loader2, Sparkles, MapPin, Target, CheckCircle, AlertCircle, Mail, Plus, X } from 'lucide-react';
+import { Loader2, Sparkles, MapPin, Target, CheckCircle, AlertCircle, Mail, Plus, X, Briefcase } from 'lucide-react';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,6 +29,7 @@ interface KiraDraft {
   user_name: string;
   first_name: string;
   location: string;
+  business_name: string | null;
   journey_type: 'personal' | 'business';
   primary_objective: string;
   key_context: string[];
@@ -53,6 +54,9 @@ export default function DraftReviewPage() {
   const [authEmail, setAuthEmail] = useState<string | null>(null); // signed-in account (locks the field)
   const [emailError, setEmailError] = useState<string | null>(null); // Email validation error
   const [location, setLocation] = useState('');
+  // ⚠️ ASKED ONCE, HERE, because nothing else ever asks — and the handover document he sends his
+  // broker is titled with it. Without it the document falls back to "This business".
+  const [businessName, setBusinessName] = useState('');
   // BUSINESS, ALWAYS. The personal journey is deprecated (app/start/page.tsx resolves every
   // ?journey= to business), and this page was the last surface still able to produce a personal
   // agent — it defaulted to 'personal' and only corrected itself once the draft fetch returned.
@@ -86,6 +90,7 @@ export default function DraftReviewPage() {
         // Initialize form with draft data
         setUserName(data.user_name);
         setLocation(data.location);
+        setBusinessName(data.business_name || '');
         // NOT read from the draft, deliberately. A draft created before the personal journey was
         // deprecated still carries journey_type='personal', and honouring it here would resurrect
         // exactly the agent shape this page no longer offers. The state is initialised to
@@ -200,6 +205,7 @@ export default function DraftReviewPage() {
           user_name: userName,
           first_name: userName.split(' ')[0],
           location,
+          business_name: businessName.trim() || null,
           journey_type: journeyType,
           primary_objective: primaryObjective,
           key_context: keyContext.filter(c => c.trim()),
@@ -335,7 +341,7 @@ export default function DraftReviewPage() {
             ) : (
               <p className="text-stone-500 text-sm mt-2">
                 {authEmail
-                  ? 'This Kira will be saved to your account and appear on your dashboard.'
+                  ? 'This Kira will be saved to your account and appear on your Overview.'
                   : "We'll send you a link to access your Kira anytime"}
               </p>
             )}
@@ -354,6 +360,32 @@ export default function DraftReviewPage() {
               className="w-full px-4 py-3 rounded-xl bg-white border border-stone-300 text-stone-900 placeholder-stone-400 focus:border-violet-500 focus:outline-none"
               placeholder="Your name"
             />
+          </div>
+
+          {/* ⚠️ THE ONE QUESTION NOBODY EVER ASKED, and it is the title of the document he hands his
+              broker. Ray: "she never asked me for it, not once, in setup or in conversation… the
+              thing I would hand a broker is a document called This business about an unnamed
+              company. I would not send that to a man I want to take me seriously."
+              Optional on purpose — a required field here would block a man who trades under his own
+              name and has not thought about it, and the document keeps its honest placeholder until
+              he answers. */}
+          <div className="bg-white border border-stone-200 rounded-2xl p-6">
+            <label className="flex items-center gap-2 text-stone-600 mb-3" htmlFor="business-name">
+              <Briefcase className="w-5 h-5 text-violet-600" />
+              <span className="font-medium">What is the business called?</span>
+            </label>
+            <input
+              id="business-name"
+              type="text"
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl bg-white border border-stone-300 text-stone-900 placeholder-stone-400 focus:border-violet-500 focus:outline-none"
+              placeholder="The name above the door"
+            />
+            <p className="text-stone-500 text-sm mt-2">
+              This is what your handover document is titled. You can change it later, and add the ABN
+              and address when you want Kira to send anything as you.
+            </p>
           </div>
 
           {/* Location */}
