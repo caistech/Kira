@@ -7,12 +7,20 @@ import { redirect } from 'next/navigation';
 import { getCurrentAppUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import ChatPage from '@/app/chat/[agentId]/page';
+import { isAreaKey } from '@/lib/kira/area-focus';
 
 export const dynamic = 'force-dynamic';
 
-export default async function TalkPage() {
+export default async function TalkPage({
+  searchParams,
+}: {
+  // `?area=people` — set by the buttons on /my-genome/[area]. It is the TRIGGER for the opener; the
+  // outstanding questions themselves are pulled by her, through area_agenda, at the moment she asks.
+  searchParams?: Promise<{ area?: string }>;
+}) {
   const appUser = await getCurrentAppUser();
-  if (!appUser) redirect('/login?next=/talk');
+  const focusArea = (await searchParams)?.area ?? null;
+  if (!appUser) redirect(`/login?next=${encodeURIComponent(focusArea ? `/talk?area=${focusArea}` : '/talk')}`);
 
   const svc = createServiceClient();
 
@@ -54,7 +62,13 @@ export default async function TalkPage() {
   // now, so he stays on an address that means something. /chat/<id> is untouched: links already sent
   // and anything bookmarked resolve exactly as before.
   if (agent?.elevenlabs_agent_id) {
-    return <ChatPage agentId={agent.elevenlabs_agent_id as string} />;
+    return (
+      <ChatPage
+        agentId={agent.elevenlabs_agent_id as string}
+        focusArea={isAreaKey(focusArea) ? focusArea : null}
+        firstName={(appUser.first_name as string) ?? null}
+      />
+    );
   }
   // NO KIRA YET — send him to the flow that MAKES her, which is what he asked for.
   //

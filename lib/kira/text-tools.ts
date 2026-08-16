@@ -52,6 +52,8 @@ import { kiraRecordRefusalToolDef } from './refusal-tool-def.mjs';
 import { handleRecordRefusal } from './refusal';
 import { kiraConfirmFactToolDef, kiraFactsToConfirmToolDef } from './confirm-tool-def.mjs';
 import { handleConfirmFact, handleFactsToConfirm } from './confirm';
+import { kiraAreaAgendaToolDef } from './area-agenda-tool-def.mjs';
+import { handleAreaAgenda } from './area-agenda';
 import { kiraResearchOrganisationToolDef } from './practice-intelligence-tool-def.mjs';
 import { researchOrganisation } from './practice-intelligence/research';
 import {
@@ -115,6 +117,7 @@ const BUILDERS: Record<string, Builder> = {
   facts_to_confirm: kiraFactsToConfirmToolDef as Builder,
   confirm_fact: kiraConfirmFactToolDef as Builder,
   research_organisation: kiraResearchOrganisationToolDef as Builder,
+  area_agenda: kiraAreaAgendaToolDef as Builder,
 };
 
 const UNUSED_BASE_URL = 'https://in-process.invalid';
@@ -290,6 +293,11 @@ export async function runTextTool(
         return await (await handleRecordRefusal(asToolRequest(name, ownerId, args))).json();
       case 'facts_to_confirm':
         return await (await handleFactsToConfirm(asToolRequest(name, ownerId, args))).json();
+      // The agenda has to reach the typed transport too. He is as likely to work through a Genome
+      // area at a keyboard as on a call, and a tool the voice fleet holds that typing cannot use is
+      // one product with two answers — which is exactly what the guard above exists to stop.
+      case 'area_agenda':
+        return await (await handleAreaAgenda(asToolRequest(name, ownerId, args))).json();
       case 'confirm_fact':
         return await (await handleConfirmFact(asToolRequest(name, ownerId, args))).json();
       case 'search_knowledge':
