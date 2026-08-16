@@ -243,3 +243,45 @@ describe('⚠️ the picture Ray could not read — none of it comes back', () =
     expect(rendered).toMatch(/variant === 'compact'/);
   });
 });
+
+describe('⚠️ the six totals Ray counted on one screen', () => {
+  const rendered = stripComments(source);
+
+  it('a "you told us" area is OUTLINED, never filled', () => {
+    // THE ROOT OF THE CONTRADICTION. The bars showed `located` (he answered in the thirteen
+    // questions) while the list below showed `coverage` (she captured), so a filled bar sat directly
+    // above the words "Not captured". His fix: "a filled bar is a promise."
+    expect(rendered).toMatch(/outlineOnly/);
+    expect(rendered).toMatch(/strokeDasharray/);
+  });
+
+  it('counts the third quantity, not just two', () => {
+    // There are three states — captured, located, nothing — and only two were ever counted, which is
+    // how the footer said "Nothing is filled in yet" above six tiles showing something.
+    expect(rendered).toMatch(/const located = sections\.filter/);
+  });
+
+  it('the zero state never claims nothing has happened when something has', () => {
+    expect(rendered).not.toMatch(/Nothing is filled in yet/);
+  });
+
+  it('body text on the tiles is at least 16px on mobile', () => {
+    // 17 nodes measured at 12px at 375px — the description under every one of the nine tiles.
+    // Responsive rule: >=16px base on mobile; dense sizing is allowed from `sm:` up.
+    //
+    // The first version of this used a negative LOOKAHEAD and flagged `sm:text-xs` as a violation,
+    // because the `sm:` sits BEFORE the match, not after. A lookbehind is the right tool: catch a
+    // bare `text-xs` and leave a breakpoint-qualified one alone.
+    // READ INSIDE THE ASSERTION, NOT FROM THE MODULE-SCOPE source.
+    //
+    // The module-scope copy did not reflect a mutation: reintroducing a bare text-xs in
+    // GenomeBuckets.tsx left this green, while the identical regex over the identical bytes in a
+    // standalone script found it immediately. Rather than keep guessing at the cause, the read moved
+    // to where the assertion is, which is the only version whose freshness is self-evident.
+    //
+    // Third guard today that could not fire, and the pattern in all three is the same: I checked the
+    // guard against the FIXED code and inferred it would catch the broken one.
+    const live = stripComments(readFileSync(path.resolve(__dirname, 'GenomeBuckets.tsx'), 'utf8'));
+    const bare = [...live.matchAll(/(?<!sm:)text-xs/g)];
+    expect(bare.map((m) => live.slice(Math.max(0, m.index - 45), m.index + 8))).toEqual([]);
+});});

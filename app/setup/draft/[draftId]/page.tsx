@@ -471,6 +471,19 @@ export default function DraftReviewPage() {
             </div>
           </div>
 
+          {/* ⚠️ SAY WHAT THE BUTTON DOES BEFORE HE PRESSES IT.
+              "Create My Kira" was the only irreversible-looking control in the product with no
+              statement of consequence, and the FAQ says an owner can have more than one — one per
+              business. Ray, who already had a Kira and arrived here from "talk to her":
+              "So am I about to create a second? Am I about to overwrite the first? Nothing on the
+              screen says. I sat looking at it for a while before pressing it."
+              PRODUCT_STANDARDS §9: an irreversible action names its consequence before the click. */}
+          <p className="pt-4 text-base leading-relaxed text-stone-400">
+            This sets up a Kira for the business described above. It does not replace or delete any
+            Kira you already have — if you run more than one business, each gets its own, and you
+            choose between them from your overview.
+          </p>
+
           {/* Submit Button */}
           <div className="pt-4">
             <button

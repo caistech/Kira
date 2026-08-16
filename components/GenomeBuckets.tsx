@@ -295,6 +295,17 @@ export function GenomeBuckets({
 
   const covered = sections.filter((s) => s.coverage === 'covered').length;
   const untouched = sections.filter((s) => s.coverage === 'empty').length;
+  // ⚠️ THE THIRD QUANTITY, AND ITS ABSENCE IS WHY THE PAGE CONTRADICTED ITSELF.
+  //
+  // There are three states on this screen and only two were ever counted: CAPTURED (she has it),
+  // LOCATED (he answered for it in the thirteen questions, she has captured nothing), and NOTHING.
+  // `untouched` counts by `coverage`, which treats located as empty — correctly, since a self-report
+  // is not a captured fact. So the footer said "Nothing is filled in yet" above six tiles that were
+  // visibly showing something, and Ray counted six different totals for one pile: "if the stock
+  // count disagrees with the invoice, you stop and find out why before you do anything else."
+  //
+  // Naming the third quantity is what lets one sentence tell the whole truth instead of a third of it.
+  const located = sections.filter((s) => bucketDisplay(s) === 'located').length;
 
   return (
     <section className="mb-8 rounded-2xl border border-stone-200 bg-white p-5 sm:p-6">
@@ -362,6 +373,17 @@ export function GenomeBuckets({
               >
                 {LEVELS.map((i) => {
                   const isFilled = i < band.filled;
+                  // ⚠️ A FILLED BAR IS A PROMISE — so "you told us" is SKETCHED, never solid.
+                  //
+                  // He answered for it in the thirteen questions; Kira has captured nothing. Drawing
+                  // that as a solid block put a filled bar directly above the words "Not captured"
+                  // in the list on the same screen — one of six totals Ray found disagreeing with
+                  // each other. His fix, and it is the right one: "if 'you told us in the
+                  // questionnaire' is genuinely a different state, give it its own visual — a dotted
+                  // outline, not a filled bar."
+                  //
+                  // Now the picture and the words agree: nothing is filled, one level is sketched in.
+                  const outlineOnly = display === 'located';
                   const r = levelRect(i);
                   return (
                     <rect
@@ -371,9 +393,10 @@ export function GenomeBuckets({
                       width={r.width}
                       height={r.height}
                       rx={4}
-                      fill={isFilled ? band.fill : EMPTY_FILL}
-                      stroke={isFilled ? '#1c1917' : EMPTY_STROKE}
-                      strokeWidth={1.5}
+                      fill={isFilled && !outlineOnly ? band.fill : EMPTY_FILL}
+                      stroke={isFilled ? (outlineOnly ? band.fill : '#1c1917') : EMPTY_STROKE}
+                      strokeWidth={isFilled && outlineOnly ? 2.5 : 1.5}
+                      strokeDasharray={isFilled && outlineOnly ? '5 3' : undefined}
                     />
                   );
                 })}
@@ -383,7 +406,7 @@ export function GenomeBuckets({
 
               {/* The band as a WORD beneath the picture — see the aria-label note above. */}
               <span
-                className={`mt-1.5 inline-block rounded-full border px-2.5 py-0.5 text-xs font-semibold ${band.chip}`}
+                className={`mt-1.5 inline-block rounded-full border px-2.5 py-0.5 text-sm sm:text-xs font-semibold ${band.chip}`}
               >
                 {band.label}
               </span>
@@ -392,7 +415,7 @@ export function GenomeBuckets({
                   no arrow, no 'view'… A bloke my age doesn't go poking at pictures to see if they
                   do something." A hover state is not an affordance for someone who never hovers. */}
               {areaHref && (
-                <span className="mt-1 text-xs font-semibold text-violet-700 underline underline-offset-2">
+                <span className="mt-1 text-base sm:text-xs font-semibold text-violet-700 underline underline-offset-2">
                   Open this area
                 </span>
               )}
@@ -401,9 +424,9 @@ export function GenomeBuckets({
                 /* HIS OWN WORDS. `AreaBaseline.statement` is written "addressed to the owner, in his
                    own words as far as possible", which is what makes this a receipt for what he told
                    us rather than a claim we are making. */
-                <p className="mt-1.5 text-xs leading-relaxed text-stone-600">{section.baseline.statement}</p>
+                <p className="mt-1.5 text-base sm:text-xs leading-relaxed text-stone-600">{section.baseline.statement}</p>
               ) : display === 'empty' ? (
-                <p className="mt-1.5 text-xs text-stone-500">{emptyReason(section.key)}</p>
+                <p className="mt-1.5 text-base sm:text-xs text-stone-500">{emptyReason(section.key)}</p>
               ) : null}
               </Card>
             </li>
@@ -421,13 +444,29 @@ export function GenomeBuckets({
               his business, so the sentence names the cause (we have not talked yet) rather than the
               state (you are at zero). */}
           <p className="max-w-prose text-base text-stone-600">
+            {/* ONE SENTENCE, ALL THREE QUANTITIES. Every branch names what is captured, what is
+                only sketched in from his own answers, and what is still holding. Saying only one of
+                the three is what made six statements on one screen disagree. */}
             {untouched === sections.length
-              ? unfiledCount > 0
-                ? `No area is filled in yet — but Kira is holding ${unfiledCount} ${unfiledCount === 1 ? 'thing' : 'things'} you have told her, and files each one once she is sure where it belongs. Nothing is lost in the meantime.`
-                : 'Nothing is filled in yet — that is expected before your first conversation. What you told us during the valuation gave Kira a starting point, but she counts nothing as captured until you have actually talked it through.'
+              ? [
+                  located > 0
+                    ? `${located} of ${sections.length} ${located === 1 ? 'area is' : 'areas are'} sketched in from your own answers — that is the dashed outline. Kira counts nothing as captured until you have talked it through with her.`
+                    : 'Nothing is captured yet — that is expected before your first conversation.',
+                  unfiledCount > 0
+                    ? `She is also holding ${unfiledCount} ${unfiledCount === 1 ? 'thing' : 'things'} you have told her and has not yet worked out where ${unfiledCount === 1 ? 'it belongs' : 'they belong'}. Nothing is lost in the meantime.`
+                    : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')
               : covered === sections.length
                 ? 'Every area is well covered. From here the work is confirming what Kira holds — a fact she has read back to you and you have agreed with is the form a buyer cannot discount.'
-                : `${covered} of ${sections.length} areas are well covered. The empty ones are where the most value is still tied up in you.`}
+                : [
+                    `${covered} of ${sections.length} areas are well covered.`,
+                    located > 0 ? `${located} more ${located === 1 ? 'is' : 'are'} sketched in from your own answers.` : '',
+                    'The empty ones are where the most value is still tied up in you.',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
           </p>
         </div>
       )}

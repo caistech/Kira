@@ -142,6 +142,9 @@ function entryHtml(entry: OwnerEntry, timeZone: string): string {
  * business to a buyer by omission. "Still carried by the owner alone" is the honest line and it is
  * also the sales argument.
  */
+/** The holding pen appended by renderAreas. NOT an area — see the count in renderSingleFile. */
+export const UNFILED_KEY = 'unfiled';
+
 export function renderAreas(genome: OwnerGenome, audience: Audience, timeZone: string): RenderedDocument[] {
   const view =
     audience === 'buyer'
@@ -165,7 +168,7 @@ export function renderAreas(genome: OwnerGenome, audience: Audience, timeZone: s
 
   if (view.unsorted.length > 0) {
     docs.push({
-      key: 'unfiled',
+      key: UNFILED_KEY,
       title: 'Recorded, not yet filed',
       entries: view.unsorted.length,
       html: [
@@ -228,8 +231,19 @@ export function renderSingleFile(genome: OwnerGenome, audience: Audience, meta: 
   const docs = renderAreas(genome, audience, meta.timeZone);
   const title = audience === 'buyer' ? 'Operating manual' : 'Operating manual — your copy';
 
+  // ⚠️ THE UNFILED PILE IS NOT AN AREA, AND COUNTING IT SAID "10" IN A NINE-AREA PRODUCT.
+  //
+  // `renderAreas` appends a tenth pseudo-section, "Recorded, not yet filed", which is a holding pen
+  // rather than a part of the business. Counting `docs.length` printed "9 entries across 1 of 10
+  // areas" on the document a buyer reads, while every screen in the app says nine. Ray, 2026-08-16:
+  // "Nine areas everywhere in the app; ten in the document I'd hand a buyer… if the stock count
+  // disagrees with the invoice, you stop and find out why before you do anything else."
+  //
+  // Its entries still COUNT — they are things he told us and they appear in the document — but they
+  // are counted as entries, not as an area of the business that exists.
+  const areas = docs.filter((d) => d.key !== UNFILED_KEY);
   const shown = docs.reduce((n, d) => n + d.entries, 0);
-  const filled = docs.filter((d) => d.entries > 0).length;
+  const filled = areas.filter((d) => d.entries > 0).length;
 
   const banner =
     audience === 'owner'
@@ -252,7 +266,7 @@ export function renderSingleFile(genome: OwnerGenome, audience: Audience, meta: 
   <p class="meta">
     ${escapeHtml(title)}${meta.abn ? ` &middot; ABN ${escapeHtml(meta.abn)}` : ''}<br>
     Prepared ${escapeHtml(longDateIn(meta.timeZone, meta.generatedAt))} &middot;
-    <strong>${shown}</strong> entries across <strong>${filled}</strong> of <strong>${docs.length}</strong> areas
+    <strong>${shown}</strong> entries across <strong>${filled}</strong> of <strong>${areas.length}</strong> areas
   </p>
   ${banner}
 ${docs.map((d) => d.html).join('\n\n')}
