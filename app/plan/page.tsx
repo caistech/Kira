@@ -26,6 +26,7 @@ import {
 import { WHO_CAN_SEE_IT } from '@/lib/privacy';
 import { computeValuation } from '@/lib/valuation/model';
 import { formatMoneyApprox, formatPrice, taxSuffix, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
+import { displayedFigures } from '@/lib/valuation/displayed';
 import { priceForProfit, PRICE_TIERS, FULL_RATE_PERIOD_CAP } from '@/lib/valuation/pricing';
 import { BetaRedeem } from '@/components/BetaRedeem';
 import { TermsAgreement, TERMS_VERSION } from '@/components/TermsAgreement';
@@ -290,7 +291,7 @@ export default function PlanPage() {
           <section className="grad-hero -mx-5 px-5 py-16 sm:py-20 text-center">
             <div className="inline-flex items-center gap-2 text-pink-600 text-sm font-semibold mb-4"><Sparkles className="h-4 w-4" /> You&apos;ve seen the gap</div>
             <h1 className="font-display text-3xl sm:text-5xl font-bold text-stone-800 leading-tight max-w-2xl mx-auto">
-              There&apos;s <span className="bg-gradient-to-r from-violet-500 to-pink-500 bg-clip-text text-transparent">{money(model.result.gap)}</span> locked in your head.
+              There&apos;s <span className="bg-gradient-to-r from-violet-500 to-pink-500 bg-clip-text text-transparent">{displayedFigures({ worthToday: model.result.today, worthPotential: model.result.potential }, payload?.currency || DEFAULT_CURRENCY).gapText}</span> locked in your head.
               <br className="hidden sm:block" /> Kira helps you set it free.
             </h1>
             <p className="font-body text-lg text-stone-600 max-w-2xl mx-auto mt-5 leading-relaxed">

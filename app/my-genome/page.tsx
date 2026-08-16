@@ -5,6 +5,7 @@ import { ShareGenome } from '@/components/ShareGenome';
 import { GenomeBuckets } from '@/components/GenomeBuckets';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
 import { formatMoney, formatMoneyApprox, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
+import { displayedFigures } from '@/lib/valuation/displayed';
 import { RedactEntry } from '@/components/RedactEntry';
 import { PRIVATE_REASON_LABEL } from '@/lib/genome/private';
 import { WHO_CAN_SEE_IT } from '@/lib/privacy';
@@ -59,8 +60,17 @@ export default async function MyGenome() {
     (a, b) => Number(b.entries.length > 0) - Number(a.entries.length > 0),
   );
   const populated = g.sections.filter((s) => s.entries.length > 0).length;
-  // Approximate, matching the valuation result — the same figure must not be rounded on one screen
-  // and exact on another, least of all in the document this page is about.
+  // ⚠️ ASK FOR THE SET, NEVER ROUND A VALUATION FIGURE HERE. `displayedFigures` derives the gap
+  // FROM the rounded pair, so `potential − today` is true in the numbers actually printed. Rounding
+  // the stored gap independently is what put $184,000 on this page under $190,000 on the dashboard
+  // and the result page — the same figure with two values, on the product whose whole pitch is
+  // telling him what his business is worth. Ray found it twice: once on 7 August (which is why
+  // lib/valuation/displayed.ts exists) and again on 16 August, because the fix reached three screens
+  // and not this one. Fixing the instance instead of the class is how it came back.
+  const figures = displayedFigures(
+    { worthToday: g.worthToday ?? 0, worthPotential: (g.worthToday ?? 0) + (g.gap ?? 0) },
+    DEFAULT_CURRENCY,
+  );
   const money = (n: number | null) => (n == null ? '—' : formatMoneyApprox(n, DEFAULT_CURRENCY));
 
   return (
@@ -92,11 +102,11 @@ export default async function MyGenome() {
           <div className="flex flex-wrap gap-8 items-baseline">
             <div>
               <p className="text-white/80 text-sm uppercase tracking-wide font-semibold">Worth today</p>
-              <p className="font-display text-3xl font-bold">{money(g.worthToday)}</p>
+              <p className="font-display text-3xl font-bold">{g.worthToday == null ? '—' : figures.todayText}</p>
             </div>
             <div>
               <p className="text-white/80 text-sm uppercase tracking-wide font-semibold">Locked in your head</p>
-              <p className="font-display text-3xl font-bold">{money(g.gap)}</p>
+              <p className="font-display text-3xl font-bold">{g.gap == null ? '—' : figures.gapText}</p>
             </div>
             <div>
               <p className="text-white/80 text-sm uppercase tracking-wide font-semibold">Transferability</p>
