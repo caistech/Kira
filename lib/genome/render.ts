@@ -176,26 +176,44 @@ export function renderAreas(genome: OwnerGenome, audience: Audience, timeZone: s
     ].join('\n'),
   }));
 
-  // ⚠️ THE UNFILED PILE IS OWNER-ONLY. IT MUST NEVER REACH THE BUYER'S COPY.
+  // ⚠️ THESE GO IN BOTH COPIES, AND THE EARLIER DECISION TO DROP THEM FROM THE BUYER'S WAS WRONG.
   //
-  // "Recorded, not yet filed — Said, kept, and not yet placed in an area" is Kira describing her own
-  // filing process, in the document Ray was about to send his broker. He read it cold and said:
-  // "That's Kira writing about her own filing process in a document you've told me is mine to keep
-  // forever. Take it out of the document; keep it on the screen if you need it."
+  // The original complaint was real: the section was headed "Recorded, not yet filed — Said, kept,
+  // and not yet placed in an area", which is Kira describing her own filing process inside a
+  // document a broker reads. "Take it out of the document; keep it on the screen if you need it."
   //
-  // He is right, and the audience is the line: on HIS copy it is honest — these are things he said
-  // and they are not lost. In a buyer's hands it is our housekeeping presented as his business, and
-  // it makes the areas above look emptier than they are, because the facts that belong in them are
-  // sitting in a pile at the bottom under a heading about software.
-  if (view.unsorted.length > 0 && audience === 'owner') {
+  // Removing the section answered the wrong half. On the next walkthrough Ray gave her his full
+  // pricing model and his three key people, both read back accurately, and every one of those facts
+  // landed unfiled — so the document he downloaded to send his broker said "0 entries across 0 of 9
+  // areas" and printed the same sentence nine times. His own copy had all five, under a heading
+  // about our filing. The buyer's copy had nothing.
+  //
+  //   "A messy document that has my pricing in it is worth something to a broker; a tidy one with
+  //   nine empty sections is worth less than nothing, because it tells him I've got nothing."
+  //
+  // He is right, and the fix is the heading rather than the audience: a section named for what it
+  // holds — things the owner has told us — is his business either way. It was our vocabulary that
+  // did not belong in his document, not his facts.
+  //
+  // ⚠️ Privacy is NOT what this section was protecting. `buyerView` already filters `unsorted` by
+  // `privateReason` (buyer-view.ts, pinned by export-filter.test.ts after exactly this collection
+  // once bypassed the filter), so a "yours only" fact cannot arrive here. Nothing about including
+  // the section weakens that, and nothing about excluding it strengthened it.
+  if (view.unsorted.length > 0) {
+    const title =
+      audience === 'buyer' ? 'Other things the owner has told us' : 'Everything else you have told her';
     docs.push({
       key: UNFILED_KEY,
-      title: 'Everything else you have told her',
+      title,
       entries: view.unsorted.length,
       html: [
         '    <section class="area" id="unfiled">',
-        '      <h2>Everything else you have told her</h2>',
-        '      <p class="q">Things she is holding that do not sit in one area yet. Nothing is lost.</p>',
+        `      <h2>${escapeHtml(title)}</h2>`,
+        `      <p class="q">${
+          audience === 'buyer'
+            ? 'Recorded from the owner directly. These sit across more than one of the areas above.'
+            : 'Things she is holding that do not sit in one area yet. Nothing is lost.'
+        }</p>`,
         `      <ul>\n${view.unsorted.map((e) => entryHtml(e, timeZone)).join('\n')}\n      </ul>`,
         '    </section>',
       ].join('\n'),
@@ -268,6 +286,23 @@ export function renderSingleFile(genome: OwnerGenome, audience: Audience, meta: 
   const areas = docs.filter((d) => d.key !== UNFILED_KEY);
   const shown = docs.reduce((n, d) => n + d.entries, 0);
   const filled = areas.filter((d) => d.entries > 0).length;
+  const unplaced = docs.find((d) => d.key === UNFILED_KEY)?.entries ?? 0;
+
+  // ⚠️ "5 entries across 0 of 9 areas" IS ARITHMETIC THAT READS AS A FAULT.
+  //
+  // It is true — five things recorded, none yet placed — and a man reading it in a document he is
+  // about to hand a broker does not read it as true, he reads it as broken. Ray on the version of
+  // this that said "0 entries across 0 of 9": "if the stock count disagrees with the invoice, you
+  // stop and find out why before you do anything else."
+  //
+  // Naming the remainder is what makes the zero legible instead of alarming. When everything IS
+  // placed the clause disappears, which is the state the document should read most simply in.
+  const countLine =
+    `<strong>${shown}</strong> ${shown === 1 ? 'entry' : 'entries'} across ` +
+    `<strong>${filled}</strong> of <strong>${areas.length}</strong> areas` +
+    (unplaced > 0
+      ? `, of which <strong>${unplaced}</strong> ${unplaced === 1 ? 'is' : 'are'} not yet placed in one`
+      : '');
 
   const banner =
     audience === 'owner'
@@ -290,7 +325,7 @@ export function renderSingleFile(genome: OwnerGenome, audience: Audience, meta: 
   <p class="meta">
     ${escapeHtml(title)}${meta.abn ? ` &middot; ABN ${escapeHtml(meta.abn)}` : ''}<br>
     Prepared ${escapeHtml(longDateIn(meta.timeZone, meta.generatedAt))} &middot;
-    <strong>${shown}</strong> entries across <strong>${filled}</strong> of <strong>${areas.length}</strong> areas
+    ${countLine}
   </p>
   ${banner}
 ${docs.map((d) => d.html).join('\n\n')}

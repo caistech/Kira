@@ -4,6 +4,7 @@
 
 'use client';
 
+import { SUPPORT_EMAIL } from '@/lib/contact';
 import { Calendar, ExternalLink, Sparkles } from 'lucide-react';
 
 // ============================================================================
@@ -30,7 +31,9 @@ export const CORPORATE_AI_SOLUTIONS = {
    */
   linkTarget: 'https://kiraexec.com',
   booking: 'https://calendly.com/mcmdennis',
-  email: 'dennis@corporateaisolutions.com',
+  // Single-sourced from lib/contact.ts — a server route cannot import this file (see the note
+  // there), so the value lives in a plain module and this component consumes it.
+  email: SUPPORT_EMAIL,
 };
 
 export const KIRA_AI = {

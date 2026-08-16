@@ -131,3 +131,50 @@ describe('notes about OUR software never reach a document about HIS business', (
     expect(namesOurOwnProduct('The genome of the seed line is patented.')).toBe(true);
   });
 });
+
+// ⚠️ THE THIRD WAY, AND THE WORST: HIS FACTS NEVER ARRIVED AT ALL.
+//
+// On his fourth walkthrough (2026-08-16) Ray gave Kira his full pricing model out loud — $118 an
+// hour on service, materials at cost plus 22%, tendered work at 18% over, mine sites at 28%, 12%
+// for long-standing builders — and his three key people, including that Gary is 61, has 24 years in
+// and is the only other person who can price a job. She read every number back to him correctly.
+//
+// Twelve memories were then written to his account. NOT ONE CONTAINED A NUMBER OR A NAME he had
+// given. Every one was an abstraction or a recommendation:
+//
+//   "Pricing models for service and tendered work are mentally held and not documented…"
+//   "A documented pricing process including margin structures and exceptions is essential…"
+//   "Systematising and documenting essential work steps is needed…"
+//   "A map of critical roles and processes… should be created, with a plan to train or delegate…"
+//
+// That is why his handover document was empty of substance: the extractor kept HER ADVICE and threw
+// away HIS BUSINESS. It also explains the "same fact twice" he reported — four of the twelve are
+// restatements of "document the pricing", which no lexical duplicate check can safely merge because
+// they share almost no words.
+//
+// The guard is on the SYSTEM PROMPT rather than on the model's output, because the output is
+// non-deterministic and the prompt is the thing that was missing. Both instructions below were
+// absent entirely; a reviewer reading the file would have found register rules, assistant-state
+// rules and duplicate rules, and nothing at all requiring the figures to survive.
+describe('the extractor is told to keep his specifics and drop its own advice', () => {
+  it('requires the numbers and names to survive distillation', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('lib/kira/memory-extract.ts', 'utf8');
+    expect(src).toContain('KEEP HIS SPECIFICS');
+    // The real figures, as the worked example. If someone rewrites this section, these are the
+    // numbers that have to keep appearing — they are what he actually said.
+    expect(src).toContain('$118 an hour');
+    expect(src).toContain('mine sites at 28%');
+    // And the real failure, quoted as the counter-example rather than described.
+    expect(src).toContain('Pricing models for service and tendered work are mentally held');
+  });
+
+  it('forbids returning its own recommendations as memories', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('lib/kira/memory-extract.ts', 'utf8');
+    expect(src).toContain('YOUR OWN ADVICE IS NOT A FACT ABOUT HIS BUSINESS');
+    expect(src).toContain('Systematising and documenting essential work steps is needed');
+    // The instruction that matters most: silence beats a list of suggestions.
+    expect(src).toMatch(/return nothing for it/i);
+  });
+});

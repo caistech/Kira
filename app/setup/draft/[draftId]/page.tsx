@@ -384,11 +384,18 @@ export default function DraftReviewPage() {
               <Target className="w-5 h-5 text-violet-600" />
               <span className="font-medium">What do you want to sort out?</span>
             </label>
+            {/* ⚠️ TALL ENOUGH TO HOLD WHAT SHE PUT IN IT, AND RESIZABLE.
+                This is the one screen whose entire job is "check we have this right", and it showed
+                his brief three lines tall, cut off mid-sentence, with resize disabled. Ray,
+                2026-08-16: "I'm being asked to check something I can't see without scrolling inside
+                a small window. Make the box tall enough to hold what's in it; this is the one screen
+                where reading matters." `rows` is a floor rather than a cap, so a short brief still
+                looks like a short brief. */}
             <textarea
               value={primaryObjective}
               onChange={(e) => setPrimaryObjective(e.target.value)}
-              rows={3}
-              className="w-full px-4 py-3 rounded-xl bg-white border border-stone-300 text-stone-900 placeholder-stone-400 focus:border-violet-500 focus:outline-none resize-none"
+              rows={8}
+              className="w-full px-4 py-3 rounded-xl bg-white border border-stone-300 text-stone-900 placeholder-stone-400 focus:border-violet-500 focus:outline-none resize-y min-h-[10rem]"
               placeholder="In your own words — what is the thing you want off your plate?"
             />
           </div>

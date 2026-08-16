@@ -1,0 +1,316 @@
+{
+  "exportedAt": "2026-08-16T12:02:08.038Z",
+  "owner": "the owner",
+  "sections": [
+    {
+      "key": "demand",
+      "title": "Where the work comes from",
+      "question": "Where does work come from, and does it come to him personally?",
+      "ownerQuestion": "Where does your work come from, and does it come to you personally?",
+      "entries": [],
+      "coverage": "empty",
+      "baseline": {
+        "area": "demand",
+        "location": "head",
+        "ownerDependent": true,
+        "statement": "You told us your client base is steady. What keeps it steady is usually a handful of relationships and habits only you can name."
+      }
+    },
+    {
+      "key": "pricing",
+      "title": "How work is priced and quoted",
+      "question": "Could someone else reach his number?",
+      "ownerQuestion": "Could someone else price a job and reach your number?",
+      "entries": [],
+      "coverage": "empty",
+      "baseline": {
+        "area": "pricing",
+        "location": "head",
+        "ownerDependent": true,
+        "statement": "How you decide what to charge is almost certainly yours alone — it usually is, and nothing you told us suggests otherwise."
+      }
+    },
+    {
+      "key": "operations",
+      "title": "How the work actually gets done",
+      "question": "Does the work happen without him on site?",
+      "ownerQuestion": "Does the work happen when you are not on site?",
+      "entries": [],
+      "coverage": "empty",
+      "baseline": {
+        "area": "operations",
+        "location": "head",
+        "ownerDependent": true,
+        "statement": "You told us how the work actually gets done is in your head, not written down."
+      }
+    },
+    {
+      "key": "cash",
+      "title": "Money in, money out and terms",
+      "question": "Who chases, who approves, what are the terms — and are supplier terms personal to him?",
+      "ownerQuestion": "Who chases, who approves, and are any of your supplier terms personal to you?",
+      "entries": [],
+      "coverage": "empty",
+      "baseline": {
+        "area": "cash",
+        "location": "head",
+        "ownerDependent": false,
+        "statement": "You told us roughly $4,200,000 through the door and about $620,000 of that as owner earnings. The statements behind those sit with your accountant; what a buyer needs is the story linking them."
+      }
+    },
+    {
+      "key": "customers",
+      "title": "Who buys, and who owns the relationship",
+      "question": "Revenue by customer over three years, concentration, and who owns each relationship.",
+      "ownerQuestion": "Who buys from you, what do they buy, and who owns each relationship?",
+      "entries": [],
+      "coverage": "empty",
+      "baseline": {
+        "area": "customers",
+        "location": "head",
+        "ownerDependent": true,
+        "statement": "Your revenue leans on a handful of key clients and some of it is contracted or repeat. Who holds those relationships is the part a buyer asks about first."
+      }
+    },
+    {
+      "key": "people",
+      "title": "Who does the work",
+      "question": "Who is actually critical, tenure, contracts and restraints, who leaves on announcement.",
+      "ownerQuestion": "Who is critical, how long have they been with you, and who would leave on announcement?",
+      "entries": [],
+      "coverage": "empty",
+      "baseline": null
+    },
+    {
+      "key": "assets",
+      "title": "What the business owns",
+      "question": "Owned vs leased vs personally held; deferred maintenance; whether the premises lease transfers.",
+      "ownerQuestion": "What do you own, what do you lease, and what is held in your own name?",
+      "entries": [],
+      "coverage": "empty",
+      "baseline": {
+        "area": "assets",
+        "location": "paper",
+        "ownerDependent": false,
+        "statement": "You told us about $480,000 of equipment, vehicles and stock. The register and the finance paperwork are usually at the accountant's or in a drawer."
+      }
+    },
+    {
+      "key": "compliance",
+      "title": "Licences, insurance and the calendar",
+      "question": "The obligations calendar and who watches it; change-of-control clauses; anything in dispute.",
+      "ownerQuestion": "What must not lapse, and who is watching it?",
+      "entries": [],
+      "coverage": "empty",
+      "baseline": null
+    },
+    {
+      "key": "systems",
+      "title": "Systems & records",
+      "question": "Where records live, who has access, what is documented, and whether the IP is owned by the entity.",
+      "ownerQuestion": "Where do your records live, who can reach them, and what is written down?",
+      "entries": [],
+      "coverage": "empty",
+      "baseline": {
+        "area": "systems",
+        "location": "head",
+        "ownerDependent": true,
+        "statement": "Which tools the business actually depends on — and who holds the logins — is not something you have told us yet."
+      }
+    }
+  ],
+  "unsorted": [
+    {
+      "id": "bffa8c85-3fdc-4ca5-93a8-0eb0cdc2c743",
+      "headline": null,
+      "content": "Staff details: Gary is leading hand, 24 years with the business, only other person who can price jobs, age 61. Sharon handles invoicing, payroll, and ATO work part-time (3 days/week), sister-in-law. Dylan is a fourth-year apprentice and preferred to keep. Only Gary knows mine site loading details. Nobody knows about the owner's intention to sell.",
+      "capturedAt": "2026-08-16T11:53:45.586449+00:00",
+      "importance": 6,
+      "section": "unsorted",
+      "source": null,
+      "confirmedOn": null,
+      "privateReason": "not-yet-told",
+      "possibleRestatementOf": null
+    },
+    {
+      "id": "214e765a-7f33-4d84-8ccb-f6b10acb0926",
+      "headline": null,
+      "content": "Pricing model: Service work charged at $118/hr plus materials at cost plus 22%. Tendered jobs have labour and materials plus 18% margin, except mine sites have 28% margin due to standdowns and inductions. Builders with long-term relationships on straightforward jobs get a 12% margin. Mental calculation based on drawings, not documented.",
+      "capturedAt": "2026-08-16T11:53:43.596291+00:00",
+      "importance": 6,
+      "section": "unsorted",
+      "source": null,
+      "confirmedOn": null,
+      "privateReason": null,
+      "possibleRestatementOf": null
+    },
+    {
+      "id": "58011a4a-2176-4bc8-a719-a8cad2c16f3d",
+      "headline": null,
+      "content": "Pricing approach: Service work is charged at $118 per hour plus materials at cost plus 22%. Tendered jobs: Labour and materials computed then add 18% margin, except for mine sites where margin is 28% due to standdowns and inductions. For builders with long-term relationships and straightforward jobs, margin is reduced to 12%. This pricing is not documented and is mentally calculated based on drawings.",
+      "capturedAt": "2026-08-16T11:52:31.836282+00:00",
+      "importance": 6,
+      "section": "unsorted",
+      "source": null,
+      "confirmedOn": null,
+      "privateReason": null,
+      "possibleRestatementOf": null
+    },
+    {
+      "id": "7dcdf3cb-df0d-4c60-9734-368cc8254f22",
+      "headline": null,
+      "content": "What he said he wants to work on, in his own words when he set me up: I run a commercial electrical and mechanical contracting business I started 35 years ago. I am starting to think about selling in the next two to five years and almost nobody knows. I want to get what is in my head written down so the business is worth something without me.",
+      "capturedAt": "2026-08-16T11:50:29.535548+00:00",
+      "importance": 9,
+      "section": "unsorted",
+      "source": null,
+      "confirmedOn": null,
+      "privateReason": "not-yet-told",
+      "possibleRestatementOf": null
+    },
+    {
+      "id": "c35f23cd-24e5-4ed5-9da1-498e7856f152",
+      "headline": null,
+      "content": "Your own valuation, from the thirteen questions you answered before signing up (Electrical & Mechanical Contracting): worth today $1,700,000, worth once your knowledge is captured $1,970,000, so the gap is $271,000.",
+      "capturedAt": "2026-08-16T11:50:29.535548+00:00",
+      "importance": 9,
+      "section": "unsorted",
+      "source": null,
+      "confirmedOn": null,
+      "privateReason": null,
+      "possibleRestatementOf": null
+    }
+  ],
+  "totalCaptured": 5,
+  "documents": 0,
+  "readiness": 0.29625,
+  "gap": 271000,
+  "worthToday": 1700000,
+  "empty": false,
+  "otherHeld": [],
+  "sourced": 0,
+  "confirmed": 0,
+  "stillInYourHead": [
+    {
+      "key": "demand",
+      "title": "Where the work comes from",
+      "question": "Where does your work come from, and does it come to you personally?"
+    },
+    {
+      "key": "pricing",
+      "title": "How work is priced and quoted",
+      "question": "Could someone else price a job and reach your number?"
+    },
+    {
+      "key": "operations",
+      "title": "How the work actually gets done",
+      "question": "Does the work happen when you are not on site?"
+    },
+    {
+      "key": "cash",
+      "title": "Money in, money out and terms",
+      "question": "Who chases, who approves, and are any of your supplier terms personal to you?"
+    },
+    {
+      "key": "compliance",
+      "title": "Licences, insurance and the calendar",
+      "question": "What must not lapse, and who is watching it?"
+    }
+  ],
+  "notYetLocated": [
+    {
+      "key": "customers",
+      "title": "Who buys, and who owns the relationship",
+      "question": "Who buys from you, what do they buy, and who owns each relationship?"
+    },
+    {
+      "key": "people",
+      "title": "Who does the work",
+      "question": "Who is critical, how long have they been with you, and who would leave on announcement?"
+    },
+    {
+      "key": "assets",
+      "title": "What the business owns",
+      "question": "What do you own, what do you lease, and what is held in your own name?"
+    },
+    {
+      "key": "systems",
+      "title": "Systems & records",
+      "question": "Where do your records live, who can reach them, and what is written down?"
+    }
+  ],
+  "worthTodayDisplayed": "$1,700,000",
+  "gapDisplayed": "$271,000",
+  "everythingHeld": [
+    {
+      "id": "bffa8c85-3fdc-4ca5-93a8-0eb0cdc2c743",
+      "content": "Staff details: Gary is leading hand, 24 years with the business, only other person who can price jobs, age 61. Sharon handles invoicing, payroll, and ATO work part-time (3 days/week), sister-in-law. Dylan is a fourth-year apprentice and preferred to keep. Only Gary knows mine site loading details. Nobody knows about the owner's intention to sell.",
+      "created_at": "2026-08-16T11:53:45.586449+00:00",
+      "importance": 6,
+      "genome_section": null,
+      "genome_about": null,
+      "genome_headline": null,
+      "genome_private_reason": null,
+      "genome_owner_dependent": null,
+      "confirmed_at": null,
+      "active": true,
+      "parked_reason": null
+    },
+    {
+      "id": "214e765a-7f33-4d84-8ccb-f6b10acb0926",
+      "content": "Pricing model: Service work charged at $118/hr plus materials at cost plus 22%. Tendered jobs have labour and materials plus 18% margin, except mine sites have 28% margin due to standdowns and inductions. Builders with long-term relationships on straightforward jobs get a 12% margin. Mental calculation based on drawings, not documented.",
+      "created_at": "2026-08-16T11:53:43.596291+00:00",
+      "importance": 6,
+      "genome_section": null,
+      "genome_about": null,
+      "genome_headline": null,
+      "genome_private_reason": null,
+      "genome_owner_dependent": null,
+      "confirmed_at": null,
+      "active": true,
+      "parked_reason": null
+    },
+    {
+      "id": "58011a4a-2176-4bc8-a719-a8cad2c16f3d",
+      "content": "Pricing approach: Service work is charged at $118 per hour plus materials at cost plus 22%. Tendered jobs: Labour and materials computed then add 18% margin, except for mine sites where margin is 28% due to standdowns and inductions. For builders with long-term relationships and straightforward jobs, margin is reduced to 12%. This pricing is not documented and is mentally calculated based on drawings.",
+      "created_at": "2026-08-16T11:52:31.836282+00:00",
+      "importance": 6,
+      "genome_section": null,
+      "genome_about": null,
+      "genome_headline": null,
+      "genome_private_reason": null,
+      "genome_owner_dependent": null,
+      "confirmed_at": null,
+      "active": true,
+      "parked_reason": null
+    },
+    {
+      "id": "7dcdf3cb-df0d-4c60-9734-368cc8254f22",
+      "content": "What he said he wants to work on, in his own words when he set me up: I run a commercial electrical and mechanical contracting business I started 35 years ago. I am starting to think about selling in the next two to five years and almost nobody knows. I want to get what is in my head written down so the business is worth something without me.",
+      "created_at": "2026-08-16T11:50:29.535548+00:00",
+      "importance": 9,
+      "genome_section": null,
+      "genome_about": null,
+      "genome_headline": null,
+      "genome_private_reason": null,
+      "genome_owner_dependent": null,
+      "confirmed_at": null,
+      "active": true,
+      "parked_reason": null
+    },
+    {
+      "id": "c35f23cd-24e5-4ed5-9da1-498e7856f152",
+      "content": "Your own valuation, from the thirteen questions you answered before signing up (Electrical & Mechanical Contracting): worth today $1,700,000, worth once your knowledge is captured $1,970,000, so the gap is $271,000.",
+      "created_at": "2026-08-16T11:50:29.535548+00:00",
+      "importance": 9,
+      "genome_section": null,
+      "genome_about": null,
+      "genome_headline": null,
+      "genome_private_reason": null,
+      "genome_owner_dependent": null,
+      "confirmed_at": null,
+      "active": true,
+      "parked_reason": null
+    }
+  ]
+}

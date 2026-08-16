@@ -434,7 +434,12 @@ export default function StartPage() {
               />
             </div>
 
-            {/* Review Framework Button */}
+            {/* ⚠️ "FRAMEWORK" IS A WORD HE WOULD NEVER USE.
+                Ray, 2026-08-16: "The button says Review Framework. I don't know what a Framework is
+                and I'm not going to guess." He is 66, has run a contracting business for 35 years,
+                and will not press a control whose noun he cannot picture. The screen it opens is
+                headed "Check we have this right", which is already the plain-English version — so
+                the button now says what that screen does. */}
             <div className="flex justify-center">
               <button
                 onClick={goToReviewDraft}
@@ -451,12 +456,12 @@ export default function StartPage() {
                 {draftReady ? (
                   <>
                     <CheckCircle className="w-6 h-6" />
-                    Review Framework
+                    Check what she wrote down
                   </>
                 ) : (
                   <>
                     <FileEdit className="w-6 h-6" />
-                    Review Framework
+                    Check what she wrote down
                     <span className="text-sm font-normal opacity-50">(talk to Kira first)</span>
                   </>
                 )}

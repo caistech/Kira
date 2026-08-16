@@ -9,6 +9,7 @@ import { displayedFigures } from '@/lib/valuation/displayed';
 import { RedactEntry } from '@/components/RedactEntry';
 import { PRIVATE_REASON_LABEL } from '@/lib/genome/private';
 import { WHO_CAN_SEE_IT } from '@/lib/privacy';
+import { buyerEntryCount } from '@/lib/genome/buyer-view';
 
 export const dynamic = 'force-dynamic';
 
@@ -114,11 +115,38 @@ export default async function MyGenome() {
           herself redundant." The moment this leaves for a broker or an accountant is the moment the
           product has done what it promised, so the control belongs beside the heading rather than
           buried under three hundred entries. */}
+      {/* ⚠️ THE DOCUMENT IS TITLED "This business" UNTIL HE TELLS US OTHERWISE, AND HE SHOULD FIND
+          THAT OUT HERE RATHER THAN FROM HIS BROKER.
+          The fallback is deliberate — a handover document must never be titled with a person's name
+          (that shipped once, and Ray was about to send a broker a file called "Ray") — but a man who
+          has never been asked has no idea the fallback is what he is about to send.
+
+          "The document is titled 'This business'. That's the heading. Not my company's name — she
+           never asked me for it, not once, in setup or in conversation… I would not send that to a
+           man I want to take me seriously. I'd be embarrassed."
+
+          Said on the screen that carries the download and the Share button, which is the only place
+          it can be acted on in ten seconds. Not a block: the document is still his to take. */}
+      {!identity?.trading_name?.trim() && !identity?.legal_name?.trim() && (
+        <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-base text-stone-800">
+          The handover document is headed <strong>&ldquo;This business&rdquo;</strong> — we have not
+          been told the trading name.{' '}
+          <a href="/setup/business" className="font-semibold text-violet-700 underline underline-offset-4">
+            Add your business details
+          </a>{' '}
+          and it will carry the name and ABN instead.
+        </p>
+      )}
+
       <div className="mt-4">
         <ShareGenome
           businessName={identity?.trading_name?.trim() || identity?.legal_name?.trim() || null}
           ownerName={(appUser.first_name as string | null) ?? null}
           hasDocument={!g.empty}
+          /* The count that survives the privacy filter — NOT g.totalCaptured. A Genome that is
+             entirely "yours only" is a full record and an empty attachment, and the covering note
+             claims otherwise. buyerView is the same function the document itself uses. */
+          buyerEntries={buyerEntryCount({ sections: g.sections, unsorted: g.unsorted })}
         />
       </div>
       <p className="text-lg text-stone-600 mt-4 leading-relaxed max-w-2xl">

@@ -31,6 +31,7 @@ import { bindWorkspaceWebhook, setAllowlist, standardAllowlist, setAgentTools, s
 import { kiraAllTools, conversationContinuityPrompt } from '@/lib/kira/convai';
 import { buildProfileBriefing } from '@/lib/kira/discovery-schema';
 import { formatMoneyApprox } from '@/lib/valuation/currency';
+import { displayedFigures } from '@/lib/valuation/displayed';
 import { sendKiraReadyEmail } from '@/lib/email/resend';
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
@@ -683,12 +684,21 @@ export async function POST(req: NextRequest) {
           // Anything the AGENT must be told belongs in the PROMPT, which he never sees. Anything
           // stored as memory is written for HIM to read. Also: it said "eleven questions" and there
           // are thirteen, advertised on three separate pages.
+          // ⚠️ ONE ROUNDING, SHARED WITH EVERY SCREEN. Rounding the stored gap on its own gives a
+          // figure that is correct and DIFFERENT from the one the pages print — Ray found $270,000
+          // on the plan headline and $271,000 here, inside his own Genome, and read the pair as a
+          // calculation that cannot hold still. `displayedFigures` derives the gap FROM the rounded
+          // today/potential, so what is written here is true in the numbers he is looking at.
+          const seedFigures = displayedFigures({
+            worthToday: Number(val.worth_today) || 0,
+            worthPotential: Number(val.worth_potential) || 0,
+          });
           seeds.push({
             content:
               `Your own valuation, from the thirteen questions you answered before signing up` +
-              `${val.industry ? ` (${val.industry})` : ''}: worth today ${formatMoneyApprox(Number(val.worth_today) || 0)}, ` +
-              `worth once your knowledge is captured ${formatMoneyApprox(Number(val.worth_potential) || 0)}, ` +
-              `so the gap is ${formatMoneyApprox(Number(val.gap) || 0)}.`,
+              `${val.industry ? ` (${val.industry})` : ''}: worth today ${seedFigures.todayText}, ` +
+              `worth once your knowledge is captured ${seedFigures.potentialText}, ` +
+              `so the gap is ${seedFigures.gapText}.`,
             tags: ['valuation', 'owner'],
             importance: 9,
           });

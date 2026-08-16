@@ -42,15 +42,47 @@ interface Rule {
   question: string;
 }
 
+// ⚠️ WRITTEN AGAINST WHAT HE ACTUALLY SAID, AND THE FIRST VERSION WAS NOT.
+//
+// The first cut of these rules was built from a PARAPHRASE of the previous walkthrough — "sole
+// signatory", "no written contract" — and shipped with twelve passing tests. On the next run Ray
+// typed his real facts and **every single one returned null**:
+//
+//   "Gary is the leading hand, 24 years with me, and the only other person who can price a job.
+//    He is 61."                                                          -> no trip
+//   "Only Gary knows the mine-site loading."                             -> no trip
+//
+// She filed both and said "Ready for what's next or anything to adjust?", which is the exact
+// behaviour the rules were written to stop. The tests were green because they asserted the same
+// paraphrase the rules were built from — a closed loop that proves nothing about a real sentence.
+//
+// So the discriminator is now the ONLY-NESS, not the verb. A man does not say "sole signatory"; he
+// says "the only other person who can price a job", and what follows "can" or "knows" is whatever
+// his trade happens to be, which we cannot enumerate in advance. The fixtures below are his words.
 const RULES: Rule[] = [
   {
-    // Ray's own case. One person holding an authority the business depends on, with nothing written.
-    id: 'sole-authority-undocumented',
-    subject: /\b(only|sole|solely|just)\s+(one|1|other|person|man|woman|bloke|guy)\b|\bonly\s+\w+\s+can\b|\bsole\s+(signatory|authority|approver)\b/i,
-    risk: /\b(sign|signs|signing|signatory|approve|approves|authoris|authoriz|permit|licence|license|certif|access|password|key)\w*/i,
+    // The sharpest version: one person holds a capability AND is near the end of his working life.
+    // Ordered first so it wins over the plain sole-capability question on the same sentence.
+    id: 'sole-capability-ageing',
+    subject:
+      /\bonly\s+(one|other|person|man|woman|bloke|guy|\w+)\b|\bnobody else\b|\bno ?one else\b|\bsole\b/i,
+    risk: /\b(5[5-9]|6[0-9]|7[0-9])\b|\bretir\w*|\bpension\b|\bnear(ing)? the end\b/i,
     question:
-      'Before we go on — is that authority written into the contract with the client, or is it ' +
-      'personal to him? That one answer is worth more than most of the rest of this.',
+      'Before we go on — he is the only one who can do that, and he is not far off finishing up. ' +
+      'That is the single biggest thing holding your number down. What would it take to get what he ' +
+      'knows out of his head and onto paper this year?',
+  },
+  {
+    // The common shape, and the one the first version missed entirely. "Only X can/knows Y" —
+    // whatever Y is. Deliberately does NOT enumerate the capability: pricing, loading a mine site,
+    // talking to one client, knowing which drawings are current. Naming them was the original bug.
+    id: 'sole-capability',
+    subject:
+      /\bonly\s+(one|other|person|man|woman|bloke|guy|\w+)\b|\bnobody else\b|\bno ?one else\b|\bsole\b/i,
+    risk: /\b(can|could|knows?|does|do|able to|price|prices|pricing|quote|sign|approv|authoris|authoriz|permit|licen|certif|access|run|operate)\w*/i,
+    question:
+      'Before we move on — if he were off for a month, who would do that, and what would they get ' +
+      'wrong? A buyer prices that answer more heavily than almost anything else you will tell me.',
   },
   {
     // A key person on nothing but goodwill. The commonest hole in a business of this age and size.

@@ -17,15 +17,32 @@
 import { useState } from 'react';
 import { Loader2, Send, CheckCircle2 } from 'lucide-react';
 
+import { signatureName } from '@/lib/genome/signature-name';
+
 export function ShareGenome({
   businessName,
   ownerName,
   hasDocument,
+  buyerEntries,
 }: {
   businessName?: string | null;
   ownerName?: string | null;
   /** False when nothing has been captured — the button explains rather than failing on click. */
   hasDocument: boolean;
+  /**
+   * ⚠️ HOW MANY ENTRIES SURVIVE INTO THE COPY THAT ACTUALLY GETS SENT — which is not the same
+   * number as `hasDocument`.
+   *
+   * `hasDocument` is "he has told her something". The buyer's copy then drops everything he marked
+   * yours-only, so a man whose entire Genome is private has a full record and an empty attachment.
+   * The covering note below asserts "a record of how the business actually runs"; sending that over
+   * nothing is a claim in his name, to his broker, that he did not make and cannot see.
+   *
+   * Ray, 2026-08-16, on a version of exactly this: "It is a note in my name making a claim about a
+   * file that contains none of it… The one action in this product that reaches another human being
+   * is the one with the least protection on it."
+   */
+  buyerEntries: number;
 }) {
   const [open, setOpen] = useState(false);
   const [to, setTo] = useState('');
@@ -43,7 +60,11 @@ export function ShareGenome({
       '',
       'It is below. Happy to talk through any of it.',
       '',
-      ownerName?.trim() ?? '',
+      // ⚠️ NOT `ownerName` RAW. It is `users.first_name`, which for an account created from a
+      // plus-addressed email holds the LOCAL-PART — Ray's broker note was signed "dennis+ray".
+      // An unsigned draft he completes himself beats a confident wrong name on the one artefact
+      // that reaches another person.
+      signatureName(ownerName) ?? '',
     ]
       .join('\n')
       .trimEnd(),
@@ -77,13 +98,23 @@ export function ShareGenome({
     }
   }
 
+  // Refuses on the count that matters, and says which of the two reasons applies — "nothing
+  // captured" and "everything captured is private" need different actions from him.
+  const sendable = hasDocument && buyerEntries > 0;
+
   if (!open) {
     return (
       <button
         type="button"
         onClick={() => setOpen(true)}
-        disabled={!hasDocument}
-        title={hasDocument ? undefined : 'There is nothing to share yet — have a conversation with Kira first.'}
+        disabled={!sendable}
+        title={
+          sendable
+            ? undefined
+            : hasDocument
+              ? 'Everything Kira holds is marked yours only, so the copy they would receive is empty. Unmark something first.'
+              : 'There is nothing to share yet — have a conversation with Kira first.'
+        }
         className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-stone-300 bg-white px-5 py-2.5 text-base font-semibold text-stone-800 hover:border-violet-300 disabled:opacity-50"
       >
         <Send className="h-4 w-4" /> Share
@@ -158,6 +189,18 @@ export function ShareGenome({
       />
       <p className="mt-1.5 text-sm text-stone-500">
         Written as you, and yours to change. The document goes underneath it.
+      </p>
+
+      {/* ⚠️ WHAT IS ACTUALLY IN THE ATTACHMENT, STATED WHERE HE PRESSES SEND.
+          The covering note above is confident by design — "a record of how the business actually
+          runs" — and a confident note over a thin document is a claim in his name that he cannot
+          see. There is a "Read what they will get" link, and Ray said he would probably have used
+          it; probably is not the standard for the one action in this product that reaches another
+          human being. A count is not a substitute for reading it, but it is unmissable. */}
+      <p className="mt-3 rounded-xl bg-stone-50 px-4 py-3 text-sm text-stone-700">
+        They will receive <strong>{buyerEntries}</strong>{' '}
+        {buyerEntries === 1 ? 'entry' : 'entries'}. Your note above says you have put together a
+        record of how the business runs — read what they will get before you send it.
       </p>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">

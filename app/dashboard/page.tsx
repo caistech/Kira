@@ -204,7 +204,13 @@ export default async function DashboardPage({
 
 
   return (
-    <div>
+    // ⚠️ ROOM AT THE BOTTOM FOR THE FIXED HELP PILL. `@caistech/sayfix-embed` renders a
+    // position-fixed launcher in the bottom-right corner, and it is blind to what is underneath it
+    // — so on a 375px screen it landed directly on top of the primary "Talk to Kira about these"
+    // button. Ray, 2026-08-16: "It's your feedback widget covering the thing you want people to
+    // press." The package-side fix is a separate, owned piece of work; a bottom gutter here means
+    // the last control on the page is never the one it sits on.
+    <div className="pb-28">
       {/* THE SETUP PROMPT THAT REPLACED THE SETUP REDIRECT.
           Same requirement, same `canSend` check, different consequence: he reads it and carries on
           rather than being held at the door by a form only an Australian business can complete.

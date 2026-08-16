@@ -498,12 +498,18 @@ export default function BusinessValuationPage() {
             <h1 className="font-display text-2xl sm:text-3xl font-bold text-stone-800 mb-2">
               What is your business actually worth?
             </h1>
+            {/* ⚠️ SCREENS, NOT QUESTIONS — the same number this always rendered, now named
+                honestly. `SCREEN_COUNT` is 13; `QUESTION_COUNT` is 15, because the closing screen
+                holds three. Whether the copy should quote the larger number is a decision about
+                what a cold visitor is being promised, not a refactor, so it is left alone here.
+
+                ⚠️ AND IT LIVES OUTSIDE THE PARAGRAPH. Sitting between the two sentences, JSX
+                trimmed the whitespace around the comment and the page rendered "the hardest thing
+                to value.Answer 13 short questions" — on the first screen a cold visitor reads.
+                Ray, 2026-08-16: "Small one, but I read everything." A comment that changes the
+                output is not a comment. */}
             <p className="text-stone-600 text-base leading-relaxed">
               For most owners, their business is their biggest asset — and the hardest thing to value.
-              {/* ⚠️ SCREENS, NOT QUESTIONS — the same number this always rendered, now named
-                  honestly. `SCREEN_COUNT` is 13; `QUESTION_COUNT` is 15, because the closing screen
-                  holds three. Whether the copy should quote the larger number is a decision about
-                  what a cold visitor is being promised, not a refactor, so it is left alone here. */}
               Answer {SCREEN_COUNT} short questions and see three honest numbers, plus the gap that&apos;s
               hiding inside your own head. About 3 minutes. Nothing to sign up for.
             </p>

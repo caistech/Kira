@@ -27,3 +27,19 @@ export function buyerView<E extends { privateReason: unknown }, S extends { entr
     unsorted: g.unsorted.filter(exportable),
   };
 }
+
+/**
+ * How many entries survive into the buyer's copy.
+ *
+ * ⚠️ NOT `totalCaptured`, AND THE DIFFERENCE IS THE WHOLE POINT. A Genome that is entirely marked
+ * "yours only" is a full record and an empty attachment — so the Share panel, whose covering note
+ * asserts "a record of how the business actually runs", must count what LEAVES rather than what is
+ * held. Lives here, beside the filter it depends on, so the two cannot drift apart.
+ */
+export function buyerEntryCount<E extends { privateReason: unknown }, S extends { entries: E[] }>(g: {
+  sections: S[];
+  unsorted: E[];
+}): number {
+  const view = buyerView(g);
+  return view.sections.reduce((n, s) => n + s.entries.length, 0) + view.unsorted.length;
+}

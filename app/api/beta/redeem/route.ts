@@ -28,6 +28,7 @@ import { claimBetaCode, linkBetaCodeToUser, releaseBetaCode } from '@/lib/billin
 import { getBetaGate } from '@/lib/billing';
 import { createServiceClient } from '@/lib/supabase/server';
 import { TERMS_VERSION } from '@/lib/terms';
+import { SUPPORT_EMAIL } from '@/lib/contact';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,9 +42,28 @@ export const dynamic = 'force-dynamic';
  *
  * It names a way forward, because the person most likely to read it is a real invitee who typed
  * something wrong, not an attacker.
+ *
+ * ⚠️ AND THE WAY FORWARD HAS TO EXIST. It used to read "Check it against the email we sent you — or
+ * reply to it and we will send a new one", which assumes a channel that is often not there: codes
+ * are handed over in person, by text, by a broker, or by an operator on a call. Ray was given his
+ * directly and hit a wall:
+ *
+ *   "There is no email. I don't have one to reply to. If that code was already used on one of my
+ *    earlier visits then the message is also wrong… For an invited beta user that's a full stop with
+ *    nowhere to go."
+ *
+ * He is right about the dead end and wrong about the cure — naming "already redeemed" is exactly the
+ * disclosure this message exists to withhold. So the fix is a route out that works for ALL THREE
+ * reasons without revealing which applies: an already-redeemed code means he has an account, so
+ * "sign in" resolves it; a mistyped or unknown code needs a human. Neither line says which he is.
  */
 const REJECTION_MESSAGE =
-  'That code is not valid. Check it against the email we sent you — or reply to it and we will send a new one.';
+  'That code did not work. If you have used it before, your account already exists — sign in ' +
+  // ⚠️ A MONITORED MAILBOX. `hello@` was already found and removed once on the introducer expiry
+  // page — nobody reads it, and an address that bounces on the screen someone reaches BECAUSE they
+  // are locked out costs them their last attempt and makes the offer of help decorative.
+  `instead. Otherwise check the code and try again, or email ${SUPPORT_EMAIL} and we ` +
+  'will sort it out.';
 
 export async function POST(request: NextRequest) {
   let body: { code?: unknown; password?: unknown; firstName?: unknown; termsAccepted?: unknown };

@@ -439,7 +439,27 @@ export default function PlanPage() {
           <section className="py-16">
             <div className="grad-genome rounded-3xl p-8 sm:p-10 text-white text-center shadow-lg">
               <p className="text-white/80 font-medium">You could unlock</p>
-              <p className="font-display text-4xl sm:text-5xl font-bold mt-1">{money(model.result.gap)}</p>
+              {/* ⚠️ THE SAME `gapText` AS THE HEADLINE FOUR INCHES ABOVE — NOT `money(result.gap)`.
+                  `displayedFigures` derives the gap FROM the rounded pair, so the number printed is
+                  true in the numbers actually shown; rounding the raw gap independently produces a
+                  figure that is also correct and DIFFERENT. This page carried both at once: the
+                  headline said $270,000 and this panel said $271,000, on one screen.
+
+                  Ray, 2026-08-16: "It's a thousand dollars and it doesn't change anything. That's
+                  not the point. The point is I am being asked to pay real money on the strength of a
+                  calculation, and the calculation can't hold one number still across two panels of
+                  one screen."
+
+                  Third time this exact class has been found (7 Aug, 16 Aug on /my-genome, now here).
+                  It keeps returning because each fix went to the screen that was reported. */}
+              <p className="font-display text-4xl sm:text-5xl font-bold mt-1">
+                {
+                  displayedFigures(
+                    { worthToday: model.result.today, worthPotential: model.result.potential },
+                    payload?.currency || DEFAULT_CURRENCY,
+                  ).gapText
+                }
+              </p>
               <p className="text-white/90 max-w-lg mx-auto mt-4 leading-relaxed">
                 Kira is <span className="font-bold">{money(model.quote.monthly)}/month {tax}</span>{copy.priceQualifier}
                 {model.quote.fractionWorthQuoting ? (
@@ -585,6 +605,29 @@ export default function PlanPage() {
                   .
                 </p>
               )}
+              {/* ⚠️ THE RETURNING OWNER HAS NOWHERE TO GO FROM THIS PAGE.
+                  Every route into /plan is a funnel for a new customer, and the page carried a logo,
+                  a "Redo my valuation" link and a button that starts taking money. A man who already
+                  has an account and lands here — from a bookmark, an old email, or by re-running the
+                  valuation to see it again — could not reach it.
+
+                  Ray, 2026-08-16: "I already have an account from last time… To get to my own
+                  account I had to go back to the landing page and find it in the top corner. I
+                  wouldn't create a second account, so what I'd actually have done is given up."
+
+                  It also catches the invitation-code dead end: a code that has already been redeemed
+                  means he has an account, and this is the line that resolves it without the API
+                  having to say which of the three rejection reasons applied. */}
+              <p className="mt-3 text-sm text-stone-500">
+                Already have an account?{' '}
+                <a
+                  href="/login"
+                  className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500"
+                >
+                  Sign in
+                </a>
+                .
+              </p>
               <p className="text-xs text-stone-400 mt-3">
                 {copy.finePrint(`${money(model.quote.monthly)} ${tax}`)} You set your password and meet Kira right after.
               </p>

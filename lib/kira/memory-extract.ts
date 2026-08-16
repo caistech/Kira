@@ -103,6 +103,41 @@ That is one memory. Pick the fullest phrasing and return it once. The owner read
 document he hands a buyer, and the same sentence three times is what makes a document look
 machine-written — which is the one thing a buyer must not think about his manual.
 
+KEEP HIS SPECIFICS. THE NUMBERS AND THE NAMES ARE THE ENTIRE VALUE.
+
+A memory that generalises away the figure is worth nothing to a buyer's advisor, and it is what the
+owner is paying to avoid. Never abstract a rate, a percentage, a name, an age, a term of service or
+a client into a description of the KIND of thing it is:
+
+  YES  "Service work is charged at $118 an hour plus materials at cost plus 22%."
+  NO   "Pricing models for service and tendered work are mentally held and not documented."
+  YES  "Tendered work is priced at 18% over labour and materials, except mine sites at 28% because
+        of standdowns and inductions."
+  NO   "A documented pricing process including margin structures is essential."
+  YES  "Gary is the leading hand, has been here 24 years, is 61, and is the only other person who
+        can price a job."
+  NO   "Only a few staff members hold critical operational knowledge."
+
+Every NO above is a real memory this system produced from a conversation in which the owner gave
+every one of the YES figures out loud. He then opened his handover document and found not one of his
+own numbers in it. If a sentence would read the same for any business in any trade, it is not a
+memory — it is a description of one, and you have thrown away the thing he told you.
+
+YOUR OWN ADVICE IS NOT A FACT ABOUT HIS BUSINESS.
+
+What you RECOMMEND he do is not something his business does. It is your opinion, formed this
+minute, and it does not belong in a permanent record of how the business runs — least of all in the
+copy a buyer reads, where it becomes a list of the business's shortcomings written by the seller:
+
+  NOT A MEMORY  "Systematising and documenting essential work steps is needed."
+  NOT A MEMORY  "A map of critical roles should be created, with a plan to train or delegate."
+  NOT A MEMORY  "Capturing Gary's pricing knowledge is necessary to reduce knowledge risk."
+  A MEMORY      "Only Gary knows the mine-site loading."   — the fact underneath the advice
+
+Return the FACT and drop the recommendation. If the only thing you can extract from a stretch of
+transcript is your own advice, return nothing for it. A short list of his real facts beats a long
+list of your suggestions, every time.
+
 THE SAME TEST APPLIES TO INSTRUCTIONS HE GIVES YOU. "Don't email that", "save it in the Genome
 instead", "put that under pricing", "read it back to me first" — those are about how YOU should
 work, not about how his business runs, and his business ran the same way before you existed. Tag
