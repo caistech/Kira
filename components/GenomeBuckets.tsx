@@ -234,6 +234,7 @@ export function GenomeBuckets({
   trackMovement = true,
   heading = 'Where the value is locked up',
   intro,
+  areaHref,
 }: {
   sections: BucketSection[];
   variant?: 'full' | 'compact';
@@ -251,6 +252,15 @@ export function GenomeBuckets({
   heading?: string;
   /** Overrides the explanatory line — the example is not "your" business. */
   intro?: string;
+  /**
+   * When set, each funnel becomes a link to `${areaHref}/${key}` — the way into a single area.
+   *
+   * ⚠️ OPT-IN, AND NOT SET ON THE PUBLIC EXAMPLE. `/sample-genome` shows a fixed, invented business;
+   * clicking one of its funnels through to a real owner's area page would open somebody else's
+   * (empty) bucket from a page selling a finished one. Same reason `trackMovement` is false there —
+   * the example must not behave as though it were his.
+   */
+  areaHref?: string;
 }) {
   // ORDER IS THE AREAS' OWN RANK, NOT "MOST FULL FIRST".
   //
@@ -291,6 +301,18 @@ export function GenomeBuckets({
           const display = bucketDisplay(section);
           const band = BANDS[display];
           const justImproved = improved.has(section.key);
+          // The whole card is the target when it links — a 96px funnel is a far better tap target
+          // than a caption, and this ICP is reading it on a phone. `block` keeps the flex column.
+          const Card = areaHref
+            ? ({ children }: { children: React.ReactNode }) => (
+                <Link
+                  href={`${areaHref}/${section.key}`}
+                  className="flex flex-col items-center rounded-xl p-1 hover:bg-stone-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-600"
+                >
+                  {children}
+                </Link>
+              )
+            : ({ children }: { children: React.ReactNode }) => <>{children}</>;
           return (
             <li
               key={section.key}
@@ -302,6 +324,7 @@ export function GenomeBuckets({
                  reading as one motion and starts reading as a slow page. */
               style={{ animationDelay: `${Math.min(index, 7) * 45}ms` }}
             >
+              <Card>
               <svg
                 viewBox="0 0 100 120"
                 className="h-32 w-24"
@@ -343,6 +366,7 @@ export function GenomeBuckets({
               ) : display === 'empty' ? (
                 <p className="mt-1.5 text-xs text-stone-500">{emptyReason(section.key)}</p>
               ) : null}
+              </Card>
             </li>
           );
         })}

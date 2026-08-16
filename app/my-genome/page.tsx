@@ -124,6 +124,10 @@ export default async function MyGenome() {
               : null,
           }))}
           heading="Where the value is locked up"
+          /* The way in. Set HERE and deliberately not on /sample-genome, whose funnels describe an
+             invented business — linking those through would open a real owner's empty bucket from a
+             page selling a finished one. */
+          areaHref="/my-genome"
         />
       </div>
 
