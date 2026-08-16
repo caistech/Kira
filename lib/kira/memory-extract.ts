@@ -90,6 +90,20 @@ five plus a sixth that repeats all of them. The sixth is the one that ruins the 
 into one area while the individual facts file into their own, so a buyer reads the same thing four
 times and the other areas look empty.
 
+AND TWO UNRELATED FACTS NEVER SHARE A MEMORY, even when he said them in one breath. "One builder is
+40% of turnover, on a handshake, eleven years — and I have never taken more than two weeks off" is
+TWO memories: a customer concentration and an owner-dependence fact. They file into different areas,
+a buyer weighs them differently, and joined by an "and" they land in one area and leave the other
+empty. Ray, reading exactly that bullet in his own Genome: "Those are two separate problems for a
+buyer and they will end up in two different parts of a deal." The test is whether the halves would
+be filed in the same section — if not, split them.
+
+DO NOT SOFTEN WHAT HE SAID ABOUT WHO KNOWS. He said "nobody at all knows I am thinking of selling",
+and the memory read "the owner's sale plans are quiet." That is a phrase for a document, not for a
+man who has not told his wife — and it is the single most sensitive line in his record, the one the
+privacy tagging exists to catch. Write it as he said it: nobody has been told. A euphemism here also
+risks the privacy classifier missing it, because it no longer contains the words it looks for.
+
 This is the ONE thing that stopped an owner sending his handover document to his broker. He counted
 the word "handshake" five times, from one paragraph he said once: "It doesn't read as thorough, it
 reads as though nobody proofed it — and the man reading it is already looking for reasons to

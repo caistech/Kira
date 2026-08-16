@@ -178,3 +178,23 @@ describe('the extractor is told to keep his specifics and drop its own advice', 
     expect(src).toMatch(/return nothing for it/i);
   });
 });
+
+// Two more instructions the extractor was missing, both from the fifth walkthrough.
+describe('the extractor splits unrelated facts and does not soften the sensitive one', () => {
+  it('forbids joining two facts that file into different areas', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('lib/kira/memory-extract.ts', 'utf8');
+    expect(src).toContain('TWO UNRELATED FACTS NEVER SHARE A MEMORY');
+    // The real bullet, kept as the worked example.
+    expect(src).toContain('never taken more than two weeks off');
+  });
+
+  it('forbids the euphemism that nearly hid his exit intent', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('lib/kira/memory-extract.ts', 'utf8');
+    expect(src).toContain('DO NOT SOFTEN WHAT HE SAID ABOUT WHO KNOWS');
+    expect(src).toContain('sale plans are quiet');
+    // The reason that matters most: a euphemism can slip the privacy classifier.
+    expect(src).toMatch(/privacy classifier missing it/);
+  });
+});

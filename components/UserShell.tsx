@@ -71,7 +71,27 @@ function shellTitle(identity: { trading_name?: string | null; legal_name?: strin
  * ⚠️ If you are re-adding a first-run requirement here, gate it on something every user on earth can
  * satisfy. An Australian tax identifier is not that.
  */
-export async function UserShell({ children }: { children: React.ReactNode }) {
+export async function UserShell({
+  children,
+  claimValuation = false,
+}: {
+  children: React.ReactNode;
+  /**
+   * Offer to adopt (or replace the baseline with) a valuation sitting on this device.
+   *
+   * ⚠️ OFF BY DEFAULT, AND THAT IS THE FIX. It used to render on every surface this shell wraps —
+   * which includes Settings, where Ray met it while looking at his password:
+   *
+   *   "It is the wrong screen and the wrong moment: ask me when I finish the valuation, not later
+   *    when I am looking at my password."
+   *
+   * The result page now tells him he will be asked on his Overview, so it appears there and on My
+   * Genome — the two screens that show the figure it would change — and nowhere else. A prompt about
+   * his valuation on the drafts page or the knowledge page is noise; on Settings it is a decision
+   * ambushing him mid-task.
+   */
+  claimValuation?: boolean;
+}) {
   const authUser = await getAuthUser();
   if (!authUser) redirect('/login');
   const appUser = await getCurrentAppUser(); // ensures the bridged users row is resolvable
@@ -135,7 +155,7 @@ export async function UserShell({ children }: { children: React.ReactNode }) {
       {/* If they ran a valuation before signing up, attach it to the account now. Mounted on the
           shell rather than in each signup flow, because the condition is "is signed in", not
           "arrived via checkout" — which is how the free-signup path lost it entirely. */}
-      <ClaimStoredValuation existing={existingBaseline} />
+      {claimValuation && <ClaimStoredValuation existing={existingBaseline} />}
       {/* ⚠️ THE FAB IS GONE — removed 2026-08-15 on operator instruction. The spacing note below is
           kept only until someone confirms the bottom padding is still wanted without it.
           ROOM FOR THE FAB. It is fixed bottom-right, so whatever is last on the page sits under it —

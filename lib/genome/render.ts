@@ -22,7 +22,7 @@
 // stops paying, he keeps a document that still works — which is the promise the whole product rests
 // on, and a promise that depends on a CDN is not one.
 
-import { buyerView } from './buyer-view';
+import { buyerEntryCount, buyerView } from './buyer-view';
 import { longDateIn } from '@/lib/business-identity';
 import type { OwnerGenome, OwnerEntry, OwnerSection } from './derive';
 
@@ -221,8 +221,11 @@ export function renderAreas(genome: OwnerGenome, audience: Audience, timeZone: s
         `      <h2>${escapeHtml(title)}</h2>`,
         `      <p class="q">${
           audience === 'buyer'
-            ? 'Recorded from the owner directly. These sit across more than one of the areas above.'
-            : 'Things she is holding that do not sit in one area yet. Nothing is lost.'
+            ? 'Recorded from the owner directly and not yet sorted into the sections above. Filing ' +
+              'continues after each conversation, so a copy taken later will show more of these in ' +
+              'place.'
+            : 'Things she is holding that do not sit in one area yet. Nothing is lost — filing ' +
+              'continues for a few minutes after each conversation.'
         }</p>`,
         `      <ul>\n${view.unsorted.map((e) => entryHtml(e, timeZone)).join('\n')}\n      </ul>`,
         '    </section>',
@@ -278,6 +281,13 @@ const STYLE = `
  */
 export function renderSingleFile(genome: OwnerGenome, audience: Audience, meta: ManualMeta): string {
   const docs = renderAreas(genome, audience, meta.timeZone);
+
+  // How many lines the privacy filter removes — computed from the SAME function the buyer's copy is
+  // built with, so the banner below cannot claim a different number from the file. See `withheldLine`.
+  const totalHeld =
+    genome.sections.reduce((n, section) => n + section.entries.length, 0) + genome.unsorted.length;
+  const buyerHeld = buyerEntryCount({ sections: genome.sections, unsorted: genome.unsorted });
+  const withheld = Math.max(0, totalHeld - buyerHeld);
   // ⚠️ ONE NAME FOR ONE THING. The app calls it the 'handover document' on every screen and the
   // document called itself 'Operating manual'. Ray: 'Pick one.' The app's name wins — it is what he
   // reads first, and it says what the thing is FOR rather than what it contains.
@@ -314,13 +324,35 @@ export function renderSingleFile(genome: OwnerGenome, audience: Audience, meta: 
       ? `, of which <strong>${unplaced}</strong> ${unplaced === 1 ? 'is' : 'are'} not yet placed in one`
       : '');
 
+  // ⚠️ THE BANNER STATES HOW MANY LINES THE SPLIT ACTUALLY REMOVED.
+  //
+  // The two copies are produced by the same renderer with one filter between them, and when little
+  // is marked private they come out nearly identical — which is correct and completely invisible.
+  // Ray downloaded both: "They are 6,640 and 6,622 bytes and the only difference I could find is the
+  // heading. Every fact is in both. I am not saying the split is not working underneath; I am saying
+  // I cannot see it working, and after five visits I would want to see it before I sent one of them
+  // to a broker."
+  //
+  // A count is the cheapest possible proof, and it is honest in BOTH directions: when nothing has
+  // been marked private it says so plainly, rather than implying a protection that has not been
+  // exercised. `withheld` is computed from the same buyerView the buyer's copy is built from, so the
+  // sentence cannot drift from the file.
+  const withheldLine =
+    withheld > 0
+      ? `<strong>${withheld}</strong> ${withheld === 1 ? 'line is' : 'lines are'} kept out of the buyer&#39;s copy.`
+      : 'Nothing is marked yours-only yet, so the buyer&#39;s copy currently contains the same lines as this one.';
+
   const banner =
     audience === 'owner'
-      ? '<p class="gap"><strong>This is your copy.</strong> It includes things kept out of the buyer&#39;s ' +
-        'version — your plans, your position, and anything you have said you are not ready to share. ' +
-        'Use the buyer&#39;s copy when you hand it to anyone.</p>'
-      : '<p class="gap">Prepared from what the owner has said, each entry dated. Sections marked as ' +
-        'carried by the owner alone are the parts of the business that are not yet transferable.</p>';
+      ? `<p class="gap"><strong>This is your copy.</strong> ${withheldLine} Those are your plans, your ` +
+        'position, and anything you have said you are not ready to share. Use the buyer&#39;s copy when ' +
+        'you hand it to anyone.</p>'
+      : `<p class="gap">Prepared from what the owner has said, each entry dated.${
+          withheld > 0
+            ? ` <strong>${withheld}</strong> ${withheld === 1 ? 'line has' : 'lines have'} been withheld as the owner&#39;s own.`
+            : ''
+        } Sections marked as carried by the owner alone are the parts of the business that are not ` +
+        'yet transferable.</p>';
 
   return `<!doctype html>
 <html lang="en-AU">

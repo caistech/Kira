@@ -222,3 +222,39 @@ describe('renderAreas', () => {
     expect(renderAreas(genome(), 'buyer', 'Australia/Perth')[0].html).toContain('How is anything priced?');
   });
 });
+
+// ⚠️ THE SPLIT MUST BE VISIBLE, NOT MERELY CORRECT.
+//
+// Both copies come out of one renderer with one filter between them, so when little is marked
+// private they are nearly identical — correct, and completely invisible. Ray downloaded both:
+// "They are 6,640 and 6,622 bytes and the only difference I could find is the heading… I cannot see
+// it working, and after five visits I would want to see it before I sent one of them to a broker."
+describe('the owner and buyer copies say how they differ', () => {
+  const withPrivate = () =>
+    genome({
+      sections: [
+        section({
+          entries: [entry(), entry({ id: 'p1', content: 'He has told nobody.', privateReason: 'not-yet-told' })],
+        }),
+      ],
+    });
+
+  it("names the number of withheld lines on the owner's copy", () => {
+    const html = renderSingleFile(withPrivate(), 'owner', meta);
+    expect(html).toMatch(/<strong>1<\/strong> line is kept out of the buyer/);
+  });
+
+  it("tells the buyer something was withheld, without saying what", () => {
+    const html = renderSingleFile(withPrivate(), 'buyer', meta);
+    expect(html).toMatch(/<strong>1<\/strong> line has been withheld/);
+    // The withheld content itself must never appear — the count is the only thing that crosses.
+    expect(html).not.toContain('He has told nobody');
+  });
+
+  it('⚠️ says so plainly when NOTHING is withheld, rather than implying a protection', () => {
+    // The dishonest version claims the split is working when it has not been exercised. This is the
+    // state Ray was actually in, and the sentence he needed.
+    const html = renderSingleFile(genome({ sections: [section({ entries: [entry()] })] }), 'owner', meta);
+    expect(html).toContain('Nothing is marked yours-only yet');
+  });
+});

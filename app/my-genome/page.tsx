@@ -119,6 +119,25 @@ export default async function MyGenome() {
           herself redundant." The moment this leaves for a broker or an accountant is the moment the
           product has done what it promised, so the control belongs beside the heading rather than
           buried under three hundred entries. */}
+      {/* ⚠️ DO NOT LET HIM SEND A HALF-FILED DOCUMENT TO A BROKER.
+          Classification runs after the conversation, so a copy downloaded in the first few minutes
+          shows his facts in a loose list under nine section headings that all read "Nothing recorded
+          here yet." The facts ARE there and they DO get filed — he simply took the copy too early.
+
+          Ray, 2026-08-17: "My broker will open this, see nine empty headings and a jumble
+          underneath, and conclude the exercise has not started. It has. It just has not been filed."
+
+          Said next to the controls that produce the document, because that is the only moment it can
+          change what he does. */}
+      {g.unsorted.length > 0 && (
+        <p className="mt-4 rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-base text-stone-800">
+          {g.unsorted.length} {g.unsorted.length === 1 ? 'fact is' : 'facts are'} still being sorted
+          into the nine areas. They are in the document either way — under &ldquo;other things the
+          owner has told us&rdquo; rather than in their section. If you are sending it to someone,
+          it is worth waiting a few minutes and taking a fresh copy.
+        </p>
+      )}
+
       {/* ⚠️ THE DOCUMENT IS TITLED "This business" UNTIL HE TELLS US OTHERWISE, AND HE SHOULD FIND
           THAT OUT HERE RATHER THAN FROM HIS BROKER.
           The fallback is deliberate — a handover document must never be titled with a person's name
