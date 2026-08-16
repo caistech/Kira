@@ -4,6 +4,7 @@ import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { ShareGenome } from '@/components/ShareGenome';
 import { GenomeBuckets } from '@/components/GenomeBuckets';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
+import { longDateIn, timeZoneForState } from '@/lib/business-identity';
 import { formatMoney, formatMoneyApprox, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { displayedFigures } from '@/lib/valuation/displayed';
 import { RedactEntry } from '@/components/RedactEntry';
@@ -86,6 +87,8 @@ export default async function MyGenome() {
       Date.now() - new Date(lastConversation.started_at as string).getTime() < FILING_WINDOW_MS,
   );
   const identity = await getBusinessIdentity(appUser.id);
+  // The same zone the handover document formats in, so the two cannot print different days.
+  const timeZone = timeZoneForState(identity?.state);
   // Scoped to HIS id from the session — this table names operators, so an id from anywhere else
   // would let one owner enumerate who works here.
   const views = await readGenomeViews(String(appUser.id));
@@ -384,7 +387,7 @@ export default async function MyGenome() {
                     <li key={`${view.viewedBy}-${view.viewedAt}`}>
                       <span className="font-medium text-stone-900">{view.viewedBy}</span>{' '}
                       <span className="text-stone-500">
-                        · {new Date(view.viewedAt).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })}
+                        · {new Date(view.viewedAt).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short', timeZone })}
                       </span>
                     </li>
                   ))}
@@ -490,10 +493,20 @@ export default async function MyGenome() {
                               ("your example distinguishes 'You confirmed this' from 'Captured — not
                               yet confirmed'"). Do not restore the old wording to make the page sound
                               more certain; the certainty was the defect. */}
+                          {/* ⚠️ HIS CLOCK, NOT THE SERVER'S — and `en-AU` does NOT set the clock.
+                              `toLocaleDateString('en-AU')` picks the FORMAT and leaves the timezone
+                              as the runtime's, which on Vercel is UTC. So a fact captured at 23:11
+                              UTC on the 16th — 07:11 on the 17th in Perth — printed here as the 16th
+                              and in the handover document, which formats in his own zone, as the
+                              17th. Ray downloaded both and found them disagreeing about the day he
+                              said something, on a product whose central claim is that every line is
+                              dated to the day he said it.
+                              The DOCUMENT was right. This was the wrong one, and it is the same trap
+                              the manual's own stamp was fixed for once already. Same helper now. */}
                           <p className="text-xs text-stone-400 mt-1">
                             {e.source
-                              ? `From your conversation on ${new Date(e.source.spokenOn).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}`
-                              : `Captured ${new Date(e.capturedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })} — conversation not recorded`}
+                              ? `From your conversation on ${longDateIn(timeZone, e.source.spokenOn)}`
+                              : `Captured ${longDateIn(timeZone, e.capturedAt)} — conversation not recorded`}
                           </p>
                           {/* On its own line and in a different colour, because it is a different
                               CLAIM rather than more detail about the same one: the line above says
@@ -504,6 +517,7 @@ export default async function MyGenome() {
                             <p className="text-xs font-medium text-emerald-700 mt-0.5">
                               Read back to you and confirmed on{' '}
                               {new Date(e.confirmedOn).toLocaleDateString('en-AU', {
+                                timeZone,
                                 day: 'numeric',
                                 month: 'long',
                                 year: 'numeric',

@@ -493,16 +493,28 @@ export function GenomeBuckets({
       {/* THE KEY. Four boxes with nothing saying what they mean is, in Ray's words, "a progress
           bar for a journey nobody has described… I am guessing, and a man guessing about his own
           business is not the feeling you are selling." Four words per level, once, under the grid. */}
+      {/* ⚠️ THE KEY USES THE TILES' OWN WORDS, or it explains nothing.
+          The tiles read "You told us / Just started / Building up / Well covered" and the key read
+          "you mentioned it / she has the basics / most of it is written down / a buyer could use
+          it" — four levels described twice with no word in common, so a man matching one to the
+          other had to infer the mapping. Ray, 2026-08-17: the labels and the legend "share no
+          words"; "You told us" resolves lower down to "Not captured".
+          The label now comes from BANDS — the same constant the tiles render — so the two cannot
+          drift apart again, and the plain-English gloss follows it. */}
       <ol className="mt-6 flex flex-wrap gap-x-5 gap-y-2 border-t border-stone-100 pt-4 text-base text-stone-600 sm:text-sm">
-        {[
-          'you mentioned it',
-          'she has the basics',
-          'most of it is written down',
-          'a buyer could use it',
-        ].map((label, i) => (
-          <li key={label} className="flex items-center gap-2">
+        {(
+          [
+            ['located', 'you have mentioned it'],
+            ['thin', 'she has the basics'],
+            ['building', 'most of it is written down'],
+            ['covered', 'a buyer could use it'],
+          ] as const
+        ).map(([band, gloss], i) => (
+          <li key={band} className="flex items-center gap-2">
             <KeyGlyph filled={i + 1} />
-            {label}
+            <span>
+              <span className="font-semibold text-stone-900">{BANDS[band].label}</span> — {gloss}
+            </span>
           </li>
         ))}
       </ol>

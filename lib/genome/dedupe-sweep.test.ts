@@ -175,3 +175,55 @@ describe('a filed fact outranks an unfiled twin', () => {
     expect(swallowedIds([a, b])).toEqual(['a']);
   });
 });
+
+// ⚠️ THE SAME-AREA PATH, and why it is scoped rather than a lower global threshold.
+//
+// Ray's two Dylan entries reached his Genome AND his handover document, with the app asking him to
+// delete one: "you are asking a 66-year-old to sit and de-duplicate his own file. That is my filing
+// cabinet all over again. That is what I came here to stop doing."
+//
+// They overlap 0.714 against a calibrated cut of 0.8, so the global rule was right to leave them.
+// Dropping that cut to 0.65 for everything would merge across areas on the same overlap, which is
+// how a dedupe becomes data loss.
+describe('same-area restatements', () => {
+  const dylanA = {
+    id: 'a',
+    content: 'Dylan is a fourth-year apprentice and the preferred employee to retain.',
+    confirmed: false,
+    filed: true,
+    section: 'people',
+  };
+  const dylanB = {
+    id: 'b',
+    content: 'Dylan is a fourth-year apprentice considered valuable to retain.',
+    confirmed: false,
+    filed: true,
+    section: 'people',
+  };
+
+  it("drops the longer of Ray's two Dylan entries", () => {
+    expect(swallowedIds([dylanA, dylanB])).toEqual(['a']);
+  });
+
+  it('⚠️ does NOT merge the same pair across different areas', () => {
+    expect(swallowedIds([dylanA, { ...dylanB, section: 'operations' }])).toEqual([]);
+  });
+
+  it('⚠️ treats none and unsorted as holding pens, not areas', () => {
+    // Two unrelated facts share those constantly, so a shared value there is no evidence.
+    expect(swallowedIds([{ ...dylanA, section: 'none' }, { ...dylanB, section: 'none' }])).toEqual([]);
+    expect(swallowedIds([{ ...dylanA, section: 'unsorted' }, { ...dylanB, section: 'unsorted' }])).toEqual([]);
+  });
+
+  it('⚠️ still refuses when the identifiers disagree, even in one area', () => {
+    const lot91 = { id: 'x', content: 'Approval covers Lot 91 and the western verge.', confirmed: false, filed: true, section: 'assets' };
+    const lot442 = { id: 'y', content: 'Approval covers Lot 442.', confirmed: false, filed: true, section: 'assets' };
+    expect(swallowedIds([lot91, lot442])).toEqual([]);
+  });
+
+  it('leaves two genuinely different people in one area alone', () => {
+    const gary = { id: 'g', content: 'Gary is the leading hand and prices every job.', confirmed: false, filed: true, section: 'people' };
+    const sharon = { id: 's', content: 'Sharon does the payroll.', confirmed: false, filed: true, section: 'people' };
+    expect(swallowedIds([gary, sharon])).toEqual([]);
+  });
+});

@@ -515,9 +515,22 @@ export default function PlanPage() {
                   Same `fractionOfGapPct` as that paragraph, so the two cannot disagree, and it only
                   renders when the fraction is worth quoting. */}
               {model.quote.fractionWorthQuoting && (
-                <p className="mt-1 text-base font-semibold text-violet-700">
-                  About {model.quote.fractionOfGapPct} a year of what you stand to unlock
-                </p>
+                <>
+                  <p className="mt-1 text-base font-semibold text-violet-700">
+                    About {model.quote.fractionOfGapPct} a year of what you stand to unlock
+                  </p>
+                  {/* ⚠️ AND IMMEDIATELY, WHAT SETS THE PRICE — because the line above is a
+                      COMPARISON and reads like a BASIS once it sits next to the figure.
+                      Moving it here (his own request — "the most persuasive line on the whole site…
+                      put it next to the price") created a contradiction with the FAQ two screens
+                      down, which says the band is set by profit "never by the gap we calculate".
+                      Ray caught it the same visit. Both statements are true; only one of them was
+                      visible at the moment he read the number. */}
+                  <p className="mt-1 text-xs text-stone-500">
+                    Set by the profit you report, not by the gap — working out a bigger gap can never
+                    earn us more.
+                  </p>
+                </>
               )}
               <p className="text-sm text-stone-500 mt-1">
                 {billingLive

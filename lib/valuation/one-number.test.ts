@@ -29,6 +29,10 @@ const OWNER_FACING = [
   'app/dashboard/page.tsx',
   'app/business-valuation/page.tsx',
   'app/api/kira/create/route.ts',
+  // ⚠️ A FILE HE DOWNLOADS IS AN OWNER-FACING SURFACE. This list held only pages, so the JSON export
+  // rounded the stored gap on its own and shipped $271,000 against $270,000 on every screen — the
+  // fourth appearance of this class and the first outside a page.
+  'app/api/genome/export/route.ts',
 ];
 
 /** Formats a raw gap value directly — the thing that produces the second number. */

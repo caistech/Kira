@@ -26,6 +26,7 @@ import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { realSignOffName } from '@/lib/user-name';
+import { displayedFigures } from '@/lib/valuation/displayed';
 import { formatMoneyApprox } from '@/lib/valuation/currency';
 import { formatAbn } from '@caistech/abn-lookup';
 
@@ -64,9 +65,19 @@ function approxFigures(g: { worthToday: number | null; gap: number | null }) {
     out.worthToday = approxNumber(g.worthToday);
     out.worthTodayDisplayed = formatMoneyApprox(g.worthToday);
   }
-  if (g.gap != null) {
-    out.gap = approxNumber(g.gap);
-    out.gapDisplayed = formatMoneyApprox(g.gap);
+  // ⚠️ THE GAP IS DERIVED FROM THE ROUNDED PAIR, NEVER ROUNDED ON ITS OWN.
+  //
+  // `approxNumber(g.gap)` is correct arithmetic and the wrong number: rounding the stored gap
+  // independently gives $271,000 while every screen — which derives it from the rounded today and
+  // potential — says $270,000. Ray downloaded the export and found exactly that: "The raw JSON
+  // export reads gap 271000 while every screen reads $270,000."
+  //
+  // Fourth appearance of this class, and the first outside a page. `lib/valuation/one-number.test.ts`
+  // guards owner-facing SURFACES; a JSON file he downloads is one, so it is covered there now too.
+  if (g.worthToday != null && g.gap != null) {
+    const figures = displayedFigures({ worthToday: g.worthToday, worthPotential: g.worthToday + g.gap });
+    out.gap = figures.gap;
+    out.gapDisplayed = figures.gapText;
   }
   return out;
 }
@@ -228,8 +239,15 @@ export async function GET(request: Request) {
       // "$1,286,802" — off eleven multiple-choice answers, in the file an owner hands his advisor.
       // A tester's verdict: "He would laugh at it, and he'd be right to." It also disagreed with the
       // result page and My Genome, which round; four surfaces gave three answers for one figure.
+      // ⚠️ AND THE MARKDOWN HALF OF THE SAME FILE. The JSON was fixed above and this line was
+      // missed — caught by one-number.test.ts on its first run, which is the entire reason that
+      // guard checks the FILE rather than the one call site a report happened to name.
       g.worthToday != null ? `- Indicative value today: ${formatMoneyApprox(g.worthToday)}` : '',
-      g.gap != null ? `- Value still tied to the owner: ${formatMoneyApprox(g.gap)}` : '',
+      g.worthToday != null && g.gap != null
+        ? `- Value still tied to the owner: ${
+            displayedFigures({ worthToday: g.worthToday, worthPotential: g.worthToday + g.gap }).gapText
+          }`
+        : '',
       '',
       'These are indicative figures from a self-reported valuation, not a formal appraisal.',
       '',

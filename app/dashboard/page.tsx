@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getCurrentAppUser } from '@/lib/auth';
-import { canSend } from '@/lib/business-identity';
+import { canSend, DEFAULT_TIME_ZONE as DASHBOARD_TIME_ZONE } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
 import { createServiceClient } from '@/lib/supabase/server';
 import { formatMoney, formatMoneyApprox, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
@@ -241,7 +241,7 @@ export default async function DashboardPage({
                     back to the chat, which offered to email it — a loop with no way to READ the
                     thing. Ray: "every draft needs a title you can click that opens the text, on a
                     page." */}
-                <Link href={`/drafts/${task.id}`} className="text-base text-stone-900 underline decoration-stone-300 underline-offset-4 hover:decoration-stone-500">
+                <Link href={`/drafts/${task.id}`} className="inline-flex min-h-[44px] items-center text-base text-stone-900 underline decoration-stone-300 underline-offset-4 hover:decoration-stone-500">
                   {task.summary}
                 </Link>
                 {/* The AGE is the part that matters to him, and the part a quiet list hides. Four
@@ -264,7 +264,11 @@ export default async function DashboardPage({
               href="/drafts"
               className="inline-block min-h-[44px] rounded-full bg-stone-900 px-5 py-3 text-base font-semibold text-white"
             >
-              Read what she has written
+              {/* ⚠️ DOES NOT PROMISE WRITING SHE CANNOT DO. The label said "Read what she has
+                  written" over a list whose rows read "She could not do this one" and "nothing
+                  written yet" — Ray landed on the page and found the app explaining, correctly, that
+                  she cannot write documents yet. The link is still right; the promise was not. */}
+              See what you have asked for
             </Link>
             <Link
               href={talkHref}
@@ -456,7 +460,7 @@ export default async function DashboardPage({
           </div>
           <Link
             href="/discovery"
-            className="inline-block whitespace-nowrap rounded-lg border border-violet-600 px-5 py-2.5 text-base font-semibold text-violet-700 hover:bg-violet-50"
+            className="inline-flex min-h-[44px] items-center whitespace-nowrap rounded-lg border border-violet-600 px-5 py-2.5 text-base font-semibold text-violet-700 hover:bg-violet-50"
           >
             {(profile?.sessions_count ?? 0) > 0 ? 'Continue discovery' : 'Start discovery'}
           </Link>
@@ -600,7 +604,7 @@ function GapDashboard({
               baseline and no delta — Ray: "Nothing has moved and nothing shows a delta. Do not name a
               link after something it does not do." The nine areas DO fill as she captures, so the
               link is right and only the label was a promise. */}
-          <Link href="/my-genome" className="underline underline-offset-2 hover:text-white">
+          <Link href="/my-genome" className="inline-flex min-h-[44px] items-center underline underline-offset-2 hover:text-white">
             See where it is locked up
           </Link>
         </div>
@@ -617,7 +621,11 @@ function GapDashboard({
             gives him the way back that he did not have. */}
         <p className="mt-4 text-sm text-white/75">
           Your baseline, taken{' '}
+          {/* ⚠️ HIS CLOCK. `en-AU` sets the format, not the zone — on Vercel the runtime is UTC, so
+              a baseline taken at 23:11 on the 16th prints as the 16th here and as the 17th in the
+              handover document. Same helper as the document. */}
           {new Date(valuation.created_at).toLocaleDateString('en-AU', {
+            timeZone: DASHBOARD_TIME_ZONE,
             day: 'numeric',
             month: 'long',
             year: 'numeric',
@@ -629,7 +637,7 @@ function GapDashboard({
               point — so he finished the exercise believing his number had changed, and then met the
               offer to change it on Settings, of all places. `?rerun=1` carries that into the result
               page so the same sentence appears where the new figure does. */}
-          <Link href="/business-valuation?rerun=1" className="underline underline-offset-2 hover:text-white">
+          <Link href="/business-valuation?rerun=1" className="inline-flex min-h-[44px] items-center underline underline-offset-2 hover:text-white">
             Run the numbers again
           </Link>{' '}
           — that shows you a fresh figure and does not replace this one unless you say so.

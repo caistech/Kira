@@ -58,6 +58,7 @@ export async function sweepDuplicateMemories(
       // Sorted into an area already. `none` is a real classification meaning "not about the
       // business", so it counts as filed — the classifier looked at it and decided.
       filed: row.genome_section != null,
+      section: (row.genome_section as string | null) ?? null,
     }));
 
     const drop = swallowedIds(memories);
