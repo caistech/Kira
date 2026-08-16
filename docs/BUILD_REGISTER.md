@@ -850,5 +850,69 @@ fix. Full reply: `docs/BRIEF_ORCHESTRATOR_METERING_AND_GUARDS.md`.
 
 ---
 
+## Section R — the per-bucket rubric, and what running it revealed (2026-08-15, `672f7da`)
+
+Built: `lib/genome/checklist.ts` (52 items across the nine areas, substance test + factor map +
+close-mode each), `checklist-bands.ts`, `checklist-assess.ts`, `lib/valuation/evidenced-readiness.ts`,
+`lib/genome/pathway.ts`, migration `20260815180000`, and `/my-genome/[area]`. 67 tests, two mutations
+verified. Spec: `docs/SPEC_GENOME_CHECKLIST_AND_PATHWAYS.md`.
+
+### R1 — the old band was wrong in SIX of nine areas, always flatteringly
+
+Measured against the operator's real Genome (`dennis@factory2key.com.au`), old count-band vs new
+checklist-band:
+
+| area | entries | OLD | NEW |
+|---|---|---|---|
+| operations | **28** | covered | **empty** |
+| demand | 6 | covered | **empty** |
+| customers | 6 | covered | **empty** |
+| systems | 9 | covered | **thin** |
+| pricing | 4 | building | **thin** |
+| cash | 1 | thin | **empty** |
+| compliance | 2 | thin | thin |
+| people / assets | 0 | empty | empty |
+
+Every disagreement runs the same way: the tally said more than the record supports. This is the
+"green on what basis?" problem, measured rather than argued.
+
+### R2 — ⚠️ THE REAL FINDING: the Genome captures PROJECT ACTIVITY, not business structure
+
+Operations has 28 entries and answers **zero** buyer questions. Reading them explains why — *"Soil
+testing scheduled for Lot 109"*, *"Tasks marked done and archived"*, *"Offer to walk Lot 442 site
+pending"*. Not one describes the steps of a standard job, who does each step, or what he personally
+still does. Customers is the same: six entries, all follow-ups and drafted emails, no customer named
+and no share stated.
+
+**Kira is a good assistant for Lot 442 and a poor biographer of the business.** Nothing today
+prompts her to ask "who could step into your job" — so nobody has ever answered it, and `people` and
+`assets` hold **zero entries** on an account with 96 filed memories. The checklist did not cause
+this; it made it visible for the first time.
+
+Consequence for the build order: **step 8 (Kira's area-scoped session) is no longer the last piece,
+it is the load-bearing one.** The rubric without the agenda just scores an absence more accurately.
+
+### R3 — contamination confirmed a third time, now with a location
+
+Two of the six `customers` entries are not customer facts at all:
+- *"Unresolved Gmail access issue for contacts"* — her own limitation, filed as a fact about his
+  business. Third confirmed instance; see the red-team FALSE PASS note, which the probe misses
+  because it tests the refusal path and the leak arrives down the distillation path.
+- *"MyGenome project with key collaborators… Gareth Newman and Shah Hussain"* — CAS/Kira product
+  work filed into the **Factory2Key** tenant. The two-entities rule, breached in the data.
+
+### R4 — still open on this feature
+
+1. **Step 8 — the area-scoped session.** Orchestrator side. Now the highest-value remaining piece
+   (see R2). The panel's button is a link until it lands.
+2. **`readiness_now` is computed but never written.** `evidenced-readiness.ts` and the column both
+   exist; nothing calls the one to fill the other. ⚠️ Same class as the four defects in
+   §Q — correct, tested, unreachable. It closes when the assessor runs for all nine areas rather
+   than one, which is the same change as wiring step 8.
+3. **Pathways have a shape, a table and no UI.** `pathway.ts` is enforced by 16 tests; nothing
+   creates one yet. Deliberate — the offer belongs in the conversation, not on a form.
+
+---
+
 *Add to this file rather than to a chat message. An item recorded in three places and tracked in
 none is the reason it exists.*
