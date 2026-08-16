@@ -42,6 +42,16 @@ export interface DraftItem {
   asked: string;
   /** The drafted text, when one exists. */
   body: string | null;
+  /**
+   * Why she could not do it, in plain words — only ever set when `readiness` is 'refused'.
+   *
+   * ⚠️ THE REASON WAS ALREADY IN THE ROW AND WE WERE THROWING IT AWAY. `plainTitle` strips the
+   * orchestrator's machine-speak out of the title, correctly, and the refusal it describes went with
+   * it — so the screen said "She could not do this one" and stopped. Ray: "Could not do it why? Was
+   * it my fault? Do I ask again?" Three fair questions, none of them answered, about the document
+   * she had by then offered to write four times.
+   */
+  reason: string | null;
   requested: string;
   ageDays: number;
 }
@@ -103,6 +113,32 @@ export function plainTitle(summary: string, utterance: string): string {
   return (usable || 'Something you asked her for').slice(0, 160);
 }
 
+/**
+ * Turn the orchestrator's refusal into something an owner can act on.
+ *
+ * It records refusals as `kind: 'unsupported'` with a summary like "Request is to draft a summary
+ * document, which is unsupported." That names the capability, which is the useful half — so the
+ * answer to "why?" is available and simply was not being shown.
+ *
+ * ⚠️ NEVER INVENTS ONE. An unrecognised refusal returns null and the page says only what it knows,
+ * because a confident wrong reason is worse than an honest gap on the screen where he is already
+ * asking whether it was his fault.
+ */
+export function refusalReason(kind: string, summary: string): string | null {
+  const text = `${kind} ${summary}`.toLowerCase();
+  if (/draft|document|summar|write|letter|report/.test(text)) {
+    return 'She cannot write documents for you yet — she can capture what you tell her, and it goes ' +
+      'into your Genome and your handover document. Nothing you said has been lost.';
+  }
+  if (/email|send|mail/.test(text)) {
+    return 'She cannot send email as you yet — that needs your business name, ABN and address first.';
+  }
+  if (/unsupported|not supported|cannot|unable/.test(text)) {
+    return 'This is something she cannot do yet. It is not you, and nothing you said has been lost.';
+  }
+  return null;
+}
+
 export async function readDrafts(userId: string): Promise<DraftItem[]> {
   if (!userId) return [];
   try {
@@ -122,6 +158,7 @@ export async function readDrafts(userId: string): Promise<DraftItem[]> {
       title: plainTitle(String(row.summary ?? ''), String(row.utterance ?? '')),
       asked: String(row.utterance || row.summary || ''),
       body: draftBody(row as { preview?: unknown; artifact?: unknown }),
+      reason: refusalReason(String(row.kind ?? ''), String(row.summary ?? '')),
       requested: String(row.created_at),
       ageDays: days(String(row.created_at)),
     }));

@@ -5,7 +5,7 @@
 // first, Settings + Sign Out anchored at the bottom, active-route indicator. Collapses to a
 // top bar + slide-in drawer on mobile with the SAME items.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
@@ -39,6 +39,15 @@ export function PortalShell({
   children,
 }: PortalShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Mirrored onto <html> so global CSS can hide the fixed support launcher while the drawer covers
+  // the screen. Cleaned up on close and on unmount — a stuck class would hide the launcher forever.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (drawerOpen) root.classList.add('drawer-open');
+    else root.classList.remove('drawer-open');
+    return () => root.classList.remove('drawer-open');
+  }, [drawerOpen]);
   const pathname = usePathname();
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
@@ -112,9 +121,15 @@ export function PortalShell({
         </button>
       </header>
 
-      {/* Mobile drawer */}
+      {/* ⚠️ MARK THE DOCUMENT WHILE THE DRAWER IS OPEN, so the support launcher can get out of the
+          way. `@caistech/sayfix-embed` places a fixed button in a corner and cannot know a drawer has
+          opened over it — Ray, 2026-08-17: "when I open the menu it lands right on top of Sign out.
+          With my hands I would hit the wrong one, and the wrong one there is a bug report."
+          A class on <html> rather than a prop, because the launcher is mounted in the root layout,
+          far from this component, and threading state across that distance to hide a third-party
+          button would be worse than one line of CSS. */}
       {drawerOpen && (
-        <div className="fixed inset-0 z-40 md:hidden">
+        <div className="fixed inset-0 z-40 md:hidden" data-drawer-open="true">
           <div className="absolute inset-0 bg-black/30" onClick={() => setDrawerOpen(false)} />
           {/* FLEX COLUMN, AND THAT IS THE WHOLE FIX.
               This was a plain block containing the close-button row AND `nav`, which is `h-full`.

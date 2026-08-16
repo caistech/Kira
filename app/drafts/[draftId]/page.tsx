@@ -90,9 +90,10 @@ export default async function DraftPage({ params }: { params: Promise<{ draftId:
         <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 sm:p-6">
           <h2 className="text-base font-semibold text-stone-900">She could not do this one</h2>
           <p className="mt-2 max-w-prose text-base leading-relaxed text-stone-800">
-            This came back as something she cannot do yet, so it will not happen on its own and there
-            is nothing waiting on your approval. Nothing has been sent to anyone. It is worth asking
-            her a different way, or telling us — this is the kind of gap we want to know about.
+            {/* The reason, when the row carries one — see refusalReason. "She could not do this one"
+                on its own left him asking "why? was it my fault? do I ask again?" */}
+            {draft.reason ?? 'This came back as something she cannot do yet.'} It will not happen on
+            its own and there is nothing waiting on your approval. Nothing has been sent to anyone.
           </p>
         </section>
       )}

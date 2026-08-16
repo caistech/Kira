@@ -100,6 +100,12 @@ export default async function DraftsPage() {
                       asked {draft.ageDays === 0 ? 'today' : `${draft.ageDays} day${draft.ageDays === 1 ? '' : 's'} ago`}
                     </span>
                   </p>
+                  {/* ⚠️ THE REASON ON THE LIST, not only on the page behind it. He read three rows
+                      saying "She could not do this one" and had to open each to find out whether it
+                      was his fault. */}
+                  {draft.reason && (
+                    <p className="mt-2 max-w-prose text-sm leading-relaxed text-stone-600">{draft.reason}</p>
+                  )}
                 </Link>
               </li>
             );

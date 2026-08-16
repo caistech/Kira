@@ -175,9 +175,24 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
           `has engaged with it, which is why it matters more rather than less.`,
       });
     }
-    // Reported honestly rather than as a save. She can then say "I already had that" instead of
-    // claiming to have written something down for the second time.
-    return json(200, { success: true, already: true });
+    // ⚠️ SAY YOU ALREADY HAD IT — DO NOT THANK HIM FOR IT AGAIN.
+    //
+    // Reported honestly rather than as a save, but "already: true" is a flag she can read past, and
+    // she did: Ray gave the same five pricing numbers across four visits and was thanked for them
+    // four times. Reading the transcript back on his sixth: "I count four separate times across
+    // those visits where I have given you the same five pricing numbers. Four. A man does not do
+    // that with an accountant… Right now the transcript is a record of me not being heard, and it is
+    // the first thing I see when I log in."
+    //
+    // His own suggested wording, which is better than anything we would write: say you have it, and
+    // ask whether anything has changed.
+    return json(200, {
+      success: true,
+      already: true,
+      say_this:
+        'You already have this one — do not thank him for it as though it were new. Say you have it ' +
+        'already and ask whether anything about it has changed since he told you.',
+    });
   }
 
   // ANOTHER COMPANY'S FACT DOES NOT GO INTO THIS GENOME.

@@ -173,6 +173,22 @@ html {
 @media (max-width: 640px) {
   [data-sayfix-launcher],
   .sayfix-launcher {
-    bottom: 5.5rem !important;
+    bottom: 7rem !important;
   }
+}
+
+/* AND IT DISAPPEARS ENTIRELY WHILE THE MOBILE DRAWER IS OPEN.
+ *
+ * Raising the offset clears page content; it cannot clear a full-screen drawer, which puts Sign out
+ * exactly where a fixed bottom-corner button already is. Ray, 2026-08-17: "when I open the menu it
+ * lands right on top of Sign out. With my hands I would hit the wrong one, and the wrong one there
+ * is a bug report."
+ *
+ * `drawer-open` is set on <html> by PortalShell while the drawer is mounted, and removed on close
+ * and on unmount. Hidden rather than moved: there is nowhere on a 375px drawer that a floating
+ * support button belongs, and help is one tap away again the moment the menu closes.
+ */
+html.drawer-open [data-sayfix-launcher],
+html.drawer-open .sayfix-launcher {
+  display: none !important;
 }

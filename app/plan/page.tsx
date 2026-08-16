@@ -507,6 +507,18 @@ export default function PlanPage() {
             <div className="mt-8 bg-white rounded-3xl p-8 border-2 border-violet-200 shadow-sm max-w-lg mx-auto text-center">
               <span className="text-xs font-body uppercase tracking-wider text-violet-500 font-semibold">{model.quote.label} plan</span>
               <p className="font-display text-4xl font-bold text-stone-800 mt-2">{money(model.quote.monthly)}<span className="text-lg text-stone-400 font-body">/month {tax}</span></p>
+              {/* ⚠️ NEXT TO THE PRICE, NOT BURIED IN THE PARAGRAPH ABOVE.
+                  Ray, who has been quoting jobs for thirty-five years: "The percentage on the card
+                  page — about 4.4% a year of what you stand to unlock — is the most persuasive line
+                  on the whole site to a man who has been quoting jobs for thirty-five years, and it
+                  is buried in a paragraph. Put it next to the price."
+                  Same `fractionOfGapPct` as that paragraph, so the two cannot disagree, and it only
+                  renders when the fraction is worth quoting. */}
+              {model.quote.fractionWorthQuoting && (
+                <p className="mt-1 text-base font-semibold text-violet-700">
+                  About {model.quote.fractionOfGapPct} a year of what you stand to unlock
+                </p>
+              )}
               <p className="text-sm text-stone-500 mt-1">
                 {billingLive
                   ? <>Billed at the end of each month, for the month just gone. Cancel any time and the month you are in is on us.</>

@@ -10,6 +10,7 @@ import { RedactEntry } from '@/components/RedactEntry';
 import { PRIVATE_REASON_LABEL } from '@/lib/genome/private';
 import { WHO_CAN_SEE_IT } from '@/lib/privacy';
 import { readGenomeViews } from '@/lib/genome/access-log';
+import { keyRiskFollowUp } from '@/lib/kira/key-risk';
 import { buyerEntryCount } from '@/lib/genome/buyer-view';
 
 export const dynamic = 'force-dynamic';
@@ -88,6 +89,13 @@ export default async function MyGenome() {
   // Scoped to HIS id from the session — this table names operators, so an id from anywhere else
   // would let one owner enumerate who works here.
   const views = await readGenomeViews(String(appUser.id));
+
+  // ⚠️ THE PILE, RISK FIRST. Same rules that make her stop mid-conversation (lib/kira/key-risk.ts),
+  // so what the page flags and what she says cannot drift apart. Stable within each group, so the
+  // order he saw last time is otherwise preserved.
+  const rankedUnsorted = [...g.unsorted].sort(
+    (a, b) => Number(Boolean(keyRiskFollowUp(b.content))) - Number(Boolean(keyRiskFollowUp(a.content))),
+  );
 
   // WHAT HE HAS, FIRST. The areas are held in buyer-priority order, which is right for the handover
   // document and wrong for the first thing he sees: it put empty sections above the ones with his
@@ -615,9 +623,20 @@ export default async function MyGenome() {
                 appear in your handover document — about the business rather than to you — which is
                 why they read a little formally.
               </p>
+              {/* ⚠️ RANKED BY WHAT A BUYER WOULD STOP ON, NOT BY WHEN SHE HAPPENED TO HEAR IT.
+                  Ray: "The nine unsorted facts are shown in the order she happened to hear them.
+                  Gary at 61 and a customer at forty per cent should be at the top with a mark
+                  against them, not third and second in a list that starts with an apprentice."
+                  Uses the SAME rules that decide whether she stops mid-conversation, so the list and
+                  her behaviour cannot disagree about which facts matter. */}
               <ul className="mt-3 space-y-2">
-                {g.unsorted.slice(0, 10).map((e) => (
+                {rankedUnsorted.slice(0, 10).map((e) => (
                   <li key={e.id} className="text-stone-700">
+                    {keyRiskFollowUp(e.content) && (
+                      <span className="mr-2 rounded-full border border-amber-400 bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900">
+                        a buyer would stop here
+                      </span>
+                    )}
                     · {e.content}
                     {/* THE SAME MARKER THE FILED ENTRIES CARRY.
                         It was on the sections and not here, and the copy under the download buttons

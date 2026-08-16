@@ -64,7 +64,7 @@ const framework = (journeyType: JourneyType): KiraFramework => ({
 //
 // Net: the business prompt is 1,719 characters SMALLER than before the new section was added, and
 // the ceiling moves with the measurement so that saving cannot be quietly given back.
-const BUDGET = { business: 38_000, personal: 10_200 } as const;
+const BUDGET = { business: 39_000, personal: 10_200 } as const;
 
 // ⚠️ THE BUSINESS CEILING WENT BACK UP, from 28,000 to 36,000, and that is not backsliding.
 //
@@ -81,6 +81,19 @@ const BUDGET = { business: 38_000, personal: 10_200 } as const;
 // entity guard, the approval gate), so the prose may be restating a rule the server refuses to
 // break. That is a measurable question — remove, re-run the red team, compare the rate — and it is
 // the only safe way to find out.
+//
+// ⚠️ RAISED 38,000 → 39,000 on 2026-08-17 for the exhaustive-capability rule. Measured 38,801.
+//
+// WHAT IT BUYS: she stops offering a document she cannot produce. One owner was offered "a clear
+// summary document of your pricing" FOUR TIMES across four conversations and got three refusals and
+// nothing written. His reading of it is the reason this is worth a thousand characters:
+//
+//   "Now I know she says yes to things she cannot do — and that makes me doubt the things she says
+//    she has saved." — Ray, 2026-08-17
+//
+// An offer she cannot keep spends the credit of every save she CAN. The list of what dispatch_task
+// does was already in the prompt; what was missing was that the list is exhaustive, which an LLM
+// will not infer from a list.
 //
 // ⚠️ RAISED 37,000 → 38,000 on 2026-08-17 for two lines under DURING CONVERSATIONS: obey
 // `ask_this_now`, and never offer to save what you already saved. Measured 37,854 with them in.
