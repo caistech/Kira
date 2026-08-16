@@ -101,9 +101,19 @@ export function escapeHtml(value: string): string {
  * The strong claim still exists and is still made — `confirmedOn`, and only when true.
  */
 function provenance(entry: OwnerEntry, timeZone: string): string {
+  // ⚠️ "source not recorded" WAS A SYSTEM LOG LINE IN A COMMERCIAL DOCUMENT.
+  //
+  // The intent behind it is right and stays: an untraceable entry must say so rather than sit
+  // silently among the sourced ones, because an unmarked mix makes the whole document only as
+  // trustworthy as its weakest line. What was wrong was the WORDING. Ray, reading the copy he would
+  // send his broker: he listed it alongside the duplication and the housekeeping heading as a reason
+  // he would not send it — three phrases that read as though nobody proofed the thing.
+  //
+  // "Not tied to a specific conversation" says exactly the same and reads as a document about a
+  // business rather than a row with a null column.
   const said = entry.source
     ? `from a conversation on ${longDateIn(timeZone, entry.source.spokenOn)}`
-    : 'source not recorded';
+    : 'not tied to a specific conversation';
   const confirmed = entry.confirmedOn
     ? `; read back to the owner and confirmed ${longDateIn(timeZone, entry.confirmedOn)}`
     : '';
@@ -166,15 +176,26 @@ export function renderAreas(genome: OwnerGenome, audience: Audience, timeZone: s
     ].join('\n'),
   }));
 
-  if (view.unsorted.length > 0) {
+  // ⚠️ THE UNFILED PILE IS OWNER-ONLY. IT MUST NEVER REACH THE BUYER'S COPY.
+  //
+  // "Recorded, not yet filed — Said, kept, and not yet placed in an area" is Kira describing her own
+  // filing process, in the document Ray was about to send his broker. He read it cold and said:
+  // "That's Kira writing about her own filing process in a document you've told me is mine to keep
+  // forever. Take it out of the document; keep it on the screen if you need it."
+  //
+  // He is right, and the audience is the line: on HIS copy it is honest — these are things he said
+  // and they are not lost. In a buyer's hands it is our housekeeping presented as his business, and
+  // it makes the areas above look emptier than they are, because the facts that belong in them are
+  // sitting in a pile at the bottom under a heading about software.
+  if (view.unsorted.length > 0 && audience === 'owner') {
     docs.push({
       key: UNFILED_KEY,
-      title: 'Recorded, not yet filed',
+      title: 'Everything else you have told her',
       entries: view.unsorted.length,
       html: [
         '    <section class="area" id="unfiled">',
-        '      <h2>Recorded, not yet filed</h2>',
-        '      <p class="q">Said, kept, and not yet placed in an area.</p>',
+        '      <h2>Everything else you have told her</h2>',
+        '      <p class="q">Things she is holding that do not sit in one area yet. Nothing is lost.</p>',
         `      <ul>\n${view.unsorted.map((e) => entryHtml(e, timeZone)).join('\n')}\n      </ul>`,
         '    </section>',
       ].join('\n'),
@@ -229,7 +250,10 @@ const STYLE = `
  */
 export function renderSingleFile(genome: OwnerGenome, audience: Audience, meta: ManualMeta): string {
   const docs = renderAreas(genome, audience, meta.timeZone);
-  const title = audience === 'buyer' ? 'Operating manual' : 'Operating manual — your copy';
+  // ⚠️ ONE NAME FOR ONE THING. The app calls it the 'handover document' on every screen and the
+  // document called itself 'Operating manual'. Ray: 'Pick one.' The app's name wins — it is what he
+  // reads first, and it says what the thing is FOR rather than what it contains.
+  const title = audience === 'buyer' ? 'Handover document' : 'Handover document — your copy';
 
   // ⚠️ THE UNFILED PILE IS NOT AN AREA, AND COUNTING IT SAID "10" IN A NINE-AREA PRODUCT.
   //

@@ -86,10 +86,19 @@ export async function GET(request: Request) {
     // Never fatal. A manual titled with his name is a lesser document; no manual is a broken promise.
     console.error('[genome-manual] business identity unavailable:', error);
   }
-  const businessName =
-    (identity ? displayName(identity) : '') ||
-    [appUser.first_name, appUser.last_name].filter(Boolean).join(' ') ||
-    'This business';
+  // ⚠️ NEVER TITLE A HANDOVER DOCUMENT WITH A PERSON'S NAME.
+  //
+  // The fallback chain used to end `trading name → HIS OWN NAME → "This business"`, and the middle
+  // rung is the one that reached a real document. Ray had not entered business details, so the file
+  // he was about to send his broker was titled **"Ray"**. His words: "A broker receives a document
+  // called Ray. It should be titled with the trading name, with my name under it as the source."
+  //
+  // The old comment here said "a manual titled with his name is a lesser document; no manual is a
+  // broken promise" — the trade is real and the conclusion was wrong. A document titled with a first
+  // name does not read as a lesser handover, it reads as an unfinished one, and it is going to the
+  // person already looking for reasons to discount him. "This business" is plain and costs nothing;
+  // his identity is carried by the prepared-by line and the ABN, where it belongs.
+  const businessName = (identity ? displayName(identity) : '') || 'This business';
 
   // HIS clock, not the server's. On Vercel the server is UTC, which for a third of every day
   // dated an Australian handover a day behind — in the one document whose value is that its dates

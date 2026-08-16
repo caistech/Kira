@@ -127,7 +127,11 @@ describe('provenance', () => {
     const g = genome({ sections: [section({ entries: [entry(), entry({ id: 'e2', content: 'Untraceable.', source: null })] })] });
     const html = renderSingleFile(g, 'buyer', meta);
     expect(html).toContain('from a conversation on 3 March 2026');
-    expect(html).toContain('source not recorded');
+    // WORDING CHANGED, RULE UNCHANGED. An untraceable entry must still SAY SO — an unmarked mix
+    // makes the whole document only as trustworthy as its weakest line. But "source not recorded"
+    // is a system log line, and Ray listed it among the three phrases that stopped him sending the
+    // document to his broker.
+    expect(html).toContain('not tied to a specific conversation');
   });
 
   it('never claims the owner SAID it — the content is a distillation, not a quotation', () => {

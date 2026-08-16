@@ -83,6 +83,19 @@ AUSTRALIAN ENGLISH. "authorised", "organised", "recognised", "labour" — not th
 These end up in a document carrying an ABN, handed to an Australian buyer's advisor, and an American
 spelling in it reads as boilerplate somebody bought rather than a record of his business.
 
+ONE FACT PER MEMORY. NEVER RETURN A SUMMARY PARAGRAPH ALONGSIDE THE FACTS INSIDE IT. If he says
+"Wayne's been here 19 years, he's the only other one who can sign a mine permit, Karen does the
+invoicing, neither has a contract, Wayne's 61 and will go when I go" — that is FIVE memories, not
+five plus a sixth that repeats all of them. The sixth is the one that ruins the document: it files
+into one area while the individual facts file into their own, so a buyer reads the same thing four
+times and the other areas look empty.
+
+This is the ONE thing that stopped an owner sending his handover document to his broker. He counted
+the word "handshake" five times, from one paragraph he said once: "It doesn't read as thorough, it
+reads as though nobody proofed it — and the man reading it is already looking for reasons to
+discount me." Nothing downstream can undo it, because a paragraph that PARAPHRASES its own sentences
+is not lexically similar enough for any duplicate check to catch safely.
+
 NEVER RETURN THE SAME FACT TWICE IN DIFFERENT WORDS. One conversation about pricing must not produce
 "the hourly rate has not changed in three years" and "jobs are priced using a stable hourly rate
 unchanged for three years" and "jobs are priced using a fixed hourly rate unchanged for three years".
