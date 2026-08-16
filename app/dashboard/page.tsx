@@ -278,7 +278,13 @@ export default async function DashboardPage({
                 key={task.id}
                 className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t border-stone-100 pt-3"
               >
-                <span className="text-base text-stone-900">{task.summary}</span>
+                {/* ⚠️ THE TITLE IS A LINK NOW. It was a line of text beside a button that took him
+                    back to the chat, which offered to email it — a loop with no way to READ the
+                    thing. Ray: "every draft needs a title you can click that opens the text, on a
+                    page." */}
+                <Link href={`/drafts/${task.id}`} className="text-base text-stone-900 underline decoration-stone-300 underline-offset-4 hover:decoration-stone-500">
+                  {task.summary}
+                </Link>
                 {/* The AGE is the part that matters to him, and the part a quiet list hides. Four
                     days is the difference between a follow-up and an apology. */}
                 <span
@@ -292,12 +298,22 @@ export default async function DashboardPage({
               </li>
             ))}
           </ul>
-          <Link
-            href={talkHref}
-            className="mt-4 inline-block min-h-[44px] rounded-full bg-stone-900 px-5 py-3 text-base font-semibold text-white"
-          >
-            Talk to Kira about these
-          </Link>
+          {/* READ first, TALK second — the order he asked for. "Nothing should be sendable before
+              it's readable. And 'send' should never be the answer to 'where is it'." */}
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link
+              href="/drafts"
+              className="inline-block min-h-[44px] rounded-full bg-stone-900 px-5 py-3 text-base font-semibold text-white"
+            >
+              Read what she has written
+            </Link>
+            <Link
+              href={talkHref}
+              className="inline-block min-h-[44px] rounded-full border border-stone-300 bg-white px-5 py-3 text-base font-semibold text-stone-800 hover:border-violet-300"
+            >
+              Talk to Kira about these
+            </Link>
+          </div>
         </section>
       )}
 

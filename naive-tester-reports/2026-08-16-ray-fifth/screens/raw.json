@@ -1,0 +1,492 @@
+{
+  "exportedAt": "2026-08-16T13:47:41.382Z",
+  "owner": "the owner",
+  "sections": [
+    {
+      "key": "demand",
+      "title": "Where the work comes from",
+      "question": "Where does work come from, and does it come to him personally?",
+      "ownerQuestion": "Where does your work come from, and does it come to you personally?",
+      "entries": [],
+      "coverage": "empty",
+      "baseline": {
+        "area": "demand",
+        "location": "head",
+        "ownerDependent": true,
+        "statement": "You told us your client base is steady. What keeps it steady is usually a handful of relationships and habits only you can name."
+      }
+    },
+    {
+      "key": "pricing",
+      "title": "How work is priced and quoted",
+      "question": "Could someone else reach his number?",
+      "ownerQuestion": "Could someone else price a job and reach your number?",
+      "entries": [],
+      "coverage": "empty",
+      "baseline": {
+        "area": "pricing",
+        "location": "head",
+        "ownerDependent": true,
+        "statement": "How you decide what to charge is almost certainly yours alone — it usually is, and nothing you told us suggests otherwise."
+      }
+    },
+    {
+      "key": "operations",
+      "title": "How the work actually gets done",
+      "question": "Does the work happen without him on site?",
+      "ownerQuestion": "Does the work happen when you are not on site?",
+      "entries": [],
+      "coverage": "empty",
+      "baseline": {
+        "area": "operations",
+        "location": "head",
+        "ownerDependent": true,
+        "statement": "You told us how the work actually gets done is in your head, not written down."
+      }
+    },
+    {
+      "key": "cash",
+      "title": "Money in, money out and terms",
+      "question": "Who chases, who approves, what are the terms — and are supplier terms personal to him?",
+      "ownerQuestion": "Who chases, who approves, and are any of your supplier terms personal to you?",
+      "entries": [],
+      "coverage": "empty",
+      "baseline": {
+        "area": "cash",
+        "location": "head",
+        "ownerDependent": false,
+        "statement": "You told us roughly $4,200,000 through the door and about $620,000 of that as owner earnings. The statements behind those sit with your accountant; what a buyer needs is the story linking them."
+      }
+    },
+    {
+      "key": "customers",
+      "title": "Who buys, and who owns the relationship",
+      "question": "Revenue by customer over three years, concentration, and who owns each relationship.",
+      "ownerQuestion": "Who buys from you, what do they buy, and who owns each relationship?",
+      "entries": [],
+      "coverage": "empty",
+      "baseline": {
+        "area": "customers",
+        "location": "head",
+        "ownerDependent": true,
+        "statement": "Your revenue leans on a handful of key clients and some of it is contracted or repeat. Who holds those relationships is the part a buyer asks about first."
+      }
+    },
+    {
+      "key": "people",
+      "title": "Who does the work",
+      "question": "Who is actually critical, tenure, contracts and restraints, who leaves on announcement.",
+      "ownerQuestion": "Who is critical, how long have they been with you, and who would leave on announcement?",
+      "entries": [],
+      "coverage": "empty",
+      "baseline": null
+    },
+    {
+      "key": "assets",
+      "title": "What the business owns",
+      "question": "Owned vs leased vs personally held; deferred maintenance; whether the premises lease transfers.",
+      "ownerQuestion": "What do you own, what do you lease, and what is held in your own name?",
+      "entries": [],
+      "coverage": "empty",
+      "baseline": {
+        "area": "assets",
+        "location": "paper",
+        "ownerDependent": false,
+        "statement": "You told us about $480,000 of equipment, vehicles and stock. The register and the finance paperwork are usually at the accountant's or in a drawer."
+      }
+    },
+    {
+      "key": "compliance",
+      "title": "Licences, insurance and the calendar",
+      "question": "The obligations calendar and who watches it; change-of-control clauses; anything in dispute.",
+      "ownerQuestion": "What must not lapse, and who is watching it?",
+      "entries": [],
+      "coverage": "empty",
+      "baseline": null
+    },
+    {
+      "key": "systems",
+      "title": "Systems & records",
+      "question": "Where records live, who has access, what is documented, and whether the IP is owned by the entity.",
+      "ownerQuestion": "Where do your records live, who can reach them, and what is written down?",
+      "entries": [],
+      "coverage": "empty",
+      "baseline": {
+        "area": "systems",
+        "location": "head",
+        "ownerDependent": true,
+        "statement": "Which tools the business actually depends on — and who holds the logins — is not something you have told us yet."
+      }
+    }
+  ],
+  "unsorted": [
+    {
+      "id": "cb5c5199-3c32-4e4d-a2a0-08e53db40621",
+      "headline": null,
+      "content": "Gary is the leading hand with 24 years experience and is the only other person who can price a job; he is 61. Sharon handles invoicing, payroll and ATO work three days a week and is Ray's sister-in-law. Dylan is a fourth year apprentice and Ray wants to keep him. Only Gary knows the mine site loading. Nobody knows Ray is thinking of selling.",
+      "capturedAt": "2026-08-16T13:42:06.54745+00:00",
+      "importance": 6,
+      "section": "unsorted",
+      "source": null,
+      "confirmedOn": null,
+      "privateReason": "not-yet-told",
+      "possibleRestatementOf": null
+    }
+  ],
+  "totalCaptured": 1,
+  "documents": 0,
+  "readiness": 0.29625,
+  "gap": 271000,
+  "worthToday": 1700000,
+  "empty": false,
+  "otherHeld": [],
+  "sourced": 0,
+  "confirmed": 0,
+  "stillInYourHead": [
+    {
+      "key": "demand",
+      "title": "Where the work comes from",
+      "question": "Where does your work come from, and does it come to you personally?"
+    },
+    {
+      "key": "pricing",
+      "title": "How work is priced and quoted",
+      "question": "Could someone else price a job and reach your number?"
+    },
+    {
+      "key": "operations",
+      "title": "How the work actually gets done",
+      "question": "Does the work happen when you are not on site?"
+    },
+    {
+      "key": "cash",
+      "title": "Money in, money out and terms",
+      "question": "Who chases, who approves, and are any of your supplier terms personal to you?"
+    },
+    {
+      "key": "compliance",
+      "title": "Licences, insurance and the calendar",
+      "question": "What must not lapse, and who is watching it?"
+    }
+  ],
+  "notYetLocated": [
+    {
+      "key": "customers",
+      "title": "Who buys, and who owns the relationship",
+      "question": "Who buys from you, what do they buy, and who owns each relationship?"
+    },
+    {
+      "key": "people",
+      "title": "Who does the work",
+      "question": "Who is critical, how long have they been with you, and who would leave on announcement?"
+    },
+    {
+      "key": "assets",
+      "title": "What the business owns",
+      "question": "What do you own, what do you lease, and what is held in your own name?"
+    },
+    {
+      "key": "systems",
+      "title": "Systems & records",
+      "question": "Where do your records live, who can reach them, and what is written down?"
+    }
+  ],
+  "worthTodayDisplayed": "$1,700,000",
+  "gapDisplayed": "$271,000",
+  "everythingHeld": [
+    {
+      "id": "cb5c5199-3c32-4e4d-a2a0-08e53db40621",
+      "content": "Gary is the leading hand with 24 years experience and is the only other person who can price a job; he is 61. Sharon handles invoicing, payroll and ATO work three days a week and is Ray's sister-in-law. Dylan is a fourth year apprentice and Ray wants to keep him. Only Gary knows the mine site loading. Nobody knows Ray is thinking of selling.",
+      "created_at": "2026-08-16T13:42:06.54745+00:00",
+      "importance": 6,
+      "genome_section": null,
+      "genome_about": null,
+      "genome_headline": null,
+      "genome_private_reason": null,
+      "genome_owner_dependent": null,
+      "confirmed_at": null,
+      "active": true,
+      "parked_reason": null
+    },
+    {
+      "id": "9aae27d8-0bc0-4d58-9c63-95b106b34008",
+      "content": "Systematising and documenting essential work steps will help the business function during staff absences and improve saleability.",
+      "created_at": "2026-08-16T12:10:15.219173+00:00",
+      "importance": 8,
+      "genome_section": "operations",
+      "genome_about": "business",
+      "genome_headline": "Documenting work steps aids continuity",
+      "genome_private_reason": null,
+      "genome_owner_dependent": true,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "extractor-defect-2026-08-16"
+    },
+    {
+      "id": "36a5c332-d786-4d94-b09d-dfe89eac44a1",
+      "content": "Mapping critical roles and processes currently performed only by the owner or Gary and delegating them to other staff will support business continuity.",
+      "created_at": "2026-08-16T12:10:13.953956+00:00",
+      "importance": 8,
+      "genome_section": "people",
+      "genome_about": "business",
+      "genome_headline": "Delegating critical owner roles for continuity",
+      "genome_private_reason": null,
+      "genome_owner_dependent": true,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "extractor-defect-2026-08-16"
+    },
+    {
+      "id": "b27828e3-fff4-43b8-b0fa-8a536c23261f",
+      "content": "Systematising and documenting essential work steps is needed to allow the business to function if key people are unavailable.",
+      "created_at": "2026-08-16T12:10:12.951868+00:00",
+      "importance": 8,
+      "genome_section": "operations",
+      "genome_about": "business",
+      "genome_headline": "Document essential work steps for continuity",
+      "genome_private_reason": null,
+      "genome_owner_dependent": true,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "extractor-defect-2026-08-16"
+    },
+    {
+      "id": "954851d2-dcbe-4ddc-91f9-150bd841966f",
+      "content": "Capturing and formalising Gary's specific pricing knowledge, especially about mine site loading, is necessary to reduce knowledge risk.",
+      "created_at": "2026-08-16T12:10:12.688359+00:00",
+      "importance": 9,
+      "genome_section": "pricing",
+      "genome_about": "business",
+      "genome_headline": "Gary's pricing knowledge needs formalising",
+      "genome_private_reason": null,
+      "genome_owner_dependent": true,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "extractor-defect-2026-08-16"
+    },
+    {
+      "id": "faced0f6-cf0c-4750-995f-449796caa209",
+      "content": "A map of critical roles and processes that only the owner or Gary perform should be created, with a plan to train or delegate these tasks to others to ensure business continuity.",
+      "created_at": "2026-08-16T12:10:12.16113+00:00",
+      "importance": 8,
+      "genome_section": "people",
+      "genome_about": "business",
+      "genome_headline": "Critical roles held by owner and Gary",
+      "genome_private_reason": null,
+      "genome_owner_dependent": true,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "extractor-defect-2026-08-16"
+    },
+    {
+      "id": "51c20f25-7fab-4995-aed8-e14b9d41f79a",
+      "content": "A documented pricing process including margin structures and exceptions is essential to improve business transparency and buyer confidence.",
+      "created_at": "2026-08-16T12:10:11.416478+00:00",
+      "importance": 9,
+      "genome_section": "pricing",
+      "genome_about": "business",
+      "genome_headline": "Documented pricing process with margins",
+      "genome_private_reason": null,
+      "genome_owner_dependent": false,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "extractor-defect-2026-08-16"
+    },
+    {
+      "id": "628ffef6-92f8-409b-aee3-911f348ec688",
+      "content": "A plan to capture and formalize key pricing knowledge Gary holds, especially relating to mine site loading, should be created to reduce knowledge concentration risk.",
+      "created_at": "2026-08-16T12:10:11.329639+00:00",
+      "importance": 8,
+      "genome_section": "pricing",
+      "genome_about": "business",
+      "genome_headline": "Plan to formalize key pricing knowledge",
+      "genome_private_reason": null,
+      "genome_owner_dependent": true,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "extractor-defect-2026-08-16"
+    },
+    {
+      "id": "c978b2eb-d889-484a-8d25-3487a73cd299",
+      "content": "Only a few staff members, including Gary, Sharon, and Dylan, hold critical operational knowledge, indicating limited knowledge distribution.",
+      "created_at": "2026-08-16T12:10:10.983572+00:00",
+      "importance": 8,
+      "genome_section": "people",
+      "genome_about": "business",
+      "genome_headline": "Few staff hold critical knowledge",
+      "genome_private_reason": null,
+      "genome_owner_dependent": true,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "extractor-defect-2026-08-16"
+    },
+    {
+      "id": "a09f765f-a03c-4d25-b8da-8a14c83e2b97",
+      "content": "A pricing summary document has been drafted and is ready to be sent or saved upon approval from the owner.",
+      "created_at": "2026-08-16T12:10:10.907064+00:00",
+      "importance": 7,
+      "genome_section": "pricing",
+      "genome_about": "business",
+      "genome_headline": "Pricing summary document drafted",
+      "genome_private_reason": null,
+      "genome_owner_dependent": true,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "extractor-defect-2026-08-16"
+    },
+    {
+      "id": "5321cfb1-a6e6-4e86-87ea-07045ac39df6",
+      "content": "Pricing models for service and tendered work are mentally held and not documented, complicating buyer trust and business replication.",
+      "created_at": "2026-08-16T12:10:10.550817+00:00",
+      "importance": 10,
+      "genome_section": "pricing",
+      "genome_about": "business",
+      "genome_headline": "Pricing models mentally held, undocumented",
+      "genome_private_reason": null,
+      "genome_owner_dependent": true,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "extractor-defect-2026-08-16"
+    },
+    {
+      "id": "fd9fe886-5f8c-449b-8f93-3308fae49509",
+      "content": "Staff with critical operational knowledge are few, creating risks around reliance on key individuals.",
+      "created_at": "2026-08-16T12:10:10.483128+00:00",
+      "importance": 8,
+      "genome_section": "people",
+      "genome_about": "business",
+      "genome_headline": "Few staff hold critical knowledge",
+      "genome_private_reason": null,
+      "genome_owner_dependent": true,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "extractor-defect-2026-08-16"
+    },
+    {
+      "id": "c89a8edf-55c5-4bce-96ec-8853ce715e01",
+      "content": "The business knowledge and pricing authority are concentrated mainly in two people, the owner and Gary, which risks operational dependency.",
+      "created_at": "2026-08-16T12:10:10.135631+00:00",
+      "importance": 10,
+      "genome_section": "people",
+      "genome_about": "business",
+      "genome_headline": "Pricing authority held by two",
+      "genome_private_reason": null,
+      "genome_owner_dependent": true,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "extractor-defect-2026-08-16"
+    },
+    {
+      "id": "4b381a91-cd3e-42d2-8a21-c053ca6210ed",
+      "content": "Critical knowledge, especially pricing knowledge held by Gary, is not captured or formalized in writing.",
+      "created_at": "2026-08-16T12:10:09.673343+00:00",
+      "importance": 8,
+      "genome_section": "pricing",
+      "genome_about": "business",
+      "genome_headline": "Pricing knowledge held only by Gary",
+      "genome_private_reason": null,
+      "genome_owner_dependent": true,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "extractor-defect-2026-08-16"
+    },
+    {
+      "id": "7309bdfc-3acf-43a2-bc0a-f6e5c7ae21e0",
+      "content": "Pricing models for both service and tendered work are not documented and exist only mentally, reducing trust and replicability for buyers.",
+      "created_at": "2026-08-16T12:10:09.245032+00:00",
+      "importance": 9,
+      "genome_section": "pricing",
+      "genome_about": "business",
+      "genome_headline": "Pricing models undocumented and mental",
+      "genome_private_reason": null,
+      "genome_owner_dependent": true,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "extractor-defect-2026-08-16"
+    },
+    {
+      "id": "5f6bcb35-e570-4673-b1ce-1377da3468fd",
+      "content": "The business heavily depends on only two people, the owner and Gary, for pricing jobs and critical operational knowledge such as mine site loading.",
+      "created_at": "2026-08-16T12:10:08.821781+00:00",
+      "importance": 9,
+      "genome_section": "people",
+      "genome_about": "business",
+      "genome_headline": "Two people hold critical knowledge",
+      "genome_private_reason": null,
+      "genome_owner_dependent": true,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "extractor-defect-2026-08-16"
+    },
+    {
+      "id": "bffa8c85-3fdc-4ca5-93a8-0eb0cdc2c743",
+      "content": "Staff details: Gary is leading hand, 24 years with the business, only other person who can price jobs, age 61. Sharon handles invoicing, payroll, and ATO work part-time (3 days/week), sister-in-law. Dylan is a fourth-year apprentice and preferred to keep. Only Gary knows mine site loading details. Nobody knows about the owner's intention to sell.",
+      "created_at": "2026-08-16T11:53:45.586449+00:00",
+      "importance": 6,
+      "genome_section": "people",
+      "genome_about": "business",
+      "genome_headline": "Key staff roles and tenure",
+      "genome_private_reason": "not-yet-told",
+      "genome_owner_dependent": true,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "extractor-defect-2026-08-16"
+    },
+    {
+      "id": "214e765a-7f33-4d84-8ccb-f6b10acb0926",
+      "content": "Pricing model: Service work charged at $118/hr plus materials at cost plus 22%. Tendered jobs have labour and materials plus 18% margin, except mine sites have 28% margin due to standdowns and inductions. Builders with long-term relationships on straightforward jobs get a 12% margin. Mental calculation based on drawings, not documented.",
+      "created_at": "2026-08-16T11:53:43.596291+00:00",
+      "importance": 6,
+      "genome_section": "pricing",
+      "genome_about": "business",
+      "genome_headline": "Service and tender job pricing margins",
+      "genome_private_reason": null,
+      "genome_owner_dependent": true,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "extractor-defect-2026-08-16"
+    },
+    {
+      "id": "58011a4a-2176-4bc8-a719-a8cad2c16f3d",
+      "content": "Pricing approach: Service work is charged at $118 per hour plus materials at cost plus 22%. Tendered jobs: Labour and materials computed then add 18% margin, except for mine sites where margin is 28% due to standdowns and inductions. For builders with long-term relationships and straightforward jobs, margin is reduced to 12%. This pricing is not documented and is mentally calculated based on drawings.",
+      "created_at": "2026-08-16T11:52:31.836282+00:00",
+      "importance": 6,
+      "genome_section": "pricing",
+      "genome_about": "business",
+      "genome_headline": "Service and tender pricing margins detailed",
+      "genome_private_reason": null,
+      "genome_owner_dependent": true,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "extractor-defect-2026-08-16"
+    },
+    {
+      "id": "7dcdf3cb-df0d-4c60-9734-368cc8254f22",
+      "content": "What he said he wants to work on, in his own words when he set me up: I run a commercial electrical and mechanical contracting business I started 35 years ago. I am starting to think about selling in the next two to five years and almost nobody knows. I want to get what is in my head written down so the business is worth something without me.",
+      "created_at": "2026-08-16T11:50:29.535548+00:00",
+      "importance": 9,
+      "genome_section": "none",
+      "genome_about": "personal",
+      "genome_headline": null,
+      "genome_private_reason": "exit-intent",
+      "genome_owner_dependent": true,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "extractor-defect-2026-08-16"
+    },
+    {
+      "id": "c35f23cd-24e5-4ed5-9da1-498e7856f152",
+      "content": "Your own valuation, from the thirteen questions you answered before signing up (Electrical & Mechanical Contracting): worth today $1,700,000, worth once your knowledge is captured $1,970,000, so the gap is $271,000.",
+      "created_at": "2026-08-16T11:50:29.535548+00:00",
+      "importance": 9,
+      "genome_section": "cash",
+      "genome_about": "business",
+      "genome_headline": "Valuation gap of $271,000 noted",
+      "genome_private_reason": null,
+      "genome_owner_dependent": true,
+      "confirmed_at": null,
+      "active": false,
+      "parked_reason": "extractor-defect-2026-08-16"
+    }
+  ]
+}

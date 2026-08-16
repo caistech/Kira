@@ -41,6 +41,10 @@ const OWN_CHROME_BOTH = [
   '/chat',
   '/settings',
   '/my-genome',
+  // Wrapped in UserShell like every other authenticated surface, so the marketing strip on top of
+  // it would be a second header — the exact duplicate-chrome defect a tester measured at ~130px
+  // before the headline. Caught here by own-chrome-coverage.test.ts on the first run.
+  '/drafts',
   '/knowledge',
   '/start',
   '/discovery',

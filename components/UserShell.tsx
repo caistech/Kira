@@ -24,6 +24,10 @@ const USER_NAV: NavItem[] = [
   // The thing he is paying for. It was reachable only by typing the URL, which for this audience
   // means it did not exist.
   { href: '/my-genome', label: 'My Genome' },
+  // ⚠️ REACHABLE, because the alternative is what happened to Ray: he asked where a document was,
+  // she offered to EMAIL it and asked him for a recipient — and there was no screen in the product
+  // that would show it to him. "The document exists somewhere and I cannot look at it."
+  { href: '/drafts', label: 'Drafts' },
   { href: '/knowledge', label: 'Knowledge' },
 ];
 
