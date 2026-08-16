@@ -64,7 +64,7 @@ const framework = (journeyType: JourneyType): KiraFramework => ({
 //
 // Net: the business prompt is 1,719 characters SMALLER than before the new section was added, and
 // the ceiling moves with the measurement so that saving cannot be quietly given back.
-const BUDGET = { business: 37_000, personal: 10_200 } as const;
+const BUDGET = { business: 38_000, personal: 10_200 } as const;
 
 // ⚠️ THE BUSINESS CEILING WENT BACK UP, from 28,000 to 36,000, and that is not backsliding.
 //
@@ -81,6 +81,28 @@ const BUDGET = { business: 37_000, personal: 10_200 } as const;
 // entity guard, the approval gate), so the prose may be restating a rule the server refuses to
 // break. That is a measurable question — remove, re-run the red team, compare the rate — and it is
 // the only safe way to find out.
+//
+// ⚠️ RAISED 37,000 → 38,000 on 2026-08-17 for two lines under DURING CONVERSATIONS: obey
+// `ask_this_now`, and never offer to save what you already saved. Measured 37,854 with them in.
+// Here is the number and the decision, which is what this file exists to force.
+//
+// WHAT IT BUYS, and it is the difference between a sale and no sale. The server-side trigger was
+// already built and VERIFIED FIRING on the exact fact — `sole-capability-ageing` matches "Gary is 61
+// years old… the only other person who can price jobs" — so `save_memory` returned the question to
+// ask. She said "Done — I've saved the key people details… What next?" and moved on.
+//
+//   "I have just told her that the entire pricing method of a $4.2 million business exists nowhere
+//    but between my ears, and the reply is what next… She was told a 61-year-old is the only other
+//    man who can price a job, and she said what next. I am being asked to put thirty-five years into
+//    her keeping. She has to be more careful with it than I am." — Ray, 2026-08-17
+//
+// A returned field is data an agent may summarise past. A prompt line is what makes it an
+// instruction. The second line is from the same walkthrough: ten minutes after saving Gary she asked
+// "Want me to save that whole picture now?" — which tells an owner she does not know what she holds.
+//
+// ⚠️ NOT MET BY DELETING A CONTROL. The trim candidates named below (entity separation, authority)
+// are measured by the red team at 5-6/6, and cutting one to pay for this would be choosing the
+// number over the thing it protects — the mistake this file was written to stop.
 //
 // ⚠️ RAISED 36,000 → 37,000 on 2026-08-06 for `## WHO CAN SEE WHAT HE TELLS YOU`. Measured
 // 36,539 with it in. This is the decision-with-a-number-attached that this file exists to force, so

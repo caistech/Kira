@@ -46,6 +46,7 @@ import { isUidToolUrl } from '@/lib/kira/uid-tools.mjs';
 // THE one tool list. Both provisioning paths read it — see kiraAllTools for what a second copy cost.
 import { toolDefsFor } from '@/lib/kira/tool-manifest.mjs';
 import { parkedOtherBusinesses } from '@/lib/kira/other-businesses';
+import { sweepDuplicateMemories } from '@/lib/genome/dedupe-sweep-apply';
 import { forgetParkedEntityLeaks } from '@/lib/kira/entity-sweep';
 import { refileAssistantCapabilityClaims } from '@/lib/kira/capability-sweep';
 
@@ -166,6 +167,14 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
       // out, because parking it in one store while publishing it to the other is the guard being
       // technically satisfied and practically absent. See lib/kira/entity-sweep.ts.
       await forgetParkedEntityLeaks(userId, KIRA_CONVAI_TABLES.memory);
+
+      // ⚠️ THE DEDUPE THE DISTIL DOES NOT DO. `handleKiraSaveMemory` dedupes on the way in; this
+      // path inserts straight into the table, so a distil returning four overlapping memories writes
+      // all four. `swallowedIds` was written for exactly this and had NO CALLER — which is why the
+      // pricing was still in Ray's handover document twice on the walkthrough after it was written,
+      // and why one of two near-identical Gary rows was marked private while its twin was not, so
+      // the screen and the file disagreed about the most sensitive thing in the product.
+      await sweepDuplicateMemories(userId, KIRA_CONVAI_TABLES.memory);
 
       // Same reasoning, different contamination: what she wrote about HER OWN reach.
       //

@@ -16,6 +16,9 @@
 import { redirect } from 'next/navigation';
 import { getAuthUser, getCurrentAppUser, isCurrentUserAdmin } from '@/lib/auth';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
+import { createServiceClient } from '@/lib/supabase/server';
+import { displayedFigures } from '@/lib/valuation/displayed';
+import { DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { PortalShell, type NavItem } from '@/components/PortalShell';
 import { ClaimStoredValuation } from '@/components/ClaimStoredValuation';
 
@@ -83,6 +86,37 @@ export async function UserShell({ children }: { children: React.ReactNode }) {
     identity = null;
   }
 
+  // ⚠️ WHAT HE ALREADY HAS, so the claim card can name BOTH figures.
+  //
+  // The card asked "make this your starting point?" without ever saying what the current starting
+  // point was. Ray, 2026-08-17: "it does not tell me what my current starting point is, so it is
+  // asking me to choose between $300,000 and a number it will not show me." A replace decision with
+  // one of the two numbers missing is not a decision.
+  let existingBaseline: { gapText: string; takenOn: string } | null = null;
+  try {
+    if (appUser?.id) {
+      const { data: row } = await createServiceClient()
+        .from('business_valuations')
+        .select('worth_today, worth_potential, currency, created_at')
+        .eq('user_id', appUser.id)
+        .maybeSingle();
+      if (row) {
+        const figures = displayedFigures(
+          { worthToday: Number(row.worth_today) || 0, worthPotential: Number(row.worth_potential) || 0 },
+          (row.currency as string) || DEFAULT_CURRENCY,
+        );
+        existingBaseline = {
+          gapText: figures.gapText,
+          takenOn: new Date(String(row.created_at)).toLocaleDateString('en-AU', { day: 'numeric', month: 'long' }),
+        };
+      }
+    }
+  } catch (error) {
+    // Never fatal — a card that names one figure is worse than one that names two, and far better
+    // than a shell that fails to render.
+    console.error('[user-shell] could not read the existing baseline:', error);
+  }
+
   const isOperator = await isCurrentUserAdmin();
 
   return (
@@ -101,7 +135,7 @@ export async function UserShell({ children }: { children: React.ReactNode }) {
       {/* If they ran a valuation before signing up, attach it to the account now. Mounted on the
           shell rather than in each signup flow, because the condition is "is signed in", not
           "arrived via checkout" — which is how the free-signup path lost it entirely. */}
-      <ClaimStoredValuation />
+      <ClaimStoredValuation existing={existingBaseline} />
       {/* ⚠️ THE FAB IS GONE — removed 2026-08-15 on operator instruction. The spacing note below is
           kept only until someone confirms the bottom padding is still wanted without it.
           ROOM FOR THE FAB. It is fixed bottom-right, so whatever is last on the page sits under it —

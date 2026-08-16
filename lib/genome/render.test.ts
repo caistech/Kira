@@ -127,11 +127,21 @@ describe('provenance', () => {
     const g = genome({ sections: [section({ entries: [entry(), entry({ id: 'e2', content: 'Untraceable.', source: null })] })] });
     const html = renderSingleFile(g, 'buyer', meta);
     expect(html).toContain('from a conversation on 3 March 2026');
-    // WORDING CHANGED, RULE UNCHANGED. An untraceable entry must still SAY SO — an unmarked mix
-    // makes the whole document only as trustworthy as its weakest line. But "source not recorded"
-    // is a system log line, and Ray listed it among the three phrases that stopped him sending the
-    // document to his broker.
-    expect(html).toContain('not tied to a specific conversation');
+    // WORDING CHANGED TWICE, RULE UNCHANGED — so the assertion is now on the RULE.
+    //
+    // An untraceable entry must stay DISTINGUISHABLE from a sourced one: an unmarked mix makes the
+    // whole document only as trustworthy as its weakest line. What it must not do is admit to having
+    // no date at all. "Not tied to a specific conversation" did both — and it landed on the pricing,
+    // the single most valuable line in Ray's document, under a landing page promising "every line in
+    // it is dated to the day you said it."
+    //
+    // A null source means the CONVERSATION could not be resolved, not that the date is unknown, so
+    // the fallback now states when it was recorded. Two different claims, two different phrasings, a
+    // date on both.
+    expect(html).toContain('recorded on');
+    expect(html).not.toContain('not tied to a specific conversation');
+    // Still tells them apart — the reason this rule exists at all.
+    expect(html).toContain('from a conversation on');
   });
 
   it('never claims the owner SAID it — the content is a distillation, not a quotation', () => {

@@ -39,7 +39,20 @@ import { displayedFigures } from '@/lib/valuation/displayed';
 import { computeValuation } from '@/lib/valuation/model';
 import { clearStoredValuation, readStoredValuation, type ValuationPayload } from '@/lib/valuation/share';
 
-export function ClaimStoredValuation() {
+export function ClaimStoredValuation({
+  existing = null,
+}: {
+  /**
+   * The baseline already on the account, when there is one.
+   *
+   * ⚠️ WITHOUT IT THIS CARD ASKS AN UNANSWERABLE QUESTION. It offered to make a device valuation
+   * "your starting point" while never saying what the starting point currently was — so an owner
+   * with a frozen $270,000 baseline was asked to accept $300,000 against a figure the card would
+   * not show him. Ray, 2026-08-17: "it is asking me to choose between $300,000 and a number it will
+   * not show me."
+   */
+  existing?: { gapText: string; takenOn: string } | null;
+} = {}) {
   const router = useRouter();
   const [payload, setPayload] = useState<ValuationPayload | null>(null);
   const [busy, setBusy] = useState(false);
@@ -181,15 +194,34 @@ export function ClaimStoredValuation() {
 
   return (
     <div id="claim-valuation" className="mb-6 scroll-mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-5">
-      <h2 className="text-base font-semibold text-stone-900">There&apos;s a business valuation saved on this device</h2>
+      {/* TWO SHAPES, because they are two different decisions. With no baseline this is "adopt
+          this"; with one it is "REPLACE the number you already have", and the replacement must name
+          both figures and the date of the one being replaced. */}
+      <h2 className="text-base font-semibold text-stone-900">
+        {existing
+          ? 'A newer valuation is saved on this device'
+          : "There's a business valuation saved on this device"}
+      </h2>
       <p className="mt-1 max-w-prose text-base text-stone-700">
-        {headline
-          ? `It puts the gap between what the business is worth today and what it could be worth at ${headline}${
-              payload.inputs.industry ? `, in ${payload.inputs.industry}` : ''
-            }. `
-          : ''}
-        If you ran it, we&apos;ll make it your starting point — every change from here is measured
-        against it. If someone else used this computer, discard it.
+        {existing ? (
+          <>
+            Your starting point is <strong>{existing.gapText}</strong>, taken {existing.takenOn}. The
+            valuation on this device puts it at <strong>{headline || 'a different figure'}</strong>
+            {payload.inputs.industry ? `, in ${payload.inputs.industry}` : ''}. Replacing it changes
+            what every later change is measured against — your progress so far is measured from the
+            old one. Keep the one you have unless the business itself has changed.
+          </>
+        ) : (
+          <>
+            {headline
+              ? `It puts the gap between what the business is worth today and what it could be worth at ${headline}${
+                  payload.inputs.industry ? `, in ${payload.inputs.industry}` : ''
+                }. `
+              : ''}
+            If you ran it, we&apos;ll make it your starting point — every change from here is measured
+            against it. If someone else used this computer, discard it.
+          </>
+        )}
       </p>
       <div className="mt-4 flex flex-wrap gap-3">
         <button
@@ -198,7 +230,9 @@ export function ClaimStoredValuation() {
           onClick={() => decide(true)}
           className="min-h-[44px] rounded-full bg-stone-900 px-5 py-3 text-base font-semibold text-white disabled:opacity-60"
         >
-          That&apos;s mine — use it
+          {/* The label states the CONSEQUENCE when there is something to lose. "That's mine — use
+              it" is right for an adoption and dangerously mild for a replacement. */}
+          {existing ? `Replace my starting point with ${headline || 'this one'}` : "That's mine — use it"}
         </button>
         <button
           type="button"
@@ -206,7 +240,7 @@ export function ClaimStoredValuation() {
           onClick={() => decide(false)}
           className="min-h-[44px] rounded-full border border-stone-300 bg-white px-5 py-3 text-base font-semibold text-stone-800 disabled:opacity-60"
         >
-          Not mine — discard it
+          {existing ? `Keep ${existing.gapText}` : 'Not mine — discard it'}
         </button>
       </div>
     </div>

@@ -223,9 +223,13 @@ export default async function DashboardPage({
       {ledger.openCount > 0 && (
         <section className="mb-8 rounded-2xl border border-stone-200 bg-white p-5">
           <h2 className="text-lg font-semibold text-stone-900">Waiting on you</h2>
+          {/* ⚠️ DOES NOT ASSERT THEY ARE DRAFTED. This said "Kira has these drafted and ready" over
+              a list containing items with nothing written and items she had been REFUSED, and the
+              link under it was labelled "Read what she has written". Each row now carries its own
+              state from the same source the Drafts page reads. */}
           <p className="mt-1 max-w-prose text-base text-stone-600">
-            Kira has these drafted and ready. Nothing goes out until you say so — tell her to send
-            one and she&apos;ll read it back to you first.
+            What you have asked Kira for, and where each one is up to. Nothing goes out until you say
+            so — tell her to send one and she&apos;ll read it back to you first.
           </p>
           <ul className="mt-4 space-y-3">
             {ledger.open.map((task) => (
@@ -620,10 +624,15 @@ function GapDashboard({
           })}
           {valuation.industry ? ` · ${valuation.industry}` : ''}. It stays fixed so progress is
           measured from one starting point.{' '}
-          <Link href="/business-valuation" className="underline underline-offset-2 hover:text-white">
+          {/* ⚠️ SAY WHAT THE BUTTON DOES TO HIS ACCOUNT, ON THE BUTTON. He pressed a control we put
+              on his dashboard and no screen after it said the result would not replace his starting
+              point — so he finished the exercise believing his number had changed, and then met the
+              offer to change it on Settings, of all places. `?rerun=1` carries that into the result
+              page so the same sentence appears where the new figure does. */}
+          <Link href="/business-valuation?rerun=1" className="underline underline-offset-2 hover:text-white">
             Run the numbers again
-          </Link>
-          .
+          </Link>{' '}
+          — that shows you a fresh figure and does not replace this one unless you say so.
         </p>
       </div>
 

@@ -25,6 +25,7 @@ import { GENOME_AREAS, LEGACY_SECTION_MAP, areaFor, type AreaKey } from './areas
 // rule areas.ts is held to. A second hand-written copy of a string this small is precisely how the
 // producing side and the enforcing side come to disagree without either one looking wrong.
 import { ASSISTANT_STATE_TAG } from '@/lib/kira/memory-extract';
+import { withoutOwnerName } from './owner-name';
 import { deriveBaseline, type AreaBaseline, type BaselineInputs } from './baseline';
 
 /**
@@ -666,6 +667,20 @@ export async function applyReviewedClassification(
 export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
   const supabase = createServiceClient();
 
+  // ⚠️ HIS OWN NAME, SO IT CAN BE TAKEN BACK OUT OF EVERY LINE.
+  //
+  // memory-extract.ts already instructs the distil never to use it, and the distil wrote "Pricing is
+  // done verbally in Ray's head" into the copy meant for a buyer anyway. Applied at READ time rather
+  // than at write time so it covers the rows already in the table, and in one place rather than in
+  // each of the four surfaces that render an entry.
+  const { data: ownerRow } = await supabase
+    .from('users')
+    .select('first_name')
+    .eq('id', userId)
+    .maybeSingle();
+  const ownerFirstName = (ownerRow?.first_name as string | null) ?? null;
+  const clean = (text: string) => withoutOwnerName(text, ownerFirstName);
+
   const { data: rows } = await supabase
     .from('kira_memory')
     .select(
@@ -721,7 +736,7 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
     .map((r) => ({
       id: String(r.id),
       headline: (r.genome_headline as string) ?? null,
-      content: String(r.content ?? ''),
+      content: clean(String(r.content ?? '')),
       capturedAt: String(r.created_at),
       importance: (r.importance as number) ?? null,
       section: 'unsorted' as const,
@@ -752,7 +767,7 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
   const all: OwnerEntry[] = survivors.map((r) => ({
       id: String(r.id),
       headline: (r.genome_headline as string | null) ?? null,
-      content: String(r.content ?? ''),
+      content: clean(String(r.content ?? '')),
       capturedAt: String(r.created_at),
       importance: (r.importance as number) ?? null,
       // LEGACY KEYS RESOLVE FORWARD, at read time.

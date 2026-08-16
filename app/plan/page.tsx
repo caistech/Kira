@@ -41,6 +41,9 @@ import {
 export default function PlanPage() {
   const [payload, setPayload] = useState<ValuationPayload | null>(null);
   const [ready, setReady] = useState(false);
+  // Whether the visitor already has an account. Resolved from /api/valuation/mine, which knows
+  // because it reads the session — see the note there.
+  const [signedIn, setSignedIn] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Is billing actually live? Defaults to FALSE and stays false if the check fails.
@@ -132,12 +135,22 @@ export default function PlanPage() {
     // and profit never enter a URL (and so browser history, Referer headers and forwarded links
     // don't carry them). The `?v=` read is a fallback for links sent before that change; nothing
     // generates them any more.
+    // ⚠️ THE ACCOUNT BASELINE WINS OVER THE DEVICE, and the order used to be the other way round.
+    //
+    // Everything else in the product measures from the FROZEN baseline and says so. This page read
+    // the device store first — so an owner who pressed "Run the numbers again" had a fresh, unclaimed
+    // valuation in sessionStorage and saw it here, on the one page with the card button, while his
+    // dashboard and his Genome showed the baseline.
+    //
+    //   "$270,000 on my dashboard and my Genome page, and $300,000 on the page that asks for my
+    //    card — both live at the same time… the fee is 'about 4.0% a year of what you stand to
+    //    unlock'. Against $270,000 it is 4.4%. I am not suggesting you did that on purpose. I am
+    //    telling you what it looks like from my chair." — Ray, 2026-08-17
+    //
+    // The device store is still exactly right for this page's main audience — an anonymous visitor
+    // who has just run the numbers in this browser and has no account to read. `/api/valuation/mine`
+    // returns null for him, so asking the account first costs him nothing and one request.
     const stored = readStoredValuation();
-    if (stored) {
-      setPayload(stored);
-      setReady(true);
-      return;
-    }
 
     const legacy = decodeValuationParam(new URLSearchParams(window.location.search).get('v'));
     if (legacy) {
@@ -166,13 +179,19 @@ export default function PlanPage() {
       .then((r) => (r.ok ? r.json() : null))
       .then((body) => {
         if (cancelled) return;
-        setPayload(body?.valuation ?? null);
+        // Account first, device as the fallback.
+        setPayload(body?.valuation ?? stored ?? null);
+        setSignedIn(Boolean(body?.signedIn));
         setReady(true);
       })
       .catch(() => {
-        // Signed out, offline, or the lookup failed — the page's own "run the valuation" state is
-        // the correct answer for all three, and it is the state this page was written for.
-        if (!cancelled) setReady(true);
+        // Signed out, offline, or the lookup failed. The device answer is better than nothing for
+        // all three, and the page's own "run the valuation" state covers the case where there is
+        // neither.
+        if (!cancelled) {
+          setPayload(stored ?? null);
+          setReady(true);
+        }
       });
     return () => {
       cancelled = true;
@@ -569,6 +588,13 @@ export default function PlanPage() {
                   most cautious buyers would not find it. For THIS audience, wanting to look first is
                   the normal case, not the objection. The account, the dashboard and a working Kira
                   already exist behind it; we simply were not offering them. */}
+              {/* ⚠️ NOT OFFERED TO SOMEONE WHO HAS ALREADY TAKEN THEM. A signed-in owner was shown
+                  "Create an account without a card", "Already have an account? Sign in" and "Been
+                  invited to the beta?" on the page asking for his card. Ray: "Three offers I have
+                  already taken." Each is exactly right for the anonymous visitor this page is
+                  mainly written for, and each reads as a page that does not know who it is talking
+                  to when he is signed in. */}
+              {!signedIn && (
               <p className="mt-4 text-sm text-stone-600">
                 Rather look around first?{' '}
                 <a href="/signup" className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500">
@@ -576,6 +602,7 @@ export default function PlanPage() {
                 </a>{' '}
                 and come back when you&apos;re ready.
               </p>
+              )}
               <p className="mt-3 text-sm text-stone-500">
                 Before you decide:{' '}
                 <a href="/what-she-does" className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500">
@@ -588,7 +615,7 @@ export default function PlanPage() {
                   is not a pricing tier. Rendered last of the three secondary lines because it is the
                   one fewest readers need: an invited tester usually arrives by `?code=` and never
                   reads this at all. It is here for the one whose link went stale. */}
-              {betaOpen ? (
+              {signedIn ? null : betaOpen ? (
                 <div className="mt-5">
                   <BetaRedeem initialCode={betaCode ?? ''} firstName={payload?.firstName} />
                 </div>
@@ -618,6 +645,7 @@ export default function PlanPage() {
                   It also catches the invitation-code dead end: a code that has already been redeemed
                   means he has an account, and this is the line that resolves it without the API
                   having to say which of the three rejection reasons applied. */}
+              {!signedIn && (
               <p className="mt-3 text-sm text-stone-500">
                 Already have an account?{' '}
                 <a
@@ -628,6 +656,7 @@ export default function PlanPage() {
                 </a>
                 .
               </p>
+              )}
               <p className="text-xs text-stone-400 mt-3">
                 {copy.finePrint(`${money(model.quote.monthly)} ${tax}`)} You set your password and meet Kira right after.
               </p>

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-import { draftBody, readinessOf } from './drafts';
+import { draftBody, plainTitle, readinessOf } from './drafts';
 
 // THE THREE STATES, AND WHY COLLAPSING THEM WAS THE DEFECT.
 //
@@ -85,5 +85,59 @@ describe('the drafts screens do not offer to send', () => {
   it('says out loud where sending happens, so the missing button is not read as a missing feature', () => {
     const src = readFileSync('app/drafts/[draftId]/page.tsx', 'utf8');
     expect(src).toContain('Nothing on this page sends anything');
+  });
+});
+
+// ⚠️ ONE SOURCE FOR "WHERE IS THIS UP TO" — the habit Ray named after five visits.
+//
+//   "Every single problem I have written up today is the same problem: two parts of the product
+//    holding different versions of the same fact. The gap. The draft. The count of areas. The staff
+//    record being private and not private. It is not four bugs, it is one habit." — 2026-08-17
+//
+// The dashboard used to derive its state from the status COLUMN and the Drafts page from the BODY,
+// so one said "drafted and waiting on your go-ahead" while the other said "nothing written yet" —
+// about the same row, at the same moment, with a link between them labelled "Read what she has
+// written". The ledger now calls readinessOf, so there is one answer.
+describe('the dashboard and the drafts page cannot disagree', () => {
+  it('the ledger reads its state from the same function the drafts page uses', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('lib/kira/swarm/open-tasks.ts', 'utf8');
+    expect(src).toContain("import { readinessOf } from './drafts'");
+    expect(src).toMatch(/plainState\(row\)/);
+    // And it must SELECT the columns readinessOf needs, or it silently reports every row as
+    // having no body — a guard reading fields the query never fetched.
+    expect(src).toContain('preview, artifact');
+  });
+
+  it('never prints a raw status column to the owner', () => {
+    // "unsupported" reached his screen this way, beside "an information task not supported for
+    // assistant action".
+    const { readFileSync } = require('node:fs') as typeof import('node:fs');
+    const src = readFileSync('lib/kira/swarm/open-tasks.ts', 'utf8');
+    expect(src).not.toContain("status.replace(/_/g, ' ')");
+  });
+});
+
+describe('plainTitle — his words, not the orchestrator’s', () => {
+  it('replaces machine-speak with what he actually asked for', () => {
+    expect(
+      plainTitle(
+        'Request is to draft a summary document, which is unsupported.',
+        'Draft a summary document of the pricing model including service work and mine sites.',
+      ),
+    ).toContain('pricing model');
+    expect(
+      plainTitle('Summary of pricing model, which is an information task not supported for assistant action.', 'Summarise how I price'),
+    ).toBe('Summarise how I price');
+  });
+
+  it('leaves an ordinary summary alone', () => {
+    expect(plainTitle('Pricing model summary for service and tendered work', 'anything')).toBe(
+      'Pricing model summary for service and tendered work',
+    );
+  });
+
+  it('never renders empty', () => {
+    expect(plainTitle('', '')).toBe('Something you asked her for');
   });
 });

@@ -15,6 +15,8 @@
 
 import { createServiceClient } from '@/lib/supabase/server';
 
+import { readinessOf } from './drafts';
+
 /** Non-terminal: asked for, not yet resolved either way. */
 const OPEN_STATES = ['queued', 'awaiting_approval', 'scheduled'] as const;
 
@@ -40,10 +42,32 @@ export interface TaskLedger {
   spoken: string;
 }
 
-function plainState(status: string): string {
-  switch (status) {
+/**
+ * ⚠️ THE STATUS ALONE IS NOT ENOUGH, AND SAYING IT ALONE PRODUCED A FLAT CONTRADICTION.
+ *
+ * `awaiting_approval` used to read "drafted and waiting on your go-ahead" whatever was behind it. On
+ * the same account, at the same moment, the Drafts page read the BODY and said "Nothing written yet.
+ * If she has told you it was ready, she was wrong."
+ *
+ *   "Two screens, one item, opposite states… the dashboard says a draft is 'drafted and waiting on
+ *    your go-ahead' and links to a page that says 'nothing written yet'. The link is even labelled
+ *    'Read what she has written'." — Ray, 2026-08-17
+ *
+ * So this reads the same signal the Drafts page reads — `readinessOf` from drafts.ts — rather than
+ * guessing from the status column. One source, two screens.
+ *
+ * ⚠️ AND NO STATUS STRING EVER REACHES HIM RAW. The old default returned the column with its
+ * underscores swapped for spaces, which is how "unsupported" arrived on his screen next to
+ * "an information task not supported for assistant action". He should never have to work out what
+ * an "assistant action" is.
+ */
+function plainState(row: { status: string; preview?: unknown; artifact?: unknown }): string {
+  const readiness = readinessOf(row);
+  if (readiness === 'refused') return 'she could not do this one';
+
+  switch (row.status) {
     case 'awaiting_approval':
-      return 'drafted and waiting on your go-ahead';
+      return readiness === 'ready' ? 'drafted and waiting on your go-ahead' : 'on her list, not written yet';
     case 'queued':
       return 'accepted and not finished';
     case 'scheduled':
@@ -51,7 +75,9 @@ function plainState(status: string): string {
     case 'done':
       return 'sent';
     default:
-      return status.replace(/_/g, ' ');
+      // Deliberately vague rather than leaking a column value. If a state matters to him it earns a
+      // sentence above; anything else is our bookkeeping.
+      return 'in progress';
   }
 }
 
@@ -75,12 +101,15 @@ function toSummary(row: {
   summary: string | null;
   utterance: string | null;
   created_at: string;
+  // Read so `plainState` can tell "drafted" from "on her list" — see the note there.
+  preview?: unknown;
+  artifact?: unknown;
 }): OpenTaskSummary {
   return {
     id: row.id,
     kind: row.kind ?? 'task',
     status: row.status,
-    state: plainState(row.status),
+    state: plainState(row),
     // Her own one-liner if she wrote one, otherwise his words. Never a placeholder.
     summary: row.summary || row.utterance || 'no description recorded',
     requested: row.created_at,
@@ -103,7 +132,7 @@ export async function readTaskLedger(userId: string): Promise<TaskLedger> {
     const since = new Date(Date.now() - RECENT_DAYS * 86_400_000).toISOString();
     const { data, error } = await createServiceClient()
       .from('kira_tasks')
-      .select('id, kind, status, summary, utterance, created_at')
+      .select('id, kind, status, summary, utterance, preview, artifact, created_at')
       .eq('user_id', userId)
       .or(`status.in.(${OPEN_STATES.join(',')}),and(status.eq.done,created_at.gte.${since})`)
       .order('created_at', { ascending: true })

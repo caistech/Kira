@@ -244,8 +244,14 @@ export const STEPS: Step[] = [
     help: 'A buyer worries when too much rides on a handful of clients - especially ones who deal with you personally.',
     options: [
       { value: 'diversified', label: 'Well spread', sub: 'No single client is more than ~10%' },
-      { value: 'moderate', label: 'A few big ones', sub: 'Top client is 10-30%' },
-      { value: 'concentrated', label: 'Concentrated', sub: 'One or two clients are most of it' },
+      // ⚠️ THE BAND GAP RAY FELL INTO, and it is the band most contractors his size sit in.
+      // "My biggest is 40% and it is one client. Neither box is true. I picked the second one and it
+      // is wrong — one client at 40% is not 'most of it'. There is a gap in your bands between 30%
+      // and about 50%."
+      // The VALUES are unchanged, so no score moves and no stored answer is reinterpreted; the
+      // wording now covers the range continuously instead of leaving a hole between them.
+      { value: 'moderate', label: 'A few big ones', sub: 'Top client is roughly 10-30%' },
+      { value: 'concentrated', label: 'One dominant client', sub: 'Top client is more than about a third of it' },
     ],
   },
   {

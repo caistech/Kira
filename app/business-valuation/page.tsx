@@ -394,8 +394,14 @@ export default function BusinessValuationPage() {
    * and corrects on the first tick; nothing reads it until the result screen, eleven answers later.
    */
   const [returningToApp, setReturningToApp] = useState(false);
+  // ⚠️ SAME EFFECT-NOT-INITIALISER RULE as above — the URL is not settled until after commit.
+  // `?rerun=1` means he pressed "Run the numbers again" on a dashboard that already holds a frozen
+  // baseline, so the result must say what it does to that baseline WHERE the new figure appears.
+  const [isRerun, setIsRerun] = useState(false);
   useEffect(() => {
-    setReturningToApp(new URLSearchParams(window.location.search).get('from') === 'app');
+    const params = new URLSearchParams(window.location.search);
+    setReturningToApp(params.get('from') === 'app');
+    setIsRerun(params.get('rerun') === '1');
   }, []);
 
   useEffect(() => {
@@ -891,6 +897,7 @@ export default function BusinessValuationPage() {
             typedSector={industryQuery.trim()}
             onChangeSector={() => setStepIndex(0)}
             returningToApp={returningToApp}
+            isRerun={isRerun}
           />
         )}
       </main>
@@ -925,6 +932,7 @@ function ResultView({
   typedSector,
   onChangeSector,
   returningToApp = false,
+  isRerun = false,
 }: {
   result: ReturnType<typeof computeValuation>;
   /** What the owner REPORTED. The price band comes from this, never from result.gap. */
@@ -951,6 +959,14 @@ function ResultView({
   onChangeSector?: () => void;
   /** He is already a customer: don't sell, and don't quote him a price he is already paying. */
   returningToApp?: boolean;
+  /**
+   * He arrived from "Run the numbers again" on a dashboard that already holds a frozen baseline.
+   *
+   * ⚠️ THE RESULT MUST SAY WHAT IT DOES TO THAT BASELINE, HERE. He pressed a control we put on his
+   * dashboard, nothing on the result screen said it would not replace his starting point, and he
+   * finished believing his number had changed — then met the offer to change it on Settings.
+   */
+  isRerun?: boolean;
 }) {
   // APPROXIMATE, on the result screen. See formatMoneyApprox: eleven category answers and a sector
   // median cannot resolve a business to the dollar, and "$1,094,292" claims they can on the one
@@ -1372,6 +1388,19 @@ function ResultView({
                 have a population to draw one from, and inventing "most owners score 40" on a screen
                 that just disclosed its own data sources would undo the paragraph that earned the
                 most trust in the whole walkthrough. */}
+            {/* ⚠️ THE CONSEQUENCE, WHERE THE NEW FIGURE IS — not later, on Settings.
+                He pressed "Run the numbers again" on his own dashboard and no screen after it said
+                the result would not replace his starting point. Ray, 2026-08-17: "So I finished that
+                exercise believing my number had changed… a man who presses a button called run the
+                numbers again is entitled to be told what it does to his account." */}
+            {isRerun && (
+              <p className="mt-4 rounded-2xl bg-white/15 px-4 py-3 text-left text-sm leading-relaxed text-white/90">
+                This is a fresh run. <strong>It has not replaced your starting point</strong> — that
+                stays as it was, so your progress is still measured from one figure. If the business
+                itself has changed and you want this to become the new starting point, you will be
+                asked on your Overview.
+              </p>
+            )}
             <div className="mt-4 inline-flex items-center gap-2 text-sm bg-white/15 rounded-full px-4 py-1.5">
               <Brain className="h-4 w-4" /> Transferability score: {readinessPct}/100
             </div>
@@ -1686,8 +1715,11 @@ function ResultView({
               <strong className="text-stone-700">
                 {result.floorMultiple.toFixed(1)}× to {result.ceilingMultiple.toFixed(1)}×
               </strong>
-              , adjusted for the size of your earnings; where you land inside it is what the eleven
-              questions decide.
+              {/* ⚠️ THE NUMBER IS READ FROM `SCREEN_COUNT`, NEVER TYPED. This said "eleven" on a
+                  thirteen-screen questionnaire. Ray: "There are thirteen. Small thing. I count
+                  things." He counts things because the whole page asks him to trust arithmetic. */}
+              , adjusted for the size of your earnings; where you land inside it is what the{' '}
+              {SCREEN_COUNT} questions decide.
             </>
           )}{' '}
           <strong className="text-stone-700">The outer limits are 1.5× and 5×</strong>, and they hold

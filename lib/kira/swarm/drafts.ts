@@ -83,6 +83,26 @@ export function readinessOf(row: { status: string; preview?: unknown; artifact?:
  * invented all-clear. A missing item reads as "she did not mention it"; a wrong all-clear reads as
  * a promise, and this is the surface where a promise about a document is exactly the defect.
  */
+/**
+ * ⚠️ THE ORCHESTRATOR'S OWN WORDS ARE NOT A TITLE FOR HIM.
+ *
+ * Two of the three rows on Ray's Drafts page read "Request to summarise pricing model, which is an
+ * information task not supported for assistant action" and "Request is to draft a summary document,
+ * which is unsupported."
+ *
+ *   "I do not know what an 'assistant action' is and I should not have to. Say it in English."
+ *
+ * Those strings are a machine explaining a refusal to another machine. When the summary is one of
+ * them, his OWN words are the better title — and the refusal is already said properly by the
+ * 'refused' state on the detail page. Falls through untouched for every ordinary summary.
+ */
+export function plainTitle(summary: string, utterance: string): string {
+  const machineSpeak =
+    /assistant action|not supported|unsupported|information task|is to draft|request is to/i;
+  const usable = summary.trim() && !machineSpeak.test(summary) ? summary.trim() : utterance.trim();
+  return (usable || 'Something you asked her for').slice(0, 160);
+}
+
 export async function readDrafts(userId: string): Promise<DraftItem[]> {
   if (!userId) return [];
   try {
@@ -99,7 +119,7 @@ export async function readDrafts(userId: string): Promise<DraftItem[]> {
       kind: String(row.kind ?? 'task'),
       status: String(row.status),
       readiness: readinessOf(row as { status: string; preview?: unknown; artifact?: unknown }),
-      title: String(row.summary || row.utterance || 'no description recorded').slice(0, 160),
+      title: plainTitle(String(row.summary ?? ''), String(row.utterance ?? '')),
       asked: String(row.utterance || row.summary || ''),
       body: draftBody(row as { preview?: unknown; artifact?: unknown }),
       requested: String(row.created_at),

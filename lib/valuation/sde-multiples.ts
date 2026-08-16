@@ -84,7 +84,12 @@ export const SECTOR_MULTIPLES: SectorMultiple[] = [
   // Automotive & Boat
   { name: 'Car Washes', group: 'Automotive', sde: 4.73 },
   { name: 'Gas Stations', group: 'Automotive', sde: 3.7 },
-  { name: 'Equipment Rental & Dealers', group: 'Automotive', sde: 3.55 },
+  // ⚠️ CONSTRUCTION, NOT AUTOMOTIVE — the GROUP moved, the multiple did not.
+  // Ray, looking for his industry: "Plant & Equipment Hire is filed under Automotive. A plant hire
+  // yard is not a car business, and around here it is a big category." He is right about where a WA
+  // contractor looks for it, and the group only decides which heading it appears under in the
+  // dropdown; `sde` is untouched, so no valuation moves and no stored answer is reinterpreted.
+  { name: 'Equipment Rental & Dealers', group: 'Construction', sde: 3.55 },
   { name: 'Auto Repair & Service', group: 'Automotive', sde: 2.7 },
   { name: 'Car Dealerships', group: 'Automotive', sde: 2.32 },
   // Online & Technology

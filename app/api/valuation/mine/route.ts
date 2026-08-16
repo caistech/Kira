@@ -29,7 +29,11 @@ export async function GET() {
   const user = await getCurrentAppUser();
   // Not an error. This route is called speculatively by a PUBLIC page, and a signed-out visitor is
   // its normal case — 401 here would put a red line in the console of every anonymous pricing view.
-  if (!user?.id) return NextResponse.json({ valuation: null });
+  // ⚠️ `signedIn` TRAVELS WITH IT, because the caller needs to know the difference between "no
+  // account valuation" and "no account". /plan offered a signed-in owner three doors he had already
+  // walked through — "Create an account without a card", "Already have an account? Sign in", and
+  // "Been invited to the beta?". Ray: "Three offers I have already taken."
+  if (!user?.id) return NextResponse.json({ valuation: null, signedIn: false });
 
   try {
     const svc = createServiceClient();
@@ -39,16 +43,19 @@ export async function GET() {
       .eq('user_id', user.id)
       .maybeSingle();
 
-    if (!data?.inputs) return NextResponse.json({ valuation: null });
+    if (!data?.inputs) return NextResponse.json({ valuation: null, signedIn: true });
 
     return NextResponse.json({
       valuation: { inputs: data.inputs, currency: data.currency || DEFAULT_CURRENCY },
+      signedIn: true,
     });
   } catch (error) {
     console.error('[api/valuation/mine] lookup failed:', error);
     // Degrade to "no account valuation" rather than 500. The caller still has the device store to
     // fall back on, and a pricing page that errors is worse than one that asks him to run the
     // numbers.
+    // Signed-in state is unknown after a failure, and claiming false would re-offer the signup
+    // doors to someone who has an account. Omitted rather than guessed.
     return NextResponse.json({ valuation: null });
   }
 }

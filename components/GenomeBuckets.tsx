@@ -376,10 +376,16 @@ export function GenomeBuckets({
 
       {/* THE EXPLANATORY HEADER (§5 of the product standards) — what this is, what to do, why it
           matters. It also does the bounding: this says how much Kira HOLDS, and stops short of any
-          claim about what the business is worth or whether it is ready to sell. */}
+          claim about what the business is worth or whether it is ready to sell.
+
+          ⚠️ IT NO LONGER CARRIES A COUNT. It said "${started} of 9 started, ${covered} well covered"
+          a few inches above a footer saying "0 of 9 areas are well covered, 6 more are sketched in"
+          — two tallies of the same grid, in different words, on one screen. Ray, 2026-08-17: "Four
+          different counts of the same thing on two screens. I read the whole page before I touch
+          anything, so I found all four." One statement per component; the footer is it. */}
       <p className="mt-1 max-w-prose text-base leading-relaxed text-stone-600">
         {intro ??
-          `Your business, in the nine areas a buyer's advisor works through. Each one fills up as Kira captures what answers it — that is how much she holds, not how good that part of the business is. ${started} of ${sections.length} started, ${covered} well covered. Tap any area to work on it.`}
+          `Your business, in the nine areas a buyer's advisor works through. Each one fills up as Kira captures what answers it — that is how much she holds, not how good that part of the business is. Tap any area to work on it.`}
       </p>
 
       <ul className="mt-6 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3">

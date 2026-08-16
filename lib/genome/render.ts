@@ -111,9 +111,19 @@ function provenance(entry: OwnerEntry, timeZone: string): string {
   //
   // "Not tied to a specific conversation" says exactly the same and reads as a document about a
   // business rather than a row with a null column.
+  // ⚠️ EVERY LINE CARRIES A DATE, because the landing page promises exactly that: "every line in it
+  // is dated to the day you said it." One entry printed "not tied to a specific conversation" and it
+  // was the pricing — Ray: "that is the line I would most want dated, because it is the most
+  // valuable one."
+  //
+  // A null `source` means the CONVERSATION could not be resolved, never that the date is unknown:
+  // `capturedAt` is the row's own created_at and is always present. So the fallback states what is
+  // actually true — when it was written down — rather than confessing a join that failed. The
+  // wording stays distinct from the sourced case, because "recorded on" and "he said it on" are
+  // different claims and a buyer's accountant is entitled to tell them apart.
   const said = entry.source
     ? `from a conversation on ${longDateIn(timeZone, entry.source.spokenOn)}`
-    : 'not tied to a specific conversation';
+    : `recorded on ${longDateIn(timeZone, entry.capturedAt)}`;
   const confirmed = entry.confirmedOn
     ? `; read back to the owner and confirmed ${longDateIn(timeZone, entry.confirmedOn)}`
     : '';
