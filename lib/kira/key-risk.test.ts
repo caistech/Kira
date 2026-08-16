@@ -159,3 +159,41 @@ describe('personal-licence', () => {
     expect(keyRiskFollowUp('All the electricians hold their own tickets and we keep copies.')).toBeNull();
   });
 });
+
+// ⚠️ "NONE OF IT IS WRITTEN DOWN" IS THE PRODUCT, NOT AN ATTRIBUTE OF THE FACT.
+//
+// He gave her the whole pricing model and closed with "none of it is written down, I do it in my
+// head looking at the drawings". She filed it and asked what was next.
+//
+//   "She filed it like a phone number… when a fact arrives that is by definition untransferable,
+//    that should not be treated as an attribute of the fact. That is the product. That is what I am
+//    paying for." — Ray, 2026-08-17
+describe('nothing-written-down', () => {
+  it.each([
+    'None of it is written down. I do it in my head looking at the drawings.',
+    'Service work is $118 an hour plus materials at cost plus 22%. None of it is written down.',
+    'Pricing is done verbally in the owner’s head based on drawings; nothing is written down.',
+  ])('fires on: %s', (fact) => {
+    expect(keyRiskFollowUp(fact)?.id).toBe('nothing-written-down');
+  });
+
+  it('⚠️ the subject is deliberately broad, because the noun is in the PREVIOUS sentence', () => {
+    // The first version required a pricing or process word in the same sentence and returned null on
+    // the exact words he used — "None of IT is written down" carries no such noun.
+    expect(keyRiskFollowUp('None of it is written down.')).not.toBeNull();
+  });
+
+  it('stays quiet on ordinary facts, including documented ones', () => {
+    expect(keyRiskFollowUp('All our procedures are documented in the operations manual.')).toBeNull();
+    expect(keyRiskFollowUp('The van is booked in for a service next Tuesday.')).toBeNull();
+    expect(keyRiskFollowUp('Sharon handles invoicing, payroll and the ATO three days a week.')).toBeNull();
+  });
+
+  it('yields to the sharper rule when a person is involved', () => {
+    // A fact that is both undocumented and held by one ageing person gets the person question, which
+    // is more urgent and more specific.
+    expect(keyRiskFollowUp('Gary is 61 and the only other person who can price a job.')?.id).toBe(
+      'sole-capability-ageing',
+    );
+  });
+});

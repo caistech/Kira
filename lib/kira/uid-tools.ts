@@ -13,6 +13,8 @@ import { mnemoAdd } from '@/lib/kira/mnemo';
 import { readTaskLedger } from '@/lib/kira/swarm/open-tasks';
 import { unconfirmedFacts } from '@/lib/kira/confirm';
 import { keyRiskFollowUp } from '@/lib/kira/key-risk';
+import { displayedFigures } from '@/lib/valuation/displayed';
+import { DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { isAssistantCapabilityClaim } from './poison-detect.mjs';
 
 const uidFrom = (req: Request) => new URL(req.url).searchParams.get('uid') || '';
@@ -436,7 +438,51 @@ export async function handleKiraContext(req: Request): Promise<Response> {
     p_user_id: uid,
     p_message_limit: 10,
   });
-  return json(200, { ...(ctx || { has_history: false }), ...openTasks, ...(await confirmationOffer(uid)) });
+  // ⚠️ HIS OWN NUMBER, EVERY TIME SHE CONNECTS.
+  //
+  // Asked what the gap was, she answered: "Your Xero accounting isn't connected yet, so I can't see
+  // the actual gap number" — while his dashboard carried $270,000 in letters an inch high. Ray:
+  // "That is a fourth answer to the same question… If she does not know the number the product is
+  // built around, I do not know what she does know."
+  //
+  // Nothing was wrong with her reasoning: the figure was never in front of her, so she reached for a
+  // plausible reason not to have it. It comes from HIS OWN thirteen answers and has nothing to do
+  // with an accounting connector. Carried on the context so she cannot miss it, and derived through
+  // `displayedFigures` so she speaks the same figure the screens print.
+  let baseline: Record<string, string> | null = null;
+  try {
+    const { data: val } = await supabase
+      .from('business_valuations')
+      .select('worth_today, worth_potential, currency, created_at')
+      .eq('user_id', uid)
+      .maybeSingle();
+    if (val) {
+      const figures = displayedFigures(
+        { worthToday: Number(val.worth_today) || 0, worthPotential: Number(val.worth_potential) || 0 },
+        (val.currency as string) || DEFAULT_CURRENCY,
+      );
+      baseline = {
+        worth_today: figures.todayText,
+        worth_once_captured: figures.potentialText,
+        gap: figures.gapText,
+        taken_on: String(val.created_at).slice(0, 10),
+        note:
+          'These are HIS OWN figures from the thirteen questions he answered. Never say you cannot ' +
+          'see the gap, and never blame a missing accounting connection for it — it does not come ' +
+          'from one.',
+      };
+    }
+  } catch (error) {
+    // Degrade quietly: no baseline on the context is the state she has always been in.
+    console.error('[kira/context] baseline unavailable:', error);
+  }
+
+  return json(200, {
+    ...(ctx || { has_history: false }),
+    ...openTasks,
+    ...(baseline ? { baseline } : {}),
+    ...(await confirmationOffer(uid)),
+  });
 }
 
 /**

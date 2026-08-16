@@ -156,6 +156,36 @@ const RULES: Rule[] = [
       'finding out before anything else on this list.',
   },
   {
+    // ⚠️ "NONE OF IT IS WRITTEN DOWN" IS THE PRODUCT, NOT AN ATTRIBUTE OF THE FACT.
+    //
+    // He gave her the whole pricing model and closed with "none of it is written down, I do it in my
+    // head looking at the drawings", and she filed it and asked what was next. Ray, 2026-08-17:
+    //
+    //   "What she did not say is the thing a decent adviser would say first, which is that the whole
+    //    of how this business makes money exists nowhere but in my head, and that is not a filing
+    //    job, it is the single largest thing between me and a proper price. She filed it like a
+    //    phone number… when a fact arrives that is by definition untransferable, that should not be
+    //    treated as an attribute of the fact. That is the product. That is what I am paying for."
+    //
+    // Ordered AFTER the sharper rules, so a fact that is both undocumented and held by one ageing
+    // person still gets the person question first — that one is more urgent and more specific.
+    id: 'nothing-written-down',
+    // ⚠️ DELIBERATELY BROAD, and the first version was not. It required a pricing or process noun in
+    // the same sentence — but the sentence that carries this risk almost never has one, because the
+    // subject was named in the sentence BEFORE it: "Service work is $118 an hour… None of IT is
+    // written down." Requiring the noun made the rule return null on the exact words he used.
+    //
+    // The `risk` clause below is what carries the weight here: "nothing is written down", "none of
+    // it is documented", "it is all in my head" are not phrases that turn up in a benign fact, so
+    // the pair can afford a permissive subject without becoming noise.
+    subject: /\b(it|this|that|these|those|everything|all of|pric|quot|estimat|process|method|rule|know-how|knowledge|system|procedure|how)\w*/i,
+    risk: /\bnothing (is |was )?(written down|documented|on paper)\b|\bnone of (it|this|that) is (written|documented)\b|\bin (my|his|her|the owner'?s) head\b|\bnot (written down|documented|recorded anywhere)\b|\bno(t| ) written (procedure|process|record)\b/i,
+    question:
+      'That is the part worth stopping on — it is the single biggest thing standing between you and ' +
+      'a proper price, and it is also the most fixable. If we wrote down just the pricing rules, in ' +
+      'your words, would that be an afternoon or a week?',
+  },
+  {
     // Succession. The thing this whole product is about, said out loud and then filed.
     id: 'no-successor',
     subject: /\b(retire|retiring|retirement|step back|stepping back|hand ?over|succession|when i (go|leave|stop))\b/i,

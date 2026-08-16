@@ -26,6 +26,7 @@
 // up waiting on something that was refused two hours earlier.
 
 import { createServiceClient } from '@/lib/supabase/server';
+import { withoutOwnerName } from '@/lib/genome/owner-name';
 
 import { days } from './open-tasks';
 
@@ -106,11 +107,29 @@ export function readinessOf(row: { status: string; preview?: unknown; artifact?:
  * them, his OWN words are the better title — and the refusal is already said properly by the
  * 'refused' state on the detail page. Falls through untouched for every ordinary summary.
  */
-export function plainTitle(summary: string, utterance: string): string {
+export function plainTitle(summary: string, utterance: string, ownerFirstName?: string | null): string {
   const machineSpeak =
     /assistant action|not supported|unsupported|information task|is to draft|request is to/i;
   const usable = summary.trim() && !machineSpeak.test(summary) ? summary.trim() : utterance.trim();
-  return (usable || 'Something you asked her for').slice(0, 160);
+
+  // ⚠️ THE FALLBACK IS THE INSTRUCTION SOMEBODY TYPED TO THE MACHINE, so it still reads like one.
+  //
+  // Ray: "One of the entries is titled: 'Draft a summary document of the pricing model… for Ray's
+  // business.' That is not a title, that is the instruction somebody typed to the machine, showing
+  // through to me. And it refers to me in the third person on my own screen."
+  //
+  // Two things fix it and neither invents anything: drop the imperative opener, and take his own
+  // name back out — the same rule the Genome entries go through (lib/genome/owner-name.ts).
+  const withoutImperative = usable
+    .replace(/^(please\s+)?(draft|write|prepare|create|produce|put together)\s+(a|an|the)?\s*/i, '')
+    .replace(/^\w/, (c) => c.toUpperCase());
+
+  const withoutName = withoutOwnerName(withoutImperative, ownerFirstName)
+    // "for the owner's business" is what the scrub leaves behind, and it says nothing.
+    .replace(/\s+for the owner'?s?\s+business\.?$/i, '')
+    .trim();
+
+  return (withoutName || 'Something you asked her for').slice(0, 160);
 }
 
 /**
@@ -142,7 +161,12 @@ export function refusalReason(kind: string, summary: string): string | null {
 export async function readDrafts(userId: string): Promise<DraftItem[]> {
   if (!userId) return [];
   try {
-    const { data, error } = await createServiceClient()
+    const svc = createServiceClient();
+    // His own name, so the titles can have it taken back out — see plainTitle.
+    const { data: owner } = await svc.from('users').select('first_name').eq('id', userId).maybeSingle();
+    const ownerFirstName = (owner?.first_name as string | null) ?? null;
+
+    const { data, error } = await svc
       .from('kira_tasks')
       .select('id, kind, status, summary, utterance, preview, artifact, created_at')
       .eq('user_id', userId)
@@ -155,7 +179,7 @@ export async function readDrafts(userId: string): Promise<DraftItem[]> {
       kind: String(row.kind ?? 'task'),
       status: String(row.status),
       readiness: readinessOf(row as { status: string; preview?: unknown; artifact?: unknown }),
-      title: plainTitle(String(row.summary ?? ''), String(row.utterance ?? '')),
+      title: plainTitle(String(row.summary ?? ''), String(row.utterance ?? ''), ownerFirstName),
       asked: String(row.utterance || row.summary || ''),
       body: draftBody(row as { preview?: unknown; artifact?: unknown }),
       reason: refusalReason(String(row.kind ?? ''), String(row.summary ?? '')),
