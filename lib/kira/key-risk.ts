@@ -40,6 +40,23 @@ interface Rule {
   subject: RegExp;
   risk: RegExp;
   question: string;
+  /**
+   * A signal that means this rule is the WRONG reading of the fact, however well it matches.
+   *
+   * ⚠️ ADDED BECAUSE THE RIGHT TRIGGER FIRED WITH THE WRONG REASON. Ray's builder — 40% of turnover,
+   * eleven years, handshake, no contract — tripped `key-person-no-contract` before
+   * `customer-concentration`, because "…has been working…no formal contract" satisfies both. She
+   * stopped, which was correct, and told him "a buyer prices an undocumented key person as a risk
+   * they inherit."
+   *
+   *   "The builder is a CUSTOMER, not a key person. She has reached for a line about staff and used
+   *    it on a customer concentration. I noticed because it is my business; a broker would notice
+   *    for the same reason."
+   *
+   * A stopped meeting with the wrong diagnosis is worse than none: it is the moment he decides
+   * whether she understands his business or is pattern-matching at him.
+   */
+  notWhen?: RegExp;
 }
 
 // ⚠️ WRITTEN AGAINST WHAT HE ACTUALLY SAID, AND THE FIRST VERSION WAS NOT.
@@ -87,6 +104,16 @@ const RULES: Rule[] = [
   {
     // A key person on nothing but goodwill. The commonest hole in a business of this age and size.
     id: 'key-person-no-contract',
+    // A share of turnover, or the words for a customer relationship, mean this is concentration
+    // rather than a key person — and the rule below has the right question for it.
+    //
+    // ⚠️ WRITTEN WITH AN EDITOR, NEVER THROUGH A SHELL STRING. The first version of this line went
+    // in via a scripted edit and every `\b` became a literal BACKSPACE byte (0x08), so the regex
+    // hunted for control characters and matched nothing. It compiled, typechecked, and read
+    // correctly in the file; `grep -P '\x08'` even reported it clean. Only `cat -A` showed the `^H`.
+    // Recorded in project memory after the identical failure once before — the lesson is to use the
+    // editor for anything containing escapes, and the way to see it is `cat -A`.
+    notWhen: /\b([1-9][0-9]?|100)\s*(%|per ?cent)|\bturnover\b|\brevenue\b|\bclient\b|\bcustomer\b|\bbuilder\b|\baccounts? for\b/i,
     subject: /\b(he|she|they|wayne|karen|[A-Z][a-z]+)\b.{0,80}?\b(has|have|is on|works? on|there is)\b/i,
     risk: /\bno (written |formal |signed )?(contract|agreement|employment agreement)\b|\bhandshake\b|\bnothing (in writing|written down)\b|\bnever (signed|had a contract)\b/i,
     question:
@@ -134,6 +161,7 @@ export function keyRiskFollowUp(content: string): KeyRisk | null {
   const text = String(content ?? '');
   if (text.length < 20) return null; // Too short to carry both signals honestly.
   for (const rule of RULES) {
+    if (rule.notWhen?.test(text)) continue;
     if (rule.subject.test(text) && rule.risk.test(text)) {
       return { id: rule.id, question: rule.question };
     }

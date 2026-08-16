@@ -150,3 +150,41 @@ describe('the surface band (lowered, but it asks rather than acts)', () => {
     expect(pairs.has('first')).toBe(false);
   });
 });
+
+// ⚠️ SENTENCE-INITIAL CAPITALS ARE NOT PROPER NOUNS — the veto's own rule, applied to every
+// sentence rather than only the first.
+//
+// Ray's two pricing rows: containment 0.966 both ways, all five figures ($118, 22, 18, 28, 12)
+// shared and agreeing — and `identifiersConflict` returned TRUE, purely because one row's sentences
+// began "Materials…"/"Mine site…" and the other's began "Service…"/"Pricing…". His handover document
+// carried the same pricing model twice through two walkthroughs because of it.
+describe('identifiers — grammar capitals do not count as names', () => {
+  const A =
+    'Service labour is charged at $118 per hour. Materials are billed at cost plus 22%. Tender jobs carry an 18% margin. Mine site tender work is priced at a 28% margin. Long-standing builders get a 12% margin.';
+  const B =
+    'Pricing model: Service labour charged at $118 per hour plus materials billed at cost plus 22%. Tender jobs carry an 18% margin, except for mine site tender work priced at a 28% margin. Long-standing builders on straightforward jobs get a 12% margin.';
+
+  it('does not treat a word after a full stop as an identifier', () => {
+    expect(identifiers('The yard is leased. Materials are billed at cost.').has('materials')).toBe(false);
+  });
+
+  it('does not treat a word after a colon as an identifier', () => {
+    // "Pricing model: Service labour…" — the distil opens restatements this way constantly.
+    expect(identifiers('Pricing model: Service labour is charged hourly.').has('service')).toBe(false);
+  });
+
+  it('STILL catches a real proper noun mid-sentence — the veto must keep working', () => {
+    const ids = identifiers('The only other person who can price a job is Gary.');
+    expect(ids.has('gary')).toBe(true);
+  });
+
+  it('still vetoes two genuinely different things', () => {
+    // The case this whole guard exists for.
+    expect(identifiersConflict('Approval covers Lot 91.', 'Approval covers Lot 442.')).toBe(true);
+  });
+
+  it("merges Ray's two pricing rows, which is the defect that produced this", () => {
+    expect(identifiersConflict(A, B)).toBe(false);
+    expect(isNearDuplicate(A, B)).toBe(true);
+  });
+});

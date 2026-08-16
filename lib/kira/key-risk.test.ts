@@ -79,3 +79,48 @@ describe('keyRiskFollowUp — stays quiet', () => {
     expect(keyRiskFollowUp('no contract')).toBeNull();
   });
 });
+
+// ⚠️ A CUSTOMER IS NOT A KEY PERSON, AND SAYING SO WRONGLY IS WORSE THAN SAYING NOTHING.
+//
+// Ray's builder — 40% of turnover, eleven years, handshake, no contract — tripped the key-person
+// rule before the customer rule, because "…has been working…no formal contract" satisfies both. She
+// stopped, correctly, and gave the wrong diagnosis: "a buyer prices an undocumented key person as a
+// risk they inherit."
+//
+//   "The builder is a CUSTOMER, not a key person. She has reached for a line about staff and used it
+//    on a customer concentration. I noticed because it is my business; a broker would notice for the
+//    same reason." — 2026-08-17
+describe('the right question for the right risk', () => {
+  it.each([
+    [
+      'A single builder accounts for about 40% of the business turnover, has been working with the business for 11 years on a handshake basis with no formal contract, and the owner has never taken more than two weeks off in a row.',
+      'customer-concentration',
+    ],
+    [
+      'One builder accounts for about 40% of turnover, with an 11-year relationship based entirely on a handshake and no contract.',
+      'customer-concentration',
+    ],
+    // The key-person rule still owns a genuine key person on a handshake.
+    ['Karen has run the office for nineteen years on a handshake, there is nothing in writing.', 'key-person-no-contract'],
+    ['Gary is 61 years old, is the leading hand, is the only other person who can price jobs.', 'sole-capability-ageing'],
+  ])('%s → %s', (fact, expected) => {
+    expect(keyRiskFollowUp(fact)?.id).toBe(expected);
+  });
+});
+
+// ⚠️ NO CONTROL CHARACTERS IN THESE PATTERNS.
+//
+// The `notWhen` guard above was first written through a scripted edit, which turned every `\b` into
+// a literal BACKSPACE byte (0x08). The regex then hunted for control characters and matched nothing
+// — while compiling, typechecking, and reading correctly in the editor. `grep -P '\x08'` reported
+// the file clean; only `cat -A` showed the `^H`. It cost a full debugging pass, and this repo has
+// now seen the identical failure twice.
+//
+// One assertion, on the bytes, so the third time is caught in CI instead of by eye.
+describe('the rule file contains no mangled escapes', () => {
+  it('has no backspace or form-feed characters', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('lib/kira/key-risk.ts', 'utf8');
+    expect(src).not.toMatch(/[\u0008\u000c]/);
+  });
+});

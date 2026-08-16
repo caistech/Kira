@@ -127,8 +127,30 @@ export function identifiers(text: string): Set<string> {
   const out = new Set<string>();
   for (const n of raw.match(/\d+(?:\.\d+)?/g) ?? []) out.add(n);
   const words = raw.split(/\s+/);
-  for (let i = 1; i < words.length; i += 1) {
-    const w = words[i].replace(/[^A-Za-z0-9]/g, '');
+  // ⚠️ EVERY SENTENCE'S FIRST WORD IS SKIPPED, NOT JUST THE TEXT'S.
+  //
+  // The rule above is right and was applied to one sentence out of five. So in a multi-sentence
+  // memory, "Materials are billed at cost plus 22%" contributed `materials` as a proper noun, and
+  // the restatement that opened "Service labour charged at…" contributed `service` — two entries
+  // describing the identical pricing model were judged to name DIFFERENT things and the merge was
+  // vetoed.
+  //
+  // Measured on Ray's two pricing rows, 2026-08-17: containment 0.966 both ways, every one of the
+  // five figures ($118, 22, 18, 28, 12) shared and agreeing — and `identifiersConflict` true, purely
+  // on capitals after full stops. His document carried the same pricing twice through two
+  // walkthroughs because of it: "My pricing is in there twice. Once under How work is priced and
+  // quoted, and again word for word at the bottom of the loose list."
+  //
+  // Real proper nouns mid-sentence (Gary, Wayne, Corvid Holdings, Lot 442) are untouched, so the
+  // veto still does the job it was built for.
+  let sentenceStart = true;
+  for (let i = 0; i < words.length; i += 1) {
+    const word = words[i];
+    const w = word.replace(/[^A-Za-z0-9]/g, '');
+    const startsSentence = sentenceStart;
+    // Terminators, and the colon that opens a list — "Pricing model: Service labour charged…".
+    sentenceStart = /[.!?:;]$/.test(word.replace(/["'’”)]+$/, ''));
+    if (startsSentence) continue;
     if (w.length > 1 && /^[A-Z]/.test(w)) out.add(w.toLowerCase());
   }
   return out;
