@@ -19,12 +19,17 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { GENOME_AREAS, type AreaKey } from '@/lib/genome/areas';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { assessAreaEntries } from '@/lib/genome/checklist-assess';
+import { recomputeEvidencedReadiness } from '@/lib/valuation/recompute-readiness';
 
 const AREA_KEYS = new Set(GENOME_AREAS.map((a) => a.key));
 
 export interface AssessState {
   error?: string;
   assessed?: number;
+  /** Where he is now, 0-1, after this assessment. Null when there is no baseline to move from. */
+  readinessNow?: number | null;
+  /** The frozen origin, so the caller can state a delta rather than a bare figure. */
+  baseline?: number | null;
 }
 
 export async function assessArea(area: string): Promise<AssessState> {
@@ -71,7 +76,20 @@ export async function assessArea(area: string): Promise<AssessState> {
     return { error: 'The check ran but could not be saved. Try again in a moment.' };
   }
 
+  // THE NUMBER MOVES HERE, and only here. Recomputed across EVERY area, not just this one — the
+  // score is a property of the whole record, and updating it from one area's verdicts would make it
+  // depend on the order he happened to press the buttons in.
+  //
+  // Deliberately after the upsert and deliberately not awaited into the failure path: if the
+  // recompute fails he still keeps the assessment he asked for, and the number simply does not move.
+  const movement = await recomputeEvidencedReadiness(user.id as string);
+
   revalidatePath(`/my-genome/${area}`);
   revalidatePath('/my-genome');
-  return { assessed: verdicts.filter((v) => v.status !== 'open').length };
+  revalidatePath('/dashboard');
+  return {
+    assessed: verdicts.filter((v) => v.status !== 'open').length,
+    readinessNow: movement.readinessNow,
+    baseline: movement.baseline,
+  };
 }

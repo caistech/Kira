@@ -37,6 +37,22 @@ export function AssessAreaButton({
               // Degrade, don't fake. Nothing was established, and saying "0 answered" would report
               // a finding we do not have — an outage and an empty area look identical from here.
               setMessage('Nothing could be checked yet. Talk to Kira about this area first.');
+            } else if (result.readinessNow != null && result.baseline != null) {
+              // ⚠️ THE DIRECTION IS REPORTED, NOT HIDDEN, AND DOWN IS THE IMPORTANT ONE.
+              // Capture reveals dependencies nobody had priced — "nobody can step into my job" is
+              // evidence that should LOWER transferability however diligently he answered it. A
+              // product where every answer raises the score rewards talking, and he would find out
+              // in a data room instead of here.
+              const now = Math.round(result.readinessNow * 100);
+              const was = Math.round(result.baseline * 100);
+              const delta = now - was;
+              setMessage(
+                delta === 0
+                  ? `Transferability is unchanged at ${now} out of 100.`
+                  : delta > 0
+                    ? `Transferability is now ${now} out of 100, up ${delta} from your baseline of ${was}.`
+                    : `Transferability is now ${now} out of 100, down ${Math.abs(delta)} from your baseline of ${was}. That is what the answers actually show — it is worth knowing now rather than from a buyer.`,
+              );
             }
           })
         }
