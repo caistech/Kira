@@ -1,0 +1,27 @@
+Hello Shani,
+
+You answered all three questions and they settled it. Here is what was wrong, what has changed, and what I would ask of you next.
+
+<strong>What you hit, and it was not one bug but two.</strong>
+
+The first is the one you found. My email told you to enter the code at the pricing step. The only code box on that whole journey was Stripe's own "Add promotion code" on the card form — and our invitation codes are not Stripe coupons, so that field could only ever tell you it was invalid. It was also the most code-shaped thing on the page, arriving at exactly the moment you were looking for somewhere to put a code. Our own box was a line of small grey text on the page before, underneath a more prominent offer of an account without a card. You did the sensible thing with what you were shown.
+
+The second is bigger and you did not see it because it was invisible: <strong>Kira herself was on almost none of the product.</strong> She lived on three pages, none of them in the navigation. Everywhere an owner actually works — the dashboard, the Genome, the drafts — she was a link, or a small floating button in the corner. That button had been removed two days before I invited you. So you were walking a product whose main interface had no permanent way in. That is the real reason nothing after the valuation felt joined up.
+
+<strong>What is now live.</strong>
+
+Stripe's promo box is switched off, so nothing offers you a field that cannot work. Invitation links carry the code themselves — nothing to type. Kira is now on the dashboard, the Genome, Drafts, Requests and Knowledge: her face, a transcript and a microphone, on the page, not behind a link. The list of outstanding work has moved off the landing page and now says honestly whose move each item is, instead of heading a page of things she had not done with "Waiting on you". And there is now a check that fails our build if any page loses her, because remembering was clearly not enough.
+
+<strong>What you can do next.</strong>
+
+Your code was never used, so it still works: <a href="https://kiraexec.com/plan?code=6R8LECZ33WJP">https://kiraexec.com/plan?code=6R8LECZ33WJP</a>
+
+That link carries the code. Answer the thirteen questions, and at the end you set a password and go straight in — no card, nothing to type, no promo box anywhere.
+
+<strong>And the part I would most value your eye on</strong> is what you said you would look at: what happens after you are in. Specifically — does she <strong>stop</strong> on something a buyer would stop on, or does she file it and ask what is next? If you tell her one man does all the pricing, or that one customer is forty per cent of revenue on a handshake, a good adviser would interrupt. That is the failure I am least confident about, and it is worth more to me than another bug list.
+
+On your offer of help across AI/ML, UI/UX and backend — thank you, and I would rather take that up properly than in passing. Let me come back to you on it.
+
+You have already improved this product for everyone who comes after you. I am grateful for that.
+
+Dennis

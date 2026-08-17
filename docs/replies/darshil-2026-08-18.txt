@@ -1,0 +1,27 @@
+Hello Darshil,
+
+You have not written to me, so this is me coming to you — because I can see you created an account on Sunday and I know exactly why nothing useful happened next. It was our fault, not yours, and it is now fixed.
+
+<strong>What went wrong.</strong>
+
+My invitation told you to enter a code at the pricing step. The only code box on that journey was Stripe's own "Add promotion code" on the card form, and our invitation codes are not Stripe coupons — so it could only ever say invalid. Our own box was a line of small grey text on the previous page, sitting underneath a much more visible "create an account without a card". Taking the visible one was the sensible thing to do, and it is the path your account went down.
+
+The consequence is that you ended up with an account and <strong>no Kira behind it</strong> — which is the entire product. Worse, at that moment she was on almost none of the app anyway: she lived on three pages, none of them in the navigation, and the small floating button that was standing in for her had been removed two days before I wrote to you. So there was genuinely nothing there to find.
+
+<strong>What is live now.</strong>
+
+Kira is on the dashboard, the Genome, Drafts, Requests and Knowledge — her face, a transcript and a microphone, on the page itself rather than behind a link. Stripe's promo box is gone. Invitation links carry their code. And a check now fails our build if any page loses her, because relying on someone remembering plainly did not work.
+
+<strong>What to do — and it is short, because your account already exists.</strong>
+
+Sign in at <a href="https://kiraexec.com/login">https://kiraexec.com/login</a> with the password you set on Sunday. Use "Forgot password" if you would rather not go looking for it.
+
+You will land on the dashboard, and because you have not met her yet it will say <strong>Kira isn't set up yet</strong> with a "Set up Kira" button. That is one short conversation about a business — what it does, how it runs, what you are trying to sort out. About three minutes. After that she is on every page and there is something real to judge.
+
+You do not need your invitation code. It was never used, but since the account exists the code step would only send you back to sign in — so ignore it.
+
+<strong>What I would most like back.</strong> Not a bug list, though I will take one. The thing I am least sure of is whether she <strong>stops</strong> on something a buyer would stop on, instead of filing it and asking what is next. Tell her that one person does all the pricing, or that one customer is forty per cent of revenue on a handshake, and see whether she treats it as the problem it is. Use a real business if you have one, or a plausible one if you would rather not.
+
+Sorry it wasted your time on Sunday. It was a fair thing to give up on.
+
+Dennis
