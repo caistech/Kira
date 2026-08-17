@@ -21,7 +21,18 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { KiraShape } from '@/components/KiraShape';
 import type { VoiceSurface } from '@/lib/voice/connect-telemetry';
 
-export async function KiraShapeSection({ surface }: { surface: VoiceSurface }) {
+export async function KiraShapeSection({
+  surface,
+  firstMessage,
+}: {
+  surface: VoiceSurface;
+  /**
+   * An opener the PAGE supplies, when it knows something worth opening on — /my-genome passes the
+   * areas a buyer would ask about that she knows nothing about yet. Optional everywhere else, where
+   * the agent's own greeting and its connect-time recall are the right default.
+   */
+  firstMessage?: string;
+}) {
   const user = await getCurrentAppUser();
   if (!user?.id) return null;
 
@@ -53,6 +64,7 @@ export async function KiraShapeSection({ surface }: { surface: VoiceSurface }) {
     <KiraShape
       agentId={agentId}
       surface={surface}
+      firstMessage={firstMessage}
       firstName={(user as { first_name?: string }).first_name}
       // ⚠️ ONLY WHEN THERE IS SOMETHING TO PICK UP. "Kira remembers where you left off" told to a man
       // with no history is the cheapest possible way to lose him: the claim is checkable, he checks

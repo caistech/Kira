@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { GENOME_AREAS } from '@/lib/genome/areas';
-import { buildAreaFocusFirstMessage, isAreaKey } from './area-focus';
+import { buildAreaFocusFirstMessage, buildGenomeOverviewFirstMessage, isAreaKey } from './area-focus';
 
 describe('the opener when he arrives from an area', () => {
   it('names the area he pressed, in the words the page used', () => {
@@ -66,5 +66,104 @@ describe('isAreaKey', () => {
     expect(GENOME_AREAS.every((a) => isAreaKey(a.key))).toBe(true);
     expect(isAreaKey('dashboard')).toBe(false);
     expect(isAreaKey(null)).toBe(false);
+  });
+});
+
+describe('the opener when he is standing on the whole Genome', () => {
+  const s = (key: string, title: string, coverage: 'empty' | 'thin' | 'building' | 'covered') => ({
+    key,
+    title,
+    coverage,
+  });
+
+  it('leads on an EMPTY area before a thin one', () => {
+    // An area answering nothing is a worse gap than one answering a little, so it is the one she
+    // offers even when a thin one comes first in the list.
+    const line = buildGenomeOverviewFirstMessage([
+      s('pricing', 'How work is priced and quoted', 'thin'),
+      s('people', 'Who does the work', 'empty'),
+    ])!;
+    expect(line).toMatch(/the biggest gap is who does the work/i);
+  });
+
+  it('NAMES ONE AREA, never a list — the titles contain commas', () => {
+    // ⚠️ FOUND BY READING IT ALOUD, not by a test. One of the nine real areas is titled "Who buys,
+    // and who owns the relationship", so a listed opener said: "who does the work, what the business
+    // owns and who buys, and who owns the relationship" — three items or four, and a listener cannot
+    // tell. No separator fixes that in speech. She gives the count and offers the worst one; the
+    // funnels beside her carry the rest.
+    const line = buildGenomeOverviewFirstMessage([
+      s('people', 'Who does the work', 'empty'),
+      s('customers', 'Who buys, and who owns the relationship', 'empty'),
+      s('assets', 'What the business owns', 'empty'),
+    ])!;
+    // Lower-cased on purpose — the title sits mid-sentence and is spoken aloud.
+    expect(line).toContain('who does the work');
+    expect(line).not.toContain('what the business owns');
+    expect(line).not.toContain('who owns the relationship');
+  });
+
+  it('counts in WORDS, because she says this out loud', () => {
+    const line = buildGenomeOverviewFirstMessage(
+      ['a', 'b', 'c'].map((k) => s(k, `Area ${k.toUpperCase()}`, 'empty')),
+    )!;
+    expect(line).toMatch(/there are three parts/);
+    expect(line).not.toMatch(/there are 3 parts/);
+  });
+
+  it('counts every gap, not just the ones it could have named', () => {
+    // The count is the honest total. Capping it would under-report the size of the job on the one
+    // screen whose purpose is showing him the size of the job.
+    const line = buildGenomeOverviewFirstMessage(
+      ['a', 'b', 'c', 'd', 'e', 'f'].map((k) => s(k, `Area ${k.toUpperCase()}`, 'empty')),
+    )!;
+    expect(line).toMatch(/there are six parts/);
+  });
+
+  it('offers to start there, so he does not have to choose from nine', () => {
+    const line = buildGenomeOverviewFirstMessage([s('people', 'Who does the work', 'empty')])!;
+    expect(line).toMatch(/the biggest gap is who does the work\. shall we start there\?/i);
+  });
+
+  it('uses the singular when only one area is missing', () => {
+    const line = buildGenomeOverviewFirstMessage([
+      s('people', 'Who does the work', 'empty'),
+      s('pricing', 'How work is priced', 'covered'),
+    ])!;
+    expect(line).toMatch(/there's one part/i);
+    expect(line).not.toMatch(/there are/i);
+  });
+
+  it('returns null when the Genome is in good shape, so the welcome-back stands', () => {
+    // Null rather than a manufactured gap. A man whose areas are all covered should be met with
+    // what he was last working on, not with an invented deficiency.
+    expect(
+      buildGenomeOverviewFirstMessage([
+        s('people', 'Who does the work', 'covered'),
+        s('pricing', 'How work is priced', 'building'),
+      ]),
+    ).toBeNull();
+  });
+
+  it('returns null on no sections at all, rather than opening on nothing', () => {
+    expect(buildGenomeOverviewFirstMessage([])).toBeNull();
+    expect(buildGenomeOverviewFirstMessage(null)).toBeNull();
+  });
+
+  it('carries the TRIGGER only — never the questions themselves', () => {
+    // ⚠️ THE RULE THIS FILE EXISTS TO HOLD. The page renders once; the call lasts twenty minutes. A
+    // question baked into the opener is a snapshot that can be several answers stale by the time she
+    // says it, which is why area_agenda is hers to call. If a future edit starts embedding the
+    // checklist here, this fails.
+    const line = buildGenomeOverviewFirstMessage([s('people', 'Who does the work', 'empty')])!;
+    expect(line).toMatch(/give me a moment to see what's already in it/i);
+    expect(line.split('?').length - 1).toBe(1); // exactly one question: which area to start on
+  });
+
+  it('greets him by name when there is one, and reads properly without', () => {
+    const withName = buildGenomeOverviewFirstMessage([s('people', 'Who does the work', 'empty')], 'Dennis')!;
+    expect(withName.startsWith('Dennis, ')).toBe(true);
+    const without = buildGenomeOverviewFirstMessage([s('people', 'Who does the work', 'empty')], '  ')!;
+    expect(without.startsWith("there's one part")).toBe(true);
   });
 });

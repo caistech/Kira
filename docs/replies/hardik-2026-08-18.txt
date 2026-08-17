@@ -1,0 +1,27 @@
+Hello Hardik,
+
+You are the only one of the group who got all the way in, so this is a heads-up rather than an apology: the product moved under you today, and I would rather you knew before you finish your run than have your notes describe a version that no longer exists.
+
+<strong>What was wrong when you started.</strong>
+
+Two things, and the second is the one that matters.
+
+Another tester could not get in at all. My invitation told people to type their code at the pricing step, and the only code box on that journey was Stripe's own "Add promotion code" on the card form — which cannot validate our codes, so it told him his valid invitation was invalid. He went round via a different door and ended up with an account and no Kira behind it.
+
+The bigger one: <strong>Kira was on almost none of the product.</strong> She lived on three pages, none of them in the navigation. On the dashboard, the Genome and the drafts — where an owner actually works — she was a link, or a small floating button in the corner. That button had been removed two days before I invited any of you. So the "primary interface" you were assessing had no permanent way in, which is a strange thing to have shipped and a stranger thing not to have noticed.
+
+<strong>What is live now.</strong>
+
+She is embedded on the dashboard, the Genome, Drafts, Requests and Knowledge — avatar, transcript, microphone, on the page. She renders on arrival but does not connect until you tap: no microphone prompt for simply landing, and no session opened by someone who came to read their numbers. The outstanding-work list has moved off the landing page, and now says truthfully whose move each item is rather than heading her backlog with "Waiting on you". Stripe's promo box is off. And there is a build check that fails if any page loses her.
+
+<strong>What this means for your run.</strong>
+
+If you have already formed a view of navigation, of how present she feels, or of how you reach her from a given screen — please re-take it. That is the part that changed. Your read on the <em>conversation</em> is unaffected and still stands.
+
+And the thing I said last time is still the thing: whether she <strong>recognises when something deserves to interrupt</strong> rather than simply recording it. You arrived at that unprompted, which is why I would rather you spent your time there than on anything I have listed above. One conversation is in your account so far — the interesting behaviour starts once she has something to hold.
+
+On the deeper technical review you offered — architecture, AI implementation, memory and context handling — that still stands as an interesting offer and I would still rather pick it up properly than casually. Let me come back to you on scope.
+
+Thanks for the patience.
+
+Dennis

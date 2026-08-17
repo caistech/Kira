@@ -44,6 +44,7 @@ export function KiraShape({
   surface,
   firstName,
   welcomeBack,
+  firstMessage,
 }: {
   /** The owner's own ElevenLabs agent. Null when he has not been set up yet. */
   agentId: string | null;
@@ -52,6 +53,19 @@ export function KiraShape({
   firstName?: string;
   /** Shown only when there is something genuinely recalled to pick up from. */
   welcomeBack?: string;
+  /**
+   * What she SAYS first, when the page knows something worth opening on.
+   *
+   * ⚠️ THE TRIGGER, NEVER THE CONTENT — VOICE_MEMORY_STANDARD, and the reason bites here
+   * specifically. This page renders once; the call runs twenty minutes. Anything baked in is a
+   * snapshot that can be several answers stale by the time she speaks it, so the opener names WHAT
+   * to look at and she pulls the detail herself (`area_agenda`).
+   *
+   * Without it she opens on whatever was raised last — which, measured on the operator's own
+   * account, meant the same plumbing quote three days running while three areas a buyer asks about
+   * held nothing. On the Genome page that is the whole defect in one sentence.
+   */
+  firstMessage?: string;
 }) {
   const [typedConversationId, setTypedConversationId] = useState<string | null>(null);
 
@@ -159,6 +173,9 @@ export function KiraShape({
         // man with no history is the cheapest possible way to lose him: it is checkable, he checks
         // it, and it is false on the first screen he sees.
         title={welcomeBack}
+        // Only sent when the page had something to open on; otherwise the agent's own greeting (or
+        // its connect-time welcome-back recall) stands, which is the right default everywhere else.
+        overrides={firstMessage ? { agent: { firstMessage } } : undefined}
         onConnect={() => void reportVoiceConnect({ surface, outcome: 'connected' })}
         onError={(error) => void reportVoiceConnect({ surface, outcome: 'error', detail: error })}
       />

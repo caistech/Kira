@@ -1,6 +1,7 @@
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { KiraShapeSection } from '@/components/KiraShapeSection';
+import { buildGenomeOverviewFirstMessage } from '@/lib/kira/area-focus';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { ShareGenome } from '@/components/ShareGenome';
 import { GenomeBuckets } from '@/components/GenomeBuckets';
@@ -195,7 +196,18 @@ export default async function MyGenome() {
           way to act on it was a floating pill in the corner or a text link further down. The page
           named the mechanism and withheld it. She belongs here more than almost anywhere else in
           the product: this is the screen that tells him what is still missing. */}
-      <KiraShapeSection surface="my-genome" />
+      {/* ⚠️ SHE OPENS ON THE GAPS, NOT ON THE LIVE JOB. Without an opener she picks up whatever was
+          raised last, and the last thing is always the current job — measured on the operator's own
+          account, the same plumbing quote three days running while people, assets and customers held
+          nothing a buyer asks about. On the page whose entire purpose is showing him those gaps,
+          that is the defect in one sentence. The opener names which areas are thin and stops; she
+          calls `area_agenda` for whichever he picks and asks the real questions herself. */}
+      <KiraShapeSection
+        surface="my-genome"
+        firstMessage={
+          buildGenomeOverviewFirstMessage(g.sections, appUser.first_name as string | undefined) ?? undefined
+        }
+      />
 
       {g.readiness != null && (
         <section
