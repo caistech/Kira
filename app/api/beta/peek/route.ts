@@ -18,13 +18,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-import { peekBetaCode } from '@/lib/billing/beta-codes';
+import { BETA_CODE_REJECTION_MESSAGE, peekBetaCode } from '@/lib/billing/beta-codes';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const REJECTION_MESSAGE =
-  'That code is not valid. Check it against the email we sent you — or reply to it and we will send a new one.';
+// ⚠️ SHARED WITH /redeem, NOT COPIED. This route used to carry its own sentence — the pre-Ray one
+// telling a stuck tester to reply to an email he may never have had — while /redeem carried the
+// repaired one. Since BetaRedeem checks here first and only ever posts to /redeem after this has
+// passed, the broken message was the one real people saw. See the constant for the full history.
+const REJECTION_MESSAGE = BETA_CODE_REJECTION_MESSAGE;
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code') ?? '';

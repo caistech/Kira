@@ -7,6 +7,34 @@
 // claims the row atomically.
 
 import { createServiceClient } from '@/lib/supabase/server';
+import { SUPPORT_EMAIL } from '@/lib/contact';
+
+/**
+ * THE ONE SENTENCE EVERY REJECTED CODE GETS, on every route.
+ *
+ * ⚠️ IT LIVES HERE BECAUSE IT WAS FIXED IN ONE PLACE AND LEFT BROKEN IN THE OTHER. `/redeem` had it
+ * rewritten after Ray hit a dead end — the old wording said "check it against the email we sent you,
+ * or reply to it and we will send a new one", which assumes a channel that is often not there, since
+ * codes get handed over in person, by text, or by a broker:
+ *
+ *   "There is no email. I don't have one to reply to… For an invited beta user that's a full stop
+ *    with nowhere to go."
+ *
+ * `/peek` kept the old sentence, and `/peek` is the route a tester actually reaches: BetaRedeem calls
+ * it the moment a code is entered or arrives in the URL, and only ever calls `/redeem` after it has
+ * already passed. So the repaired message was on the path nearly nobody walks and the dead end was on
+ * the path everybody walks — which is indistinguishable, from outside, from never having fixed it.
+ * One exported constant is the only shape that cannot drift apart again.
+ *
+ * The reason for the rejection is still withheld deliberately (see `checkBetaCode`) — naming
+ * "already redeemed" confirms which codes exist. This sentence resolves all three causes without
+ * disclosing which applies: a used code means an account exists, so "sign in" fixes it; a mistyped or
+ * unknown one needs a human, and the address given is monitored.
+ */
+export const BETA_CODE_REJECTION_MESSAGE =
+  'That code did not work. If you have used it before, your account already exists — sign in ' +
+  `instead. Otherwise check the code and try again, or email ${SUPPORT_EMAIL} and we ` +
+  'will sort it out.';
 
 /**
  * What a code looks like on the wire vs in the table.

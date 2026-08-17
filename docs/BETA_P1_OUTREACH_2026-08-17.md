@@ -78,15 +78,28 @@ magic link.
 >
 > So you now walk the same path a paying owner walks:
 >
-> 1. Go to **https://kiraexec.com** — no need to sign in first.
-> 2. Answer thirteen short questions about a business. Three honest numbers at the end.
-> 3. At the pricing step, enter your code **{CODE}** instead of a card. No card is asked
->    for and nothing is charged.
+> 1. Open **https://kiraexec.com/plan?code={CODE}**. It carries your code with it, so there
+>    is nothing to type and no need to sign in.
+> 2. It will confirm the code is held, then ask thirteen short questions about a business.
+>    Three honest numbers at the end.
+> 3. That brings you back with the code already applied. No card is asked for and nothing
+>    is charged.
 > 4. Then have a conversation with Kira.
 >
 > About twenty minutes in total, and you can stop and come back. If you already made an
 > account with me earlier, the code step will ask you to sign in instead — that is expected
 > rather than a fault, and the valuation you have just done carries across.
+>
+> If your mail program strips the link, go to **https://kiraexec.com** and use **{CODE}** at
+> the "Been invited to the beta?" line on the pricing page.
+
+⚠️ **REVISED 2026-08-17, after Shani Shah.** Steps 1 and 3 originally sent people to the bare
+domain and told them to type the code at the pricing step. Without `?code=` in the URL the
+page never knows a code exists, so the reassuring "your invitation code is saved" panel never
+renders and the code box collapses to one line of 14px grey text — sitting directly beneath a
+far more visible *"Create an account without a card"*. He was told to look for the no-card
+option and took the prominent one, which is the ordinary free path rather than the beta path.
+**Every send from here uses the `?code=` link.**
 >
 > **It is a beta, and it is worth saying what that means.** Some things are not built yet —
 > she cannot write documents for you, and sending email on your behalf is not switched on.

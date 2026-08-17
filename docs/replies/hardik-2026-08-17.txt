@@ -1,0 +1,22 @@
+Hello Hardik,
+
+No need to send anything fragmented — take the full run. But one thing is worth saying now, because it will save you time.
+
+The line in your note about whether Kira <strong>recognises when something deserves to interrupt the normal flow rather than simply recording it</strong> is the exact failure I am least confident about. It is not hypothetical. An earlier tester hit it six visits running: he would say something a buyer would stop dead on — he is the only one who prices, one customer is forty per cent of revenue, there is nothing in writing — and she would file it neatly and ask what else he wanted to cover. Filing is not the job. Noticing is.
+
+So if you can get her to walk past something that should have stopped her, that is the most valuable thing you can hand me, and it will not be an edge case when you find it.
+
+Two things worth knowing before you judge them, because both are deliberate and you would otherwise reasonably report them as faults:
+
+1. <strong>The thirteen valuation questions are a fixed sequence, not a conversation.</strong> They exist to produce one comparable baseline number. If it feels like a form rather than an AI, that is the design rather than a shortcut — the conversation starts after it.<br>
+2. <strong>The Genome captures project activity more readily than business structure.</strong> I know because it is true on my own account. If the areas a buyer actually asks about come back thin while day-to-day work fills up, you have reproduced a known weakness rather than found a new one — but I would still like to hear how it felt.
+
+One caveat on Drafts: she does not write or send anything on your behalf in this beta.
+
+<strong>One thing to watch for that is my fault, not the product's.</strong> Another tester found that the invitation told him to type his code at the pricing step, while the page put that box in small grey text underneath a more prominent offer of an account without a card — so he took the wrong door and ended up outside the beta path entirely. That is fixed now. If anything about how you got in felt like that, I would like to know.
+
+On your offer of the deeper technical review — architecture, AI implementation, memory and context handling — that is an interesting offer and I would rather pick it up properly than casually. Let me come back to you on scope once you have been through the product.
+
+Looking forward to the run.
+
+Dennis

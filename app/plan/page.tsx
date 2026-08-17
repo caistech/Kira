@@ -624,6 +624,46 @@ export default function PlanPage() {
                 {copy.cta} <ArrowRight className="h-5 w-5" />
               </button>
               {error && <p className="text-rose-600 text-sm mt-3">{error}</p>}
+
+              {/* THE BETA DOOR — FIRST OF THE SECONDARY LINES, NOT LAST.
+                  It used to render last of four, as `text-sm text-stone-500` (14px, light grey),
+                  directly BELOW a violet "Create an account without a card". The reasoning was that
+                  an invited tester arrives by `?code=` and never reads this — which was true of the
+                  design and false of the invitation, because the email sent people to the bare
+                  domain and told them to type the code at the pricing step. So a man holding a code,
+                  told to use it "instead of a card", arrived at a page whose most visible offer was
+                  a DIFFERENT no-card door, and took it:
+
+                    "The promo-code flow also did not work as expected. I eventually signed up
+                     without adding a card." — Shani Shah, 2026-08-17
+
+                  He landed on the ordinary free path, and everything after it behaved unlike what
+                  the email had promised. Nothing errored; he simply took the loudest correct-looking
+                  option, which is the only sane thing to do.
+
+                  ⚠️ TWO NO-CARD DOORS ON ONE PAGE, AND THE WRONG ONE WAS LOUDER. The fix is order
+                  and weight rather than new copy: whoever holds a code meets his own door first, and
+                  it is 16px — the responsive floor this line was under anyway, on the page where
+                  being unreadable costs the most. The invitation now also carries `?code=`, so this
+                  is the second of two defences, not the only one. */}
+              {signedIn ? null : betaOpen ? (
+                <div className="mt-5">
+                  <BetaRedeem initialCode={betaCode ?? ''} firstName={payload?.firstName} />
+                </div>
+              ) : (
+                <p className="mt-4 text-base text-stone-600">
+                  Been invited to the beta?{' '}
+                  <button
+                    type="button"
+                    onClick={() => setBetaOpen(true)}
+                    className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500 min-h-[44px]"
+                  >
+                    Enter your invitation code
+                  </button>{' '}
+                  — no card, nothing charged.
+                </p>
+              )}
+
               {/* A DOOR THAT ISN'T A CARD FORM.
                   Ray, 7 August, having read the whole pricing argument and accepted it: "I am not
                   putting a card in before I have seen the thing work. I am sixty-six and thinking
@@ -638,9 +678,14 @@ export default function PlanPage() {
                   already taken." Each is exactly right for the anonymous visitor this page is
                   mainly written for, and each reads as a page that does not know who it is talking
                   to when he is signed in. */}
+              {/* ⚠️ OPENS BY NAMING WHO IT IS FOR, because the line above it now makes the same
+                  offer to a different person. Two doors both promising "no card" is how an invited
+                  tester ends up on the uninvited path — he is not choosing wrongly, he is choosing
+                  between two things that read identically. "Not invited" lets him rule this out in
+                  four words without having to understand the difference. */}
               {!signedIn && (
-              <p className="mt-4 text-sm text-stone-600">
-                Rather look around first?{' '}
+              <p className="mt-3 text-sm text-stone-600">
+                Not invited, but want a look first?{' '}
                 <a href="/signup" className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500">
                   Create an account without a card
                 </a>{' '}
@@ -655,27 +700,6 @@ export default function PlanPage() {
                 .
               </p>
 
-              {/* THE BETA DOOR — a line, not a card. See the note on `betaCode` above for why this
-                  is not a pricing tier. Rendered last of the three secondary lines because it is the
-                  one fewest readers need: an invited tester usually arrives by `?code=` and never
-                  reads this at all. It is here for the one whose link went stale. */}
-              {signedIn ? null : betaOpen ? (
-                <div className="mt-5">
-                  <BetaRedeem initialCode={betaCode ?? ''} firstName={payload?.firstName} />
-                </div>
-              ) : (
-                <p className="mt-3 text-sm text-stone-500">
-                  Been invited to the beta?{' '}
-                  <button
-                    type="button"
-                    onClick={() => setBetaOpen(true)}
-                    className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500 min-h-[44px]"
-                  >
-                    Enter your invitation code
-                  </button>
-                  .
-                </p>
-              )}
               {/* ⚠️ THE RETURNING OWNER HAS NOWHERE TO GO FROM THIS PAGE.
                   Every route into /plan is a funnel for a new customer, and the page carried a logo,
                   a "Redo my valuation" link and a button that starts taking money. A man who already

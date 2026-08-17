@@ -9,7 +9,11 @@
 
 import { describe, expect, it } from 'vitest';
 
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import {
+  BETA_CODE_REJECTION_MESSAGE,
   checkBetaCode,
   formatBetaCode,
   generateBetaCode,
@@ -113,6 +117,46 @@ describe('the four rejection branches', () => {
   it('treats the expiry instant itself as expired', () => {
     // Boundary stated rather than discovered. `<=` means the moment it expires, it has.
     expect(checkBetaCode(row({ expires_at: NOW.toISOString() }), NOW)).toBe('expired');
+  });
+
+  it('offers a way out that does not assume an email to reply to', () => {
+    // The sentence Ray hit told him to reply to an invitation he had never received — his code came
+    // from a person, not a mailbox. Both halves are pinned: the route out for a code already used
+    // (an account exists, so signing in resolves it) and a monitored address for everything else.
+    expect(BETA_CODE_REJECTION_MESSAGE).toMatch(/sign in/i);
+    expect(BETA_CODE_REJECTION_MESSAGE).toMatch(/@/);
+    expect(BETA_CODE_REJECTION_MESSAGE).not.toMatch(/reply to it/i);
+  });
+
+  it('still refuses to say WHICH of the four reasons applied', () => {
+    // The message is the disclosure boundary, not just copy: naming "already redeemed" tells an
+    // anonymous caller that a given code exists, which is the one thing a guesser can learn here.
+    for (const leak of [/already been used/i, /expired/i, /revoked/i, /no such code/i]) {
+      expect(BETA_CODE_REJECTION_MESSAGE).not.toMatch(leak);
+    }
+  });
+
+  it('is the SAME sentence on /peek and /redeem — neither route declares its own', () => {
+    // ⚠️ THIS IS THE TEST THAT WOULD HAVE CAUGHT THE REAL DEFECT. The wording was repaired on
+    // /redeem and left stale on /peek, and BetaRedeem calls /peek first — so the fix was live on the
+    // route almost nobody reaches while every rejected code showed the dead end. Nothing failed,
+    // nothing logged, and from outside it was indistinguishable from never having fixed it.
+    //
+    // Asserted against the SOURCE rather than by importing the routes, because both pull in the
+    // service-role Supabase client at module scope and would need a live environment to load. The
+    // question here is a textual one anyway: does a second copy of this sentence exist?
+    const root = join(__dirname, '..', '..', 'app', 'api', 'beta');
+    for (const route of ['peek', 'redeem']) {
+      const source = readFileSync(join(root, route, 'route.ts'), 'utf8');
+      const code = source
+        .split('\n')
+        .filter((line) => !line.trim().startsWith('//') && !line.trim().startsWith('*'))
+        .join('\n');
+
+      expect(code).toContain('BETA_CODE_REJECTION_MESSAGE');
+      // A literal rejection sentence outside the shared constant is the drift itself.
+      expect(code).not.toMatch(/That code (did not work|is not valid)/);
+    }
   });
 
   it('reports REVOKED ahead of redeemed, so a withdrawn code reads correctly in the log', () => {

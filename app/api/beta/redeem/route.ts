@@ -24,11 +24,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { ATTRIBUTION_COOKIE, attachFirstTouch, attribution } from '@/lib/introducer';
-import { claimBetaCode, linkBetaCodeToUser, releaseBetaCode } from '@/lib/billing/beta-codes';
+import {
+  BETA_CODE_REJECTION_MESSAGE,
+  claimBetaCode,
+  linkBetaCodeToUser,
+  releaseBetaCode,
+} from '@/lib/billing/beta-codes';
 import { getBetaGate } from '@/lib/billing';
 import { createServiceClient } from '@/lib/supabase/server';
 import { TERMS_VERSION } from '@/lib/terms';
-import { SUPPORT_EMAIL } from '@/lib/contact';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -57,13 +61,13 @@ export const dynamic = 'force-dynamic';
  * reasons without revealing which applies: an already-redeemed code means he has an account, so
  * "sign in" resolves it; a mistyped or unknown code needs a human. Neither line says which he is.
  */
-const REJECTION_MESSAGE =
-  'That code did not work. If you have used it before, your account already exists — sign in ' +
-  // ⚠️ A MONITORED MAILBOX. `hello@` was already found and removed once on the introducer expiry
-  // page — nobody reads it, and an address that bounces on the screen someone reaches BECAUSE they
-  // are locked out costs them their last attempt and makes the offer of help decorative.
-  `instead. Otherwise check the code and try again, or email ${SUPPORT_EMAIL} and we ` +
-  'will sort it out.';
+// ⚠️ NOW SHARED WITH /peek RATHER THAN DECLARED HERE. The sentence was repaired on this route and
+// left stale on that one, and /peek is the route a tester reaches first — so for four weeks the fix
+// existed and no real person could see it. The wording, and the reasoning above it, moved into
+// `BETA_CODE_REJECTION_MESSAGE` so there is exactly one of it. (`SUPPORT_EMAIL` is interpolated
+// there, on the same monitored-mailbox grounds: an address that bounces on the screen someone
+// reaches BECAUSE they are locked out costs them their last attempt.)
+const REJECTION_MESSAGE = BETA_CODE_REJECTION_MESSAGE;
 
 export async function POST(request: NextRequest) {
   let body: { code?: unknown; password?: unknown; firstName?: unknown; termsAccepted?: unknown };

@@ -1,0 +1,31 @@
+Hello Shani,
+
+Thank you. This is the most useful note I have had all week, and I would rather answer the specific parts than thank you generally.
+
+<strong>I think I know what happened with the code, and it is my fault rather than yours.</strong>
+
+My email told you to go to the site and enter the code at the pricing step. It should have sent you a link with the code already in it. Because it didn't, the pricing page had no idea you were holding one — so instead of greeting you with "we have your code, there is nothing to pay and no card to enter", it offered the code box as one line of small grey text, fourth in a stack of options, directly underneath a much more visible link offering an account without a card.
+
+You took the visible one. Anyone would. But that is the ordinary free path rather than the beta path, which is very likely why what came next did not match what I had described to you. So this is not you missing something — it is a page that hid the one instruction I had just given you in writing.
+
+Both halves of that are now fixed: the invitation carries the code in the link, and on the page the invited door comes first and is no longer the smallest thing on it.
+
+<strong>Three things would tell me whether I have that right.</strong> They are the difference between a fix today and me guessing.
+
+1. Did you ever see a box to type the code into — or was there simply nowhere obvious for it to go?<br>
+2. If you did type it and it was refused, do you remember roughly what it said?<br>
+3. Where did the Kira connection stop? After the setup questions there is a step that builds her, and then a separate one where she actually starts talking. Which of the two stopped, and what was on screen — an error, a spinner that never resolved, or nothing at all?
+
+Answer whichever you can recall and ignore the rest.
+
+<strong>Your bigger point is the one I most needed to hear.</strong> Valuation, then account, then Kira were built at three different times, and they read that way. For a man in his sixties who is not yet sure he wants to do this at all, every unexplained transition is a place to stop — and he will not write to me about it, he will simply close the tab. That is not polish. It is the product. I would rather have this now than after ten of them have quietly gone.
+
+<strong>On the technical directions</strong> — on-device and local models, cross-platform mobile, the orchestration and retrieval layer. There is real thinking there and I am not waving it off. It sits outside what this beta is testing, so let me come back to it properly rather than in passing.
+
+I am fixing the entry path first. When it is done I will write and tell you it is worth another twenty minutes — and I will send a link that does the work rather than an instruction that asks you to.
+
+If you do go back in, the part I would most value your eye on is what happens after you are in: whether Kira stops on something a buyer would stop on, or just files it and asks what is next. That is the failure I am least confident about.
+
+Thank you again. Genuinely — this was worth more than a polite report would have been.
+
+Dennis
