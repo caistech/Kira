@@ -7,7 +7,7 @@ breaking it, or a technical reviewer checking that the claims in the HLD are act
 that must survive any future change. An invariant is not a style preference. Each one is here
 because breaking it causes a specific, named failure.
 
-**Status:** `main` as at 2026-07-27.
+**Status:** `main` as at 2026-08-18.
 
 ---
 
@@ -213,6 +213,60 @@ static audit that the semantic write is wired, which the runtime probe structura
 **Invariant:** these run in CI, not on request. The probe previously existed and ran nowhere, and
 the bug reached production twice. A product with genuinely no cross-session memory declares
 `"semanticMemory": false` — **the omission is declared, never silent.**
+
+**Also in `gate.yml`, and for the same reason:**
+
+| Check | Asks |
+|---|---|
+| `check-app-chrome.mjs` | does every authenticated route render inside the app chrome? (§4) |
+| `check-voice-reachable.mjs` | can an owner REACH the conversation from every authenticated route? (§6) |
+| `check-design-tokens.mjs` | does UI code paint with tokens rather than raw hex? |
+
+`check-voice-reachable.mjs` was added 2026-08-18 after the persistent mic was unmounted inside a
+commit about something else, leaving six routes with no way to reach Kira at all — while the build,
+the tests, the chrome check and every reachability probe stayed green and correct, because none of
+them asked whether the PRIMARY INTERFACE was present. It scores an **embedded shape** separately
+from a **text link**: satisfying §6 with a sentence pointing elsewhere is not the same as her being
+on the page, and an earlier version that conflated the two reported a page as having a voice surface
+while the operator was looking at one with none.
+
+### 3.5 Where the shape is mounted — added 2026-08-18
+
+Four distinct things share the word "widget", and conflating them has now cost real work. The
+vocabulary is fixed in `CLAUDE.md`; the short version:
+
+| Term | What it is |
+|---|---|
+| **Vendor embed** | ElevenLabs' `<elevenlabs-convai>` CDN element. **Not used here.** |
+| **Transport component** | `@caistech/elevenlabs-convai/react`'s `VoiceWidget`. Portfolio-shared. A PART. |
+| **The Kira shape** | The product surface composed from it: avatar, name, transcript, mic, text fallback, owner-gated signed URL. |
+| **TalkFab** | A `<Link href="/talk">`. Navigation. **Unmounted 2026-08-18.** |
+
+**`components/KiraShape.tsx`** (client) renders the shape; **`components/KiraShapeSection.tsx`**
+(server) resolves the owner's agent and passes it in, so a page mounts her in one line and cannot
+get the lookup subtly different from its neighbours.
+
+Mounted on `/dashboard`, `/my-genome`, `/drafts`, `/requests`, `/knowledge`. `/settings` and
+`/setup/*` opt out by name with a stated reason.
+
+**Two invariants, both load-bearing:**
+
+1. **Rendering is not connecting.** No `autoConnect`. She is visibly present; nothing is spent and
+   no microphone is requested until the owner taps. A permission prompt on arrival reads, to this
+   ICP, as an application that started listening to him.
+2. **No agent is provisioned on page load.** An owner without one gets an honest "Set up Kira" in
+   the same frame. Provisioning from a page VIEW would create real vendor resources from crawlers
+   and double-renders, into a workspace shared by eleven products.
+
+**The opener.** `buildGenomeOverviewFirstMessage` (`lib/kira/area-focus.ts`) primes her on
+`/my-genome` — it names how many areas a buyer would ask about that she knows nothing about, offers
+the worst one, and stops. It carries the **trigger only**; `area_agenda` is hers to call once he
+picks, because this page renders once and the call runs twenty minutes. Without it she opens on
+whatever was raised last, which is always the live job. When a page supplies an opener the
+welcome-back banner is suppressed, so the screen cannot contradict the voice.
+
+⚠️ **Observed live 2026-08-18** — she spoke the opener on the operator's own account ("four parts…
+the biggest gap is who does the work"). What has NOT been observed is `area_agenda` firing after it.
 
 ---
 
@@ -483,6 +537,7 @@ Principal tables (`supabase/migrations/` is the **only** canonical location — 
 | Commercial | `business_valuations` (⚠️ `readiness` = frozen baseline; `readiness_now` = evidenced, §6B), `beta_trials`, `beta_usage`, `stripe_webhook_events`, `loi_commitments` |
 | Channel | `introducers`, `introducer_magic_links`, `introductions`, `attribution_overrides`, `advisor_enquiries` |
 | Email | `email_logs`, `email_suppressions` |
+| Observability | `voice_connect_events` (§3.6 — one row per voice connection attempt) |
 | PubGuard | `pubguard_scans`, `pubguard_reports` |
 
 **Invariants**
@@ -499,6 +554,34 @@ Principal tables (`supabase/migrations/` is the **only** canonical location — 
    derived by app user id throughout. A table keyed the other way joins to nothing and its RLS
    silently matches no rows — caught in review on `genome_item_status`, which was drafted against
    `auth.users` and would have returned an empty panel to every owner forever.
+
+### 3.6 Voice-connect telemetry — added 2026-08-18
+
+A voice connection is the one step in this product that fails on the CLIENT, in someone else's
+browser, on someone else's network. Everything else leaves a server-side row; this left nothing. A
+beta tester granted his microphone, saw "Not connected", and gave up — and by the time he described
+it the runtime logs had rolled past (retention reaches roughly ninety minutes). Three sessions went
+on reconstructing one sentence from an email, and the answer was still a guess.
+
+`voice_connect_events` — `user_id` (null before sign-in, deliberately: an anonymous visitor who
+cannot connect is a lost visitor), `surface`, `outcome`
+(`connected` | `signed_url_failed` | `error` | `stalled`), `detail`, `reachable`, `user_agent`.
+
+⚠️ **`reachable` is the column it was built for.** On failure the browser probes ElevenLabs
+directly. `false` means that network cannot reach the vendor at all — a corporate proxy or
+firewall, nothing fixable here. `true` on a failure means it reached the vendor and still failed,
+which is ours. Without that one bit every future report is the same unresolvable argument.
+
+`connected` is recorded on purpose: a table holding only failures cannot answer "how often", and
+three failures mean something different at thirty attempts than at three.
+
+Contract: fire-and-forget, never blocks or throws on the connect path; the detail string is redacted
+**on both sides** (the signed URL carries a conversation signature and must never land in a row);
+identity is derived from the session, never from the payload; the route always answers 204, because
+it is called immediately after something already failed.
+
+Read it with `scripts/voice-connect-report.mjs` — written at the same time as the writer, since a
+table nothing reads is storage rather than observability.
 
 ---
 

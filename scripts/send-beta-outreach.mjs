@@ -23,6 +23,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';
+import { assertJurisdictionAllowed } from '@caistech/email-compliance';
 
 const envPath = path.join(process.cwd(), '.env.local');
 if (fs.existsSync(envPath)) {
@@ -165,6 +166,42 @@ function draftReply({ subject, bodyPath }) {
 }
 
 if (!ONLY) throw new Error('--only <email> is required. This script sends to one person per run, on purpose.');
+
+/**
+ * ⚠️ THE JURISDICTION GUARD, AND IT WAS MISSING FROM EXACTLY THE PATH THAT NEEDED IT.
+ *
+ * PRODUCT_STANDARDS §9: we are cleared for AUSTRALIA ONLY, and email outreach to any other country
+ * is blocked until that country's consent / identification / unsubscribe rules are implemented. The
+ * product's send path enforces it. THIS script did not — it calls the Resend API directly (because
+ * `@caistech/email-send` has no cc, and the operator needs a cc on every send), so it had quietly
+ * routed around the one guard that matters most on the one path that mails real strangers.
+ *
+ * Found 2026-08-18 when a Barcelona contact was added to the beta sheet as Priority 1. Nothing in
+ * the tooling would have stopped that send; it was caught by someone reading the address.
+ *
+ * ⚠️ UNKNOWN BLOCKS, and that is the whole design rather than an inconvenience. A missing --country
+ * is not "probably Australian" — the sheet is full of gmail addresses that say nothing about where
+ * someone lives, and a default of AU would make the guard agree with whatever we already assumed.
+ * The package throws on undefined for the same reason.
+ *
+ * Checked BEFORE the dry-run exit, so `--dry` tells you about a blocked recipient rather than
+ * printing a cheerful preview of an email that must not go.
+ *
+ * LinkedIn is explicitly exempt from this rule (it is inside the platform's own compliance), so a
+ * non-AU peer is reachable — just not from here.
+ */
+const COUNTRY = (arg('country') || '').trim().toUpperCase() || undefined;
+try {
+  assertJurisdictionAllowed(COUNTRY);
+} catch (error) {
+  console.error(`\nREFUSED — ${ONLY}\n`);
+  console.error(error.message);
+  console.error(
+    '\nPass --country <ISO2> once you know it (e.g. --country AU). If this person is not in a\n' +
+      'cleared jurisdiction, reach them on LinkedIn instead — that channel is exempt.\n',
+  );
+  process.exit(1);
+}
 
 // The code, for draft A. Read rather than assumed — see the note at the top.
 let code = null;
