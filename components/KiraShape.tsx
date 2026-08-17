@@ -172,7 +172,14 @@ export function KiraShape({
         // ⚠️ ONLY WHEN THERE IS SOMETHING TO PICK UP. "Kira remembers where you left off" shown to a
         // man with no history is the cheapest possible way to lose him: it is checkable, he checks
         // it, and it is false on the first screen he sees.
-        title={welcomeBack}
+        // ⚠️ THE BANNER MUST NOT CONTRADICT WHAT SHE SAYS. Observed live on /my-genome, 2026-08-18:
+        // the banner read "Welcome back — Kira remembers where you left off" while she opened, half a
+        // second later and correctly, on the four areas she knows nothing about. area-focus.ts is
+        // explicit that a page-supplied opener BEATS the welcome-back — being met with "last time we
+        // went through the plumbing quote" is the groove the whole feature exists to break — but only
+        // the SPEECH was made to obey it. The banner was not, so the screen argued with the voice.
+        // One expression, so a page cannot supply an opener and a contradicting banner again.
+        title={firstMessage ? undefined : welcomeBack}
         // Only sent when the page had something to open on; otherwise the agent's own greeting (or
         // its connect-time welcome-back recall) stands, which is the right default everywhere else.
         overrides={firstMessage ? { agent: { firstMessage } } : undefined}
