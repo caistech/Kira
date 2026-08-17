@@ -4,10 +4,10 @@ import { getCurrentAppUser } from '@/lib/auth';
 import { canSend, DEFAULT_TIME_ZONE as DASHBOARD_TIME_ZONE } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
 import { createServiceClient } from '@/lib/supabase/server';
+import { DashboardKira } from '@/components/DashboardKira';
 import { formatMoney, formatMoneyApprox, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { displayedFigures } from '@/lib/valuation/displayed';
 import { shouldInviteBaseline } from '@/lib/valuation/baseline-invite';
-import { readTaskLedger } from '@/lib/kira/swarm/open-tasks';
 import { OnboardingGate } from '@/components/OnboardingGate';
 import { nextOnboardingStep, onboardingProgress } from '@/lib/onboarding/gate';
 
@@ -187,20 +187,13 @@ export default async function DashboardPage({
   // by tests because both read as tidy-uppable.
   const showBaselineInvite = shouldInviteBaseline(list);
 
-  // WHAT IS WAITING ON HIM, on his own screen.
+  // THE TASK LEDGER IS NOT READ HERE ANY MORE — it belongs to /requests now. See the note further
+  // down where the section used to render. Ray's original finding still stands and is still
+  // answered: he found 39 open items on the OPERATOR's page with no owner surface reading `queued`
+  // or `awaiting_approval` at all, which inverted the whole promise. The owner can still see every
+  // one of them; he now reaches them from the nav instead of being met with them.
   //
-  // Ray found 39 open items on the OPERATOR's page, several "4 days ago · nobody has looked",
-  // including a real owner's quote follow-up — and no way for that owner to see any of it. The
-  // admin page's own header says why: no owner surface reads `queued` or `awaiting_approval` at all.
-  //
-  // That is the whole promise inverted. He is buying "she keeps the list so I don't have to", and
-  // the list existed somewhere he could not look while things aged on it.
-  //
-  // READ-ONLY, deliberately. Approving still happens in conversation, where she reads the draft back
-  // and confirms the recipient out loud — the path the approval guard actually protects. Putting an
-  // Approve button here would create a second way to fire a real email at a real client, on a screen
-  // built at the end of a long day, bypassing the confirmation that makes the first path safe.
-  const ledger = user?.id ? await readTaskLedger(user.id) : { openCount: 0, open: [] as { id: string; summary: string; state: string; ageDays: number }[] };
+  // Dropping the read also takes one query off the page every owner lands on.
 
 
   return (
@@ -220,65 +213,17 @@ export default async function DashboardPage({
           It names the ABN out loud on purpose: for an owner outside Australia that sentence is the
           whole explanation, and the alternative is him filling the form three times wondering which
           field is being rejected. */}
-      {ledger.openCount > 0 && (
-        <section className="mb-8 rounded-2xl border border-stone-200 bg-white p-5">
-          <h2 className="text-lg font-semibold text-stone-900">Waiting on you</h2>
-          {/* ⚠️ DOES NOT ASSERT THEY ARE DRAFTED. This said "Kira has these drafted and ready" over
-              a list containing items with nothing written and items she had been REFUSED, and the
-              link under it was labelled "Read what she has written". Each row now carries its own
-              state from the same source the Drafts page reads. */}
-          <p className="mt-1 max-w-prose text-base text-stone-600">
-            What you have asked Kira for, and where each one is up to. Nothing goes out until you say
-            so — tell her to send one and she&apos;ll read it back to you first.
-          </p>
-          <ul className="mt-4 space-y-3">
-            {ledger.open.map((task) => (
-              <li
-                key={task.id}
-                className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t border-stone-100 pt-3"
-              >
-                {/* ⚠️ THE TITLE IS A LINK NOW. It was a line of text beside a button that took him
-                    back to the chat, which offered to email it — a loop with no way to READ the
-                    thing. Ray: "every draft needs a title you can click that opens the text, on a
-                    page." */}
-                <Link href={`/drafts/${task.id}`} className="inline-flex min-h-[44px] items-center text-base text-stone-900 underline decoration-stone-300 underline-offset-4 hover:decoration-stone-500">
-                  {task.summary}
-                </Link>
-                {/* The AGE is the part that matters to him, and the part a quiet list hides. Four
-                    days is the difference between a follow-up and an apology. */}
-                <span
-                  className={`text-sm ${task.ageDays >= 2 ? 'font-semibold text-amber-700' : 'text-stone-500'}`}
-                >
-                  {task.state}
-                  {task.ageDays >= 1
-                    ? ` · ${task.ageDays} day${task.ageDays === 1 ? '' : 's'} waiting`
-                    : ' · today'}
-                </span>
-              </li>
-            ))}
-          </ul>
-          {/* READ first, TALK second — the order he asked for. "Nothing should be sendable before
-              it's readable. And 'send' should never be the answer to 'where is it'." */}
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Link
-              href="/drafts"
-              className="inline-block min-h-[44px] rounded-full bg-stone-900 px-5 py-3 text-base font-semibold text-white"
-            >
-              {/* ⚠️ DOES NOT PROMISE WRITING SHE CANNOT DO. The label said "Read what she has
-                  written" over a list whose rows read "She could not do this one" and "nothing
-                  written yet" — Ray landed on the page and found the app explaining, correctly, that
-                  she cannot write documents yet. The link is still right; the promise was not. */}
-              See what you have asked for
-            </Link>
-            <Link
-              href={talkHref}
-              className="inline-block min-h-[44px] rounded-full border border-stone-300 bg-white px-5 py-3 text-base font-semibold text-stone-800 hover:border-violet-300"
-            >
-              Talk to Kira about these
-            </Link>
-          </div>
-        </section>
-      )}
+      {/* ⚠️ THE OUTSTANDING-WORK LIST IS NOT ON THIS PAGE ANY MORE — it lives at /requests, with its
+          own nav item. Operator decision, 2026-08-18, and the reason is worth keeping.
+          This section was FIRST on the page every owner lands on when he opens the app. On a real
+          account it rendered twelve items, oldest seventeen days, headed "Waiting on you" — and all
+          twelve were waiting on HER (ten "on her list, not written yet", two "accepted and not
+          finished", none drafted for his go-ahead). So the product opened, every morning, with her
+          backlog labelled as his fault.
+          Correcting the heading alone would not have been enough. A list of unfinished work is the
+          wrong thing to meet someone with at the moment he arrives, however it is labelled; it is
+          what he goes looking for when he wants it. The split itself now lives in the ledger
+          (`waitingOnOwner` / `waitingOnKira` / `stalled`) so no screen re-derives it. */}
 
       {/* THE OUTSTANDING STEP, FIRST AND ABOVE EVERYTHING.
           Placed here rather than lower because the surfaces below report on data he has not given
@@ -368,6 +313,27 @@ export default async function DashboardPage({
 
       {val && val.gap > 0 && (
         <GapDashboard valuation={val} money={money} talkHref={talkHref} isWelcome={isWelcome} hasMetKira={list.length > 0} firstName={user?.first_name as string | undefined} />
+      )}
+
+      {/* KIRA HERSELF, ON THE PAGE HE LANDS ON — not a button that goes to her.
+          Placed directly under the gap figure on purpose: the number is the reason to talk to her,
+          so the thing that talks to her belongs beneath it rather than at the foot of the page.
+          It renders; it does not connect, and it provisions nothing on load. See the component for
+          why each of those is deliberate. */}
+      {!gateStep && (
+        <DashboardKira
+          agentId={(businessAgent?.elevenlabs_agent_id as string | undefined) ?? null}
+          firstName={user?.first_name as string | undefined}
+          // ⚠️ ONLY WHEN SOMETHING WAS ACTUALLY RECALLED. `has_history` is true the moment a
+          // conversation ROW exists, which is not the same as there being anything to pick up —
+          // a tester with zero conversations was told "Kira remembers where you left off" on the
+          // first screen he ever saw, and said so. Conversation COUNT is the honest signal here.
+          welcomeBack={
+            (conversationCounts.get(String(businessAgent?.id ?? '')) ?? 0) > 0
+              ? 'Welcome back — Kira remembers where you left off. Tap the mic to carry on.'
+              : undefined
+          }
+        />
       )}
 
       {/* ⚠️ THE FUNNELS ARE NOT ON THIS PAGE — operator decision, 2026-08-15. They live on

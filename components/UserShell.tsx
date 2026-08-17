@@ -21,6 +21,7 @@ import { displayedFigures } from '@/lib/valuation/displayed';
 import { DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { PortalShell, type NavItem } from '@/components/PortalShell';
 import { ClaimStoredValuation } from '@/components/ClaimStoredValuation';
+import { TalkFab } from '@/components/TalkFab';
 
 const USER_NAV: NavItem[] = [
   { href: '/dashboard', label: 'Overview' },
@@ -31,6 +32,16 @@ const USER_NAV: NavItem[] = [
   // she offered to EMAIL it and asked him for a recipient — and there was no screen in the product
   // that would show it to him. "The document exists somewhere and I cannot look at it."
   { href: '/drafts', label: 'Drafts' },
+  // ⚠️ ITS OWN DESTINATION, NOT A BLOCK ON THE OVERVIEW.
+  //
+  // The outstanding-work list used to be the FIRST section of the dashboard — so the page every
+  // owner lands on when he opens the app led with twelve things Kira had not done, up to seventeen
+  // days old, under a heading that said "Waiting on you". A man deciding whether to trust her with
+  // thirty years of undocumented knowledge opened the product and read a case against her.
+  //
+  // The list is worth keeping and worth reaching; it is not worth being the first thing he sees
+  // every morning. So it moves here, where he goes when he wants it.
+  { href: '/requests', label: 'Requests' },
   { href: '/knowledge', label: 'Knowledge' },
 ];
 
@@ -156,18 +167,29 @@ export async function UserShell({
           shell rather than in each signup flow, because the condition is "is signed in", not
           "arrived via checkout" — which is how the free-signup path lost it entirely. */}
       {claimValuation && <ClaimStoredValuation existing={existingBaseline} />}
-      {/* ⚠️ THE FAB IS GONE — removed 2026-08-15 on operator instruction. The spacing note below is
-          kept only until someone confirms the bottom padding is still wanted without it.
-          ROOM FOR THE FAB. It is fixed bottom-right, so whatever is last on the page sits under it —
-          a tester found it covering the "Run the numbers again" link at the foot of the valuation
-          card on a phone. Reserving the space in the shell fixes every page at once, rather than
-          each page remembering to leave a gap for a button it does not render. Sized past the
-          button's 56px plus its 20px offset. */}
+      {/* ROOM FOR THE FAB. It is fixed bottom-LEFT, so whatever is last on the page could sit under
+          it — a tester found the old bottom-right placement covering the "Run the numbers again"
+          link at the foot of the valuation card on a phone. Reserving the space in the shell fixes
+          every page at once, rather than each page remembering to leave a gap for a button it does
+          not render. Sized past the button's 56px plus its 20px offset. */}
       <div className="pb-28">{children}</div>
       {/* Always-there one-tap mic — Siri-simple access from anywhere in the portal.
           TalkFab hides ITSELF on the pages that already are the conversation (see the component):
           the decision lives there because the FAB is the thing that knows where it points, and this
-          shell is a server component that cannot read the path anyway. */}
+          shell is a server component that cannot read the path anyway.
+
+          ⚠️ REMOVED 2026-08-15 ON OPERATOR INSTRUCTION, RESTORED 2026-08-18 ON OPERATOR INSTRUCTION.
+          Both were deliberate; this is a reversal, not a bug fix, and the history is kept because
+          the reason for the reversal is the part worth not losing.
+
+          What changed in between is what the removal cost, and it only became visible once the beta
+          went out. With the FAB gone, the ONLY route to Kira from inside the app was the "Talk to
+          Kira →" link on the dashboard: from My Genome, Drafts or Knowledge an owner had to go back
+          to Overview first, and there was no voice anywhere on those pages at all. That fails
+          PRODUCT_STANDARDS §6 ("reachable from the main chrome … ≤3 clicks from any page") — and the
+          fourteen Priority-1 beta invitations went out on 17 August, two days into that state, so
+          every tester walked a product whose primary interface had no persistent entry point. */}
+      <TalkFab />
     </PortalShell>
   );
 }

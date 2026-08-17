@@ -23,6 +23,30 @@ const OPEN_STATES = ['queued', 'awaiting_approval', 'scheduled'] as const;
 /** How far back "recently finished" reaches, so she can confirm a send without listing history. */
 const RECENT_DAYS = 14;
 
+/**
+ * WHOSE MOVE IS IT. The distinction the dashboard got backwards for every row on a real account.
+ *
+ * The owner's screen headed this list "Waiting on you" and then listed twelve items of which
+ * TWELVE were waiting on HER — ten "on her list, not written yet", two "accepted and not finished",
+ * none drafted. The heading was not merely imprecise; it was inverted for every row, and the first
+ * thing the owner read each morning was his own backlog described as his fault, aged in days.
+ *
+ * So the split is computed from the same signal `plainState` uses, and no screen decides it by
+ * matching the display sentence — a string comparison would silently reclassify everything the day
+ * someone improves the wording.
+ */
+export type WaitingOn = 'owner' | 'kira';
+
+/**
+ * When something waiting on HER stops being "in progress" and starts being evidence.
+ *
+ * Seven days because that is a week: an owner who asked on Monday and sees it again the following
+ * Monday has learned something about whether this works. The real account carried items at 17 days.
+ * The point is not the number — it is that age must CHANGE something on screen, because a list that
+ * ages silently reads as activity while it is actually rot.
+ */
+export const STALLED_AFTER_DAYS = 7;
+
 export interface OpenTaskSummary {
   id: string;
   kind: string;
@@ -32,12 +56,26 @@ export interface OpenTaskSummary {
   summary: string;
   requested: string;
   ageDays: number;
+  /** Who has to act next. See WaitingOn. */
+  waitingOn: WaitingOn;
+  /** Waiting on her, and old enough that saying nothing would be dishonest. */
+  stalled: boolean;
 }
 
 export interface TaskLedger {
   openCount: number;
   open: OpenTaskSummary[];
   recentlyDone: OpenTaskSummary[];
+  /**
+   * The same open items, split by whose move it is — computed ONCE, here.
+   *
+   * Exposed rather than left to each screen because two screens deriving "is this his?" separately
+   * is how the dashboard and the Drafts page came to disagree about the same row in the first place.
+   */
+  waitingOnOwner: OpenTaskSummary[];
+  waitingOnKira: OpenTaskSummary[];
+  /** Waiting on her past STALLED_AFTER_DAYS. A subset of waitingOnKira, oldest first. */
+  stalled: OpenTaskSummary[];
   /** One sentence she can say as-is. Empty when there is nothing outstanding. */
   spoken: string;
 }
@@ -94,6 +132,23 @@ export function days(iso: string, now: Date = new Date()): number {
   return Math.max(0, Math.round((startOfDay(now) - startOfDay(then)) / 86_400_000));
 }
 
+/**
+ * Whose move is it — from the row, not from the sentence.
+ *
+ * ONE case returns 'owner': she has written something and is holding it for his go-ahead. That is
+ * the only state in which he can unblock anything by acting. Everything else — not written yet,
+ * accepted and unfinished, refused, scheduled, or a status we do not recognise — is hers.
+ *
+ * ⚠️ 'refused' IS HERS, and that is deliberate rather than an oversight. "She could not do this one"
+ * feels like it needs him, but what it needs is an explanation she owes him; filing it under his
+ * column would put a failure of hers on his to-do list, which is the exact inversion this type
+ * exists to end.
+ */
+export function waitingOnFor(row: { status: string; preview?: unknown; artifact?: unknown }): WaitingOn {
+  if (readinessOf(row) === 'refused') return 'kira';
+  return row.status === 'awaiting_approval' && readinessOf(row) === 'ready' ? 'owner' : 'kira';
+}
+
 function toSummary(row: {
   id: string;
   kind: string | null;
@@ -105,6 +160,8 @@ function toSummary(row: {
   preview?: unknown;
   artifact?: unknown;
 }): OpenTaskSummary {
+  const waiting = waitingOnFor(row);
+  const ageDays = days(row.created_at);
   return {
     id: row.id,
     kind: row.kind ?? 'task',
@@ -113,7 +170,11 @@ function toSummary(row: {
     // Her own one-liner if she wrote one, otherwise his words. Never a placeholder.
     summary: row.summary || row.utterance || 'no description recorded',
     requested: row.created_at,
-    ageDays: days(row.created_at),
+    ageDays,
+    waitingOn: waiting,
+    // Only HER items can stall. Something held for his go-ahead is waiting by design, and calling
+    // that stalled would blame him for a pause he chose.
+    stalled: waiting === 'kira' && ageDays >= STALLED_AFTER_DAYS,
   };
 }
 
@@ -125,7 +186,15 @@ function toSummary(row: {
  * reads as "she didn't mention it"; a wrong all-clear reads as a promise.
  */
 export async function readTaskLedger(userId: string): Promise<TaskLedger> {
-  const empty: TaskLedger = { openCount: 0, open: [], recentlyDone: [], spoken: '' };
+  const empty: TaskLedger = {
+    openCount: 0,
+    open: [],
+    recentlyDone: [],
+    waitingOnOwner: [],
+    waitingOnKira: [],
+    stalled: [],
+    spoken: '',
+  };
   if (!userId) return empty;
 
   try {
@@ -143,7 +212,16 @@ export async function readTaskLedger(userId: string): Promise<TaskLedger> {
     const open = rows.filter((r) => (OPEN_STATES as readonly string[]).includes(r.status));
     const recentlyDone = rows.filter((r) => r.status === 'done').reverse();
 
-    return { openCount: open.length, open, recentlyDone, spoken: spokenLine(open) };
+    return {
+      openCount: open.length,
+      open,
+      recentlyDone,
+      waitingOnOwner: open.filter((t) => t.waitingOn === 'owner'),
+      waitingOnKira: open.filter((t) => t.waitingOn === 'kira'),
+      // Oldest first: the worst one leads, because that is the one he would raise.
+      stalled: open.filter((t) => t.stalled).sort((a, b) => b.ageDays - a.ageDays),
+      spoken: spokenLine(open),
+    };
   } catch (e) {
     console.error('[swarm] could not read the task ledger:', e);
     return empty;

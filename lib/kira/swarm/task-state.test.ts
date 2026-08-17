@@ -108,6 +108,8 @@ describe('spokenLine', () => {
     summary: 'something',
     requested: '2026-07-28T12:00:00Z',
     ageDays: 2,
+    waitingOn: 'kira',
+    stalled: false,
     ...over,
   });
 
