@@ -93,6 +93,12 @@ export const OWN_HEADER = [
   // Behind auth, so a 307 hides them from any anonymous count. The test found them by reading the
   // page files, which is the half of this check that does not depend on a page being reachable.
   '/introducer',
+  // Added with the page itself, 2026-08-18 — and only because site-chrome.test.ts failed the moment
+  // the page existed. It declares its own <h1> header block, so without this entry it would have
+  // served the marketing header on top of its own: the exact duplicate-chrome defect that reached
+  // production on seven routes and was found by counting `<header` in the served HTML rather than
+  // by anyone noticing. Worth stating that the check caught this before review did.
+  '/requests',
 ];
 
 /**
