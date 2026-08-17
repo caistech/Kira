@@ -84,12 +84,14 @@ Two things worth knowing before you start, because they are unusual and they are
 
 So you now walk the same path a paying owner walks:
 
-1. Go to <a href="https://kiraexec.com">https://kiraexec.com</a> — no need to sign in first.<br>
-2. Answer thirteen short questions about a business. Three honest numbers at the end.<br>
-3. At the pricing step, enter your code <strong>${code}</strong> instead of a card. No card is asked for and nothing is charged.<br>
+1. Open <a href="https://kiraexec.com/plan?code=${code}">this link</a>. It carries your code with it, so there is nothing to type and no need to sign in.<br>
+2. It will confirm the code is held, then ask thirteen short questions about a business. Three honest numbers at the end.<br>
+3. That brings you back with the code already applied. No card is asked for and nothing is charged.<br>
 4. Then have a conversation with Kira.
 
 About twenty minutes in total, and you can stop and come back. If you already made an account with me earlier, the code step will ask you to sign in instead — that is expected rather than a fault, and the valuation you have just done carries across.
+
+If your mail program strips the link, go to <a href="https://kiraexec.com">https://kiraexec.com</a> and use <strong>${code}</strong> at the "Been invited to the beta?" line on the pricing page.
 
 <strong>It is a beta, and it is worth saying what that means.</strong> Some things are not built yet — she cannot write documents for you, and sending email on your behalf is not switched on. Some things are limited by where you are: parts of the product are set up for Australia first, so from the US, Canada or New Zealand you will see gaps that are geography rather than bugs. Neither is hidden — the product tells you when it cannot do something.
 
@@ -130,6 +132,38 @@ Dennis`;
   return { subject: 'Would you take a look at what I have built?', html: paragraphs(body) + FOOTER };
 }
 
+/**
+ * A REPLY TO SOMEONE WHO HAS ALREADY WRITTEN BACK — body supplied from a file, not hardcoded here.
+ *
+ * ⚠️ IT IS A DRAFT MODE RATHER THAN A SECOND SCRIPT, and that is the point. Every mechanic a reply
+ * needs is already correct in this file and was learned the hard way: the cc so the operator sees
+ * what went out, the Reply-To (the From is a noreply subdomain that cannot receive mail), the
+ * identification footer, and one recipient per run. A separate `send-beta-reply.mjs` would copy all
+ * four and drift from them the first time one changed.
+ *
+ * ⚠️ THE BODY IS A FILE, NOT AN ARGUMENT. Replies are adapted per person — a beta tester who has
+ * already walked the product and is sent the template reads it as not having been listened to — so
+ * the text is written, reviewed and kept alongside the drafts in docs/ rather than composed at a
+ * shell prompt where it cannot be checked before it goes.
+ *
+ * ⚠️ NO CODE IS LOOKED UP. The code block below runs only for draft A. A reply to someone already
+ * inside must not mint or spend one, and someone who needs a code should be sent draft A properly.
+ *
+ *   node scripts/send-beta-outreach.mjs --draft reply --only x@y.com \
+ *     --subject "..." --body docs/replies/x.txt --dry
+ */
+function draftReply({ subject, bodyPath }) {
+  if (!subject) throw new Error('--subject is required for a reply.');
+  if (!bodyPath) throw new Error('--body <file> is required for a reply.');
+  const body = fs.readFileSync(bodyPath, 'utf8');
+  if (!body.trim()) throw new Error(`${bodyPath} is empty — nothing to send.`);
+  // The placeholder guard that protects draft A, applied here too: a reply arriving with {CODE} or
+  // {FirstName} still in it is the same failure wearing different clothes.
+  const leftover = body.match(/\{[A-Za-z]+\}/);
+  if (leftover) throw new Error(`${bodyPath} still contains the placeholder ${leftover[0]}.`);
+  return { subject, html: paragraphs(body) + FOOTER };
+}
+
 if (!ONLY) throw new Error('--only <email> is required. This script sends to one person per run, on purpose.');
 
 // The code, for draft A. Read rather than assumed — see the note at the top.
@@ -151,7 +185,12 @@ if (DRAFT === 'a') {
 }
 
 const firstName = (arg('name') || ONLY.split('@')[0]).trim();
-const { subject, html } = DRAFT === 'a' ? draftA({ firstName, code }) : draftD({ firstName });
+const { subject, html } =
+  DRAFT === 'a'
+    ? draftA({ firstName, code })
+    : DRAFT === 'reply'
+      ? draftReply({ subject: arg('subject'), bodyPath: arg('body') })
+      : draftD({ firstName });
 
 console.log(`draft ${DRAFT.toUpperCase()} -> ${ONLY}  (cc ${CC})`);
 console.log(`subject: ${subject}`);
