@@ -7,7 +7,7 @@ diligence contact, or a new engineer on day one.
 **Companion:** `docs/LLD.md` holds the contracts, schemas and invariants. This document stops at
 the boundary of "what talks to what, and why."
 
-**Status:** describes `main` as at 2026-07-27. Where something is deliberately *not* built, it says
+**Status:** describes `main` as at 2026-08-18. Where something is deliberately *not* built, it says
 so — an HLD that quietly omits the gaps is worse than none.
 
 ---
@@ -109,7 +109,9 @@ auth, and different risk.
         │
         ▼
   HE PUSHES  — /my-genome shows nine areas; he opens one, sees the buyer questions
-               his record does NOT answer, and works them with her (see §6)
+               his record does NOT answer, and works them with her (see §6).
+               She is ON that page — and on the dashboard, drafts, requests and
+               knowledge — and opens by naming the gaps rather than the live job.
         │
         ▼
   IT LEAVES  — the manual is written into the owner's OWN storage, or downloaded
@@ -120,6 +122,16 @@ auth, and different risk.
 knowledge out of the owner's head and into *our* database, which for him is a worse place than his
 head because he cannot get it out without us. A migration that never reaches the destination is not
 a migration. See LLD §6A.
+
+**Where Kira herself appears — corrected 2026-08-18.** Until that date not one authenticated page
+carried her. She lived on three surfaces, none of them in the navigation, and everywhere an owner
+actually works she was a sentence pointing elsewhere or a floating button in the corner. That button
+was then unmounted inside an unrelated change, and fourteen beta invitations went out two days
+later — so testers walked a product whose primary interface had no permanent way in. She is now
+embedded on `/dashboard`, `/my-genome`, `/drafts`, `/requests` and `/knowledge`; `/settings` and
+`/setup/*` opt out with stated reasons; and a CI check fails the build if any page loses her. She
+renders on arrival and connects only when tapped — no microphone is requested for landing on a page,
+and no agent is created by a page view. LLD §3.5.
 
 The attribution cookie is set at the very first touch and is **never overwritten**. Commission is
 decided by that signed cookie alone — a free-text "how did you hear about us?" answer is recorded
@@ -354,7 +366,24 @@ Stated rather than omitted.
   `reason` is keyed to it and hard-stops.
 - **Six of nine areas on the operator's own Genome cannot be assessed at all**, because they hold no
   facts that answer a buyer question — 96 filed memories and `people`/`assets` empty. The rubric did
-  not cause this; it made it visible. §6 is the fix and it has not yet been walked by a human.
+  not cause this; it made it visible. §6 is the fix. **Partially walked 2026-08-18:** the
+  genome-aware opener fired live on the operator's account ("four parts a buyer's advisor would ask
+  about that I know almost nothing about yet — the biggest gap is who does the work"), which is the
+  first observation of her opening on the gaps rather than the current job. What has **not** been
+  observed is `area_agenda` firing after it, i.e. whether she then asks a real question from the
+  checklist. Until that is seen, the fix is half-proven.
+- **Nothing in the five new embeds has been seen in a browser at mobile width.** The dashboard was
+  walked on a laptop and looked right; `/my-genome`, `/drafts`, `/requests` and `/knowledge` have
+  not been opened at 375px by anyone. The shared voice component additionally has a known mobile
+  defect at the version pinned here (its media query overrides the embedded variant and causes
+  horizontal page scroll) — a package-level fix, not a Kira one, but it lands on these pages.
+- **Beta outreach had no jurisdiction guard until 2026-08-18.** `scripts/send-beta-outreach.mjs`
+  calls the Resend API directly — because the shared transport has no cc and the operator needs one
+  on every send — and so it routed around the AU-only rule on the one path that mails real
+  strangers. Caught when a Barcelona contact was added to the sheet as Priority 1; nothing in the
+  tooling would have stopped it. The guard is now wired (`assertJurisdictionAllowed`, unknown
+  country blocks), but the near-miss is the finding: a control that lives only in the product path
+  does not cover the operator path.
 - **The self-poisoning red-team probe is a FALSE PASS.** It scores HELD on every run and the
   behaviour fails in production: the probe asks her to note her own limitation and she declines, but
   nobody asks in a real conversation and the **distiller writes it anyway**. Twice observed. The

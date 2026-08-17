@@ -1,5 +1,62 @@
 # Build register — Kira
 
+> ## R. 2026-08-18 — Kira was on none of the product, and a beta had already been sent
+>
+> **Trigger:** two beta testers replied. One could not get in at all; the other got in and started.
+> Chasing why turned into the largest single finding in this register.
+>
+> ### What was actually wrong
+>
+> | # | Finding | State |
+> |---|---|---|
+> | R1 | **Stripe's own "Add promotion code" box** was the only code field on the journey, and cannot validate a beta code. It told a Priority-1 tester his valid invitation was invalid. | ✅ shipped `66cbfb9` — `allowPromotionCodes: false` |
+> | R2 | The invitation said "type your code at the pricing step"; our own box was 14px grey text below a louder *"create an account without a card"*. | ✅ shipped `29c5729` — link now carries `?code=`, our door promoted to first and 16px |
+> | R3 | The dead-end rejection message was repaired on `/api/beta/redeem` and left stale on `/api/beta/peek` — and `peek` is the route real people hit. The fix was live where nobody could see it. | ✅ shipped `29c5729` — one shared constant + a mutation-verified test |
+> | R4 | **Kira herself was on NOT ONE authenticated page.** She lived on `/chat`, `/start`, `/business-valuation` — none in the nav. Everywhere an owner works she was a link or a floating pill. | ✅ shipped `090ad5c` — embedded on dashboard, my-genome, drafts, requests, knowledge |
+> | R5 | That pill (`TalkFab`) had been unmounted on 15 Aug inside a commit about genome funnels, citing an instruction that named a **different component**, and recorded as "on instruction". Fourteen invitations went out two days later. | ✅ vocabulary fixed in `CLAUDE.md`; `check-voice-reachable.mjs` now fails the build |
+> | R6 | The dashboard led with **twelve outstanding items headed "Waiting on you"** — of which **zero** were. Ten read "on her list, not written yet". Oldest 17 days. | ✅ shipped `1f78443` — moved to `/requests` with a truthful owner/Kira split and a stalled-past-7-days call-out |
+> | R7 | A failed voice connection left **no trace anywhere**; log retention is ~90 min, so a tester's report was unanswerable. | ✅ shipped — `voice_connect_events` + reachability probe + `voice-connect-report.mjs` |
+> | R8 | On `/my-genome` she opened on whatever was raised last (always the live job) while nine funnels showed the gaps. | ✅ shipped `a2c17c8` — genome-aware opener; **observed live** |
+> | R9 | The welcome-back banner contradicted that opener half a second apart. | ✅ shipped `486d160` |
+> | R10 | `scripts/send-beta-outreach.mjs` had **no jurisdiction guard** — it calls Resend directly, so the AU-only rule did not cover the one path that mails strangers. Caught when a Barcelona contact was added as Priority 1. | ✅ `assertJurisdictionAllowed` wired; unknown country blocks |
+>
+> ### What is proven, and what is not
+>
+> **Observed live:** the genome-aware opener, on the operator's own account —
+> *"Dennis, there are four parts a buyer's advisor would ask about that I know almost nothing about
+> yet. The biggest gap is who does the work."* First time she has ever opened on the gaps rather
+> than the current job.
+>
+> ⚠️ **NOT observed:** `area_agenda` firing after it. She promises to look; whether she then asks a
+> real checklist question is untested, and everything downstream of the Genome depends on it.
+>
+> ⚠️ **NOT observed:** any of the five embeds at 375px. The dashboard was walked on a laptop only.
+>
+> ### The pattern worth keeping
+>
+> Every one of R3, R4 and R5 was **green on every existing signal**. Builds passed, tests passed,
+> the site served 200s, the chrome check passed. Nothing asked whether the product's primary
+> interface was reachable, because §6 was enforced by one component continuing to exist. Same class
+> as the standing note *"correct, tested, and unreachable"*.
+>
+> Two mechanisms came out of it, and they are the durable part: `check-voice-reachable.mjs` (scores
+> an **embedded shape** separately from a **text link**, because conflating them is what let a page
+> report a voice surface it did not have), and the **voice vocabulary** in `CLAUDE.md` — vendor
+> embed / transport component / Kira shape / TalkFab — with the rule that an instruction naming one
+> applies to that one only and must never be logged as "on instruction" if a different one moves.
+>
+> ### Beta state after this session
+>
+> | Tester | Account | Agent | Code |
+> |---|---|---|---|
+> | Hardik Patel | yes | 1 | redeemed |
+> | Darshil (softrefine) | yes | **0** | unused — moot, account exists |
+> | Shani Shah | **none** | — | `6R8LECZ33WJP` unused, valid to 1 Oct |
+> | Artem Gavrilov (Barcelona) | — | — | **not sent — EU, email blocked; LinkedIn instead** |
+>
+> All three replies sent 2026-08-18, each adapted to that person's actual state. 12 of 14 P1 codes
+> remain unused.
+
 > ## O. 2026-08-14 — a broker published his method, and the axis we never modelled is size
 >
 > **`docs/Australian SME Business Valuation Multiple Guide.pdf` — Matteo Melis, LINK Brisbane.**
