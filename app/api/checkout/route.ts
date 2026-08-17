@@ -150,7 +150,29 @@ export async function POST(request: NextRequest) {
       // Session metadata only rides on checkout.session.completed; subscription metadata rides on
       // every later lifecycle event, which is what the webhook reducer needs to identify the owner.
       subscriptionMetadata: { kira_journey: 'business', quoted_monthly: String(quote.monthly) },
-      allowPromotionCodes: true,
+      // ⚠️ OFF, BECAUSE THE ONLY CODE ANYONE HOLDS IS ONE STRIPE CANNOT VALIDATE.
+      //
+      // Invited testers carry a beta invitation code. It is a row in our `beta_codes` table, not a
+      // Stripe coupon, so Stripe can only ever answer "Invalid promo code" — and with this true,
+      // Stripe renders an "Add promotion code" link that is, on the whole journey, the single most
+      // code-shaped thing a man holding a code will find. Ours sat behind a text link on the
+      // previous page; Stripe's is on the payment form itself, at the exact moment he is looking for
+      // somewhere to put it.
+      //
+      // Shani Shah, Priority 1, asked afterwards where it broke:
+      //
+      //   "I did not see a standalone or obvious place to enter the promo code when I first reached
+      //    the pricing/plan step. The first place I saw the promo code option was in the billing/card
+      //    details section. I entered the code there, but it showed 'Invalid promo code.'"
+      //
+      // So he was told, by the payment page, that his valid invitation was invalid. He never reached
+      // our door at all — this one looked better. His code is still unredeemed.
+      //
+      // Nothing is lost by turning it off: there are no Stripe coupons in this account and none have
+      // ever been issued. If real discount codes are ever introduced, this can come back — but the
+      // invitation-code collision comes back with it and needs answering first, because the two are
+      // indistinguishable to the person typing.
+      allowPromotionCodes: false,
       billingAddressCollection: 'auto',
       // THE FIXED FIGURE, BESIDE THE PAY BUTTON.
       //
