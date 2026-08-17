@@ -88,6 +88,32 @@
   --action-primary: var(--brand-600);
   --action-primary-hover: var(--brand-700);
   --focus-ring: var(--brand-600);
+
+  /* ── GENOME BANDS ───────────────────────────────────────────────────────────
+   * The nine funnels on /my-genome and /sample-genome. These are SEMANTIC before they are colours,
+   * which is exactly why they belong here rather than as four constants in one component:
+   *
+   *   "Amber for 'you mentioned it', green for 'done', grey for 'nothing', and nothing red at all
+   *    until something is actually wrong."
+   *
+   * That is a product rule about what a state MEANS. Left as hex in GenomeBuckets.tsx it was a rule
+   * enforced by whoever next edited that file — and the palette this token layer replaced failed in
+   * precisely that way, with warm-sounding names carrying green values and raw literals beside them.
+   *
+   * ⚠️ VALUES ARE CARRIED OVER EXACTLY. These were chosen against a rendered picture and signed off
+   * on sight, so nothing here rounds them to a near neighbour: --neutral-100 is 245 243 240 and the
+   * empty fill is 245 245 244, close enough to look like a tidy-up and not close enough to be one.
+   * Tokenising must not repaint the thing it is tidying.
+   *
+   * ⚠️ NO RED ROLE EXISTS, deliberately, and a test asserts its absence. An empty area is GREY:
+   * nothing is wrong, nothing has happened yet. Adding a red here would make nine warning lights of
+   * a page whose job is to show progress. */
+  --genome-covered: 60 191 92; /* green — she holds enough to answer a buyer */
+  --genome-located: 240 165 51; /* amber — he told us it exists; she has not captured it */
+  --genome-empty-fill: 245 245 244; /* grey — never been told anything about this area */
+  --genome-empty-stroke: 214 211 209;
+  --genome-strip-unfilled: 231 229 228; /* the readiness strip's untaken steps */
+  --genome-slice-edge: 28 25 23; /* the outline on a filled slice, so bands stay countable */
 }
 
 /* ── DARK ────────────────────────────────────────────────────────────────────

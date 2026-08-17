@@ -1,3 +1,8 @@
+// @design-tokens-ok: this file names #ef4444 and #dc2626 in order to assert their ABSENCE from the
+// funnels — "nine red-bottomed shapes is nine warning lights on a dashboard". A test proving a
+// colour is not used has to name the colour, and replacing them with tokens would make the
+// assertion check for a token nobody paints with instead of the literal somebody might.
+
 // The nine buckets, and the three things about them that must not be lost in a redesign.
 //
 // Asserted on the source in the style of `connect-choices.test.tsx` — vitest runs in `node` here,
