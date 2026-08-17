@@ -515,22 +515,25 @@ export default function PlanPage() {
                   Same `fractionOfGapPct` as that paragraph, so the two cannot disagree, and it only
                   renders when the fraction is worth quoting. */}
               {model.quote.fractionWorthQuoting && (
-                <>
-                  <p className="mt-1 text-base font-semibold text-violet-700">
-                    About {model.quote.fractionOfGapPct} a year of what you stand to unlock
-                  </p>
-                  {/* ⚠️ AND IMMEDIATELY, WHAT SETS THE PRICE — because the line above is a
-                      COMPARISON and reads like a BASIS once it sits next to the figure.
-                      Moving it here (his own request — "the most persuasive line on the whole site…
-                      put it next to the price") created a contradiction with the FAQ two screens
-                      down, which says the band is set by profit "never by the gap we calculate".
-                      Ray caught it the same visit. Both statements are true; only one of them was
-                      visible at the moment he read the number. */}
-                  <p className="mt-1 text-xs text-stone-500">
-                    Set by the profit you report, not by the gap — working out a bigger gap can never
-                    earn us more.
-                  </p>
-                </>
+                /* ⚠️ ONE SENTENCE, MECHANISM FIRST, COMPARISON SECOND — and the order is the fix.
+                   Moving the percentage next to the price was his own request ("the most persuasive
+                   line on the whole site… put it next to the price"), and it immediately read as the
+                   PRICING BASIS, contradicting the FAQ two screens down: the band is set by profit
+                   "never by the gap we calculate".
+                   Verified in lib/valuation/pricing.ts before touching the copy: `priceForProfit`
+                   selects the tier from annualProfit alone and the gap only produces a display
+                   fraction. So the FAQ is true and there was never a real contradiction — only a
+                   presentational one.
+                   The first fix stacked a second line under it saying "set by profit, not the gap",
+                   which reads as a retraction of the sentence above it — the "protests too much"
+                   quality he flagged on the privacy paragraph two visits earlier. Leading with what
+                   sets the price makes the comparison structurally unable to be read as the basis,
+                   and keeps the figure exactly where he asked for it. */
+                <p className="mt-1 text-base text-stone-700">
+                  <span className="font-semibold text-stone-900">Set by your profit band</span> — and
+                  about <span className="font-semibold text-violet-700">{model.quote.fractionOfGapPct}</span>{' '}
+                  a year of what you stand to unlock.
+                </p>
               )}
               <p className="text-sm text-stone-500 mt-1">
                 {billingLive

@@ -61,3 +61,33 @@ export function replyToAddress(): string | undefined {
 }
 
 export type { SenderIdentity };
+
+/**
+ * Make an owner's business name safe to use as an email display name.
+ *
+ * ⚠️ THIS IS A HEADER INJECTION BOUNDARY, not a formatting nicety. The value is typed by the owner
+ * into his business details and is about to be interpolated into a `From:` header. A carriage return
+ * or line feed in it would let him append arbitrary headers — a Bcc to a third party being the
+ * obvious one, on the single feature in this product that sends his business to another human.
+ *
+ * So: control characters removed outright, and the characters that carry meaning inside a header —
+ * quotes, angle brackets, commas, semicolons and colons — removed rather than escaped. Escaping
+ * would be correct RFC 5322 and one parser away from wrong; a business name does not need them.
+ *
+ * Returns an empty string when nothing usable survives, so the caller falls back to the plain
+ * address rather than sending `" " <noreply@…>`.
+ */
+export function sanitiseDisplayName(raw: string): string {
+  return String(raw ?? '')
+    // Control characters, including CR and LF. This is the line that matters.
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    // ⚠️ WRITTEN WITH AN EDITOR. Appended through a shell heredoc, the backslash before the closing
+    // bracket was eaten and this became an unterminated regex — caught by tsc, unlike the backspace
+    // variant of the same mistake, which compiles and matches nothing.
+    .replace(/["'<>,;:\\]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    // Long enough for any real trading name; short enough that the header stays sane.
+    .slice(0, 64)
+    .trim();
+}

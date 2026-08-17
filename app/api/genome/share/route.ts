@@ -23,14 +23,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-import { createEmailSender } from '@caistech/email-send';
+import { createEmailSender, DEFAULT_FROM } from '@caistech/email-send';
 
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { renderSingleFile } from '@/lib/genome/render';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
-import { senderIdentityOrNull, replyToAddress } from '@/lib/email/sender';
+import { senderIdentityOrNull, replyToAddress, sanitiseDisplayName } from '@/lib/email/sender';
 import { assertNotHalted } from '@/lib/kill-switch';
 import { normaliseRecipients, shareBlocker } from '@/lib/genome/share';
 
@@ -131,7 +131,34 @@ export async function POST(request: NextRequest) {
   ].join('\n');
 
   const sender = senderIdentityOrNull();
-  const send = createEmailSender({ sender: sender ?? undefined });
+
+  // ⚠️ HIS NAME IN THE DISPLAY NAME — the address stays ours, and that distinction is the whole fix.
+  //
+  // We send from the one Resend-verified subdomain, and that cannot change until an owner's own
+  // domain is verified with us: forging his address in From fails SPF/DKIM at his broker's mail
+  // server, and being binned or flagged is worse than being plain. All of that is still true.
+  //
+  // But the thing Ray actually objected to was never the envelope. It was what his broker SEES:
+  //
+  //   "it goes out under our name means my broker gets an email from Corporate AI Solutions. He
+  //    will ask what that is. I would rather it went from me."
+  //
+  // For a man who has told nobody he is selling, a stranger's company name on the covering email is
+  // the exposure — his broker asks what Corporate AI Solutions is, and now there is a conversation
+  // he did not choose to have. A DISPLAY NAME is not authenticated by SPF or DKIM (they check the
+  // domain in the address), so "Ray Wilson (via Kira) <noreply@updates…>" is both honest and
+  // deliverable. It is the same shape every document-sharing product uses.
+  //
+  // "via Kira" is kept deliberately: the recipient is entitled to know a tool sent it, the body says
+  // so already, and the identification footer still names the legal sender. Omitting it would be the
+  // forgery this whole note exists to avoid.
+  const displayName =
+    identity?.trading_name?.trim() ||
+    identity?.legal_name?.trim() ||
+    String(appUser?.first_name ?? '').trim();
+  const fromWithName = displayName ? `${sanitiseDisplayName(displayName)} (via Kira) <${DEFAULT_FROM}>` : undefined;
+
+  const send = createEmailSender({ sender: sender ?? undefined, from: fromWithName });
 
   let sentId: string | null = null;
   try {
