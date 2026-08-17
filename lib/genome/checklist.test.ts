@@ -194,3 +194,41 @@ describe('gate 4 — what can only close by the business changing', () => {
     }
   });
 });
+
+describe('⚠️ every area can be WORKED, not just scored', () => {
+  // WHY THIS IS SEPARATE FROM THE SCORING ASSERTIONS ABOVE. Those check the checklist against
+  // areas.ts and model.ts, so an area cannot silently score nothing. This checks the other consumer:
+  // `area_agenda` hands Kira up to three questions to ASK, drawn from `itemsForArea`. An area that
+  // scores perfectly and yields no items is invisible to every test above and fatal in a
+  // conversation — she offers it, promises "let me see what's already in it", and comes back with
+  // nothing to say.
+  //
+  // It became reachable in a new way on 2026-08-18: the /my-genome opener now NAMES the emptiest
+  // area and offers to start there, so the area she volunteers is by definition the one with no
+  // status rows — the exact case where the agenda has to fall back to the raw item list.
+
+  it('has questions for all nine, so none can be offered and then come up empty', () => {
+    for (const area of GENOME_AREAS) {
+      const items = itemsForArea(area.key);
+      expect(items.length, `${area.key} has no checklist items — area_agenda would return nothing`).toBeGreaterThan(0);
+    }
+  });
+
+  it('has at least one REQUIRED item per area — the fallback an untouched area relies on', () => {
+    // An area with no status rows defaults every item to `open`, and the agenda prefers
+    // required-open. With none, a brand-new owner gets the optional questions first, which is the
+    // wrong first thing to ask a man who has told her nothing about that part of the business.
+    for (const area of GENOME_AREAS) {
+      const required = itemsForArea(area.key).filter((i) => i.required);
+      expect(required.length, `${area.key} has no required items`).toBeGreaterThan(0);
+    }
+  });
+
+  it('can fill the agenda from an untouched area', () => {
+    // AGENDA_LIMIT is 3. An area holding fewer than three items would quietly under-fill, which
+    // reads to her as "there is almost nothing left to ask here" on an area she knows nothing about.
+    for (const area of GENOME_AREAS) {
+      expect(itemsForArea(area.key).length, `${area.key} cannot fill a 3-question agenda`).toBeGreaterThanOrEqual(3);
+    }
+  });
+});
