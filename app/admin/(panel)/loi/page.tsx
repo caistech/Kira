@@ -1,3 +1,9 @@
+// @no-voice-route: operator console — Kira is the OWNER-facing product, and these are the
+// screens the operator uses to look at owners. A "talk to Kira" control here would offer the
+// operator a conversation with a tenant agent that is not his, on a page about other people's
+// businesses. §6 is a promise to the owner about his own product, not to every signed-in user.
+// (/admin/exec is the deliberate exception and keeps its voice surface: it is the operator
+// looking at ONE owner, where hearing what she says is the point of the screen.)
 import { createServiceClient } from '@/lib/supabase/server';
 
 export const metadata = { title: 'LOIs · Kira Admin' };

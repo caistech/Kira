@@ -1,6 +1,6 @@
 'use client';
 
-// components/DashboardKira.tsx
+// components/KiraShape.tsx
 //
 // Kira, present on the page an owner lands on — the full shape, not a link to it.
 //
@@ -37,15 +37,18 @@ import { useCallback, useState } from 'react';
 import Link from 'next/link';
 import { VoiceWidget } from '@caistech/elevenlabs-convai/react';
 
-import { reportVoiceConnect } from '@/lib/voice/connect-telemetry';
+import { reportVoiceConnect, type VoiceSurface } from '@/lib/voice/connect-telemetry';
 
-export function DashboardKira({
+export function KiraShape({
   agentId,
+  surface,
   firstName,
   welcomeBack,
 }: {
   /** The owner's own ElevenLabs agent. Null when he has not been set up yet. */
   agentId: string | null;
+  /** Which page this instance is on — telemetry only, so a failure can be located. */
+  surface: VoiceSurface;
   firstName?: string;
   /** Shown only when there is something genuinely recalled to pick up from. */
   welcomeBack?: string;
@@ -68,7 +71,7 @@ export function DashboardKira({
       const data = await res.json().catch(() => ({}));
       // Reported before throwing, because this is the half of a failed connection that is OURS —
       // the route refused — and it is the half that used to leave no trace anywhere.
-      void reportVoiceConnect({ surface: 'dashboard', outcome: 'signed_url_failed', detail: data.error });
+      void reportVoiceConnect({ surface, outcome: 'signed_url_failed', detail: data.error });
       throw new Error(data.error || 'Could not start the conversation');
     }
     const { signedUrl } = await res.json();
@@ -156,8 +159,8 @@ export function DashboardKira({
         // man with no history is the cheapest possible way to lose him: it is checkable, he checks
         // it, and it is false on the first screen he sees.
         title={welcomeBack}
-        onConnect={() => void reportVoiceConnect({ surface: 'dashboard', outcome: 'connected' })}
-        onError={(error) => void reportVoiceConnect({ surface: 'dashboard', outcome: 'error', detail: error })}
+        onConnect={() => void reportVoiceConnect({ surface, outcome: 'connected' })}
+        onError={(error) => void reportVoiceConnect({ surface, outcome: 'error', detail: error })}
       />
     </section>
   );

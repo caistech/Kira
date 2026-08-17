@@ -1,5 +1,6 @@
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
+import { KiraShapeSection } from '@/components/KiraShapeSection';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { ShareGenome } from '@/components/ShareGenome';
 import { GenomeBuckets } from '@/components/GenomeBuckets';
@@ -188,6 +189,13 @@ export default async function MyGenome() {
         a buyer&apos;s advisor will ask you. It grows every time you talk to her — there is nothing to
         fill in.
       </p>
+
+      {/* ⚠️ "IT GROWS EVERY TIME YOU TALK TO HER" — SAID ON A PAGE WITH NOWHERE TO TALK TO HER.
+          That sentence sat directly above nine funnels showing how little she holds, and the only
+          way to act on it was a floating pill in the corner or a text link further down. The page
+          named the mechanism and withheld it. She belongs here more than almost anywhere else in
+          the product: this is the screen that tells him what is still missing. */}
+      <KiraShapeSection surface="my-genome" />
 
       {g.readiness != null && (
         <section

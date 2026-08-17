@@ -23,7 +23,18 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /** Closed sets, so one typo in a caller cannot quietly create a new category nobody queries. */
-const SURFACES = new Set(['dashboard', 'start', 'chat', 'landing', 'valuation', 'pubguard']);
+const SURFACES = new Set([
+  'dashboard',
+  'my-genome',
+  'drafts',
+  'requests',
+  'knowledge',
+  'start',
+  'chat',
+  'landing',
+  'valuation',
+  'pubguard',
+]);
 const OUTCOMES = new Set(['connected', 'signed_url_failed', 'error', 'stalled']);
 
 const NO_CONTENT = new NextResponse(null, { status: 204 });

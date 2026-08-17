@@ -1,3 +1,6 @@
+// @no-voice-route: mid-flow setup step — the owner is answering a specific question to finish
+// something. A second conversational surface here invites him to wander off before it is done, which
+// is the failure the onboarding gate exists to prevent.
 // The first thing an owner does after paying: tell Kira who she is writing as.
 //
 // Placed BEFORE the dashboard rather than as a card on it, on purpose. The alternative — let him

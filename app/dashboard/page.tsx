@@ -4,7 +4,7 @@ import { getCurrentAppUser } from '@/lib/auth';
 import { canSend, DEFAULT_TIME_ZONE as DASHBOARD_TIME_ZONE } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
 import { createServiceClient } from '@/lib/supabase/server';
-import { DashboardKira } from '@/components/DashboardKira';
+import { KiraShapeSection } from '@/components/KiraShapeSection';
 import { formatMoney, formatMoneyApprox, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { displayedFigures } from '@/lib/valuation/displayed';
 import { shouldInviteBaseline } from '@/lib/valuation/baseline-invite';
@@ -320,21 +320,7 @@ export default async function DashboardPage({
           so the thing that talks to her belongs beneath it rather than at the foot of the page.
           It renders; it does not connect, and it provisions nothing on load. See the component for
           why each of those is deliberate. */}
-      {!gateStep && (
-        <DashboardKira
-          agentId={(businessAgent?.elevenlabs_agent_id as string | undefined) ?? null}
-          firstName={user?.first_name as string | undefined}
-          // ⚠️ ONLY WHEN SOMETHING WAS ACTUALLY RECALLED. `has_history` is true the moment a
-          // conversation ROW exists, which is not the same as there being anything to pick up —
-          // a tester with zero conversations was told "Kira remembers where you left off" on the
-          // first screen he ever saw, and said so. Conversation COUNT is the honest signal here.
-          welcomeBack={
-            (conversationCounts.get(String(businessAgent?.id ?? '')) ?? 0) > 0
-              ? 'Welcome back — Kira remembers where you left off. Tap the mic to carry on.'
-              : undefined
-          }
-        />
-      )}
+      {!gateStep && <KiraShapeSection surface="dashboard" />}
 
       {/* ⚠️ THE FUNNELS ARE NOT ON THIS PAGE — operator decision, 2026-08-15. They live on
           /my-genome and /sample-genome: the page about the Genome, and the page that sells it.

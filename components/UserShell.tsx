@@ -21,7 +21,6 @@ import { displayedFigures } from '@/lib/valuation/displayed';
 import { DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { PortalShell, type NavItem } from '@/components/PortalShell';
 import { ClaimStoredValuation } from '@/components/ClaimStoredValuation';
-import { TalkFab } from '@/components/TalkFab';
 
 const USER_NAV: NavItem[] = [
   { href: '/dashboard', label: 'Overview' },
@@ -167,29 +166,28 @@ export async function UserShell({
           shell rather than in each signup flow, because the condition is "is signed in", not
           "arrived via checkout" — which is how the free-signup path lost it entirely. */}
       {claimValuation && <ClaimStoredValuation existing={existingBaseline} />}
-      {/* ROOM FOR THE FAB. It is fixed bottom-LEFT, so whatever is last on the page could sit under
-          it — a tester found the old bottom-right placement covering the "Run the numbers again"
-          link at the foot of the valuation card on a phone. Reserving the space in the shell fixes
-          every page at once, rather than each page remembering to leave a gap for a button it does
-          not render. Sized past the button's 56px plus its 20px offset. */}
+      {/* BOTTOM GUTTER. Originally reserved for the FAB; it stays because SayFix's reporter is also
+          fixed and also blind to what it lands on — a tester found it covering the primary button at
+          the foot of a page on a phone. Reserving the space in the shell fixes every page at once. */}
       <div className="pb-28">{children}</div>
-      {/* Always-there one-tap mic — Siri-simple access from anywhere in the portal.
-          TalkFab hides ITSELF on the pages that already are the conversation (see the component):
-          the decision lives there because the FAB is the thing that knows where it points, and this
-          shell is a server component that cannot read the path anyway.
+      {/* ⚠️ NO FLOATING PILL. `TalkFab` is gone from the shell for good — 2026-08-18 — and this
+          note is the reason, because it has now been removed once, restored once and removed again
+          inside four days, which is what happens when a symptom keeps being treated as the thing.
 
-          ⚠️ REMOVED 2026-08-15 ON OPERATOR INSTRUCTION, RESTORED 2026-08-18 ON OPERATOR INSTRUCTION.
-          Both were deliberate; this is a reversal, not a bug fix, and the history is kept because
-          the reason for the reversal is the part worth not losing.
+          It was never the point. The pill was a <Link href="/talk"> standing in for a surface that
+          had never been placed: before 2026-08-18 not ONE authenticated page in this product had
+          Kira on it. She lived at /chat, /start and /business-valuation, none of which are in the
+          nav. So the pill was carrying six pages by itself — which is why removing it in August
+          read as the product losing its voice, and why restoring it read as the fix. Neither was.
 
-          What changed in between is what the removal cost, and it only became visible once the beta
-          went out. With the FAB gone, the ONLY route to Kira from inside the app was the "Talk to
-          Kira →" link on the dashboard: from My Genome, Drafts or Knowledge an owner had to go back
-          to Overview first, and there was no voice anywhere on those pages at all. That fails
-          PRODUCT_STANDARDS §6 ("reachable from the main chrome … ≤3 clicks from any page") — and the
-          fourteen Priority-1 beta invitations went out on 17 August, two days into that state, so
-          every tester walked a product whose primary interface had no persistent entry point. */}
-      <TalkFab />
+          The actual fix is that she is now ON the pages: /dashboard, /my-genome, /drafts, /requests
+          and /knowledge each render <KiraShapeSection>. /settings and /setup/* opt out by name with
+          a stated reason. scripts/check-voice-reachable.mjs enforces the arrangement and scores an
+          embedded shape differently from a text link, so this cannot quietly regress to a corner
+          button again.
+
+          components/TalkFab.tsx is KEPT rather than deleted: it is still the right answer for a
+          surface that genuinely cannot host her inline, and it costs nothing while unmounted. */}
     </PortalShell>
   );
 }

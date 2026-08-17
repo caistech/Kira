@@ -2,6 +2,7 @@ import Link from 'next/link';
 
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
+import { KiraShapeSection } from '@/components/KiraShapeSection';
 import { readDrafts, type DraftItem } from '@/lib/kira/swarm/drafts';
 
 export const dynamic = 'force-dynamic';
@@ -72,6 +73,11 @@ export default async function DraftsPage() {
         to read it in full. Sending anything to another person is still done by talking to her, so
         she can read it back and confirm who it is going to before it leaves.
       </p>
+
+      {/* ⚠️ AND HERE SHE IS, so "done by talking to her" is not an instruction to go somewhere else.
+          The paragraph above tells him sending happens in conversation; before this, the nearest
+          conversation was a floating pill in the corner or a trip back to Overview. */}
+      <KiraShapeSection surface="drafts" />
 
       {drafts.length === 0 ? (
         <p className="mt-8 rounded-2xl border border-stone-200 bg-white p-6 text-base text-stone-700">

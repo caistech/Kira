@@ -9,6 +9,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { VoiceWidget } from '@caistech/elevenlabs-convai/react';
 import { buildWelcomeBackFirstMessage } from '@/lib/kira/welcome-back';
+import { reportVoiceConnect } from '@/lib/voice/connect-telemetry';
 import { buildAreaFocusFirstMessage } from '@/lib/kira/area-focus';
 import { GENOME_AREAS } from '@/lib/genome/areas';
 
@@ -579,9 +580,19 @@ export default function ChatPage({
               onConnect={() => {
                 setIsConnected(true);
                 setError(null);
+                void reportVoiceConnect({ surface: 'chat', outcome: 'connected' });
               }}
               onDisconnect={() => setIsConnected(false)}
-              onError={(e) => setError(e)}
+              // ⚠️ REPORTED AS WELL AS SHOWN. Setting the error puts it on HIS screen, which is
+              // necessary and not sufficient: a voice failure happens in someone else's browser on
+              // someone else's network, so unless the browser tells us it happened, it leaves no
+              // trace anywhere. A beta tester hit exactly this, gave up, and by the time he
+              // described it the runtime logs had rolled past — three sessions went on
+              // reconstructing one sentence from an email.
+              onError={(e) => {
+                setError(e);
+                void reportVoiceConnect({ surface: 'chat', outcome: 'error', detail: e });
+              }}
             />
           )}
 

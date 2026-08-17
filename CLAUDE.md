@@ -79,6 +79,29 @@ Stack: Next.js 16 + TypeScript + Tailwind + Supabase + ElevenLabs + Stripe + Res
   boundary (`save/route.ts` pattern) — internally normalise to `camelCase` immediately
 - No dual-naming in internal code — pick one convention per function boundary
 
+### ⚠️ VOICE VOCABULARY — four different things, and "widget" means none of them
+
+This is not pedantry. On 2026-08-15 an explicit instruction to remove **the ElevenLabs voice
+widget** was applied to `TalkFab` — a navigation link containing no voice code — and written up in
+its own commit message as "on instruction", which made a misapplied instruction indistinguishable
+from an approved decision to everyone who read it afterwards. A later session read that same note
+and repeated the error back to the operator as fact. The word "widget" was doing four jobs.
+
+| Term | What it is | Where |
+|---|---|---|
+| **Vendor embed** | ElevenLabs' own `<elevenlabs-convai>` CDN element. Their drop-in. | **Not used in this repo.** |
+| **Transport component** | `@caistech/elevenlabs-convai/react`'s `VoiceWidget`. Ours, portfolio-shared, wraps their SDK. | a PART, never a surface |
+| **The Kira shape** | The product surface we compose from that part: her avatar, her name, transcript, text fallback, welcome-back line, owner-gated signed URL. "Morgan shape" is the sibling in other repos. | `/chat`, `/start`, `/dashboard`, `/business-valuation` |
+| **TalkFab** | A `<Link href="/talk">` with a mic icon. Navigation. | the shell (`UserShell`) |
+
+**Rules that follow:**
+- Never call the Kira shape a "widget", and never call `VoiceWidget` a Kira shape. The first hides
+  what the user sees; the second hides that it is a shared dependency.
+- An instruction naming one of these applies to **that one only**. If a change would remove or move
+  a different one, stop and confirm — do not record it as "on instruction".
+- Reachability (`scripts/check-voice-reachable.mjs`) scores an **embedded shape** and a **text link
+  to the conversation** differently on purpose. A link is not the primary interface being present.
+
 ---
 
 ## Commit Discipline

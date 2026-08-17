@@ -22,6 +22,7 @@ import Link from 'next/link';
 import { getCurrentAppUser } from '@/lib/auth';
 import { readTaskLedger, STALLED_AFTER_DAYS, type OpenTaskSummary } from '@/lib/kira/swarm/open-tasks';
 import { createServiceClient } from '@/lib/supabase/server';
+import { KiraShapeSection } from '@/components/KiraShapeSection';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,13 +74,22 @@ export default async function RequestsPage() {
   return (
     // Bottom gutter for the fixed SayFix pill, which is blind to what it lands on.
     <div className="pb-28">
-      <header className="mb-8">
+      {/* ⚠️ A DIV, NOT A <header>. This page sits inside UserShell, which supplies the real chrome,
+          and every sibling authenticated page (/drafts, /knowledge) titles itself with a plain h1
+          for the same reason. Using a literal <header> here made site-chrome.test.ts require an
+          OWN_HEADER entry — i.e. it made the page claim to own chrome it does not own — and the
+          paired footer assertion then failed, correctly. The tag was the mistake, not the test. */}
+      <div className="mb-8">
         <h1 className="font-display text-2xl font-bold text-stone-900">Requests</h1>
         <p className="mt-2 max-w-prose text-base leading-relaxed text-stone-600">
           Everything you have asked Kira for that has not landed yet, and whose move it is. Nothing
           goes out until you say so — tell her to send one and she will read it back to you first.
         </p>
-      </header>
+      </div>
+
+      {/* Kira herself, above the list — the point of the page is to ask her about these, and the
+          old dashboard version's only affordance was a link that took him away to do it. */}
+      <KiraShapeSection surface="requests" />
 
       {ledger.openCount === 0 && (
         <section className="rounded-2xl border border-stone-200 bg-white p-6">

@@ -8,7 +8,17 @@
 // outage. Every export below either returns a value or swallows.
 
 /** The voice surfaces we distinguish. Kept small — a free-form string becomes twelve spellings. */
-export type VoiceSurface = 'dashboard' | 'start' | 'chat' | 'landing' | 'valuation' | 'pubguard';
+export type VoiceSurface =
+  | 'dashboard'
+  | 'my-genome'
+  | 'drafts'
+  | 'requests'
+  | 'knowledge'
+  | 'start'
+  | 'chat'
+  | 'landing'
+  | 'valuation'
+  | 'pubguard';
 
 export type VoiceConnectOutcome =
   /** The session opened. Recorded so failures have a denominator. */

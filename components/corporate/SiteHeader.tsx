@@ -45,6 +45,13 @@ const OWN_CHROME_BOTH = [
   // it would be a second header — the exact duplicate-chrome defect a tester measured at ~130px
   // before the headline. Caught here by own-chrome-coverage.test.ts on the first run.
   '/drafts',
+  // Same reason as /drafts, and caught the same way — own-chrome-coverage.test.ts failed on the
+  // first run after the route was added. Worth recording that the page itself declared a literal
+  // <header> at first, which sent the fix in the wrong direction entirely: it made site-chrome's
+  // OWN_HEADER assertion pass while leaving the real duplicate-footer defect in place. The page
+  // titles itself with a plain h1 now, like every sibling, and the suppression lives here where the
+  // shell is the thing that actually owns the chrome.
+  '/requests',
   '/knowledge',
   '/start',
   '/discovery',
@@ -93,12 +100,6 @@ export const OWN_HEADER = [
   // Behind auth, so a 307 hides them from any anonymous count. The test found them by reading the
   // page files, which is the half of this check that does not depend on a page being reachable.
   '/introducer',
-  // Added with the page itself, 2026-08-18 — and only because site-chrome.test.ts failed the moment
-  // the page existed. It declares its own <h1> header block, so without this entry it would have
-  // served the marketing header on top of its own: the exact duplicate-chrome defect that reached
-  // production on seven routes and was found by counting `<header` in the served HTML rather than
-  // by anyone noticing. Worth stating that the check caught this before review did.
-  '/requests',
 ];
 
 /**

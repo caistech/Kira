@@ -1,3 +1,5 @@
+// @no-voice-route: a settings form — name, password, notifications. Nothing here is a question
+// worth asking out loud, and a voice surface on it would be decoration competing with the fields.
 import Link from 'next/link';
 import { getAuthUser, getCurrentAppUser } from '@/lib/auth';
 import { composePostalAddress, displayName, formatAbn } from '@/lib/business-identity';

@@ -1,3 +1,6 @@
+// @no-voice-route: mid-flow setup step — the owner is answering a specific question to finish
+// something. A second conversational surface here invites him to wander off before it is done, which
+// is the failure the onboarding gate exists to prevent.
 // Connecting Google Drive.
 //
 // This is the most sensitive thing the product ever asks for, and the ICP makes it more so: an owner

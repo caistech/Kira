@@ -6,6 +6,7 @@
 
 import { getCurrentAppUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
+import { KiraShapeSection } from '@/components/KiraShapeSection';
 import { KnowledgeManager, type KnowledgeItem } from './KnowledgeManager';
 
 export const metadata = { title: 'Knowledge · Kira' };
@@ -44,5 +45,19 @@ export default async function KnowledgePage() {
     chunks: counts.get(String(d.id)) ?? 0,
   }));
 
-  return <KnowledgeManager userId={user?.id ?? ''} initial={items} />;
+  // ⚠️ THE SHAPE SITS OUTSIDE KnowledgeManager, which is a client component. Rendering the section
+  // inside it would mean passing a server component through a client boundary — so the page owns
+  // the layout and the manager keeps doing its one job.
+  //
+  // She belongs on the library because the documents here are the raw material she works from:
+  // "what does this contract actually say" is a question about a file on this page, asked out loud,
+  // and until now the answer required leaving it.
+  return (
+    <>
+      <KnowledgeManager userId={user?.id ?? ''} initial={items} />
+      <div className="mx-auto max-w-3xl px-5 pb-28">
+        <KiraShapeSection surface="knowledge" />
+      </div>
+    </>
+  );
 }

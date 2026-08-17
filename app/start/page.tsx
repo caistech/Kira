@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { Loader2, FileEdit, CheckCircle, Sparkles, Briefcase, ArrowLeft } from 'lucide-react';
 import { VoiceWidget } from '@caistech/elevenlabs-convai/react';
+import { reportVoiceConnect } from '@/lib/voice/connect-telemetry';
 import { startFraming, type StartFraming } from '@/lib/kira/start-framing';
 
 interface Draft {
@@ -87,6 +88,10 @@ export default function StartPage() {
     const res = await fetch(`/api/kira/start?journey=${selectedJourney ?? 'business'}`);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
+      // Reported separately from the widget's onError because this failure is unambiguously OURS —
+      // our route refused to mint a URL — whereas an error from the widget could be either end.
+      // Keeping them as distinct outcomes is what makes the table answer "whose fault".
+      void reportVoiceConnect({ surface: 'start', outcome: 'signed_url_failed', detail: data.error });
       throw new Error(data.error || 'Could not start the conversation');
     }
     const { signedUrl } = await res.json();
@@ -430,6 +435,17 @@ export default function StartPage() {
                 onConnect={(conversationId) => {
                   if (conversationId) setConvId(String(conversationId));
                   if (!sessionStartTime) setSessionStartTime(new Date());
+                  void reportVoiceConnect({ surface: 'start', outcome: 'connected' });
+                }}
+                // ⚠️ THIS IS THE SURFACE A BETA TESTER ACTUALLY FAILED ON, and it reported nothing.
+                // He granted his microphone, saw "Not connected", and gave up. By the time he
+                // described it in an email the runtime logs had rolled past — retention reaches
+                // about ninety minutes and his session was hours earlier — so there was no way to
+                // tell whether his corporate network blocked the vendor or our own wiring broke.
+                // The reachability probe inside reportVoiceConnect answers exactly that.
+                onError={(error) => {
+                  setError(error);
+                  void reportVoiceConnect({ surface: 'start', outcome: 'error', detail: error });
                 }}
               />
             </div>

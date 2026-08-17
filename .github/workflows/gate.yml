@@ -109,6 +109,18 @@ jobs:
       - name: App chrome on authenticated routes (PRODUCT_STANDARDS §4)
         run: node scripts/check-app-chrome.mjs
 
+      # Can an owner REACH the conversation from every authenticated route? (PRODUCT_STANDARDS §6)
+      #
+      # The chrome check above asks whether he has a nav. This asks whether he can get to the
+      # product. On 15 August the persistent mic was unmounted from UserShell inside a commit about
+      # genome funnels, citing an instruction that named a DIFFERENT component — and every existing
+      # signal stayed green, correctly: it built, the tests passed, the site served 200s, and the
+      # chrome check passed because nav, Settings and Sign Out were all still there. From My Genome,
+      # Drafts or Knowledge there was simply no way to reach Kira. Fourteen beta invitations went out
+      # two days later.
+      - name: Voice reachable from authenticated routes (PRODUCT_STANDARDS §6)
+        run: node scripts/check-voice-reachable.mjs
+
       # DESIGN.md §3 — UI code paints with tokens, not raw hex.
       #
       # Same shape and same reason as the chrome check above: static, no secrets, no deployment,
