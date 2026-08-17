@@ -60,8 +60,8 @@ export default function GenomePage() {
            becoming a site-wide typeface change nobody asked for. */
         .font-display { font-family: var(--font-display), 'Outfit', ui-sans-serif, sans-serif; }
         .font-body { font-family: var(--font-body), 'DM Sans', ui-sans-serif, sans-serif; }
-        .grad-genome { background: linear-gradient(135deg,#16A34A,#15803D 60%,#166534); }
-        .grad-coral { background: linear-gradient(135deg,#15803D,#166534); }
+        .grad-genome { background: linear-gradient(135deg,rgb(var(--brand-500)),rgb(var(--brand-600)) 60%,rgb(var(--brand-700))); }
+        .grad-coral { background: linear-gradient(135deg,rgb(var(--brand-600)),rgb(var(--brand-700))); }
 
         /* The default disclosure triangle, removed in both dialects — Safari still needs the
            -webkit- pseudo-element, and without it the card carries two indicators. The chevron

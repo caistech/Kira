@@ -181,10 +181,17 @@ export function bucketDisplay(section: BucketSection): BucketDisplay {
  * Amber for "you told us" is his prescription verbatim: "Amber for 'you mentioned it', green for
  * 'done', grey for 'nothing', and nothing red at all until something is actually wrong."
  */
-const EMPTY_FILL = '#f5f5f4';
-const EMPTY_STROKE = '#d6d3d1';
-const GREEN = '#3cbf5c';
-const AMBER = '#f0a533';
+// ⚠️ TOKENS, NOT HEX — and these four are the reason the token layer exists rather than a tidy-up
+// of it. "Amber for 'you mentioned it', green for 'done', grey for 'nothing'" is a product rule
+// about MEANING; as four hex constants it was a rule enforced by whoever next edited this file.
+// Values are unchanged (app/tokens.css carries them exactly), so the rendered picture is identical.
+// `rgb(var(--x))` resolves in SVG fill/stroke the same as in CSS.
+const EMPTY_FILL = 'rgb(var(--genome-empty-fill))';
+const EMPTY_STROKE = 'rgb(var(--genome-empty-stroke))';
+const GREEN = 'rgb(var(--genome-covered))';
+const AMBER = 'rgb(var(--genome-located))';
+const STRIP_UNFILLED = 'rgb(var(--genome-strip-unfilled))';
+const SLICE_EDGE = 'rgb(var(--genome-slice-edge))';
 
 /** How many levels are filled, what to call the state, and — for `located` only — a different colour. */
 const BANDS = {
@@ -257,7 +264,7 @@ function KeyGlyph({ filled }: { filled: number }) {
           width={16}
           height={5}
           rx={1}
-          fill={i < filled ? GREEN : '#e7e5e4'}
+          fill={i < filled ? GREEN : STRIP_UNFILLED}
         />
       ))}
     </svg>
@@ -450,7 +457,7 @@ export function GenomeBuckets({
                       height={r.height}
                       rx={4}
                       fill={isFilled && !outlineOnly ? band.fill : EMPTY_FILL}
-                      stroke={isFilled ? (outlineOnly ? band.fill : '#1c1917') : EMPTY_STROKE}
+                      stroke={isFilled ? (outlineOnly ? band.fill : SLICE_EDGE) : EMPTY_STROKE}
                       strokeWidth={isFilled && outlineOnly ? 2.5 : 1.5}
                       strokeDasharray={isFilled && outlineOnly ? '5 3' : undefined}
                     />
