@@ -20,9 +20,28 @@ describe('still-filing notice', () => {
     // ⚠️ THE ORIGINAL BUG, PINNED. `conversations.ended_at` is in the schema and no code path in
     // this repo sets it, so a check reading it is true exactly never — it typechecks, it builds,
     // and the finding it claims to fix stays live. `started_at` has a NOW() default.
-    const check = page.slice(page.indexOf('FILING_WINDOW_MS'), page.indexOf('const justTalked') + 400);
-    expect(check).toContain('started_at');
-    expect(check).not.toContain('ended_at');
+    //
+    // Anchored on the two places that can carry the mistake — the helper and the query — rather
+    // than on one wide slice between them. The clock read moved OUT of the component on 2026-08-18
+    // (react-hooks/purity), which stretched that slice across most of the render body; an assertion
+    // spanning code it was never about passes for reasons that have nothing to do with the bug.
+    const helper = page.slice(page.indexOf('const FILING_WINDOW_MS'), page.indexOf('// The owner\'s OWN Genome'));
+    expect(helper).toContain('startedAt');
+    expect(helper).not.toContain('ended_at');
+
+    const query = page.slice(page.indexOf("from('conversations')"), page.indexOf('const justTalked'));
+    expect(query).toContain("select('started_at')");
+    expect(query).not.toContain('ended_at');
+  });
+
+  it('reads the clock outside the component, so the notice cannot go stale under memoisation', () => {
+    // Date.now() in a render body is a lint error AND a real staleness bug once the page is
+    // memoised. It sat in the render body from 2026-08-16 and was the single error that took the
+    // whole portfolio-gate run red — with Tests, the chrome check, voice-reachability,
+    // design-tokens and Build all downstream of it and therefore unrun for two days.
+    const body = page.slice(page.indexOf('export default async function MyGenome'));
+    expect(body).not.toContain('Date.now()');
+    expect(page.slice(0, page.indexOf('export default async function MyGenome'))).toContain('Date.now()');
   });
 
   it('hands the computed flag to the component', () => {
