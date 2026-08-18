@@ -12,17 +12,31 @@
 >
 > | when | call | what happened |
 > |---|---|---|
-> | 15 Aug 11:33 | 823s · 129 msg | row created, `distilled_at` NULL |
-> | 16 Aug 01:21 | 69s · 13 msg | row created, `distilled_at` NULL |
+> | 15 Aug 11:33 | 823s · 129 msg | ✅ row, `processed_at` 11:47 — worked |
+> | 16 Aug 01:21 | 69s · 13 msg | ✅ row, `processed_at` 01:22 — worked |
 > | 17 Aug 18:05 | 28s · 5 msg | **no row** — a beta tester |
 > | 17 Aug 18:53 | 11s · 2 msg | **no row** |
 > | 17 Aug 19:57 | 19s · 1 msg | **no row** |
 > | 17 Aug 23:24 | 71s · 11 msg | **no row** |
 > | 18 Aug 02:19 | 48s · 8 msg | **no row** — confirming test |
 > | 18 Aug 02:22 | 129s · 16 msg | **no row** — confirming test |
+> | 18 Aug 03:02 | 126s · 14 msg | ✅ row, `processed_at` 03:05, **3 memories written** |
 >
-> ⚠️ **Two distinct faults, not one.** Rows stopped being DISTILLED on 15 Aug; rows stopped being
-> CREATED on 17 Aug 18:05. Only the second is closed (S2). The first is still open (S5).
+> **ONE fault, not two — and the first version of this section got that wrong.**
+>
+> ⚠️ The 15 and 16 Aug calls were recorded here as "row created, never distilled". That was an
+> artefact of reading the wrong column. **`distilled_at` is written ONLY by the TEXT transport**
+> (`app/api/kira/chat/text/route.ts:387`); the voice post-call path sets **`processed_at`**, and all
+> three voice rows have it. Judged correctly, those two calls worked. The outage is
+> **17 Aug 18:05 → 18 Aug 02:53** — six lost calls, not eight.
+>
+> ⚠️⚠️ **THIS WAS THE SAME MISTAKE TWICE IN ONE INVESTIGATION.** The first pass judged calls by
+> `conversations.conversation_id`, a column that does not exist (it is
+> `elevenlabs_conversation_id`), and PostgREST returned no row rather than an error — so every call
+> in the fleet read as missing and the first draft of this finding claimed the outage went back to
+> 15 August. The second pass fixed that column and then judged voice rows by a text-only column.
+> Both times the wrong column produced a plausible, alarming, wrong answer that looked like
+> evidence. **A verdict computed from a column is only as good as knowing which path writes it.**
 >
 > ### S2 — root cause of the no-row phase, and the fix
 >
@@ -70,20 +84,31 @@
 > guarding anything while still costing a red tick* — written in the funnel-token commit six hours
 > earlier, about a different check, and true of lint the whole time.
 >
-> ### S5 — STILL OPEN
+> ### S5 — PROVEN, AND WHAT IS STILL OPEN
 >
-> 1. **The distillation fault (15–16 Aug).** Rows were created and never distilled. Different from
->    the 401 and **not addressed by the rebind**. If a post-fix call produces a row with
->    `distilled_at` still null, this is why.
-> 2. **The fix is not proven.** One real call is needed, checked for a row **and** `distilled_at`.
->    A row alone proves half the loop.
-> 3. **Transcript accumulates across conversations.** `VoiceWidget` (`@caistech/elevenlabs-convai`)
+> ✅ **The fix is proven.** The 03:02 call on 18 Aug — the first since the redeploy — produced a
+> conversation row, `processed_at` at 03:05:00, `ended_at` set, and **three memories written to
+> `kira_memory` fourteen seconds after the call ended**. The webhook reports 19 agents bound and no
+> failures. Voice memory is working again for the first time since 17 August.
+>
+> ~~The distillation fault (15–16 Aug)~~ — **withdrawn, it never existed.** See the column
+> correction in S1.
+>
+> Still open:
+>
+> 1. **`ended_at` is written after all — the code comment saying otherwise is wrong.**
+>    `app/my-genome/page.tsx` and the `filing-notice` test both rest on *"`conversations.ended_at`
+>    exists in the schema and NOTHING IN THIS CODEBASE EVER WRITES IT."* All three voice rows have
+>    it set; the canonical post-call handler writes it. **The code is still correct** — 68 of 71
+>    recent rows are text-transport and have no `ended_at`, so keying the freshness check on
+>    `started_at` remains right — but the stated reason is false and will mislead the next reader.
+> 2. **Transcript accumulates across conversations.** `VoiceWidget` (`@caistech/elevenlabs-convai`)
 >    holds messages in `useState([])` with exactly one append and **no reset anywhere** — not on
 >    connect, disconnect or close. Ending a call and starting another appends to the previous
 >    transcript, so a page visit shows every conversation and everything pasted into it, stacked.
 >    Observed on `/my-genome/[area]` with two "good to see you again" greetings in one panel.
 >    **Package defect, 11 consumers** — fix belongs upstream, not here.
-> 4. **Nothing verified about ordering.** The same transcript renders visibly out of sequence.
+> 3. **Nothing verified about ordering.** The same transcript renders visibly out of sequence.
 >    Messages append in ARRIVAL order and ElevenLabs delivers `user_transcript` after ASR, which can
 >    land after the agent has already replied. Plausible, untraced, not claimed.
 
