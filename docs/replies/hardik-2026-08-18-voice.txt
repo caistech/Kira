@@ -1,0 +1,40 @@
+Subject: Re: (thread) — one thing I got wrong about your run
+
+Hello — and first, a small thing I would rather ask than guess: you sign off Bhavin and the account is under Hardik. Which would you prefer I use?
+
+Now the substantive part, because I found something today that changes what your feedback was actually about.
+
+<strong>You never reached the voice agent. Not once.</strong>
+
+I checked the logs this morning: your account has zero voice sessions. Everything you did — all twelve messages — went through the typed transport.
+
+That was not you choosing to type, and it was not the voice failing. It was that during your session there was <strong>no way to reach it</strong>. Kira lived on three pages, none of them in the navigation, and the floating microphone had been removed two days before you signed up. The text box on the setup page was the only interface in front of you. So the thing you have been assessing is the <em>text</em> product, and the primary interface — the one the whole thing is built around — you have not seen.
+
+I owe you that correction because it changes the weight of your own notes. The question you raised unprompted, whether she recognises when something deserves to interrupt rather than just recording it, is a question about the voice behaviour. You have been reasoning about it from the transcript layer alone.
+
+<strong>What your session exposed, technically.</strong>
+
+Two entries in your record were about <em>our</em> Xero integration, filed as facts about <em>your</em> business, in the systems area — the one a buyer reads to judge whether a company runs without its owner:
+
+  "The Xero account is not currently connected for automated access to financial figures."
+  "API access or connection permissions need to be enabled in Xero under 'Connected Apps' or 'API Keys'."
+
+Neither is a fact about Cynops. They are facts about us, wearing the clothes of facts about you, and they were sitting in the record that eventually gets handed to an advisor.
+
+There was already a detector for this class. Yours defeated it twice, in two different ways. The first matched the literal string "not connected" and your row says "not <em>currently</em> connected" — one adverb walked straight past it. The second is a setup instruction, which contains no denial at all, so the detector was structurally blind to it. Both are fixed, both are now pinned by tests, and I swept every account: 420 entries, seven removed, across four accounts.
+
+The sweep also nearly did damage, which is the part I found most instructive. Widening the first pattern made it match another tester's genuine entry — "Xero accounting software is not used nor connected in this business" — which is true, and is exactly what that section is for. Caught it in a dry run. The distinction it now draws is between what a business does not <em>use</em> and what we cannot <em>reach</em>.
+
+Your two are gone from the record and still visible to you in your own list, so nothing was deleted behind your back.
+
+<strong>Separately, and it did not touch you.</strong> Voice memory was broken from about 4am your time on the 18th until this morning — six conversations recorded nothing at all. Yours were eleven hours earlier and are intact. I mention it only because it is the reason the product has moved under you again, and I would rather you heard it from me than inferred it.
+
+<strong>What I would ask.</strong>
+
+She is now on every page behind the login, and your agent is provisioned and working — I confirmed memory writing correctly again this morning. If you have twenty minutes, talk to her rather than type. That is the version worth your assessment, and it is the one nobody outside has properly seen yet.
+
+On the deeper technical review you offered — architecture, memory and context handling — that still stands and I still want to pick it up properly rather than casually. Let me come back to you on scope.
+
+Two classes of defect found because you used it for forty minutes. That is a good return on your time, and I am grateful for it.
+
+Dennis
