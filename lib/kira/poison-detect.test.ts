@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 
 import { isAssistantCapabilityClaim,
   isProductSurfaceClaim,
+  isIntegrationSetupClaim,
   isAssistantOrProductClaim, isContaminatedMemory } from './poison-detect.mjs';
 
 /** Verbatim from kira_memory before deactivation. All three are the assistant describing itself. */
@@ -131,5 +132,42 @@ describe('isProductSurfaceClaim — the row the denial detector could never catc
     expect(isAssistantOrProductClaim('Emails cannot be accessed or read by the assistant.')).toBe(true);
     expect(isAssistantOrProductClaim("The business includes a 'genome area' with categories.")).toBe(true);
     expect(isAssistantOrProductClaim('The business keeps multiple email contacts for key suppliers.')).toBe(false);
+  });
+});
+
+describe('the two that reached a live beta tester, and the one that must not', () => {
+  it('catches "not CURRENTLY connected" — one adverb defeated the old literal', () => {
+    expect(
+      isAssistantCapabilityClaim('The Xero account is not currently connected for automated access to financial figures.'),
+    ).toBe(true);
+  });
+
+  it('catches integration SETUP instructions filed as a systems fact', () => {
+    expect(
+      isIntegrationSetupClaim("API access or connection permissions need to be enabled in Xero under 'Connected Apps' or 'API Keys' to connect accounting data."),
+    ).toBe(true);
+  });
+
+  // ⚠️ THREE ROWS ABOVE THE BAD ONE IN THE SAME RECORD. Which accounting system a business runs on
+  // is exactly what the systems area is for. If the vendor name alone tripped this, the guard would
+  // delete the useful half of what it was built to protect.
+  it('does NOT fire on the genuine Xero fact sitting in the same record', () => {
+    expect(isAssistantOrProductClaim("The business's financial data is managed in Xero accounting software.")).toBe(false);
+  });
+});
+
+describe('⚠️ the false positive caught in a dry run, before it deleted a true fact', () => {
+  // Widening the denial pattern to reach "not currently connected" also matched this, on a real
+  // account. Which accounting system a business runs — or refuses to run — is exactly what the
+  // systems area is for. USE versus REACH is the whole discriminator.
+  it('does NOT fire on the owner saying his business does not use a tool', () => {
+    expect(isAssistantCapabilityClaim('Xero accounting software is not used nor connected in this business.')).toBe(false);
+    expect(isAssistantOrProductClaim('The business does not use Gmail; everything runs through Outlook.')).toBe(false);
+  });
+
+  it('still fires on OUR reach being absent', () => {
+    expect(
+      isAssistantCapabilityClaim('The Xero account is not currently connected for automated access to financial figures.'),
+    ).toBe(true);
   });
 });
