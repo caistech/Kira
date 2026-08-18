@@ -106,13 +106,13 @@ if (error) {
   console.error('Could not read kira_agents:', error.message);
   process.exit(1);
 }
-const ourAgents = (rows ?? []).filter((r) => r.elevenlabs_agent_id);
-if (ourAgents.length === 0) {
+const owned = (rows ?? []).map((r) => r.elevenlabs_agent_id).filter(Boolean);
+if (owned.length === 0) {
   console.error('No agents in kira_agents. Aborting rather than creating an unbound webhook whose');
   console.error('secret would be stale the moment it was minted.');
   process.exit(1);
 }
-console.log(`Agents in kira_agents: ${ourAgents.length}`);
+console.log(`Agents in kira_agents: ${owned.length}`);
 
 // ── 1. What is out there now ─────────────────────────────────────────────────
 
@@ -132,6 +132,66 @@ for (const w of stale) {
   console.log(`  ${w.webhook_id}  ${w.webhook_url}`);
   console.log(`      ${w.name} · bound to ${(w.usage ?? []).length} · ${fail}`);
 }
+
+// ── 1b. THE REFERENCE SET IS COMPLETE OR THIS DOES NOT WORK ──────────────────
+//
+// kira_agents is the list of agents belonging to OWNERS. It is not the list of agents bound to a
+// Kira webhook, and the difference cost a full failed run on 2026-08-18: all 18 owner agents
+// unbound cleanly, and the delete still came back
+//   405 {"status":"webhook_in_use","message":"This webhook is still in use and cannot be deleted"}
+// because `Kira Guide Setup Agent` — the PUBLIC landing agent, provisioned outside kira_agents and
+// therefore invisible to the table — was still pointing at it. It is also the agent behind the
+// old webhook's 500 @ 18:06:28, so it was not incidental: it was the one still delivering.
+//
+// The `usage` array on a webhook gives a COUNT and no ids, so the only way to learn WHICH agents
+// reference it is to read every agent in the workspace. That is ~220 GETs and takes a couple of
+// minutes; the alternative is another 405 halfway through a destructive sequence, having already
+// unbound the fleet. A partial reference set is wrong in exactly the direction that breaks things.
+//
+// Scanning also protects the other ten products sharing this workspace: anything bound to a KIRA
+// post-call URL is ours by definition, and nothing else is touched.
+
+const staleIds = new Set(stale.map((w) => w.webhook_id));
+const seen = new Set(owned);
+const extra = [];
+
+process.stdout.write('Scanning the workspace for other agents bound to these webhooks… ');
+let cursor = null;
+const workspace = [];
+for (let page = 0; page < 20; page++) {
+  const res = await el(`${CONVAI}/agents?page_size=100${cursor ? `&cursor=${cursor}` : ''}`);
+  if (!res.ok) {
+    console.error(`\nCould not list agents: ${res.status}. Aborting — an incomplete reference set`);
+    console.error('would leave a binding behind and fail the delete after unbinding the fleet.');
+    process.exit(1);
+  }
+  const j = await res.json();
+  workspace.push(...(j.agents ?? []));
+  if (!j.has_more || !j.next_cursor) break;
+  cursor = j.next_cursor;
+}
+for (const a of workspace) {
+  if (seen.has(a.agent_id)) continue;
+  const res = await el(`${CONVAI}/agents/${a.agent_id}`);
+  if (!res.ok) {
+    console.error(`\nCould not read agent ${a.agent_id} (${res.status}). Aborting: an unreadable`);
+    console.error('agent may hold a binding, and proceeding would fail the delete.');
+    process.exit(1);
+  }
+  const d = await res.json();
+  const ws = d.platform_settings?.workspace_overrides?.webhooks ?? d.platform_settings?.webhooks ?? {};
+  if (ws.post_call_webhook_id && staleIds.has(ws.post_call_webhook_id)) {
+    extra.push({ id: a.agent_id, name: a.name ?? '(unnamed)' });
+  }
+}
+console.log(`${workspace.length} scanned`);
+if (extra.length) {
+  console.log(`  ⚠️  ${extra.length} bound agent(s) NOT in kira_agents — included in the rebind:`);
+  for (const e of extra) console.log(`      ${e.id}  ${e.name}`);
+}
+
+const ourAgents = [...owned.map((id) => ({ elevenlabs_agent_id: id })), ...extra.map((e) => ({ elevenlabs_agent_id: e.id }))];
+console.log(`Fleet to rebind: ${ourAgents.length}`);
 
 if (!APPLY) {
   console.log('\nPlan:');
