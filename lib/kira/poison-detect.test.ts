@@ -7,7 +7,9 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { isAssistantCapabilityClaim, isContaminatedMemory } from './poison-detect.mjs';
+import { isAssistantCapabilityClaim,
+  isProductSurfaceClaim,
+  isAssistantOrProductClaim, isContaminatedMemory } from './poison-detect.mjs';
 
 /** Verbatim from kira_memory before deactivation. All three are the assistant describing itself. */
 const REAL_POISON = [
@@ -88,5 +90,46 @@ describe('isContaminatedMemory — filed where the Genome can read it', () => {
     for (const content of REAL_GENOME) {
       expect(isContaminatedMemory({ content, genome_about: 'business', genome_section: 'delivery' })).toBe(false);
     }
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* The SECOND class: our own interface, filed as a fact about him      */
+/* ------------------------------------------------------------------ */
+
+describe('isProductSurfaceClaim — the row the denial detector could never catch', () => {
+  it('catches the real row, live in the Factory2Key Genome as `operations` on 2026-08-16', () => {
+    // No negation anywhere in this sentence, so every rule in isAssistantCapabilityClaim is blind to
+    // it. It came from the owner saying he wanted to go into the genome area and work on categories
+    // — he described navigating OUR interface and she filed it as how his construction firm runs.
+    expect(
+      isProductSurfaceClaim("The business includes a 'genome area' with categories that can be worked on and updated."),
+    ).toBe(true);
+  });
+
+  it('catches the other shapes of the same mistake', () => {
+    expect(isProductSurfaceClaim('The owner reviews his Business Genome page each week.')).toBe(true);
+    expect(isProductSurfaceClaim('Genome sections can be updated by the owner.')).toBe(true);
+  });
+
+  // ⚠️ THE FALSE POSITIVE THAT WOULD BE REAL. An account already in this database belongs to a
+  // pharmaceutical company (aromics.es). "Genome" is our product's word only by coincidence, and a
+  // biotech owner means it literally — parking his actual business facts would be a worse defect
+  // than the one being fixed, because it silently deletes true things from a paying customer.
+  it('does NOT fire on a business that genuinely works with genomes', () => {
+    expect(isProductSurfaceClaim('The company performs genome sequencing for oncology research.')).toBe(false);
+    expect(isProductSurfaceClaim('Its core platform analyses tumour genome data for drug discovery.')).toBe(false);
+  });
+
+  it('does NOT fire on ordinary business facts that mention a page or a category', () => {
+    expect(isProductSurfaceClaim('Jobs are grouped into three categories by size.')).toBe(false);
+    expect(isProductSurfaceClaim('The business uses a shared drive to manage project documents.')).toBe(false);
+    expect(isProductSurfaceClaim('Pricing is reviewed on the quotes dashboard each Monday.')).toBe(false);
+  });
+
+  it('the combined write-time guard covers BOTH classes', () => {
+    expect(isAssistantOrProductClaim('Emails cannot be accessed or read by the assistant.')).toBe(true);
+    expect(isAssistantOrProductClaim("The business includes a 'genome area' with categories.")).toBe(true);
+    expect(isAssistantOrProductClaim('The business keeps multiple email contacts for key suppliers.')).toBe(false);
   });
 });

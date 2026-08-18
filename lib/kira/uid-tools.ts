@@ -15,7 +15,7 @@ import { unconfirmedFacts } from '@/lib/kira/confirm';
 import { keyRiskFollowUp } from '@/lib/kira/key-risk';
 import { displayedFigures } from '@/lib/valuation/displayed';
 import { DEFAULT_CURRENCY } from '@/lib/valuation/currency';
-import { isAssistantCapabilityClaim } from './poison-detect.mjs';
+import { isAssistantOrProductClaim } from './poison-detect.mjs';
 
 const uidFrom = (req: Request) => new URL(req.url).searchParams.get('uid') || '';
 const json = (status: number, body: unknown) =>
@@ -311,7 +311,7 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
   // what the owner's own "everything else you have told me" list renders, so he can see it and
   // remove it while the buyer's handover never carries it. Deleting would be the product quietly
   // editing his record.
-  const isOwnCapabilityClaim = isAssistantCapabilityClaim(content);
+  const isOwnCapabilityClaim = isAssistantOrProductClaim(content);
   const assistantStateFields = isOwnCapabilityClaim
     ? {
         genome_section: 'none' as const,

@@ -25,7 +25,7 @@
 // Deleting would be the product quietly editing his record.
 
 import { createServiceClient } from '@/lib/supabase/server';
-import { isAssistantCapabilityClaim } from './poison-detect.mjs';
+import { isAssistantOrProductClaim } from './poison-detect.mjs';
 
 /** Only rows from the conversation that just ended — never a retrospective rewrite of his record. */
 const RECENT_MS = 10 * 60 * 1000;
@@ -48,7 +48,10 @@ export async function refileAssistantCapabilityClaims(
     let refiled = 0;
     for (const row of data ?? []) {
       const r = row as { id: string; content: unknown; genome_section: unknown; genome_about: unknown };
-      if (!isAssistantCapabilityClaim(String(r.content ?? ''))) continue;
+      // BOTH classes: what she said she cannot do, AND our own interface described as his business.
+      // The second has no negation in it, so the capability detector alone is blind to it — see
+      // isProductSurfaceClaim for the row that reached a live Genome tagged `operations`.
+      if (!isAssistantOrProductClaim(String(r.content ?? ''))) continue;
       // Already inert — either the tag path worked or a previous sweep caught it.
       if (r.genome_about === 'assistant' || r.genome_section === 'none') continue;
 
