@@ -647,21 +647,32 @@ export default function PlanPage() {
                   being unreadable costs the most. The invitation now also carries `?code=`, so this
                   is the second of two defences, not the only one. */}
               {signedIn ? null : betaOpen ? (
-                <div className="mt-5">
+                <div className="mt-6">
                   <BetaRedeem initialCode={betaCode ?? ''} firstName={payload?.firstName} />
                 </div>
               ) : (
-                <p className="mt-4 text-base text-stone-600">
-                  Been invited to the beta?{' '}
-                  <button
-                    type="button"
-                    onClick={() => setBetaOpen(true)}
-                    className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500 min-h-[44px]"
-                  >
-                    Enter your invitation code
-                  </button>{' '}
-                  — no card, nothing charged.
-                </p>
+                <div className="mt-6 rounded-2xl border-2 border-violet-400 bg-violet-50 p-5 sm:p-6">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-0.5">
+                      <svg className="h-6 w-6 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-stone-900">Been invited to the beta?</h3>
+                      <p className="mt-1.5 text-base leading-relaxed text-stone-700">
+                        Enter your invitation code below — no card needed, nothing charged.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setBetaOpen(true)}
+                        className="mt-4 inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-violet-600 px-6 py-3.5 text-base font-bold text-white hover:bg-violet-700 transition-colors sm:w-auto sm:min-w-[240px]"
+                      >
+                        Enter your invitation code
+                      </button>
+                    </div>
+                  </div>
+                </div>
               )}
 
               {/* ⚠️ REMOVED THE "CREATE ACCOUNT WITHOUT CARD" DOOR. Two "no card" paths on one page
