@@ -1,5 +1,117 @@
 # Build register — Kira
 
+> ## S. 2026-08-18 — three days of conversations went nowhere, and every signal was green
+>
+> **Trigger:** a session closed unexpectedly mid-investigation. Tracing what it had been doing
+> found an outage it had diagnosed, started to fix, and died 29 seconds into.
+>
+> ### S1 — what was actually lost
+>
+> Every voice conversation since 15 August produced no memory. Measured by comparing what
+> ElevenLabs recorded against what our database received — the only comparison that shows it:
+>
+> | when | call | what happened |
+> |---|---|---|
+> | 15 Aug 11:33 | 823s · 129 msg | ✅ row, `processed_at` 11:47 — worked |
+> | 16 Aug 01:21 | 69s · 13 msg | ✅ row, `processed_at` 01:22 — worked |
+> | 17 Aug 18:05 | 28s · 5 msg | **no row** — a beta tester |
+> | 17 Aug 18:53 | 11s · 2 msg | **no row** |
+> | 17 Aug 19:57 | 19s · 1 msg | **no row** |
+> | 17 Aug 23:24 | 71s · 11 msg | **no row** |
+> | 18 Aug 02:19 | 48s · 8 msg | **no row** — confirming test |
+> | 18 Aug 02:22 | 129s · 16 msg | **no row** — confirming test |
+> | 18 Aug 03:02 | 126s · 14 msg | ✅ row, `processed_at` 03:05, **3 memories written** |
+>
+> **ONE fault, not two — and the first version of this section got that wrong.**
+>
+> ⚠️ The 15 and 16 Aug calls were recorded here as "row created, never distilled". That was an
+> artefact of reading the wrong column. **`distilled_at` is written ONLY by the TEXT transport**
+> (`app/api/kira/chat/text/route.ts:387`); the voice post-call path sets **`processed_at`**, and all
+> three voice rows have it. Judged correctly, those two calls worked. The outage is
+> **17 Aug 18:05 → 18 Aug 02:53** — six lost calls, not eight.
+>
+> ⚠️⚠️ **THIS WAS THE SAME MISTAKE TWICE IN ONE INVESTIGATION.** The first pass judged calls by
+> `conversations.conversation_id`, a column that does not exist (it is
+> `elevenlabs_conversation_id`), and PostgREST returned no row rather than an error — so every call
+> in the fleet read as missing and the first draft of this finding claimed the outage went back to
+> 15 August. The second pass fixed that column and then judged voice rows by a text-only column.
+> Both times the wrong column produced a plausible, alarming, wrong answer that looked like
+> evidence. **A verdict computed from a column is only as good as knowing which path writes it.**
+>
+> ### S2 — root cause of the no-row phase, and the fix
+>
+> On **18 Aug 09:43:06** local a session created a second Kira post-call webhook — the product had
+> moved from the Vercel default host to `kiraexec.com` — and rebound 16 agents to it. It died
+> **29 seconds later** (`.git/index.lock`, 09:43:35) without writing the new secret anywhere.
+> ElevenLabs returns a workspace webhook secret **exactly once, at creation**, and masks it on every
+> later GET, so production kept the old secret and the new webhook's deliveries arrived signed with
+> something it could not verify. The webhook logged `401 @ 2026-08-18T02:24:19Z` two minutes after
+> the confirming call — its first failure ever.
+>
+> An unrecoverable secret can only be replaced. `scripts/rebind-post-call-webhook.mjs` (adapted from
+> BucketLyst's, the reference remediation named in `SHARED_SERVICES.md`) deletes every Kira
+> post-call webhook on **both** hosts, mints one fresh, binds the whole fleet, and persists the
+> secret to `.env.local` and Vercel in the same run. **Dry by default** — deliberately the opposite
+> of `reprovision-kira-agents.mjs`, which mutates 13 live agents with no flag.
+>
+> ✅ Applied 18 Aug: one webhook `8a45d8d4…`, **19 agents** bound, no failures, secret pushed
+> sensitive/production+preview, production redeployed (`kira-hv6f61k5a`, promote returned 409
+> "already current" — i.e. the redeploy had promoted it).
+>
+> ### S3 — the first attempt failed, and the reason is the reusable lesson
+>
+> Run one unbound all 18 agents from `kira_agents` and the delete still came back
+> `405 webhook_in_use`. **`kira_agents` is the list of agents belonging to OWNERS; it is not the
+> list of agents bound to a Kira webhook.** `Kira Guide Setup Agent` — the public landing agent,
+> provisioned outside the table — was still pointing at it, and was also the source of the old
+> webhook's `500 @ 18:06:28`. The script now scans all 223 workspace agents and **aborts rather than
+> proceeding** if any is unreadable: a partial reference set is wrong in exactly the direction that
+> strands the fleet unbound halfway through a destructive sequence.
+>
+> ### S4 — ⚠️ THE PATTERN, and it is the same one as section R
+>
+> **Nothing could see this from outside.** The route answered `405` to a GET and `401` to an
+> unsigned POST — precisely what a correctly guarded endpoint does — so `deploy-status`, route
+> smoke, `public-routes` and `first-paint` all passed over it while not one word was being written.
+> Reachability, status codes and deployed-SHA checks are all necessary and none of them asks
+> *did the thing on the other end actually accept it.*
+>
+> The gate could not have caught it either, because **the gate had been red since 16 August** on one
+> lint error (`Date.now()` in a render body, `app/my-genome/page.tsx`). Lint is step 4 and no later
+> step carries `if:`, so Tests, the chrome check, **`check-voice-reachable.mjs`**, design-tokens and
+> Build had not run on any push for two days — including the guard written that same week to stop
+> voice regressing silently. Fixed; all four now pass. *A gate red on every run has stopped
+> guarding anything while still costing a red tick* — written in the funnel-token commit six hours
+> earlier, about a different check, and true of lint the whole time.
+>
+> ### S5 — PROVEN, AND WHAT IS STILL OPEN
+>
+> ✅ **The fix is proven.** The 03:02 call on 18 Aug — the first since the redeploy — produced a
+> conversation row, `processed_at` at 03:05:00, `ended_at` set, and **three memories written to
+> `kira_memory` fourteen seconds after the call ended**. The webhook reports 19 agents bound and no
+> failures. Voice memory is working again for the first time since 17 August.
+>
+> ~~The distillation fault (15–16 Aug)~~ — **withdrawn, it never existed.** See the column
+> correction in S1.
+>
+> Still open:
+>
+> 1. **`ended_at` is written after all — the code comment saying otherwise is wrong.**
+>    `app/my-genome/page.tsx` and the `filing-notice` test both rest on *"`conversations.ended_at`
+>    exists in the schema and NOTHING IN THIS CODEBASE EVER WRITES IT."* All three voice rows have
+>    it set; the canonical post-call handler writes it. **The code is still correct** — 68 of 71
+>    recent rows are text-transport and have no `ended_at`, so keying the freshness check on
+>    `started_at` remains right — but the stated reason is false and will mislead the next reader.
+> 2. **Transcript accumulates across conversations.** `VoiceWidget` (`@caistech/elevenlabs-convai`)
+>    holds messages in `useState([])` with exactly one append and **no reset anywhere** — not on
+>    connect, disconnect or close. Ending a call and starting another appends to the previous
+>    transcript, so a page visit shows every conversation and everything pasted into it, stacked.
+>    Observed on `/my-genome/[area]` with two "good to see you again" greetings in one panel.
+>    **Package defect, 11 consumers** — fix belongs upstream, not here.
+> 3. **Nothing verified about ordering.** The same transcript renders visibly out of sequence.
+>    Messages append in ARRIVAL order and ElevenLabs delivers `user_transcript` after ASR, which can
+>    land after the agent has already replied. Plausible, untraced, not claimed.
+
 > ## R. 2026-08-18 — Kira was on none of the product, and a beta had already been sent
 >
 > **Trigger:** two beta testers replied. One could not get in at all; the other got in and started.

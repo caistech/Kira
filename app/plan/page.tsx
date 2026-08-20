@@ -664,32 +664,30 @@ export default function PlanPage() {
                 </p>
               )}
 
-              {/* A DOOR THAT ISN'T A CARD FORM.
-                  Ray, 7 August, having read the whole pricing argument and accepted it: "I am not
-                  putting a card in before I have seen the thing work. I am sixty-six and thinking
-                  about selling and I have not told my wife." He went round the back via Sign in →
-                  "Need an account? Sign up" — two clicks and a bit of nerve — and said plainly that
-                  most cautious buyers would not find it. For THIS audience, wanting to look first is
-                  the normal case, not the objection. The account, the dashboard and a working Kira
-                  already exist behind it; we simply were not offering them. */}
-              {/* ⚠️ NOT OFFERED TO SOMEONE WHO HAS ALREADY TAKEN THEM. A signed-in owner was shown
-                  "Create an account without a card", "Already have an account? Sign in" and "Been
-                  invited to the beta?" on the page asking for his card. Ray: "Three offers I have
-                  already taken." Each is exactly right for the anonymous visitor this page is
-                  mainly written for, and each reads as a page that does not know who it is talking
-                  to when he is signed in. */}
-              {/* ⚠️ OPENS BY NAMING WHO IT IS FOR, because the line above it now makes the same
-                  offer to a different person. Two doors both promising "no card" is how an invited
-                  tester ends up on the uninvited path — he is not choosing wrongly, he is choosing
-                  between two things that read identically. "Not invited" lets him rule this out in
-                  four words without having to understand the difference. */}
+              {/* ⚠️ REMOVED THE "CREATE ACCOUNT WITHOUT CARD" DOOR. Two "no card" paths on one page
+                  (beta code redemption vs free signup) caused real beta testers to take the wrong
+                  path — Shani's team (Aug 17 2026) tried the beta code, something was unclear, and
+                  they clicked "Create an account without a card" instead. That bypassed code
+                  redemption entirely (no trial, no journey_type, no agent provisioning), leaving them
+                  stuck at the onboarding gate reporting "Kira connection did not complete".
+                  
+                  The only two access gates now: Stripe checkout OR beta code. Uninvited visitors who
+                  want access are directed to request a code rather than offered a hidden free tier
+                  that competes with the intended beta path. */}
               {!signedIn && (
               <p className="mt-3 text-sm text-stone-600">
-                Not invited, but want a look first?{' '}
-                <a href="/signup" className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500">
-                  Create an account without a card
+                No beta tester code but want to try it out?{' '}
+                <a href="mailto:dennis@corporateaisolutions.com" className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500">
+                  Email dennis@corporateaisolutions.com
                 </a>{' '}
-                and come back when you&apos;re ready.
+                requesting a code, or{' '}
+                <a href="https://www.linkedin.com/in/denniskl/" target="_blank" rel="noopener noreferrer" className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500">
+                  connect on LinkedIn
+                </a>{' '}
+                and request one there. Already have an account?{' '}
+                <a href="/login" className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500">
+                  Sign in
+                </a>
               </p>
               )}
               <p className="mt-3 text-sm text-stone-500">

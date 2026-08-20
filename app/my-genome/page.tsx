@@ -18,6 +18,39 @@ import { buyerEntryCount } from '@/lib/genome/buyer-view';
 
 export const dynamic = 'force-dynamic';
 
+// ⚠️ SHE IS STILL FILING, AND THE PAGE HAS TO SAY SO.
+//
+// Distillation happens after the call ends and takes a few minutes. Ray finished talking, came
+// straight here, and every area read "Nothing yet" — with the zero-state copy telling him this was
+// expected BEFORE his first conversation, which he had just had. "She had just told me she had got
+// it. The page said she had not. I only found out it works because I came back later for an
+// unrelated reason. Most owners will not come back later — they will conclude it does not work,
+// which is exactly what I concluded for about twenty minutes."
+//
+// ⚠️ started_at, NOT ended_at — AND THAT IS THE WHOLE CORRECTNESS OF THIS CHECK.
+//
+// `conversations.ended_at` exists in the schema and NOTHING IN THIS CODEBASE EVER WRITES IT. A
+// version of this keyed on it typechecked, built, and could never once have been true — the same
+// class as the three guards found dead this week, and it would have shipped as a fix for a
+// finding it silently did nothing about. `started_at` defaults to NOW() on insert, so it is the
+// only timestamp here that is real.
+//
+// Twenty-five minutes, measured from the START: the call itself is part of the wait, and a long
+// first conversation runs to twenty. Wide enough to cover talk-plus-distil, short enough that it
+// stops claiming she is busy on a page opened the next morning.
+//
+// OUTSIDE THE COMPONENT because it reads the clock. Calling an impure function during render is a
+// lint error (react-hooks/purity) and, once this page is ever memoised, a real staleness bug — the
+// same reason `sendingLooksStuck` sits outside the dashboard component. It lived in the render body
+// from 2026-08-16 and was the single error that turned the whole portfolio-gate run red, which took
+// Tests, the chrome check, voice-reachability, design-tokens and Build down with it for two days.
+const FILING_WINDOW_MS = 25 * 60 * 1000;
+
+function isStillFiling(startedAt: string | null | undefined): boolean {
+  if (!startedAt) return false;
+  return Date.now() - new Date(startedAt).getTime() < FILING_WINDOW_MS;
+}
+
 // The owner's OWN Genome — the thing he is paying for, which until now existed only as a public
 // example. The ICP tester's verdict was: "when I got through the door, the thing that had been
 // described for ten minutes wasn't in there."
@@ -56,27 +89,7 @@ export default async function MyGenome() {
 
   const g = await deriveOwnerGenome(appUser.id);
 
-  // ⚠️ SHE IS STILL FILING, AND THE PAGE HAS TO SAY SO.
-  //
-  // Distillation happens after the call ends and takes a few minutes. Ray finished talking, came
-  // straight here, and every area read "Nothing yet" — with the zero-state copy telling him this was
-  // expected BEFORE his first conversation, which he had just had. "She had just told me she had got
-  // it. The page said she had not. I only found out it works because I came back later for an
-  // unrelated reason. Most owners will not come back later — they will conclude it does not work,
-  // which is exactly what I concluded for about twenty minutes."
-  //
-  // ⚠️ started_at, NOT ended_at — AND THAT IS THE WHOLE CORRECTNESS OF THIS CHECK.
-  //
-  // `conversations.ended_at` exists in the schema and NOTHING IN THIS CODEBASE EVER WRITES IT. A
-  // version of this keyed on it typechecked, built, and could never once have been true — the same
-  // class as the three guards found dead this week, and it would have shipped as a fix for a
-  // finding it silently did nothing about. `started_at` defaults to NOW() on insert, so it is the
-  // only timestamp here that is real.
-  //
-  // Twenty-five minutes, measured from the START: the call itself is part of the wait, and a long
-  // first conversation runs to twenty. Wide enough to cover talk-plus-distil, short enough that it
-  // stops claiming she is busy on a page opened the next morning.
-  const FILING_WINDOW_MS = 25 * 60 * 1000;
+  // The freshness window and the clock read both live above the component — see isStillFiling.
   const { data: lastConversation } = await svc
     .from('conversations')
     .select('started_at')
@@ -84,10 +97,7 @@ export default async function MyGenome() {
     .order('started_at', { ascending: false })
     .limit(1)
     .maybeSingle();
-  const justTalked = Boolean(
-    lastConversation?.started_at &&
-      Date.now() - new Date(lastConversation.started_at as string).getTime() < FILING_WINDOW_MS,
-  );
+  const justTalked = isStillFiling(lastConversation?.started_at as string | null);
   const identity = await getBusinessIdentity(appUser.id);
   // The same zone the handover document formats in, so the two cannot print different days.
   const timeZone = timeZoneForState(identity?.state);
