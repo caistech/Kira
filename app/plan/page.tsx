@@ -681,7 +681,7 @@ export default function PlanPage() {
                   they clicked "Create an account without a card" instead. That bypassed code
                   redemption entirely (no trial, no journey_type, no agent provisioning), leaving them
                   stuck at the onboarding gate reporting "Kira connection did not complete".
-                  
+
                   The only two access gates now: Stripe checkout OR beta code. Uninvited visitors who
                   want access are directed to request a code rather than offered a hidden free tier
                   that competes with the intended beta path. */}
