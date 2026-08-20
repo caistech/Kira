@@ -29,13 +29,11 @@ export const dynamic = 'force-dynamic';
 //
 // ⚠️ started_at, NOT ended_at — AND THAT IS THE WHOLE CORRECTNESS OF THIS CHECK.
 //
-<<<<<<< HEAD
 // `conversations.ended_at` exists in the schema and NOTHING IN THIS CODEBASE EVER WRITES IT. A
 // version of this keyed on it typechecked, built, and could never once have been true — the same
 // class as the three guards found dead this week, and it would have shipped as a fix for a
 // finding it silently did nothing about. `started_at` defaults to NOW() on insert, so it is the
 // only timestamp here that is real.
-=======
 // ⚠️ CORRECTED 2026-08-18. This comment used to say `ended_at` is never written by anything in this
 // codebase. That was wrong, and it had been wrong for a while: the canonical post-call handler DOES
 // write it, verified on every voice row in the table. The conclusion survives the correction, but
@@ -50,7 +48,6 @@ export const dynamic = 'force-dynamic';
 //
 // `started_at` defaults to NOW() on insert and is present on every row of both transports, which is
 // what makes it the right key rather than merely the safe one.
->>>>>>> fix/purity-lint-gate-red
 //
 // Twenty-five minutes, measured from the START: the call itself is part of the wait, and a long
 // first conversation runs to twenty. Wide enough to cover talk-plus-distil, short enough that it
