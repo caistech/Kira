@@ -1,0 +1,184 @@
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config({ path: '.env.local' });
+
+console.log('Environment variables:');
+console.log('SUPABASE_URL:', process.env.SUPABASE_URL);
+console.log('SUPABASE_SERVICE_KEY:', process.env.SUPABASE_SERVICE_KEY ? '*****' : 'undefined');
+
+// Verify environment variables are loaded
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+  console.error('Error: Missing Supabase environment variables');
+  console.error('Please ensure .env.local contains:');
+  console.error('SUPABASE_URL=your_supabase_project_url');
+  console.error('SUPABASE_SERVICE_KEY=your_supabase_service_key');
+  process.exit(1);
+}
+
+// Create Supabase client with error handling
+let supabase;
+try {
+  supabase = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
+  );
+} catch (error) {
+  console.error('Error creating Supabase client:', error);
+  process.exit(1);
+}
+
+// Test Supabase connection
+async function testSupabaseConnection() {
+  try {
+    const { data, error } = await supabase
+      .from('beta_codes')
+      .select('count')
+      .limit(1);
+
+    if (error) {
+      console.error('Supabase connection test failed:', error);
+      return false;
+    }
+
+    console.log('Supabase connection test successful');
+    return true;
+  } catch (error) {
+    console.error('Supabase connection test failed:', error);
+    return false;
+  }
+}
+
+// Initialize the connection test
+async function initialize() {
+  const connectionSuccess = await testSupabaseConnection();
+  if (!connectionSuccess) {
+    console.error('Cannot proceed without a working Supabase connection');
+    process.exit(1);
+  }
+}
+
+// Call initialize
+initialize().catch(console.error);
+
+export async function checkVoiceAgentStatus(email: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from('beta_codes')
+      .select('voice_agent_status')
+      .eq('email', email)
+      .single();
+
+    if (error) {
+      console.error(`Error checking voice agent status for ${email}:`, error);
+      return null;
+    }
+
+    return data?.voice_agent_status || null;
+  } catch (error) {
+    console.error(`Error checking voice agent status for ${email}:`, error);
+    return null;
+  }
+}
+
+export async function compareUserRoles(email: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from('auth.users')
+      .select('role')
+      .eq('email', email)
+      .single();
+
+    if (error) {
+      console.error(`Error checking user role for ${email}:`, error);
+      return null;
+    }
+
+    return data?.role || null;
+  } catch (error) {
+    console.error(`Error checking user role for ${email}:`, error);
+    return null;
+  }
+}
+
+export async function checkFeatureFlags(email: string): Promise<any[]> {
+  try {
+    const { data, error } = await supabase
+      .from('feature_flags')
+      .select('*')
+      .eq('user_email', email);
+
+    if (error) {
+      console.error(`Error checking feature flags for ${email}:`, error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error(`Error checking feature flags for ${email}:`, error);
+    return [];
+  }
+}
+
+export async function checkEnvironment(email: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from('user_environments')
+      .select('environment')
+      .eq('email', email)
+      .single();
+
+    if (error) {
+      console.error(`Error checking environment for ${email}:`, error);
+      return null;
+    }
+
+    return data?.environment || null;
+  } catch (error) {
+    console.error(`Error checking environment for ${email}:`, error);
+    return null;
+  }
+}
+
+export async function checkVoiceAgentConfiguration(): Promise<any> {
+  try {
+    const { data, error } = await supabase
+      .from('voice_agent_config')
+      .select('*')
+      .single();
+
+    if (error) {
+      console.error('Error checking voice agent configuration:', error);
+      return null;
+    }
+
+    return data || null;
+  } catch (error) {
+    console.error('Error checking voice agent configuration:', error);
+    return null;
+  }
+}
+
+
+export async function checkAuthenticationFlow(email: string): Promise<any> {
+  try {
+    const { data, error } = await supabase
+      .from('authentication_logs')
+      .select('*')
+      .eq('email', email)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      console.error(`Error checking authentication flow for ${email}:`, error);
+      return null;
+    }
+
+    return data || null;
+  } catch (error) {
+    console.error(`Error checking authentication flow for ${email}:`, error);
+    return null;
+  }
+}

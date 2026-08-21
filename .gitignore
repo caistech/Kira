@@ -2,7 +2,7 @@
 /node_modules
 /.pnp
 .pnp.js
-
+data/beta-testers.json
 # Testing
 /coverage
 
