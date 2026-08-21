@@ -1,0 +1,342 @@
+[
+  {
+    "email": "sukhdeep.mangat@linkbusiness.com.au",
+    "name": "Sukhdeep Mangat",
+    "code": "LINK-1234-5678",
+    "group": "B",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs nudge"
+  },
+  {
+    "email": "gareth@plausible.gg",
+    "name": "Gareth Newman",
+    "code": "PLGB-2345-6789",
+    "group": "B",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs nudge"
+  },
+  {
+    "email": "simon.crisp@finnbusinesssales.com.au",
+    "name": "Simon Crisp",
+    "code": "FINN-3456-7890",
+    "group": "B",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs nudge"
+  },
+  {
+    "email": "darshilp.softrefine@gmail.com",
+    "name": "Darshilp",
+    "code": "SOFT-4567-8901",
+    "group": "B",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs nudge"
+  },
+  {
+    "email": "dennis@corporateaisolutions.com",
+    "name": "Dennis Corporate",
+    "code": "CORP-5678-9012",
+    "group": "A",
+    "trial_started_at": "2026-07-27T07:40:56.872Z",
+    "usage_count": 5,
+    "last_email_sent": "2026-08-15T00:00:00.000Z",
+    "comment": "Needs nudge"
+  },
+  {
+    "email": "dennis@factory2key.com.au",
+    "name": "Dennis F2K",
+    "code": "F2K-6789-0123",
+    "group": "A",
+    "trial_started_at": "2026-07-27T07:40:56.872Z",
+    "usage_count": 5,
+    "last_email_sent": "2026-08-15T00:00:00.000Z",
+    "comment": "Needs nudge"
+  },
+  {
+    "email": "joseph@xcapitalgroup.com.au",
+    "name": "Joey Wehbe",
+    "code": "XCAP-7890-1234",
+    "group": "B",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs nudge"
+  },
+  {
+    "email": "mcmdennis@gmail.com",
+    "name": "Dennis McMahon",
+    "code": "GBLT-8901-2345",
+    "group": "A",
+    "trial_started_at": "2026-07-27T07:40:56.872Z",
+    "usage_count": 5,
+    "last_email_sent": "2026-08-15T00:00:00.000Z",
+    "comment": "Needs nudge"
+  },
+  {
+    "email": "shamini.bhaskaran@gmail.com",
+    "name": "Shamini Bhaskaran",
+    "code": "GBLD-9012-3456",
+    "group": "B",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs nudge"
+  },
+  {
+    "email": "shani.shah@softrefine.com",
+    "name": "Shani Shah",
+    "code": "SOFR-0123-4567",
+    "group": "A",
+    "trial_started_at": "2026-07-27T07:40:56.872Z",
+    "usage_count": 5,
+    "last_email_sent": "2026-08-15T00:00:00.000Z",
+    "comment": "Needs nothing yet"
+  },
+  {
+    "email": "shhahhussain@gmail.com",
+    "name": "Shah Hussain",
+    "code": "MNMO-1234-5678",
+    "group": "B",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs nudge"
+  },
+  {
+    "email": "yuvraj.softrefine@gmail.com",
+    "name": "Yuvraj",
+    "code": "SOFR-2345-6789",
+    "group": "A",
+    "trial_started_at": "2026-07-27T07:40:56.872Z",
+    "usage_count": 5,
+    "last_email_sent": "2026-08-15T00:00:00.000Z",
+    "comment": "Needs nothing yet"
+  },
+  {
+    "email": "artem.gavrilov@dfuture.co",
+    "name": "Artem Gavrilov",
+    "code": "DFUT-3456-7890",
+    "group": "C",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs new email with code"
+  },
+  {
+    "email": "hardiktech66@gmail.com",
+    "name": "Hardik Patel",
+    "code": "HARD-4567-8901",
+    "group": "A",
+    "trial_started_at": "2026-07-27T07:40:56.872Z",
+    "usage_count": 5,
+    "last_email_sent": "2026-08-15T00:00:00.000Z",
+    "comment": "Needs nothing yet"
+  },
+  {
+    "email": "munich.stephen@gmail.com",
+    "name": "Stephen Munich",
+    "code": "STEP-5678-9012",
+    "group": "B",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs nudge"
+  },
+  {
+    "email": "karen.engel@mmcbuild.com.au",
+    "name": "Karen van Den Engel",
+    "code": "MMCB-6789-0123",
+    "group": "B",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs nudge"
+  },
+  {
+    "email": "rao.kar@gmail.com",
+    "name": "Karthik Rao",
+    "code": "MMCR-7890-1234",
+    "group": "B",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs nudge"
+  },
+  {
+    "email": "danjmaneveld@gmail.com",
+    "name": "Daniel Maneveld",
+    "code": "LING-8901-2345",
+    "group": "B",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs nudge"
+  },
+  {
+    "email": "alexphanvo@gmail.com",
+    "name": "Alex Vo",
+    "code": "PREL-9012-3456",
+    "group": "B",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs nudge"
+  },
+  {
+    "email": "ben@itsgroup.co.nz",
+    "name": "Ben",
+    "code": "PRES-0123-4567",
+    "group": "C",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs request for acting as beta tester - no code offered yet"
+  },
+  {
+    "email": "paul@presencegraph.co.nz",
+    "name": "Paul Simpson",
+    "code": "PRES-1234-5678",
+    "group": "C",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs request for acting as beta tester - no code offered yet"
+  },
+  {
+    "email": "haq@pdx.edu",
+    "name": "Arsh Haque",
+    "code": "ARSH-2345-6789",
+    "group": "C",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs request for acting as beta tester - no code offered yet"
+  },
+  {
+    "email": "bilal.anwar@zencloudtechnologies.com",
+    "name": "Bilal Anwar",
+    "code": "BILA-3456-7890",
+    "group": "C",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs request for acting as beta tester - no code offered yet"
+  },
+  {
+    "email": "jason@orbitcapital.net",
+    "name": "Jason Butcher",
+    "code": "JASO-4567-8901",
+    "group": "C",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs request for acting as beta tester - no code offered yet"
+  },
+  {
+    "email": "jason@buildgravity.ca",
+    "name": "Jason Deichert",
+    "code": "JASD-5678-9012",
+    "group": "C",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs request for acting as beta tester - no code offered yet"
+  },
+  {
+    "email": "amederco1445@gmail.com",
+    "name": "Amedeo",
+    "code": "AMED-6789-0123",
+    "group": "C",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs request for acting as beta tester - no code offered yet"
+  },
+  {
+    "email": "malvin@musanhi.com",
+    "name": "Malvin",
+    "code": "MALV-7890-1234",
+    "group": "C",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs request for acting as beta tester - no code offered yet"
+  },
+  {
+    "email": "saadkhalid.uhy@gmail.com",
+    "name": "Saad Khalid",
+    "code": "SAAD-8901-2345",
+    "group": "C",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs request for acting as beta tester - no code offered yet"
+  },
+  {
+    "email": "a.shojaei.k.k@gmail.com",
+    "name": "Ali Reza",
+    "code": "ALIR-9012-3456",
+    "group": "C",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs request for acting as beta tester - no code offered yet"
+  },
+  {
+    "email": "vishaladhlakha@gmail.com",
+    "name": "Vishal Adhlaka",
+    "code": "VISH-0123-4567",
+    "group": "C",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs request for acting as beta tester - no code offered yet"
+  },
+  {
+    "email": "kumarsaumy@gmail.com",
+    "name": "Kumar Saumy",
+    "code": "KUMA-1234-5678",
+    "group": "C",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs request for acting as beta tester - no code offered yet"
+  },
+  {
+    "email": "moshanymo@gmail.com",
+    "name": "Shany Mo",
+    "code": "SHAN-2345-6789",
+    "group": "C",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs request for acting as beta tester - no code offered yet"
+  },
+  {
+    "email": "ariy.laksmana@gmail.com",
+    "name": "Ari Yuda Laksmana",
+    "code": "ARIY-3456-7890",
+    "group": "C",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs request for acting as beta tester - no code offered yet"
+  },
+  {
+    "email": "uwe@propertyfriends.com.au",
+    "name": "Uwe Jacobs",
+    "code": "UWEJ-4567-8901",
+    "group": "C",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs request for acting as beta tester - no code offered yet"
+  }
+]

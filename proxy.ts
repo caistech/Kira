@@ -59,7 +59,7 @@ function redirectPreservingSession(response: NextResponse, url: URL): NextRespon
   return redirect;
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request: { headers: request.headers } });
 
   const supabase = createServerClient(
