@@ -44,6 +44,7 @@ describe('normaliseState — both shapes the lookup returns', () => {
 describe('validateBusinessIdentity — the state field end to end', () => {
   const base = {
     legalName: 'Example Pty Ltd',
+    tradingName: 'Example',
     abn: '54672395685',
     street: '76-84 Brunswick Street',
     locality: 'Fortitude Valley',

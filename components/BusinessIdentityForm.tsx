@@ -29,16 +29,21 @@ function Field({
   label,
   hint,
   error,
+  required,
   children,
 }: {
   label: string;
   hint?: string;
   error?: string;
+  required?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <label className="block">
-      <span className="text-base font-medium text-stone-800">{label}</span>
+      <span className="text-base font-medium text-stone-800">
+        {label}
+        {required ? <span className="text-rose-600"> *</span> : null}
+      </span>
       {children}
       {hint && !error ? <span className="mt-1 block text-sm text-stone-500">{hint}</span> : null}
       {error ? (
@@ -191,18 +196,18 @@ export function BusinessIdentityForm({
           />
         </Field>
 
-        <Field
-          label="Trading name"
-          hint="Only if customers know you by a different name to the registered one — a trust, say, trading as something simpler. Leave it blank and we'll use the registered name."
-          error={errors.tradingName}
-        >
-          <input
-            name="trading_name"
-            autoComplete="organization"
-            defaultValue={identity?.trading_name ?? ''}
-            className={INPUT}
-          />
-        </Field>
+         <Field
+           label="Trading name"
+           required
+           error={errors.tradingName}
+         >
+           <input
+             name="trading_name"
+             autoComplete="organization"
+             defaultValue={identity?.trading_name ?? ''}
+             className={INPUT}
+           />
+         </Field>
       </div>
 
       {/* ── The address ────────────────────────────────────────────────────────────────────── */}

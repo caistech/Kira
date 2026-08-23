@@ -40,7 +40,7 @@ export interface RenderedDocument {
 }
 
 export interface ManualMeta {
-  /** Trading name if there is one, else the registered entity — what he calls his own business. */
+  /** What he calls his own business — the trading name if there is one, else the registered entity. */
   businessName: string;
   /** Formatted, or null. A handover naming an entity without its ABN is weaker evidence. */
   abn: string | null;

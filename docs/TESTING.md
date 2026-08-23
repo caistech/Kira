@@ -3,6 +3,23 @@
 How `/naive-tester`, `/qa`, and `/voice-auditor` authenticate against Kira as **real accounts**
 (never an auth bypass — a test bypass is a critical vulnerability, PRODUCT_STANDARDS §9.5).
 
+## Red-team runs (`scripts/red-team.mjs`)
+
+Tier-2 conversational red team (drives `/api/kira/chat/text` as a synthetic owner — NEVER
+`QA_TEST_USER_EMAIL`). Canonical env names:
+
+```
+QA_REDTEAM_EMAIL         QA_REDTEAM_PASSWORD     # provisioned by scripts/provision-redteam-identity.mjs
+OPENAI_API_KEY                                   # judges the WORDS half of each verdict
+```
+
+Run: `node --env-file=.env.local scripts/red-team.mjs [--verbose]`.
+
+**Free local judge (2026-08-23):** set `LOCAL_JUDGE_MODEL` (e.g. `llama3.2`) and optionally
+`LOCAL_JUDGE_API` (default `http://localhost:11434/api/generate`) instead of `OPENAI_API_KEY`.
+Behaviour verdicts and the retry→INCONCLUSIVE fail-safe are unchanged. CI (`red-team.yml`)
+still requires the OpenAI secret.
+
 ## The two standard tester identities (minimal §9.5 set)
 
 | Role | Email (env) | In `ADMIN_EMAILS`? | Drives |

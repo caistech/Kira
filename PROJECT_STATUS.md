@@ -8,6 +8,15 @@
 <!-- One of: ACTIVE_DEVELOPMENT | MAINTENANCE | BLOCKED | PAUSED | SHIPPED -->
 **Status**: ACTIVE_DEVELOPMENT
 
+## Session 2026-08-23 — red-team judge made pluggable (cost)
+
+- `scripts/red-team.mjs`: new `LOCAL_JUDGE_MODEL` / `LOCAL_JUDGE_API` env vars route the WORDS
+  judge to a local model (Ollama/LM Studio); `OPENAI_API_KEY` optional in that mode. Behaviour
+  half + INCONCLUSIVE fail-safe untouched. Verified with `node --check`.
+- Docs updated: `docs/HLD.md` (known-limitations bullet), `docs/TESTING.md` (red-team section).
+- Not yet done: CI (`red-team.yml`) still hard-requires the OpenAI secret — intentional for now;
+  revisit if a runner needs the free path.
+
 ## Verified as of this update (2026-07-31, end of session)
 
 | Check | Result |
