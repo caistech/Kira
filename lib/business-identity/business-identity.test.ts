@@ -19,6 +19,7 @@ const VALID_ABN = '54 672 395 685';
 function input(overrides: Partial<BusinessIdentityInput> = {}): BusinessIdentityInput {
   return {
     legalName: 'Factory2Key Pty Ltd',
+    tradingName: 'Factory2Key',
     abn: VALID_ABN,
     street: '76-84 Brunswick Street',
     locality: 'Fortitude Valley',
@@ -94,7 +95,7 @@ describe('validateBusinessIdentity', () => {
     expect(result.ok).toBe(true);
     expect(result.value?.abn).toBe('54672395685');
     expect(result.value?.state).toBe('QLD');
-    expect(result.value?.tradingName).toBeNull();
+    expect(result.value?.tradingName).toBe('Factory2Key');
   });
 
   it('upper-cases a lower-case state rather than rejecting it', () => {

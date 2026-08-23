@@ -500,8 +500,8 @@ export default async function MyGenome() {
                       </p>
                     )
                   ) : (
-                    <ul className="space-y-3">
-                      {s.entries.map((e) => (
+                     <ul className="space-y-3">
+                       {s.entries.map((e) => (
                         <li key={e.id}>
                           {/* The headline is what makes this read like a manual rather than a
                               transcript. The detail stays underneath it, unchanged — a buyer's
@@ -581,17 +581,18 @@ export default async function MyGenome() {
                               {PRIVATE_REASON_LABEL[e.privateReason]}.
                             </p>
                           )}
-                          {/* ASKED, NOT ACTED ON.
-                              Above the merge threshold a restatement is collapsed automatically. In
-                              the band below it two entries are alike enough to be worth asking about
-                              and not alike enough to act on — a tester found two of his three facts
-                              saying the same thing in different words — so he is asked rather than
-                              having his own record quietly rewritten. Remove is right there if the
-                              answer is yes; nothing happens if he ignores it. */}
-                          {e.possibleRestatementOf && (
+                          {/* ACTED ON, NOT ASKED.
+                              This block used to say "this may be another way of saying something
+                              you already told Kira — remove whichever one reads worse". Three visits
+                              running, Ray's verdict: "It KNOWS. If it can spot the duplicate well
+                              enough to tell me, it can pick one." So the product picks — the folded
+                              wording no longer renders at all (derive.ts folds it), and what is
+                              left here is the quiet provenance line: the fact stays stated once,
+                              with the dates it was picked up again shown rather than hidden. */}
+                          {e.alsoRecordedOn && e.alsoRecordedOn.length > 0 && (
                             <p className="text-xs text-stone-500 mt-0.5">
-                              This may be another way of saying something you already told Kira. If it
-                              is, remove whichever one reads worse — she will keep the other.
+                              Also picked up{' '}
+                              {e.alsoRecordedOn.map((d) => new Date(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })).join(', ')}
                             </p>
                           )}
                           {/* On the FILED entries too, not only the unsorted ones. The sentence the
@@ -688,7 +689,7 @@ export default async function MyGenome() {
                   Uses the SAME rules that decide whether she stops mid-conversation, so the list and
                   her behaviour cannot disagree about which facts matter. */}
               <ul className="mt-3 space-y-2">
-                {rankedUnsorted.slice(0, 10).map((e) => (
+                 {rankedUnsorted.slice(0, 10).map((e) => (
                   <li key={e.id} className="text-stone-700">
                     {keyRiskFollowUp(e.content) && (
                       <span className="mr-2 rounded-full border border-amber-400 bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900">

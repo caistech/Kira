@@ -61,6 +61,7 @@ describe('isFreeMailDomain — the answers no DNS can rescue', () => {
 describe('validateBusinessIdentity — the sending domain field', () => {
   const base = {
     legalName: 'Bob’s Plumbing Pty Ltd',
+    tradingName: 'Bob’s Plumbing',
     abn: '54672395685',
     street: '1 Example Street',
     locality: 'Fortitude Valley',

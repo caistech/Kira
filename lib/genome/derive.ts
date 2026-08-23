@@ -166,6 +166,23 @@ export interface OwnerEntry {
    * BECAUSE the only difference is the number. Guard the identifiers and the band opens up.
    */
   possibleRestatementOf: string | null;
+  /**
+   * Set when this entry is the SAME FACT as an earlier one, said in different words.
+   *
+   * Ray, third visit running, 2026-08-23: "It KNOWS. If it can spot the duplicate well enough to
+   * tell me, it can pick one." So now the product picks: the later entry is folded into the
+   * earlier one at read time and carries this pointer instead of rendering. The database row is
+   * untouched — provenance survives in `everythingHeld` and the raw export — and the page stops
+   * asking him to do his own de-duplication.
+   */
+  mergedInto?: string | null;
+  /**
+   * When the same fact was picked up again in other conversations, as ISO timestamps.
+   *
+   * Provenance for a fold: the survivor states the fact once and honestly carries the dates of the
+   * wordings that were folded into it. The raw export keeps every original wording regardless.
+   */
+  alsoRecordedOn?: string[];
 }
 
 export interface OwnerSection {
@@ -817,7 +834,41 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
       // the field note on OwnerEntry carries the measurement that retired it.
       privateReason: ownerPrivateReason(String(r.content ?? '')),
       possibleRestatementOf: maybeSame.get(String(r.id)) ?? null,
+      // If this entry is the SAME FACT as an earlier-listed (more recent) one, said in different
+      // words, it carries that entry's id here instead of rendering.
+      mergedInto: maybeSame.get(String(r.id)) ?? null,
     }));
+
+  // ACT ON THE RELATION WE ALREADY DETECT.
+  //
+  // Three visits running, the Genome showed Wayne/Karen twice with "this may be another way of
+  // saying something you already told Kira — remove whichever one reads worse". Ray, 2026-08-23:
+  // "It KNOWS. If it can spot the duplicate well enough to tell me, it can pick one."
+  //
+  // So the product picks. An entry whose content is alike enough that the page was willing to ASK
+  // about it (containment ≥ POSSIBLE_RESTATEMENT, identifiers compatible — see lib/genome/
+  // similar.ts) is folded into the entry it may restate, here at read time, so every consumer —
+  // his page, the handover document, the share counts — sees the same deduped record without each
+  // re-implementing the rule.
+  //
+  // ⚠️ FOLDED, NOT DELETED. The database row is untouched; the raw JSON export reads the table
+  // directly and still carries every wording. Provenance survives on the survivor as
+  // `alsoRecordedOn`, so the record honestly shows the fact was mentioned more than once.
+  const visible = (() => {
+    if (!maybeSame.size) return all;
+    const foldedDates = new Map<string, string[]>();
+    for (const e of all) {
+      if (!e.mergedInto || !e.capturedAt) continue;
+      const dates = foldedDates.get(e.mergedInto) ?? [];
+      dates.push(e.capturedAt);
+      foldedDates.set(e.mergedInto, dates);
+    }
+    for (const entry of all) {
+      const dates = foldedDates.get(entry.id);
+      if (dates?.length) entry.alsoRecordedOn = dates;
+    }
+    return all.filter((e) => !e.mergedInto);
+  })();
 
   // THE BASELINE — what the eleven pre-signup answers already say about each area.
   //
@@ -833,7 +884,7 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
   const baselineFor = new Map(baselines.map((b) => [b.area, b]));
 
   const sections: OwnerSection[] = GENOME_SECTIONS.map((s) => {
-    const entries = all.filter((e) => e.section === s.key);
+    const entries = visible.filter((e) => e.section === s.key);
     const coverage =
       entries.length === 0 ? 'empty' : entries.length <= 2 ? 'thin' : entries.length <= 5 ? 'building' : 'covered';
     const baseline = baselineFor.get(s.key) ?? null;
@@ -850,16 +901,16 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
 
   return {
     sections,
-    unsorted: all.filter((e) => e.section === 'unsorted'),
-    totalCaptured: all.length,
+    unsorted: visible.filter((e) => e.section === 'unsorted'),
+    totalCaptured: visible.length,
     documents: documents ?? 0,
     readiness: valuation?.readiness != null ? Number(valuation.readiness) : null,
     gap: valuation?.gap != null ? Number(valuation.gap) : null,
     worthToday: valuation?.worth_today != null ? Number(valuation.worth_today) : null,
-    empty: all.length === 0,
+    empty: visible.length === 0,
     otherHeld,
-    sourced: all.filter((e) => e.source).length,
-    confirmed: all.filter((e) => e.confirmedOn).length,
+    sourced: visible.filter((e) => e.source).length,
+    confirmed: visible.filter((e) => e.confirmedOn).length,
     // Empty areas, split by where their truth normally comes from — see `notYetLocated` above. An
     // area with `truthLivesIn: 'system'` is NOT claimed to be in his head, because that is a claim
     // nobody has checked.

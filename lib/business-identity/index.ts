@@ -153,7 +153,7 @@ export function longDateIn(timeZone: string, value: string | Date): string {
 export interface BusinessIdentityInput {
   legalName: string;
   abn: string;
-  tradingName?: string | null;
+  tradingName: string;
   street: string;
   locality: string;
   state: string;
@@ -323,7 +323,9 @@ export function validateBusinessIdentity(input: BusinessIdentityInput): Validati
   if (!(input.state || '').trim()) errors.state = 'Enter the state.';
   else if (!state) errors.state = 'That is not an Australian state or territory — try WA, NSW, VIC and so on.';
 
-  // HIS OWN DOMAIN, AND BLANK IS A REAL ANSWER. Many owners in this ICP have no website; theirs is
+  const tradingName = (input.tradingName || '').trim();
+  if (!tradingName) errors.tradingName = 'Enter the name customers know you by.';
+  else if (tradingName.length > 200) errors.tradingName = 'That is longer than a trading name can be.';
   // not an incomplete record, it is one that sends on the portfolio domain carrying their identity.
   const rawDomain = (input.sendingDomain || '').trim();
   const sendingDomain = normaliseDomain(rawDomain);
@@ -355,7 +357,7 @@ export function validateBusinessIdentity(input: BusinessIdentityInput): Validati
     value: {
       legalName,
       abn: abn as string,
-      tradingName: (input.tradingName || '').trim() || null,
+      tradingName: (input.tradingName || '').trim(),
       street,
       locality,
       state: state as AuState,
@@ -387,6 +389,7 @@ export function canSend(identity: BusinessIdentity | null | undefined): boolean 
 }
 
 /** The name the world sees: the trading name when there is one, else the entity. */
+/** What he calls his own business — the trading name if there is one, else the registered entity. */
 export function displayName(identity: BusinessIdentity): string {
   return identity.trading_name?.trim() || identity.legal_name;
 }

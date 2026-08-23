@@ -271,7 +271,9 @@ export default function PlanPage() {
       <header className="sticky top-0 z-40 bg-amber-50/85 backdrop-blur border-b border-amber-200/60">
         <div className="max-w-4xl mx-auto px-5 py-3 flex items-center justify-between">
           <a href="/" className="font-display font-bold text-xl bg-gradient-to-r from-amber-500 via-pink-500 to-violet-500 bg-clip-text text-transparent">Kira</a>
-          <a href="/business-valuation" className="text-sm text-stone-500 hover:text-pink-500 min-h-[44px] flex items-center">Redo my valuation</a>
+          <a href="/business-valuation" className="text-sm text-stone-500 hover:text-pink-500 min-h-[44px] flex items-center">
+            {payload ? 'Redo my valuation' : 'Run my valuation'}
+          </a>
         </div>
       </header>
 
@@ -746,7 +748,9 @@ export default function PlanPage() {
               half was a duplicate of what CorporateFooter already says; the "redo" link is the
               only part that was page-specific, so that is all that is left. */}
           <div className="py-10 text-center text-sm text-stone-400 border-t border-amber-100">
-            <a href="/business-valuation" className="hover:text-pink-500">Redo my valuation</a>
+            <a href="/business-valuation" className="hover:text-pink-500">
+              {payload ? 'Redo my valuation' : 'Run my valuation'}
+            </a>
           </div>
         </main>
       )}
