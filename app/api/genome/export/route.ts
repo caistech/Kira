@@ -96,12 +96,13 @@ export async function GET(request: Request) {
 
   const g = await deriveOwnerGenome(appUser.id);
   const format = new URL(request.url).searchParams.get('format') === 'json' ? 'json' : 'md';
+
   // "Recorded by the owner" beats "Recorded by dennis+qauser" in the document an advisor reads.
   // The signup trigger fills first_name from the front half of the email when no metadata is given,
   // and that string was reaching the byline of the handover export. `realSignOffName` returns null
   // when what we hold is really an address, and the existing 'the owner' fallback — already the
   // right answer for a nameless account — takes over. See lib/user-name.ts.
-  const owner = realSignOffName(appUser, authUser.email) || 'the owner';
+  const owner = realSignOffName(appUser, authUser.email) || "the owner";
 
   // THE DOCUMENT IS ABOUT THE BUSINESS, SO IT IS TITLED TO THE BUSINESS.
   //
@@ -117,15 +118,31 @@ export async function GET(request: Request) {
   try {
     identity = await getBusinessIdentity(appUser.id);
   } catch (error) {
-    console.error('[genome-export] business identity unavailable:', error);
+    console.error("[genome-export] business identity unavailable:", error);
   }
-  const subject = identity ? displayName(identity) : owner;
+  const businessName = identity ? displayName(identity) : owner;
 
-  // HIS clock, not the server's — on Vercel that is UTC, which dated an Australian handover a day
-  // behind for a third of every day. The dates are what make this document evidence.
+  // Buyer view to get shown facts and their dates
+  const { sections: publicSections, unsorted: publicUnsorted } = buyerView(g);
+  const shown = [...publicSections.flatMap((s) => s.entries), ...publicUnsorted];
+
+  // Calculate the latest fact date from the shown entries
+  const latestFactDate = shown.reduce((maxDate: Date, entry) => {
+    if (entry.source?.spokenOn) {
+      const spokenOnDate = new Date(entry.source.spokenOn);
+      return spokenOnDate > maxDate ? spokenOnDate : maxDate;
+    }
+    return maxDate;
+  }, new Date(0)); // Initialize with epoch to ensure any valid date is greater
+
+  // Determine the timezone based on business identity
   const timeZone = timeZoneForState(identity?.state);
-  const stamp = isoDateIn(timeZone);
 
+  // Use the latest fact date for the document filename stamp
+  // Fallback to current date if no facts exist (new user, etc.)
+  const filenameDate = latestFactDate.getTime() > 0 ? isoDateIn(timeZone, latestFactDate) : isoDateIn(timeZone, new Date());
+  const docExportDate = longDateIn(timeZone, new Date()); // The date the document was exported
+  
   if (format === 'json') {
     // "EVERYTHING WE HOLD" HAS TO MEAN EVERYTHING WE HOLD.
     //
@@ -204,19 +221,19 @@ export async function GET(request: Request) {
       {
       headers: {
         'Content-Type': 'application/json',
-        'Content-Disposition': `attachment; filename="business-genome-${stamp}.json"`,
+        'Content-Disposition': `attachment; filename="business-genome-${filenameDate}.json"`,
         },
       },
     );
   }
 
   const lines: string[] = [
-    `# Business Genome — ${subject}`,
+    `# Business Genome — ${businessName}`,
     '',
     // FORMATTED, like every other surface. This printed `ABN 99999999999` — an eleven-digit blob on
     // line two of the document a solicitor reads — while Settings rendered the same value correctly.
     identity?.abn ? `${identity.legal_name} · ABN ${formatAbn(identity.abn)}` : '',
-    `Recorded by ${owner}. Exported ${longDateIn(timeZone, new Date())}.`,
+    `Recorded by ${owner}. Exported ${docExportDate}.`,
     '',
     'This document records how this business actually runs, organised by the questions a buyer&rsquo;s'.replace('&rsquo;', "'") +
       ' advisor asks in due diligence. It was built from ordinary conversations with the owner.',
@@ -280,7 +297,8 @@ export async function GET(request: Request) {
   // `exportable` is now the single gate, and `export.test.ts` asserts that NOTHING carrying a
   // privateReason appears anywhere in the rendered output — so the next new collection cannot
   // reintroduce this by simply not being thought about.
-  const { sections: publicSections, unsorted: publicUnsorted } = buyerView(g);
+  // (The buyerView call itself now sits with the other derivation above, where `shown` is first
+  // needed for the document-date stamp.)
 
   // Counted over what the document ACTUALLY SHOWS, not over everything held. Reporting "6 of 6
   // traceable" under a document displaying two entries is the kind of number that is technically
@@ -289,7 +307,6 @@ export async function GET(request: Request) {
   // entries all sat in "Recorded, not yet filed" closed with "0 of 0 are dated" printed directly
   // under an entry. A tester: "My accountant is precisely the sort of person who reads the small
   // print at the bottom and asks why it disagrees with the front page."
-  const shown = [...publicSections.flatMap((s) => s.entries), ...publicUnsorted];
   const shownSourced = shown.filter((e) => e.source).length;
   const shownConfirmed = shown.filter((e) => e.confirmedOn).length;
 
@@ -353,7 +370,7 @@ export async function GET(request: Request) {
   return new NextResponse(lines.filter((l) => l !== '').join('\n') + '\n', {
     headers: {
       'Content-Type': 'text/markdown; charset=utf-8',
-      'Content-Disposition': `attachment; filename="business-genome-${stamp}.md"`,
+      'Content-Disposition': `attachment; filename="business-genome-${filenameDate}.md"`,
     },
   });
 }

@@ -389,3 +389,8 @@ Stated rather than omitted.
   nobody asks in a real conversation and the **distiller writes it anyway**. Twice observed. The
   probe exercises the refusal path; the leak arrives down the distillation path. A green probe over a
   live failure is worse than no probe, because it closes the question.
+- **Red-team judge backend is pluggable (2026-08-23).** `scripts/red-team.mjs` takes
+  `LOCAL_JUDGE_MODEL` (+ optional `LOCAL_JUDGE_API`, default Ollama `localhost:11434`) so the WORDS
+  half can be judged by a local model instead of paid OpenAI; `OPENAI_API_KEY` becomes optional.
+  The BEHAVIOUR half and the retry-to-INCONCLUSIVE fail-safe are unchanged - a judge outage still
+  records INCONCLUSIVE, never a pass. CI (`red-team.yml`) keeps the paid judge and its secret check.
