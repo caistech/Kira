@@ -1,12 +1,49 @@
 # Project Status — Kira
 
 > Auto-maintained by Claude Code. Read at session start, updated before session end.
-> Last updated: 2026-07-31T03:00:00Z (reconstructed after an unexpected session closure —
-> every claim below was re-verified live, not carried over from notes.)
+> Last updated: 2026-08-25T00:00:00Z (source-of-truth parity push + credential-hygiene pass;
+> every claim below was verified live against the repo/remote, not carried over from notes.)
 
 ## Current State
 <!-- One of: ACTIVE_DEVELOPMENT | MAINTENANCE | BLOCKED | PAUSED | SHIPPED -->
 **Status**: ACTIVE_DEVELOPMENT
+
+## Session 2026-08-25 — source-of-truth parity pushed; `.vercel-env-check` credential exposure remediated
+
+- **Kira `main` pushed to origin as a clean fast-forward** (`b69e577..e086205`): exactly the two
+  production commits `b8f8fa3` + `e086205`. Verified post-push: `origin/main` = `e0862055b13a…`.
+  The deployed Kira architecture (Orchestrator boundary, retired legacy webhook, post-call route,
+  RLS migration) is now represented on the remote. No deploy was made; production stays frozen.
+- **Orchestrator repo:** `feat/microsoft-graph-files` deliberately NOT pushed/merged — its only
+  unique content vs its origin/main is the Microsoft Graph connector feature (`a653c40`, `3c4c0a2`);
+  the production architecture commits are already there via equivalents `348c6c7` / `8a7da4c`.
+- **⚠️ SECURITY: `.vercel-env-check` contained real plaintext credentials on disk** (a
+  `vercel env pull` artifact; never committed to Git). Remediation applied: added a `.gitignore`
+  rule (`.gitignore:34`) so it can never be staged, then deleted the local file after confirming
+  provenance and store reachability (regenerate with `vercel env pull .vercel-env-check` when an
+  operator script needs it). Exposure scope verified structurally: 39 plaintext entries of which
+  the credential classes were Supabase service-role keys (Kira + platform-trust), Supabase
+  management access token, a GitHub PAT, Vercel API key/token, ElevenLabs/OpenAI/Gemini/Grok/Voyage
+  provider keys, the ADMIN_KEY/ADMIN_SECRET_KEY pair, and the pubguard webhook signing secret.
+  **33 further entries incl. all four STRIPE_* secrets were Sensitive-typed placeholders — never
+  written to disk.** Rotation is a deliberate follow-up decision; nothing rotated automatically.
+- **`scripts/setup-stripe.ts` is historical scaffolding — do NOT use it for the live Stripe
+  cutover.** It predates `STRIPE_LIVE_MODE`, registers `invoice.paid` (never processed) while
+  omitting `invoice.payment_succeeded` (processed), and hardcodes superseded USD pricing. The
+  cutover mechanism is dashboard-registered endpoints + the `_LIVE` env slots, per
+  `lib/billing/stripe-mode.ts`.
+- **QA business identity:** the sanctioned provisioning path for closing the persistence proof is
+  `node --env-file=.env.local scripts/provision-redteam-identity.mjs --qa-user --apply`
+  (creates auth user + matching `public.users` row idempotently). Do not hand-insert into
+  `public.users` in production. Extending `provision-qa-accounts.mjs` to self-heal the app row is
+  deferred QA tooling work.
+- **Cleanup deferred:** remaining untracked scratch scripts (`.tmp-prompts.mjs`,
+  `reprovision-agent-full.m{js,ts}`, one-off agent scripts) left in place for a deliberately
+  scoped housekeeping commit.
+
+- **Credential exposure assessment authored** (`docs/security/2026-08-25-credential-exposure-assessment.md`):
+  full per-credential rotation plan (P0 + P1), NEXT_PUBLIC_ELEVENLABS_API_KEY analysis, sequence
+  and dependencies. **Awaiting explicit authorisation before any rotation is executed.**
 
 ## Session 2026-08-24 — Phase 1 assessment authored; Orchestrator boundary Group B implemented (Kira-side partially)
 
@@ -150,8 +187,8 @@ The other headline items:
   a copy-vs-storage conflict to resolve deliberately rather than a bug to switch.
 
 ## Active Branches
-- Kira `main` — clean with origin, all commits pushed. Working tree carries the uncommitted
-  24 Aug boundary work (see Session 2026-08-24); do not reset or discard.
+- Kira `main` — **pushed: origin/main = `e086205`** (2026-08-25). Working tree carries only the
+  `.gitignore` guard + this status update (uncommitted) and known scratch scripts; do not reset.
 - Orchestrator `feat/microsoft-graph-files` — 4 commits ahead of `origin/main`, branch not pushed;
   prod deployed from the local tree. Untracked: `DEPLOYMENT_SUCCESS.md`, `OAUTH_VERIFICATION.md`,
   `capabilities/`, `tree.py` (stale artifacts from earlier sessions — review before commit).
@@ -175,3 +212,4 @@ The other headline items:
 | 2026-07-31 | — | Status reconstruction: tests 139/139, both prods verified on `main`, mirror gap re-measured (4 awaiting vs 1 mirrored) |
 | 2026-07-31 | — | Mirror gap CLOSED (await + discovery pass; 3 lost tasks recovered live). Contact lookup built both sides. Valuation persistence. Sign-in chrome: one Kira, business-named, cross-sell removed. Genome register + entity split (52 AI-business memories parked, 44 rewritten). Migration ledger reconciled 39/39 |
 | 2026-08-24 | — | Phase 1 assessment authored; Orchestrator boundary Group B steps 1+2 (scoped callers, kiraClient, beta-codes + email endpoints) live in prod but unpushed; Kira beta-codes proxy pushed (`b69e577`); post-call webhook moved + legacy 410; business_identity RLS migration drafted (unapplied?); suppression/throttle/owner adapters rewritten with known defects; HLD/LLD rewritten. Tests: Kira 1627/1635 (2 pre-existing failures), Orchestrator 198/198 |
+| 2026-08-25 | — | Source-of-truth parity: `main` fast-forward-pushed, origin/main = `e086205`; Orchestrator Graph branch deliberately not pushed; `.vercel-env-check` plaintext-credential exposure remediated (gitignore + delete; rotation assessment documented); setup-stripe.ts recorded as historical scaffolding; QA provisioning path documented; cosmetic cleanup deferred |

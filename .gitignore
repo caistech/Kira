@@ -29,6 +29,10 @@ yarn-error.log*
 # Vercel
 .vercel
 
+# `vercel env pull` output — a plaintext dump of production credentials on disk.
+# Regenerate on demand (`vercel env pull .vercel-env-check`); never commit.
+.vercel-env-check
+
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
