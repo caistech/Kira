@@ -3,11 +3,46 @@
 // Beta access codes — minting, normalising and claiming.
 //
 // The judgement lives in the two pure functions at the top so it can be tested without a database.
-// `claimBetaCode` is the only part that touches Supabase, and it does exactly one interesting thing:
-// claims the row atomically.
+// `claimBetaCode` is the only part that touches the database, and it does exactly one interesting
+// thing: claims the row atomically.
+//
+// PERSISTENCE PATH. The four DB operations (peek, claim, link, release) now route through the
+// Orchestrator rather than reaching for the service-role key directly. The Orchestrator holds the
+// Kira Supabase credential and enforces caller identity; Kira stays unprivileged. The exported
+// interface is unchanged — callers do not know the persistence path moved.
 
-import { createServiceClient } from '@/lib/supabase/server';
 import { SUPPORT_EMAIL } from '@/lib/contact';
+
+const ORCH_URL = (process.env.ORCHESTRATOR_URL || '').replace(/\/$/, '');
+const ORCH_SECRET = process.env.ORCHESTRATOR_PUBLIC_SECRET || '';
+
+/**
+ * Single outbound call to the Orchestrator's beta-codes boundary. All four operations share the
+ * same shape: POST with JSON body, receive JSON back, throw on non-200. Error details are logged
+ * server-side; the caller sees a thrown Error whose message carries the status code.
+ */
+async function callKiraBetaCode(
+  action: 'peek' | 'claim' | 'link' | 'release',
+  code: string,
+  userId?: string,
+): Promise<Record<string, unknown>> {
+  if (!ORCH_URL || !ORCH_SECRET) {
+    throw new Error('ORCHESTRATOR_URL / ORCHESTRATOR_PUBLIC_SECRET not configured');
+  }
+  const res = await fetch(`${ORCH_URL}/api/v1/kira/beta-codes`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-orchestrator-secret': ORCH_SECRET,
+    },
+    body: JSON.stringify({ action, code, ...(userId !== undefined ? { userId } : {}) }),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => 'unknown error');
+    throw new Error(`Orchestrator beta-codes call failed (${res.status}): ${text.slice(0, 200)}`);
+  }
+  return (await res.json()) as Record<string, unknown>;
+}
 
 /**
  * THE ONE SENTENCE EVERY REJECTED CODE GETS, on every route.
@@ -129,16 +164,9 @@ export async function peekBetaCode(
   const code = normaliseBetaCode(raw);
   if (!code) return { ok: false, reason: 'unknown' };
 
-  const svc = createServiceClient();
-  const { data } = await svc
-    .from('beta_codes')
-    .select('code, email, expires_at, redeemed_at, revoked_at')
-    .eq('code', code)
-    .maybeSingle();
-
-  const rejection = checkBetaCode((data as BetaCodeRow | null) ?? null, new Date());
-  if (rejection) return { ok: false, reason: rejection };
-  return { ok: true, email: (data as BetaCodeRow).email.toLowerCase() };
+  const body = await callKiraBetaCode('peek', code);
+  if (!body.ok) return { ok: false, reason: body.reason as BetaCodeRejection };
+  return { ok: true, email: String(body.email) };
 }
 
 /**
@@ -157,31 +185,15 @@ export async function claimBetaCode(
   raw: string,
 ): Promise<{ ok: true; email: string } | { ok: false; reason: BetaCodeRejection }> {
   const code = normaliseBetaCode(raw);
-  const peek = await peekBetaCode(code);
-  if (!peek.ok) return peek;
-
-  const svc = createServiceClient();
-  const { data, error } = await svc
-    .from('beta_codes')
-    .update({ redeemed_at: new Date().toISOString() })
-    .eq('code', code)
-    .is('redeemed_at', null)
-    .select('code, email')
-    .maybeSingle();
-
-  if (error || !data) {
-    // Lost the race, or the row moved between the peek and the claim. Reported as already-redeemed
-    // because that is what it is from here.
-    return { ok: false, reason: 'redeemed' };
-  }
-  return { ok: true, email: String(data.email).toLowerCase() };
+  const body = await callKiraBetaCode('claim', code);
+  if (!body.ok) return { ok: false, reason: body.reason as BetaCodeRejection };
+  return { ok: true, email: String(body.email) };
 }
 
 /** Attach the account to the code after the fact, for the operator's record. Never throws. */
 export async function linkBetaCodeToUser(raw: string, userId: string): Promise<void> {
   try {
-    const svc = createServiceClient();
-    await svc.from('beta_codes').update({ redeemed_user_id: userId }).eq('code', normaliseBetaCode(raw));
+    await callKiraBetaCode('link', normaliseBetaCode(raw), userId);
   } catch (error) {
     console.error('[beta-codes] could not link code to user (harmless, record only):', error);
   }
@@ -197,12 +209,7 @@ export async function linkBetaCodeToUser(raw: string, userId: string): Promise<v
  */
 export async function releaseBetaCode(raw: string): Promise<void> {
   try {
-    const svc = createServiceClient();
-    await svc
-      .from('beta_codes')
-      .update({ redeemed_at: null })
-      .eq('code', normaliseBetaCode(raw))
-      .is('redeemed_user_id', null);
+    await callKiraBetaCode('release', normaliseBetaCode(raw));
   } catch (error) {
     console.error('[beta-codes] could not release code after a failed redemption:', error);
   }
