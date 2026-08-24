@@ -1,38 +1,52 @@
 // app/api/kira/webhook/route.ts
 //
-// Thin pass-through to kiraConvaiRoutes().postCall.
+// RETIRED (2026-08-24) — this path is no longer an active ElevenLabs endpoint.
 //
-// ⚠️ WHY THERE IS NO SIGNATURE VERIFICATION HERE — AND THAT IS THE FIX, NOT AN OMISSION.
+// This route served as the post-call webhook during early beta (as a thin pass-through to
+// kiraConvaiRoutes().postCall) and earlier still carried its own — wrong-header, wrong-format —
+// signature check that rejected every real delivery (see git history for that saga).
 //
-// This route used to verify the post-call webhook itself: it required an
-// `X-ElevenLabs-Signature` header and checked `HMAC(secret, rawBody)` against it. Both halves were
-// wrong, so EVERY real ElevenLabs post-call delivery was rejected before the real handler ran:
+// The CANONICAL endpoint is now /api/kira/webhooks/post-call (same handler behind it:
+// kiraConvaiRoutes().postCall, same HMAC gate inside). All agents were re-pointed to it via
+// scripts/provision-existing-agents.mjs --apply, which created a NEW workspace webhook and a
+// NEW signing secret (rotated into ELEVENLABS_WEBHOOK_SECRET on Vercel prod+preview).
 //
-//   1. WRONG HEADER. ElevenLabs signs post-call webhooks with `elevenlabs-signature`
-//      (see @caistech/elevenlabs-convai dist/routes.js:182, which reads exactly that header).
-//      `X-ElevenLabs-Signature` never exists on a real request, so this route returned
-//      400 "Missing required headers" on every production call — the memory never saved, the
-//      debrief never ran, and the beta tester's conversation vanished. Production logs show a
-//      steady stream of these 400s from the User-Agent "ElevenLabs/1.0".
-//
-//   2. WRONG FORMAT. Even with the right header, the check hashed the bare body, while ElevenLabs'
-//      scheme is a signed timestamp envelope: `t=<unix>,v0=<hex>` where v0 =
-//      HMAC-SHA256(secret, `${timestamp}.${rawBody}`). A bare-body digest can never match.
-//
-// The real verification lives INSIDE postCall (@caistech/elevenlabs-convai routes.js): it reads the
-// raw body itself, verifies `elevenlabs-signature` against ELEVENLABS_WEBHOOK_SECRET with the
-// correct envelope format and replay window (verifyWebhookSignature), refuses unsigned calls when a
-// secret is configured, and only then dispatches to handlePostCallWebhook. Duplicating that here
-// meant two checks that disagreed; the weaker, wrong one won because it sat in front.
-//
-// Rule 19 (post-call payloads must carry a valid HMAC signature) is still enforced — by the one
-// implementation of it that actually matches what ElevenLabs sends.
+// Per the ConvAI boundary rule, a retired ElevenLabs endpoint must not silently accept or
+// silently vanish: it returns a controlled 410 with a pointer to the canonical path, and logs
+// loudly so any caller still aimed here is visible in Vercel logs rather than failing dark.
+// If you see hits on this route from User-Agent "ElevenLabs/1.0", an agent escaped the
+// re-provision — run scripts/provision-existing-agents.mjs --apply again.
 
-import { kiraConvaiRoutes } from '@/lib/kira/convai';
+import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function POST(req: Request) {
-  return kiraConvaiRoutes().postCall(req);
+export function POST(req: Request) {
+  console.warn(
+    '[kira-webhook-retired] POST to legacy /api/kira/webhook — canonical endpoint is ' +
+      '/api/kira/webhooks/post-call. ua=',
+    req.headers.get('user-agent') ?? 'unknown',
+  );
+  return NextResponse.json(
+    {
+      success: false,
+      error: 'This endpoint has moved.',
+      canonical: '/api/kira/webhooks/post-call',
+    },
+    { status: 410, headers: { Location: '/api/kira/webhooks/post-call' } },
+  );
+}
+
+// Any other verb gets the same treatment — no half-open door.
+export async function GET() { return retired(); }
+export async function PUT() { return retired(); }
+export async function PATCH() { return retired(); }
+export async function DELETE() { return retired(); }
+
+function retired() {
+  return NextResponse.json(
+    { success: false, error: 'This endpoint has moved.', canonical: '/api/kira/webhooks/post-call' },
+    { status: 410 },
+  );
 }

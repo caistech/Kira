@@ -434,7 +434,7 @@ export async function POST(req: NextRequest) {
         try {
           const { webhookSecret } = await bindWorkspaceWebhook(ELEVENLABS_API_KEY, agentId, {
             name: 'Kira post-call',
-            url: `${APP_URL}/api/kira/webhook`,
+            url: `${APP_URL}/api/kira/webhooks/post-call`,
           });
           await log(
             supabase,

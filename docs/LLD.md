@@ -334,7 +334,7 @@ the portfolio-canonical `EMAIL_SENDER_*` variables.
 **Invariants**
 
 1. **The suppression list is consulted before every commercial send**, and suppression is a *state*
-   — a list re-import must not resurrect someone who opted out.
+   - a list re-import must not resurrect someone who opted out.
 2. **Suppression is keyed by email, not user id.** Someone who unsubscribes, deletes their account
    and signs up again with the same address has still told us to stop.
 3. **A bare `GET /unsubscribe` does not unsubscribe.** Mail clients and security scanners pre-fetch
@@ -343,7 +343,148 @@ the portfolio-canonical `EMAIL_SENDER_*` variables.
 4. **An invalid token returns a neutral 200.** "That address isn't on our list" turns the endpoint
    into an address oracle.
 5. **Australia only.** `assertJurisdictionAllowed` hard-throws for non-AU recipients until that
-   country's compliance is implemented. Email only — LinkedIn is not gated.
+   country's compliance is implemented. Email only - LinkedIn is not gated.
+
+---
+
+## 5B. Orchestrator Boundary — Suppression, Throttle, Owner Enrichment, Beta Codes
+
+Kira's suppression, alert-throttle, owner-enrichment, and beta-code operations are mediated through
+the Orchestrator at `https://connect.kiraexec.com`. Kira is an **unprivileged caller** — it does not
+hold a Supabase service-role key for these capabilities.
+
+**Migration status as at 2026-08-24 (stated, not implied):**
+
+| Side | State |
+|---|---|
+| **Orchestrator endpoints** (§5B.2–5B.5) | LIVE and production-tested (commits `24e7f73`, `c420b3c` on branch `feat/microsoft-graph-files`). ⚠️ Branch and commits not yet pushed; prod was deployed from the local tree. |
+| Kira beta-codes adapter (`lib/billing/beta-codes.ts`) | COMMITTED and pushed (`b69e577`), deployed with `main`. |
+| Kira suppression adapter (`lib/email/suppressions.ts`) | In the working tree, uncommitted. E2E production verification recorded 24 Aug. |
+| Kira throttle/owner adapters (`lib/email/unanswered-request.ts`) | Committed `b8f8fa3` (defect fixes applied: verdict-returning throttle claim, real escape entities, replyTo + transactional compliance on send). Not yet deployed. |
+| `business_identity` RLS migration (`20260824100000_business_identity_rls.sql`) + session-client switch in `lib/business-identity/store.ts` | Both in the working tree, uncommitted. **Hard ordering constraint:** the migration must be applied to the Supabase project BEFORE this store change deploys, or every business-identity read/write returns zero rows/errors. Migration application to prod UNVERIFIED. |
+
+### 5B.1 Caller identities
+
+The Orchestrator enforces caller authentication via `ORCHESTRATOR_CALLERS` (JSON array of caller
+records, stored as a Sensitive Vercel environment variable). Each caller record has:
+
+```json
+{
+  "id": "string",
+  "secret": "string",
+  "tenants": ["string"]
+}
+```
+
+Kira uses two distinct caller identities:
+
+| Caller | Purpose | Secret (env var) | Orchestrator endpoints |
+|---|---|---|---|
+| `kira-webhook` | Suppression, alert throttle, owner enrichment | `ORCHESTRATOR_WEBHOOK_SECRET` | `/api/v1/kira/email/suppressions`, `/api/v1/kira/email/alert-throttle`, `/api/v1/kira/email/alert-owner` |
+| `kira-public` | Beta-code operations (peek/claim/link/release) | `ORCHESTRATOR_PUBLIC_SECRET` | `/api/v1/kira/beta-codes` |
+
+**Invariant:** `ORCHESTRATOR_WEBHOOK_SECRET` and `ORCHESTRATOR_PUBLIC_SECRET` are **never
+interchangeable**. `kira-public` is rejected with 403 on `kira-webhook` endpoints.
+
+### 5B.2 Suppression endpoint
+
+**Kira adapter:** `lib/email/suppressions.ts` → `OrchestratorSuppressionStore`
+
+Implements `@caistech/email-compliance`'s `SuppressionStore` interface:
+
+```typescript
+interface SuppressionStore {
+  isSuppressed(email: string): Promise<boolean>;
+  suppress(email: string, reason: 'unsubscribe'|'bounce'|'complaint'|'manual', detail?: string): Promise<void>;
+  resubscribe?(email: string): Promise<void>;
+}
+```
+
+**Orchestrator route:** `POST /api/v1/kira/email/suppressions`
+
+| Action | Body | Semantics |
+|---|---|---|
+| `add` | `{ email, reason, detail? }` | Idempotent upsert on `email` (normalised: `trim().toLowerCase()`) |
+| `remove` | `{ email }` | Delete by email |
+| `check` | `{ email }` | Returns `{ isSuppressed: boolean }` |
+
+**Authentication:** `x-orchestrator-secret: ORCHESTRATOR_WEBHOOK_SECRET` → `callerIs(auth, 'kira-webhook')`
+
+**Persistence:** `email_suppressions` table in Kira Supabase project, accessed via Orchestrator's
+`kiraClient()` (service-role client scoped to Kira project).
+
+**Verification (24 Aug 2026):** End-to-end production test passed — unsubscribe token generation,
+POST `/unsubscribe`, Orchestrator suppression add, and final check all returned expected results.
+
+### 5B.3 Alert throttle endpoint
+
+**Kira adapter:** `lib/email/unanswered-request.ts` → `claimThrottleDurable()`
+
+**Orchestrator route:** `POST /api/v1/kira/email/alert-throttle`
+
+```typescript
+// Request
+{ utterance: string }
+
+// Response (success)
+{ version: "1", allowed: true }
+
+// Response (throttled)
+{ version: "1", allowed: false, reason: "duplicate within the window" | "ceiling of 5 per 10m reached" }
+```
+
+**Semantics:**
+- Dedupe key: `SHA256(utterance.trim().toLowerCase().slice(0, 500))`
+- Window: 10 minutes
+- Ceiling: 5 unique utterances per window
+- Retention: 24 hours
+- Atomic claim via `upsert(..., { onConflict: 'utterance_key' })`
+
+**Kira fallback:** In-memory throttle (`function throttled()`) on Orchestrator error — blast-radius
+reducer only, not authoritative.
+
+### 5B.4 Owner enrichment endpoint
+
+**Kira adapter:** `lib/email/unanswered-request.ts` → `resolveOwnerDurable()`
+
+**Orchestrator route:** `POST /api/v1/kira/email/alert-owner`
+
+```typescript
+// Request
+{ userId: string }
+
+// Response
+{ version: "1", owner: string | null }
+```
+
+**Semantics:** Fail-soft — returns `{ owner: null }` on any error (unknown UUID, DB down, etc.).
+Looks up `users` table for `full_name` / `email`.
+
+### 5B.5 Beta-code endpoint
+
+**Kira adapter:** `lib/billing/beta-codes.ts`
+
+**Orchestrator route:** `POST /api/v1/kira/beta-codes`
+
+Supported actions: `peek`, `claim`, `link`, `release`.
+
+**Authentication:** `x-orchestrator-secret: ORCHESTRATOR_PUBLIC_SECRET` → `callerIs(auth, 'kira-public')`
+
+**Production verification (24 Aug 2026):** Caller authentication boundary confirmed — valid
+`ORCHESTRATOR_PUBLIC_SECRET` with invalid action returned HTTP 400 (business validation reached);
+invalid secret returned HTTP 401.
+
+### 5B.6 Environment variables (Kira production)
+
+| Variable | Purpose | Sensitivity |
+|---|---|---|
+| `ORCHESTRATOR_URL` | Orchestrator base URL (`https://connect.kiraexec.com`) | Sensitive (project policy) |
+| `ORCHESTRATOR_WEBHOOK_SECRET` | `kira-webhook` caller credential | Sensitive |
+| `ORCHESTRATOR_PUBLIC_SECRET` | `kira-public` caller credential | Sensitive |
+| `UNSUBSCRIBE_SECRET` | HMAC secret for unsubscribe tokens (no service-role fallback) | Sensitive |
+
+**Invariant:** `UNSUBSCRIBE_SECRET` **must be set explicitly**. No fallback to
+`SUPABASE_SERVICE_ROLE_KEY`.
 
 ---
 

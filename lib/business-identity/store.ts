@@ -1,13 +1,22 @@
-// Reading and writing the identity row. Service-role only: `business_identity` has RLS on with no
-// policy, because this table decides whose ABN goes on outbound mail and a browser must never be
-// able to write it.
+// Reading and writing the identity row.
+//
+// WHY THE CLIENT CHANGED. `business_identity` previously had RLS on with no policy, so every
+// operation went through the service-role client. RLS policies now enforce `user_id = auth.uid()`,
+// making the session client sufficient — and preferred, because the service-role key bypasses all
+// row-level security. The session client carries the authenticated user's JWT, so Supabase
+// enforces ownership at the database layer regardless of what the application code does.
+//
+// `userId` is still accepted as a parameter (not derived from the session) because callers already
+// hold the authenticated user id and passing it avoids a redundant session lookup. The RLS policy
+// ensures the parameter can only be the caller's own id — a mismatch silently returns zero rows
+// rather than an error, which is the correct behaviour for a mismatched ownership check.
 
 import 'server-only';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createSessionClient } from '@/lib/supabase/server-session';
 import type { BusinessIdentity } from './index';
 
 export async function getBusinessIdentity(userId: string): Promise<BusinessIdentity | null> {
-  const svc = createServiceClient();
+  const svc = await createSessionClient();
   const { data, error } = await svc.from('business_identity').select('*').eq('user_id', userId).maybeSingle();
   if (error) {
     // Read failures must not be mistaken for "no identity" — that would bounce a configured owner
@@ -48,7 +57,7 @@ export interface UpsertIdentity {
  * sender that never received the identity.
  */
 export async function upsertBusinessIdentity(userId: string, values: UpsertIdentity): Promise<BusinessIdentity> {
-  const svc = createServiceClient();
+  const svc = await createSessionClient();
   const { data, error } = await svc
     .from('business_identity')
     .upsert({ user_id: userId, ...values, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
@@ -63,7 +72,7 @@ export async function upsertBusinessIdentity(userId: string, values: UpsertIdent
 
 /** Stamp the sync. Called only after the orchestrator confirms it holds the identity. */
 export async function markSynced(userId: string): Promise<void> {
-  const svc = createServiceClient();
+  const svc = await createSessionClient();
   const { error } = await svc
     .from('business_identity')
     .update({ synced_to_orchestrator_at: new Date().toISOString() })
@@ -76,7 +85,7 @@ export async function markSynced(userId: string): Promise<void> {
  * then holding the previous entity, so "synced" would be true of data nobody meant to send under.
  */
 export async function clearSynced(userId: string): Promise<void> {
-  const svc = createServiceClient();
+  const svc = await createSessionClient();
   const { error } = await svc
     .from('business_identity')
     .update({ synced_to_orchestrator_at: null })

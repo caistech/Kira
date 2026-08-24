@@ -8,6 +8,71 @@
 <!-- One of: ACTIVE_DEVELOPMENT | MAINTENANCE | BLOCKED | PAUSED | SHIPPED -->
 **Status**: ACTIVE_DEVELOPMENT
 
+## Session 2026-08-24 — Phase 1 assessment authored; Orchestrator boundary Group B implemented (Kira-side partially)
+
+- **Phase 1 Architecture & Remediation Assessment** authored (`docs/Kira Platform — Phase 1`).
+  Read-only; identified the scope and ordering of the boundary migration.
+- **Orchestrator boundary Group B, steps 1+2** shipped to prod (local-tree deploy; not yet pushed
+  to origin):
+  - Scoped caller auth (`ORCHESTRATOR_CALLERS`, `callerIs()`), Kira Supabase project client
+    (`kiraClient()`), and `POST /v1/kira/beta-codes` endpoint + full test suite (commit `24e7f73`).
+  - Email boundary endpoints: `POST /v1/kira/email/suppressions`, `POST /v1/kira/email/alert-throttle`,
+    `POST /v1/kira/email/alert-owner` + tests (commit `c420b3c`).
+  - Both verified end-to-end in production against `connect.kiraexec.com`.
+  - ⚠️ These four commits are NOT on origin/main yet (branch `feat/microsoft-graph-files`,
+    4 commits ahead).
+- **Kira beta-codes proxy** committed and pushed (`b69e577`): `lib/billing/beta-codes.ts`
+  now calls Orchestrator instead of holding service-role access. `ORCHESTRATOR_PUBLIC_SECRET`
+  added to Vercel + local env.
+- **Post-call webhook endpoint moved** (uncommitted): canonical path is now
+  `/api/kira/webhooks/post-call`; legacy `/api/kira/webhook` returns a controlled 410 with a
+  `Location` header pointing to the new route. `scripts/provision-existing-agents.mjs` AND
+  `app/api/kira/create/route.ts` (line 437) updated to use the new URL.
+- **`business_identity` RLS migration** (uncommitted, `20260824100000_business_identity_rls.sql`):
+  adds authenticated-user policies so `lib/business-identity/store.ts` can switch from
+  service-role to session client (also uncommitted).
+  **⚠️ Hard ordering constraint:** the migration must be applied BEFORE the store change deploys.
+  Application to prod Supabase is UNVERIFIED.
+- **Suppression and unanswered-request adapters rewritten** to proxy through Orchestrator. The
+  initial rewrite contained three defects, all corrected in `b8f8fa3`; the remediation is
+  committed but not pushed/deployed.
+  1. `skip` used-before-assignment (`TS2454`) and throttled verdicts throwing into the
+     in-memory fallback path, defeating the durable throttle — `claimThrottleDurable` now
+     returns the verdict; only config/transport errors fall back.
+  2. `escapeHtml` entities written decoded (no-op on public-endpoint text) — real entities
+     restored.
+  3. `replyTo` passed to the factory instead of `.send()` (`TS2353`) with
+     `compliance: { transactional: true }` dropped — send call restored, fail-soft wrapper
+     included. File suite 6/6; not yet deployed.
+- **HLD and LLD rewritten** (uncommitted) to reflect the actual architecture as at today.
+- **Orchestrator prod env drift (23 Aug)** still in effect: STRIPE webhook secrets remain
+  placeholders.
+- **Pre-existing test/typecheck failures** (not caused by today's work): `middleware.test.ts`
+  ENOENT (`middleware.ts` missing from repo root); `text-tools.test.ts` warn-expectation
+  drift; 12× implicit-any in `voice-agent-checks.ts`; missing `@types/nodemailer`.
+
+## Session 2026-08-23 (later) — post-call webhook FIXED; four visit-9 fixes shipped
+
+- **Post-call webhook was rejecting EVERY real ElevenLabs delivery** (400/401 since the temp-merge
+  merge): route required a header ElevenLabs never sends (`X-ElevenLabs-Signature`; the real one is
+  `elevenlabs-signature`) and used bare-body HMAC instead of the `t=...,v0=...` envelope. Rewritten
+  as a thin pass-through to `kiraConvaiRoutes().postCall` (which verifies correctly; rule 19
+  intact). Commit e28b557.
+- **Root cause #2: Vercel prod env drift.** FIVE secrets (`ELEVENLABS_WEBHOOK_SECRET`,
+  `CONVAI_TOOL_SECRET`, `KIRA_TOOL_WEBHOOK_SECRET`, both `STRIPE_WEBHOOK_SECRET`s) were the SAME
+  11-char placeholder in production. Real values synced from `.env.local` via
+  `scripts/sync-webhook-secrets.mjs --apply` + redeploy. ⚠️ STRIPE secrets are STILL placeholders
+  in prod — no real Stripe values exist locally; Dennis must set these from the Stripe dashboard.
+- Verified end-to-end with `scripts/webhook-probe.mjs`: signed probe now passes auth (400
+  "Malformed post-call payload" = signature gate green). Real conversations will distil again.
+- Deleted `app/api/test-signature/route.ts` (it returned the webhook secret in its response body).
+- Fixed `/api/kira` redirect crash (missing `request` param).
+- Four Ray visit-9 fixes shipped earlier same day: genome dedup acts on detected restatements
+  (`mergedInto` fold at derive level + "Also picked up" provenance), VALUE QUESTIONS capability
+  prompt (fleet-patched to 16 live agents via `scripts/patch-agent-value-questions.mjs`), trading
+  name required in business identity, Run/Redo valuation label conditional.
+- `temp-merge-branch` merged to `main`; main is the deploy branch again.
+
 ## Session 2026-08-23 — red-team judge made pluggable (cost)
 
 - `scripts/red-team.mjs`: new `LOCAL_JUDGE_MODEL` / `LOCAL_JUDGE_API` env vars route the WORDS
@@ -85,7 +150,11 @@ The other headline items:
   a copy-vs-storage conflict to resolve deliberately rather than a bug to switch.
 
 ## Active Branches
-- `main` — clean, all commits pushed, deployed to production on both repos.
+- Kira `main` — clean with origin, all commits pushed. Working tree carries the uncommitted
+  24 Aug boundary work (see Session 2026-08-24); do not reset or discard.
+- Orchestrator `feat/microsoft-graph-files` — 4 commits ahead of `origin/main`, branch not pushed;
+  prod deployed from the local tree. Untracked: `DEPLOYMENT_SUCCESS.md`, `OAUTH_VERIFICATION.md`,
+  `capabilities/`, `tree.py` (stale artifacts from earlier sessions — review before commit).
 
 ## Environment Notes
 - Kira prod: `kira-rho.vercel.app` · project `prj_itVurDE9CD77K9rGWEQZNDmn33yz` · team
@@ -105,3 +174,4 @@ The other headline items:
 | 2026-07-31 | — | Business identity collected + synced across the seam; Drive connect both sides; Settings → Connected accounts; drain unpinned from SEED_TENANT; **session closed unexpectedly after `8e226ae`** |
 | 2026-07-31 | — | Status reconstruction: tests 139/139, both prods verified on `main`, mirror gap re-measured (4 awaiting vs 1 mirrored) |
 | 2026-07-31 | — | Mirror gap CLOSED (await + discovery pass; 3 lost tasks recovered live). Contact lookup built both sides. Valuation persistence. Sign-in chrome: one Kira, business-named, cross-sell removed. Genome register + entity split (52 AI-business memories parked, 44 rewritten). Migration ledger reconciled 39/39 |
+| 2026-08-24 | — | Phase 1 assessment authored; Orchestrator boundary Group B steps 1+2 (scoped callers, kiraClient, beta-codes + email endpoints) live in prod but unpushed; Kira beta-codes proxy pushed (`b69e577`); post-call webhook moved + legacy 410; business_identity RLS migration drafted (unapplied?); suppression/throttle/owner adapters rewritten with known defects; HLD/LLD rewritten. Tests: Kira 1627/1635 (2 pre-existing failures), Orchestrator 198/198 |

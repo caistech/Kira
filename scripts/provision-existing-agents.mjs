@@ -32,7 +32,11 @@ for (const [name, val] of Object.entries({ ELEVENLABS_API_KEY: API_KEY, NEXT_PUB
 }
 
 const hostname = new URL(APP_URL).hostname;
-const webhookUrl = `${APP_URL}/api/kira/webhook`;
+// CANONICAL post-call endpoint (2026-08-24 boundary migration). The legacy alias
+// /api/kira/webhook was retired to a 410 once deliveries were confirmed here.
+// NOTE: pointing at a NEW URL creates a NEW workspace webhook whose signing secret is
+// printed ONCE below — rotate ELEVENLABS_WEBHOOK_SECRET in Vercel + .env.local and redeploy.
+const webhookUrl = `${APP_URL}/api/kira/webhooks/post-call`;
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
 console.log(`Mode: ${APPLY ? 'APPLY (will bind webhook + set allowlist)' : 'CHECK (read-only)'}`);
