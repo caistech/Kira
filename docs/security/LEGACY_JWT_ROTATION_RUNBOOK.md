@@ -1,7 +1,8 @@
-# Legacy Supabase JWT Rotation Runbook v1
+# Legacy Supabase JWT Rotation Runbook v1.1
 
 > **Status:** Planning document — DO NOT EXECUTE until explicitly authorised at the Go/No-Go checkpoint.
 > **Created:** 2026-08-25 · **Author:** Automated session · **Review required:** Yes
+> **v1.1 (2026-08-25):** Amended after pre-rotation readiness audit — added `NEXT_PUBLIC_SUPABASE_ANON_KEY` rotation steps (§1.5, §3), client sign-in smoke test V5a (§4), seven-cron transient-failure inventory + timing guidance (§1.7), corrected script count to 36 (§1.3), rollback impossibility evidence (§5).
 > **Supabase project:** `kmrskyewwnwettlycpfe` (Kira)
 > **Current deployment:** `98099b6` on `kiraexec.com`
 
@@ -37,27 +38,53 @@ The legacy `service_role` JWT was present in the deleted `.vercel-env-check` art
 
 All three read the secret at job start. Updating the GitHub Actions secret **before** running any workflow is sufficient — no coordination needed beyond sequencing.
 
-### 1.3 Local/operator tooling (~30 scripts)
+### 1.3 Local/operator tooling (36 scripts)
 
-All scripts in `scripts/*.mjs` that read `SUPABASE_SERVICE_ROLE_KEY` from `.env.local` will fail if the credential is invalid. This includes provisioning, patching, backfill, and diagnostic scripts. **Update `.env.local` before running any script.**
+36 scripts in `scripts/*.mjs` reference `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_SERVICE_KEY` (verified via `git grep` against HEAD). All read from `.env.local` at process start and will fail if the credential is invalid. This includes provisioning, patching, backfill, red-team (`red-team.mjs`), and diagnostic scripts (`verify-agent-fleet.mjs`). **Update `.env.local` before running any script.**
 
 ### 1.4 Vercel Production + Preview
 
 Single environment variable entry (`SUPABASE_SERVICE_ROLE_KEY`, type=sensitive, targets=production+preview) managed via the Vercel Management API. Serverless functions read this at invocation time from the deployment's baked snapshot — **a redeploy is required** for changes to take effect in runtime.
 
-### 1.5 Anon key dependency
+### 1.5 Anon key dependency — `NEXT_PUBLIC_SUPABASE_ANON_KEY` (CRITICAL)
 
-The `anon` JWT key is derived from the same legacy JWT secret. **Rotating the JWT secret invalidates BOTH `anon` and `service_role` JWT-based keys simultaneously.** The `anon` key is used by:
-- All client-side Supabase calls (browser → Supabase gateway)
-- Client-side SDK initialization (`createClient(url, anonKey)` in browser)
+The `anon` key is a JWT **signed by the same legacy JWT secret**. Rotating the secret invalidates it and Supabase issues a **new anon key value** — exactly as for `service_role`. The rotation sequence MUST update BOTH keys' values.
+
+The `anon` key is used by:
+- Client-side SDK initialization — `lib/supabase/browser.ts:9` constructs the browser auth client from `NEXT_PUBLIC_SUPABASE_ANON_KEY` (used by 7 files)
+- Client-side sign-in / sign-up / session flows (browser → Supabase Auth gateway)
+
+**Build-time baking constraint:** because the variable is prefixed `NEXT_PUBLIC_*`, its value is compiled into the client JavaScript bundle at build time. Updating the Vercel env var alone is NOT sufficient — **a redeploy after updating the value is mandatory** to propagate the new anon key into browsers. Until that redeploy completes, all client-side authentication fails.
+
+**Store updates required for the anon key (in addition to service_role):**
+1. Vercel entry `NEXT_PUBLIC_SUPABASE_ANON_KEY` (id `dz5emxu7pehkfAYJ`, targets production+preview+development)
+2. Local `.env.local`
 
 However, the Kira architecture routes all database access through server-side API routes using the service-role key — the client-side anon key is used only for the Supabase Auth client (sign-in/sign-up flows). User sessions authenticated via Supabase Auth issue JWTs signed by the same secret — **all active sessions will be invalidated on rotation.**
 
 ### 1.6 User-session impact
 
 - All currently signed-in users will be **immediately signed out** (their session JWTs are signed by the old secret and will fail verification).
-- New sign-ins after rotation will work immediately (new JWTs signed by the new secret).
+- New sign-ins after rotation will work immediately (new JWTs signed by the new secret) — **but only after the redeploy propagates the new anon key into browser bundles** (§1.5).
 - **This is unavoidable with the legacy JWT rotation mechanism.**
+
+### 1.7 Scheduled cron routes (7 jobs — transient failure exposure)
+
+`vercel.json` schedules 7 cron jobs against SRK-dependent server routes. These run on Vercel's infrastructure against the currently-deployed functions; between JWT rotation and redeploy completion, any cron that fires will execute with an invalid baked credential and fail.
+
+| Path | Schedule | Failure probability in a 5-min window |
+|---|---|---|
+| `/api/cron/reconcile-tasks` | every 20 min | ~25% |
+| `/api/cron/memory-integrity` | hourly | ~8% |
+| `/api/cron/reminders` | hourly | ~8% |
+| `/api/cron/genome-classify` | hourly at :30 | ~8% |
+| `/api/cron/red-team-drift` | daily 08:00 | negligible (time it away) |
+| `/api/cron/trial-ending` | daily 09:00 | negligible (time it away) |
+| `/api/cron/reengagement-emails` | daily 10:00 | negligible (time it away) |
+
+**Expected behaviour during the window:** affected crons return errors and that run is skipped. Failures are **transient** — after the redeploy completes, subsequent runs self-heal with the new credential. No data corruption; some scheduled work may be delayed by one cycle. Do not treat cron failures during the window as rotation failures — verify via §4 checks instead.
+
+**Timing guidance:** schedule the rotation to start **immediately after a `reconcile-tasks` run completes** (it fires at :00, :20, :40 — start at ~:01–:03 past). This maximises the window before the next 20-minute firing (~17 minutes of margin vs the ~5-minute maintenance window). Avoid rotating near the top of any hour (three hourly crons fire at :00, genome-classify at :30).
 
 ---
 
@@ -99,19 +126,20 @@ Run these **before** beginning the rotation sequence. All must pass.
 | **3.3** | Open Vercel environment variables page — **do not edit anything yet** | Dennis | Browser | — |
 | **3.4** | Open GitHub Actions secrets page — **do not edit anything yet** | Dennis | Browser | — |
 | **3.5** | **Click "Rotate JWT secret"** in Supabase Dashboard | Dennis | Dashboard | **T+0 — clock starts** |
-| **3.6** | Copy the new JWT secret value (shown once) | Dennis | Dashboard | Immediately after 3.5 |
+| **3.6** | Copy the new JWT secret value (shown once). **Also copy the NEW `anon` key value** — the dashboard reissues both after rotation | Dennis | Dashboard | Immediately after 3.5 |
 | **3.7** | Update Vercel `SUPABASE_SERVICE_ROLE_KEY` — Production + Preview with new JWT value | Dennis | Dashboard or API | Within 1 minute of 3.5 |
+| **3.7a** | Update Vercel `NEXT_PUBLIC_SUPABASE_ANON_KEY` (entry `dz5emxu7pehkfAYJ`, targets production+preview+development) with the new anon value | Dennis | Dashboard or API | Within 1 minute of 3.5 |
 | **3.8** | Update GitHub Actions `SUPABASE_SERVICE_ROLE_KEY` with new JWT value | Coder or Dennis | `gh secret set` or Dashboard | Within 1 minute of 3.5 |
-| **3.9** | Update local `.env.local` line 75 with new JWT value | Coder | Edit file | Within 1 minute of 3.5 |
-| **3.10** | **Trigger Vercel redeploy** of current commit (no code change — env rebake) | Coder | `vercel --prod --yes` or Dashboard redeploy | Immediately after 3.7 |
+| **3.9** | Update local `.env.local`: line 75 (`SUPABASE_SERVICE_ROLE_KEY`) AND the `NEXT_PUBLIC_SUPABASE_ANON_KEY` line with the new values | Coder | Edit file | Within 1 minute of 3.5 |
+| **3.10** | **Trigger Vercel redeploy** of current commit (no code change — env rebake). Mandatory for BOTH credentials: serverless functions read SRK at invocation; browser bundles have the anon key compiled in at build time (`NEXT_PUBLIC_*`) | Coder | `vercel --prod --yes` or Dashboard redeploy | Immediately after 3.7/3.7a |
 | **3.11** | Wait for Vercel deploy to complete (Ready state) | Coder | `vercel` CLI or Dashboard | ~30–60 seconds |
 | **3.12** | Run post-rotation verification (§4) | Coder | Terminal | After 3.11 |
 
 ### Expected invalidation behaviour
 
-- **T+0 (step 3.5):** JWT secret rotated. Old `anon` and `service_role` JWT-based keys immediately invalid. All active user sessions invalidated. Server-side API routes will fail until redeploy completes with the new credential baked in.
-- **T+30–60s (step 3.11):** Vercel redeploy completes. Serverless functions now use the new JWT. API routes resume functioning. New user sign-ins work.
-- **T+∞:** Old JWT secret cannot be restored (Supabase does not permit rollback — see §5).
+- **T+0 (step 3.5):** JWT secret rotated. Old `anon` and `service_role` JWT-based keys immediately invalid. All active user sessions invalidated. Server-side API routes fail until redeploy completes. Any cron firing in this window fails (§1.7) — transient, self-heals after 3.11.
+- **T+30–60s (step 3.11):** Vercel redeploy completes. Serverless functions use the new service-role JWT; browser bundles carry the new anon key. API routes resume; client-side sign-in works for fresh page loads.
+- **T+∞:** Old JWT secret cannot be restored (§5 — rollback is technically impossible).
 
 ---
 
@@ -126,6 +154,7 @@ Run these immediately after step 3.11 completes.
 | V3 | SRK authenticated query | Same as P3 — `createClient` → `users.select('id').limit(1)` | PASS |
 | V4 | PubGuard SRK path | Trigger a PubGuard scan via `/api/pubguard/v2/scan` — confirm scan initiates | 200 or scan-started response |
 | V5 | Authenticated app path | Sign in as QA user → verify dashboard loads with data | Authenticated page renders |
+| V5a | Client-side authentication (anon key) | Fresh browser session (hard-reload / incognito) → sign in as QA user on `kiraexec.com` → confirm sign-in succeeds and a client-side Supabase call completes | Sign-in works; no console auth errors. **If V5a fails while V3 passes, the anon key was not correctly propagated — recheck steps 3.7a/3.9/3.10** |
 | V6 | GitHub Actions | Trigger `gate.yml` on a test push or manual dispatch — confirm pass | Green |
 | V7 | Local tooling | `node --env-file=.env.local scripts/verify-agent-fleet.mjs --dry-run` (or similar) | Script runs without credential errors |
 | V8 | Active sessions invalidated | Attempt to use a pre-rotation session token — should fail | 401 / redirect to sign-in |
@@ -134,20 +163,23 @@ Run these immediately after step 3.11 completes.
 
 ## 5. Rollback strategy
 
-### Can Supabase restore the previous JWT secret?
+### Is true credential rollback technically possible?
 
-**No.** Per Supabase documentation (`supabase.com/docs/guides/auth/signing-keys`):
-> "Why is deleting the legacy JWT secret disallowed? This is to ensure you have the ability, should you need it, to go back to the legacy JWT secret. **In the future this capability will be allowed from the dashboard.**"
+**No — rotation is a strictly invalidating operation.** Evidence:
 
-The legacy JWT secret **cannot be deleted**, but it also **cannot be restored after rotation** — once rotated, the new secret is permanent. There is no "revert to previous JWT" button.
+1. Supabase documentation (`supabase.com/docs/guides/auth/signing-keys`): legacy JWT secret rotation replaces the signing secret; the docs describe going back to the legacy secret only in the context of the *Signing Keys migration* (where the legacy secret is retained as the imported key), not after a legacy→legacy rotation.
+2. The dashboard's "Rotate JWT secret" action issues a **new** HMAC secret and immediately re-signs `anon`/`service_role` with it. The previous secret is not retained as an active verification key — tokens signed by it fail verification from T+0.
+3. There is **no API endpoint and no dashboard control to restore a previously-rotated legacy JWT secret.** (The Management API exposes no such operation; the dashboard offers no "revert" once rotated.)
+
+**Therefore: treat every step before 3.5 as reversible, and everything from 3.5 onward as fix-forward only.** The pre-flight checks (§2) and store staging are the entire safety net.
 
 ### Recovery path if new JWT fails after rotation
 
 If the new JWT fails (e.g., misconfiguration prevents authentication):
 
-1. **Immediate:** The new JWT value is the only working credential. Verify it was correctly propagated to all stores (Vercel, GH Actions, .env.local).
+1. **Immediate:** The new JWT value is the only working credential. Verify it was correctly propagated to all stores (Vercel SRK + anon, GH Actions, `.env.local` both values).
 2. **If stores have the correct value but authentication fails:** The issue is likely on the Supabase side (e.g., the rotation didn't complete, or there's a propagation delay). Wait 5 minutes and retry.
-3. **If the new JWT is lost/misplaced:** Generate a new JWT via `supabase gen signing-key` or re-rotate via Dashboard — but note this creates a THIRD secret, compounding the problem.
+3. **If the new JWT is lost/misplaced:** Re-retrieve via Dashboard (the current secret remains viewable) or re-copy the reissued keys from Settings → API Keys. Do NOT rotate again — that invalidates the now-working credential and compounds the incident.
 4. **Maximum acceptable outage:** 10 minutes. If authentication is not restored within 10 minutes of rotation, escalate to Supabase support.
 
 ### Maximum acceptable outage
@@ -161,11 +193,13 @@ If the new JWT fails (e.g., misconfiguration prevents authentication):
 | Risk | Severity | Mitigation |
 |---|---|---|
 | **JWT invalidation — all active sessions signed out** | HIGH | Announce maintenance window to affected users before rotation. Expect all users to need to re-sign-in. |
+| **Cron job failures during window (§1.7)** | MEDIUM | 7 scheduled crons hit SRK-dependent routes; `reconcile-tasks` fires every 20 min (~25% chance of firing in a 5-min window). Transient — skipped runs self-heal next cycle. Mitigate via timing guidance: start rotation ~:01–:03 past a reconcile-tasks completion. |
+| **Anon-key propagation requires redeploy** | HIGH | `NEXT_PUBLIC_*` values are compiled into browser bundles at build time. Client-side sign-in stays broken until the redeploy completes — even if the Vercel env var is already updated. Sequence 3.7a → 3.10 is mandatory ordering. Verify with V5a. |
 | **Serverless deployment propagation delay** | MEDIUM | Vercel deployments typically complete in 30–60s. If longer, check deployment logs. |
 | **GitHub workflow failures** | LOW | Update GH secret BEFORE any workflow runs. Failed workflows can be re-run after secret update. |
-| **Local tooling drift** | LOW | Update `.env.local` during rotation. Any scripts run between rotation and update will fail with clear error messages. |
-| **Anon key consequences** | MEDIUM | The `anon` JWT key is invalidated simultaneously. Client-side Supabase Auth (sign-in/sign-up) will fail until the browser SDK picks up the new anon key (happens automatically on page reload after redeploy). No persistent data loss. |
-| **No rollback capability** | HIGH | Accept once rotation is triggered. Verify stores are correct BEFORE clicking "Rotate JWT secret." |
+| **Local tooling drift** | LOW | Update `.env.local` during rotation (both SRK and anon lines). Any scripts run between rotation and update will fail with clear error messages. |
+| **Anon key consequences** | MEDIUM | The `anon` JWT key is invalidated simultaneously and reissued with a new value (§1.5). Client-side Supabase Auth fails until redeploy propagates the new value into bundles. No persistent data loss. |
+| **No rollback capability** | HIGH | Rotation is strictly invalidating — no technical rollback exists (§5). Accept once rotation is triggered; pre-flight checks and store staging are the entire safety net. |
 | **`sb_secret_` incompatibility** | INFO | Already proven via Gate 1C. Do not attempt `sb_secret_` as a fallback. The legacy JWT is the only working path. |
 | **Old JWT remains extractable from Supabase** | MEDIUM | Per docs, the legacy JWT secret can still be extracted from Supabase settings until it's migrated to the new Signing Keys system. After rotation, the old secret is the "previously used" key — still technically visible but no longer trusted. Plan a follow-up migration to asymmetric Signing Keys. |
 
@@ -178,17 +212,18 @@ If the new JWT fails (e.g., misconfiguration prevents authentication):
 | # | Gate | Confirmed by |
 |---|---|---|
 | G1 | Pre-flight checks P1–P11 all pass | Coder |
-| G2 | Vercel dashboard open, ready to update `SUPABASE_SERVICE_ROLE_KEY` | Dennis |
+| G2 | Vercel dashboard open, ready to update `SUPABASE_SERVICE_ROLE_KEY` **and** `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Dennis |
 | G3 | GitHub Actions secrets page open, ready to update | Dennis or Coder |
-| G4 | `.env.local` updated or ready to update immediately | Coder |
+| G4 | `.env.local` ready to update immediately (both SRK line 75 and anon key line) | Coder |
 | G5 | No active deployments in progress on Vercel | Coder |
 | G6 | Maintenance window communicated (if applicable) | Dennis |
-| G7 | QA user sign-in test planned for post-rotation verification (V5) | Coder |
-| G8 | Supabase Dashboard JWT settings page open, "Rotate JWT secret" button visible | Dennis |
-| G9 | New JWT value will be copied IMMEDIATELY after rotation (shown once) | Dennis |
-| G10 | This runbook has been reviewed and approved | Dennis |
+| G7 | QA user sign-in test planned for post-rotation verification (V5 + V5a) | Coder |
+| G8 | Supabase Dashboard JWT settings page open, "Rotate JWT secret" button visible; API Keys page open for reissued `anon` value | Dennis |
+| G9 | New JWT **and** new anon values will be copied IMMEDIATELY after rotation | Dennis |
+| G10 | Rotation start time chosen per §1.7 timing guidance (just after a reconcile-tasks run, away from :00/:30 cron cluster) | Coder |
+| G11 | This runbook (v1.1) has been reviewed and approved | Dennis |
 
-**Rotation is authorised only when all 10 gates are confirmed.**
+**Rotation is authorised only when all 11 gates are confirmed.**
 
 ---
 
