@@ -29,13 +29,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { completeConversationMemory } from '@caistech/elevenlabs-convai';
 
-import { getCurrentAppUser, isCurrentUserAdmin } from '@/lib/auth';
+import { getCurrentOrganisationContext, isCurrentUserAdmin } from '@/lib/auth';
 import { haltState } from '@/lib/kill-switch';
 import { KIRA_CONVAI_TABLES } from '@/lib/kira/convai';
 import { createMemoryExtractor } from '@/lib/kira/memory-extract';
 import { claimsWorkState, runTextTool, textToolsFor } from '@/lib/kira/text-tools';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { sweepConversationForRefusals } from '@/lib/kira/refusal-sweep';
+
 import { parkedOtherBusinesses } from '@/lib/kira/other-businesses';
 import { forgetParkedEntityLeaks } from '@/lib/kira/entity-sweep';
 import { classifyPendingMemories } from '@/lib/genome/derive';
@@ -149,11 +150,14 @@ async function liveToolNamesFor(elevenlabsAgentId: string): Promise<string[]> {
 }
 
 /** What she already knows about him, so typing is not a conversation with a stranger. */
-async function recalledFacts(supabase: ReturnType<typeof createServiceClient>, userId: string): Promise<string> {
+async function recalledFacts(
+  supabase: ReturnType<typeof createServiceClientV2>,
+  organisationId: string,
+): Promise<string> {
   const { data } = await supabase
     .from(KIRA_CONVAI_TABLES.memory)
     .select('content')
-    .eq('user_id', userId)
+    .eq('organisation_id', organisationId)
     .neq('active', false)
     .order('importance', { ascending: false, nullsFirst: false })
     .limit(30);
@@ -179,8 +183,8 @@ async function recalledFacts(supabase: ReturnType<typeof createServiceClient>, u
  * it himself. Turning a speculative "it's been sent" into a confident "it has not been sent" would
  * swap one unsupported claim for another.
  */
-async function taskLedgerContext(userId: string): Promise<string> {
-  const ledger = await readTaskLedger(userId);
+async function taskLedgerContext(userId: string, organisationId?: string | null): Promise<string> {
+  const ledger = await readTaskLedger(userId, organisationId ?? undefined);
   const lines: string[] = [];
 
   for (const task of ledger.open) {
@@ -226,22 +230,44 @@ export async function POST(req: NextRequest) {
   const agentId = String(body.agentId ?? '').trim();
   if (!agentId) return NextResponse.json({ error: 'agentId is required' }, { status: 400 });
 
-  const appUser = await getCurrentAppUser();
-  if (!appUser?.id) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  const organisationContext = await getCurrentOrganisationContext();
+  if (!organisationContext) return NextResponse.json({ error: 'Not signed in or no organisation access' }, { status: 401 });
+  const organisationId = organisationContext.organisationId;
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   // OWNERSHIP, exactly as the voice route enforces it. These are per-user private agents, and the
   // memory behind them is the owner's business. An admin may open one; nobody else may.
   const { data: agent } = await supabase
     .from(KIRA_CONVAI_TABLES.agents)
-    .select('id, user_id, elevenlabs_agent_id, status')
+    .select('id, user_id, organisation_id, elevenlabs_agent_id, status')
     .eq('elevenlabs_agent_id', agentId)
     .maybeSingle();
   if (!agent) return NextResponse.json({ error: 'Kira agent not found' }, { status: 404 });
-  if (agent.user_id !== appUser.id && !(await isCurrentUserAdmin())) {
-    return NextResponse.json({ error: 'Not your Kira' }, { status: 403 });
+  // Check organisation membership for agent access
+  const { data: membership } = await supabase
+    .from('organisation_memberships')
+    .select('id')
+    .eq('organisation_id', organisationId)
+    .eq('person_id', organisationContext.personId)
+    .eq('status', 'active')
+    .maybeSingle();
+  
+  if (!membership && !(await isCurrentUserAdmin())) {
+    return NextResponse.json({ error: 'No organisation access to this agent' }, { status: 403 });
   }
+  
+  // Legacy enforcement: for agents without an organisation_id, still require creator ownership.
+  if (!agent.organisation_id) {
+    const appUser = await getCurrentAppUser();
+    if (agent.user_id !== appUser?.id && !(await isCurrentUserAdmin())) {
+      return NextResponse.json({ error: 'Not your Kira' }, { status: 403 });
+    }
+  }
+
+  // INV-020: the agent carries the owning organisation (added by migration) — prefer it, falling
+  // back to the authenticated tenant scope so memory/conversation writes always land in an owner org.
+  const agentOrganisationId = agent.organisation_id ?? organisationId;
 
   /* ---------------------------------------------------------------- */
   /* End of session — distil, exactly as the post-call webhook does.   */
@@ -299,7 +325,7 @@ export async function POST(req: NextRequest) {
           .limit(200);
         const swept = await sweepConversationForRefusals({
           conversationId,
-          userId: agent.user_id as string,
+          organisationId: agentOrganisationId,
           agentRowId: (agent.id as string) ?? null,
           transcript: (rows ?? []).map((m) => ({ role: String(m.role), content: String(m.content ?? '') })),
           apiKey: process.env.OPENAI_API_KEY || '',
@@ -312,40 +338,45 @@ export async function POST(req: NextRequest) {
         console.error('[chat/text] refusal sweep failed (memory still runs):', error);
       }
 
-      const memory = await completeConversationMemory(supabase, {
-        conversationId,
-        elevenlabsConversationId: String(conv?.elevenlabs_conversation_id ?? `text:${conversationId}`),
-        userId: agent.user_id as string,
-        // What has already been ruled out of this record as another company's. Without this the
-        // distil re-files exactly what save_memory just parked — measured 6/6 then 0/6 the moment
-        // sessions started ending, which is the ordinary case and not an edge one.
-        extract: createMemoryExtractor(process.env.OPENAI_API_KEY || '', {
-          // Shared with the voice post-call path — see lib/kira/other-businesses.ts for why the
-          // ordering in that query is load-bearing rather than tidy.
-          otherBusinesses: await parkedOtherBusinesses(
-            supabase,
-            agent.user_id as string,
-            KIRA_CONVAI_TABLES.memory,
-          ),
-          // A request she REFUSED is not a preference he holds — see lib/kira/memory-extract.ts.
-          refusedRequests,
-        }),
-        tables: KIRA_CONVAI_TABLES,
-        semantic: { scopePrefix: 'kira-user-' },
-      });
+      const memory = await completeConversationMemory(
+        supabase,
+        Object.assign(
+          {
+            conversationId,
+            elevenlabsConversationId: String(conv?.elevenlabs_conversation_id ?? `text:${conversationId}`),
+            // What has already been ruled out of this record as another company's. Without this the
+            // distil re-files exactly what save_memory just parked — measured 6/6 then 0/6 the moment
+            // sessions started ending, which is the ordinary case and not an edge one.
+            extract: createMemoryExtractor(process.env.OPENAI_API_KEY || '', {
+              // Shared with the voice post-call path — see lib/kira/other-businesses.ts for why the
+              // ordering in that query is load-bearing rather than tidy.
+              otherBusinesses: await parkedOtherBusinesses(
+                supabase,
+                agentOrganisationId,
+                KIRA_CONVAI_TABLES.memory,
+              ),
+              // A request she REFUSED is not a preference he holds — see lib/kira/memory-extract.ts.
+              refusedRequests,
+            }),
+            tables: KIRA_CONVAI_TABLES,
+            semantic: { scopePrefix: 'kira-user-' },
+            organisationId: agentOrganisationId,
+          },
+        ),
+      );
       if (memory.errors.length) console.error('[chat/text] distil reported:', memory.errors.join('; '));
 
       // The distil paraphrases, so another company's fact can arrive in words the exclusion list
       // never matched — traced in production on 1 August, where both save_memory calls parked
       // correctly and the distil filed a merged sentence six seconds later. The trigger parks the
       // row; this removes the semantic copy. See lib/kira/entity-sweep.ts.
-      await forgetParkedEntityLeaks(agent.user_id as string, KIRA_CONVAI_TABLES.memory);
+      await forgetParkedEntityLeaks(agentOrganisationId, KIRA_CONVAI_TABLES.memory);
 
       // The distil is a SECOND WRITER, and the guard on save_memory does not reach it. That was
       // measured rather than assumed: the write-path guard shipped, and the very next red-team run
       // still filed six of her own limitations as facts about the business — because
       // completeConversationMemory inserts straight into the table.
-      const refiled = await refileAssistantCapabilityClaims(agent.user_id as string, KIRA_CONVAI_TABLES.memory);
+      const refiled = await refileAssistantCapabilityClaims(agentOrganisationId, KIRA_CONVAI_TABLES.memory);
       if (refiled) console.log(`[chat/text] re-filed ${refiled} capability claim(s) as assistant state`);
 
       // ⚠️ THE TEXT TRANSPORT DISTILLED AND NEVER CLASSIFIED, so everything an owner TYPED stayed
@@ -367,7 +398,7 @@ export async function POST(req: NextRequest) {
       // and parking a filed row in favour of an unfiled twin is exactly how a filed fact falls back
       // into the pile.
       try {
-        const filed = await classifyPendingMemories(agent.user_id as string);
+        const filed = await classifyPendingMemories(agentOrganisationId);
         if (filed.deferred) {
           console.warn(`[chat/text] ${filed.deferred} memories left unclassified — the sweep will retry.`);
         }
@@ -376,7 +407,7 @@ export async function POST(req: NextRequest) {
         console.error('[chat/text] genome classification failed (memories are safe):', error);
       }
 
-      await sweepDuplicateMemories(agent.user_id as string, KIRA_CONVAI_TABLES.memory);
+      await sweepDuplicateMemories(agentOrganisationId, KIRA_CONVAI_TABLES.memory);
 
 
       // Stamped AFTER the pipeline returns, so a failed run is retried by the next trigger rather
@@ -428,6 +459,8 @@ export async function POST(req: NextRequest) {
       .from(KIRA_CONVAI_TABLES.conversations)
       .insert({
         user_id: agent.user_id,
+        // INV-020: conversations are organisation-owned; user_id stays provenance of who started it.
+        organisation_id: agentOrganisationId,
         // The INTERNAL agent id — this table keys on kira_agents.id, not the ElevenLabs one.
         kira_agent_id: agent.id,
         // Marked so a typed session is distinguishable from a spoken one everywhere downstream —
@@ -453,8 +486,8 @@ export async function POST(req: NextRequest) {
     .limit(HISTORY_TURNS);
 
   const [facts, ledger] = await Promise.all([
-    recalledFacts(supabase, agent.user_id as string),
-    taskLedgerContext(agent.user_id as string),
+    recalledFacts(supabase, agentOrganisationId),
+    taskLedgerContext(agentOrganisationId, agentOrganisationId),
   ]);
 
   const messages = [
@@ -518,10 +551,10 @@ export async function POST(req: NextRequest) {
           args = {};
         }
 
-        // IDENTITY IS THE ROUTE'S, NOT THE MODEL'S. agent.user_id came from the authenticated
+        // IDENTITY IS THE ROUTE'S, NOT THE MODEL'S. agent.organisation_id came from the authenticated
         // session and the ownership check above; anything the model put in `args` is ignored by
         // every handler. This is the line that keeps a typed session inside its own business.
-        const result = await runTextTool(name, args, agent.user_id as string);
+        const result = await runTextTool(name, args, agentOrganisationId, agent.user_id);
         toolsUsed.push(name);
 
         working.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(result) });
@@ -573,7 +606,13 @@ export async function POST(req: NextRequest) {
   //   kira_messages          dead since 2026-01, keyed by the ElevenLabs `conv_…` string
   //
   // Persistence is FINE. The transcript was missing because nothing READ it back — see the chat page.
-  const stamp = { user_id: agent.user_id, kira_agent_id: agent.id, conversation_id: conversationId };
+  const stamp = {
+    user_id: agent.user_id,
+    // INV-020: messages are organisation-owned; user_id stays provenance of who said/wrote what.
+    organisation_id: agentOrganisationId,
+    kira_agent_id: agent.id,
+    conversation_id: conversationId,
+  };
   const { error: writeError } = await supabase.from(KIRA_CONVAI_TABLES.messages).insert([
     { ...stamp, role: 'user', content: message, created_at: now },
     { ...stamp, role: 'assistant', content: reply, created_at: new Date(Date.now() + 1).toISOString() },

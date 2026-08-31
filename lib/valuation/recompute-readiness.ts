@@ -38,7 +38,7 @@ export interface RecomputeResult {
  * Never throws. This runs off the back of an assessment the owner asked for, and a failure here must
  * degrade to "the number did not move" rather than losing the assessment that did succeed.
  */
-export async function recomputeEvidencedReadiness(userId: string): Promise<RecomputeResult> {
+export async function recomputeEvidencedReadiness(organisationId: string): Promise<RecomputeResult> {
   const supabase = createServiceClient();
 
   const { data: valuation, error: valError } = await supabase
@@ -48,7 +48,7 @@ export async function recomputeEvidencedReadiness(userId: string): Promise<Recom
     // "the number never moves". The drift self-check below does not need it: comparing the
     // recomputed composite against the stored one detects a model change without naming it.
     .select('inputs, readiness')
-    .eq('user_id', userId)
+    .eq('organisation_id', organisationId)
     .maybeSingle();
 
   if (valError) {
@@ -62,7 +62,7 @@ export async function recomputeEvidencedReadiness(userId: string): Promise<Recom
   const { data: rows, error: statusError } = await supabase
     .from('genome_item_status')
     .select('item_key, status, why')
-    .eq('user_id', userId);
+    .eq('organisation_id', organisationId);
 
   if (statusError) {
     console.error('[recompute-readiness] could not read item status:', statusError);
@@ -94,13 +94,13 @@ export async function recomputeEvidencedReadiness(userId: string): Promise<Recom
     // Found by a test that fed it inputs of the wrong shape; the guard reported no drift and the
     // baseline came back NaN. A guard that cannot fire on the worst input is not a guard.
     if (!Number.isFinite(recomputed.readiness)) {
-      console.warn(`[recompute-readiness] model produced no usable figure for ${userId} — refusing`);
+      console.warn(`[recompute-readiness] model produced no usable figure for ${organisationId} — refusing`);
       return { readinessNow: null, baseline: null, reason: 'model-drift' };
     }
 
     if (Number.isFinite(storedReadiness) && Math.abs(recomputed.readiness - storedReadiness) > 0.005) {
       console.warn(
-        `[recompute-readiness] model drift for ${userId}: stored ${storedReadiness} vs recomputed ` +
+        `[recompute-readiness] model drift for ${organisationId}: stored ${storedReadiness} vs recomputed ` +
           `${recomputed.readiness} (model is now ${MODEL_VERSION}) — refusing`,
       );
       return { readinessNow: null, baseline: storedReadiness, reason: 'model-drift' };
@@ -129,7 +129,7 @@ export async function recomputeEvidencedReadiness(userId: string): Promise<Recom
       readiness_now: result.readinessNow,
       readiness_now_at: new Date().toISOString(),
     })
-    .eq('user_id', userId);
+    .eq('organisation_id', organisationId);
 
   if (writeError) {
     console.error('[recompute-readiness] write failed:', writeError);

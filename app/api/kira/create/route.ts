@@ -8,18 +8,20 @@
 // 4. We fetch the draft, create OR RE-BRIEF the owner's ElevenLabs agent, save to kira_agents
 // 5. User redirected to /chat/[agentId]
 //
-// IMPORTANT: ONE agent per owner per journey — matching `kira_one_active_agent_per_journey`, the
-// unique index the database has declared since 2026-01-20. This header used to read "Each draft
-// creates a NEW agent. Users can have multiple agents", which the schema had never allowed: the
-// second draft minted a real ElevenLabs agent, had its INSERT rejected by that index, swallowed the
-// error as non-fatal, and sent the owner to an agent no server-side lookup could resolve. A second
-// draft now RE-BRIEFS her — same agent, same id, so `kira_memory` stays attached. See the block at
-// the ElevenLabs call for the full account.
+// IMPORTANT: ONE agent per ORGANISATION per journey — matching `kira_one_active_agent_per_org_journey`,
+// the org-scoped unique index this migration established (P2.4-A; legacy user-scoped index
+// `kira_one_active_agent_per_journey` on (user_id, journey_type) removed). The header here used to
+// read "Each draft creates a NEW agent. Users can have multiple agents", which the schema had never
+// allowed: a second draft minted a real ElevenLabs agent, had its INSERT rejected by that index,
+// swallowed the error as non-fatal, and sent the owner to an agent no server-side lookup could
+// resolve. A second draft now RE-BRIEFS her — same agent, same id, so `kira_memory` stays attached.
+// See the block at the ElevenLabs call for the full account.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import { createServiceClient } from '@/lib/supabase/server';
-import { getCurrentAppUser } from '@/lib/auth';
+import { createServiceClientV2 } from '@/lib/supabase/server';
+import { getCurrentOrganisationContext, getCurrentAppUser, resolveOrganisationForPerson } from '@/lib/auth';
+import { saveMemory } from '@/lib/kira/memory-contract';
 import {
   getKiraPrompt,
   generateAgentName,
@@ -33,6 +35,7 @@ import { buildProfileBriefing } from '@/lib/kira/discovery-schema';
 import { formatMoneyApprox } from '@/lib/valuation/currency';
 import { displayedFigures } from '@/lib/valuation/displayed';
 import { sendKiraReadyEmail } from '@/lib/email/resend';
+
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app';
@@ -77,7 +80,7 @@ async function log(
 
 export async function POST(req: NextRequest) {
   const requestId = randomUUID();
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   try {
     await log(supabase, requestId, 'init', 'start');
@@ -88,6 +91,15 @@ export async function POST(req: NextRequest) {
 
     await log(supabase, requestId, 'env_check', 'success');
 
+    // Identity is SESSION-derived, never a body-supplied email. This route mints a paid ElevenLabs
+    // agent and seeds the user's profile; trusting a caller-supplied email let any caller attribute
+    // an agent to another user (and /api/* is NOT covered by the auth middleware). The /setup/draft
+    // caller is a USER_PROTECTED route, so an authenticated session is present here.
+    const user = await getCurrentAppUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await req.json();
     const { draftId } = body as { draftId: string };
 
@@ -95,27 +107,18 @@ export async function POST(req: NextRequest) {
       throw new Error('draftId missing');
     }
 
-    // Identity is SESSION-derived, never a body-supplied email. This route mints a paid ElevenLabs
-    // agent and seeds the user's profile; trusting a caller-supplied email let any caller attribute
-    // an agent to another user (and /api/* is NOT covered by the auth middleware). The /setup/draft
-    // caller is a USER_PROTECTED route, so an authenticated session is present here.
-    const appUser = await getCurrentAppUser();
-    if (!appUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // P0.6: Canonical authority is organisationContext.
+    const organisationContext = await getCurrentOrganisationContext();
+    if (!organisationContext) {
+      throw new Error('Not signed in or no organisation access');
     }
 
-    await log(supabase, requestId, 'request_parsed', 'success', undefined, {
-      draftId,
-      userId: appUser.id,
-    });
-
-    /* ---------------- Draft ---------------- */
-    await log(supabase, requestId, 'draft_load', 'start');
-
+    // Replace draft fetch to enforce organisation_id authority.
     const { data: draft, error: draftError } = await supabase
       .from('kira_drafts')
       .select('*')
       .eq('id', draftId)
+      .eq('organisation_id', organisationContext.organisationId)
       .single();
 
     if (draftError || !draft) {
@@ -196,10 +199,10 @@ export async function POST(req: NextRequest) {
     const firstName = extractFirstName(draft.user_name);
     // The authenticated app-user row already exists (created by the auth-link trigger at signup),
     // so there is no lookup-or-create by email anymore — we attribute the agent to the session user.
-    const user = appUser;
+    const personId = organisationContext.personId;
 
     await log(supabase, requestId, 'user_lookup', 'success', undefined, {
-      userId: user.id,
+      personId,
     });
 
     /* ---------------- Build Framework & Prompt ---------------- */
@@ -224,7 +227,7 @@ export async function POST(req: NextRequest) {
       draft.journey_type,
       firstName,
       draft.primary_objective,
-      user.id
+      personId
     );
 
     await log(supabase, requestId, 'prompt_build', 'success', undefined, {
@@ -236,9 +239,10 @@ export async function POST(req: NextRequest) {
     //
     // ⚠️ THE DATABASE HAS ALWAYS SAID ONE, AND THE CODE HAS ALWAYS CREATED MANY — register O1/D2.
     //
-    // `kira_one_active_agent_per_journey` is a UNIQUE index on (user_id, journey_type) WHERE
-    // status = 'active', and the migration that added it says, out loud, "this matches backend
-    // logic". It did not. This route inserted a fresh 'active' row for every draft, and the header
+    // `kira_one_active_agent_per_org_journey` is a UNIQUE index on (organisation_id, journey_type)
+    // WHERE status = 'active', replacing the legacy user-scoped `kira_one_active_agent_per_journey`
+    // on (user_id, journey_type) whose migration said, out loud, "this matches backend logic". It
+    // did not. This route inserted a fresh 'active' row for every draft, and the header
     // of this file states the assumption plainly: "Each draft creates a NEW agent."
     //
     // What that produced on a second draft, in order: a NEW ElevenLabs agent (a real vendor
@@ -260,7 +264,7 @@ export async function POST(req: NextRequest) {
     const { data: existingActive } = await supabase
       .from('kira_agents')
       .select('id, elevenlabs_agent_id')
-      .eq('user_id', user.id)
+      .eq('organisation_id', organisationContext.organisationId)
       .eq('journey_type', draft.journey_type)
       .eq('status', 'active')
       .maybeSingle();
@@ -554,7 +558,8 @@ export async function POST(req: NextRequest) {
       : await supabase
           .from('kira_agents')
           .insert({
-            user_id: user.id,
+            organisation_id: organisationContext.organisationId,
+            person_id: user.id, // provenance
             agent_name: agentName,
             journey_type: draft.journey_type,
             elevenlabs_agent_id: agentId,
@@ -590,21 +595,23 @@ export async function POST(req: NextRequest) {
     // first conversation. Non-fatal.
     if (savedAgent?.id) {
       try {
-        const { data: cp } = await supabase
-          .from('client_profiles')
-          .select('profile')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        if (cp?.profile) {
-          await supabase.from('kira_memory').insert({
-            user_id: user.id,
-            kira_agent_id: savedAgent.id,
-            memory_type: 'context',
-            content: buildProfileBriefing(cp.profile),
-            importance: 9,
-            tags: ['client_profile', 'discovery'],
-          });
-          await log(supabase, requestId, 'profile_brief', 'success');
+        const orgContext = await resolveOrganisationForPerson(user.id);
+        if (orgContext) {
+          const { data: cp } = await supabase
+            .from('client_profiles')
+            .select('profile')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          if (cp?.profile) {
+            await saveMemory(orgContext, {
+              agentId: savedAgent.id,
+              memoryType: 'context',
+              content: buildProfileBriefing(cp.profile),
+              importance: 9,
+              assistantStateFields: { tags: ['client_profile', 'discovery'] },
+            });
+            await log(supabase, requestId, 'profile_brief', 'success');
+          }
         }
       } catch (e: any) {
         console.error('[kira/create] profile briefing seed failed (non-fatal):', e?.message ?? e);
@@ -663,14 +670,20 @@ export async function POST(req: NextRequest) {
 
       // The valuation he ran before signing up. He watched the product compute it and put it on his
       // own dashboard; being asked to UPLOAD it to her is the version of this that reads worst.
+      //
+      // ⚠️ ORG-SCOPED SINCE P2.4-B. The valuation belongs to the Organisation, not the person —
+      // the business's baseline seed must follow the business, whoever currently holds the seat.
       try {
-        const { data: val } = await supabase
-          .from('business_valuations')
-          .select('worth_today, worth_potential, gap, industry')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        const orgContext = await resolveOrganisationForPerson(user.id);
+        const { data: val } = orgContext
+          ? await supabase
+              .from('business_valuations')
+              .select('worth_today, worth_potential, gap, industry')
+              .eq('organisation_id', orgContext.organisationId)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle()
+          : { data: null as { worth_today: number | null; worth_potential: number | null; gap: number | null; industry: string | null } | null };
         if (val) {
           // ⚠️ NO INSTRUCTION TO THE MODEL IN HERE, AND NO THIRD PERSON. This seed is a MEMORY ROW,
           // and memory rows are rendered to the owner on /my-genome. The previous version ended
@@ -709,17 +722,19 @@ export async function POST(req: NextRequest) {
 
       if (seeds.length) {
         try {
-          await supabase.from('kira_memory').insert(
-            seeds.map((s) => ({
-              user_id: user.id,
-              kira_agent_id: savedAgent.id,
-              memory_type: 'context',
-              content: s.content,
-              importance: s.importance,
-              tags: s.tags,
-            })),
-          );
-          await log(supabase, requestId, 'setup_brief_seed', 'success', undefined, { count: seeds.length });
+          const orgContext = await resolveOrganisationForPerson(user.id);
+          if (orgContext) {
+            for (const s of seeds) {
+              await saveMemory(orgContext, {
+                agentId: savedAgent.id,
+                memoryType: 'context',
+                content: s.content,
+                importance: s.importance,
+                assistantStateFields: { tags: s.tags },
+              });
+            }
+            await log(supabase, requestId, 'setup_brief_seed', 'success', undefined, { count: seeds.length });
+          }
         } catch (e: any) {
           console.error('[kira/create] setup brief seed failed (non-fatal):', e?.message ?? e);
         }

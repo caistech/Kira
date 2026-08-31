@@ -9,19 +9,28 @@
 import { createBillingPortalSession } from '@caistech/subscription-billing';
 import { NextRequest, NextResponse } from 'next/server';
 
-import { getCurrentAppUser } from '@/lib/auth';
+import { getCurrentOrganisationContext } from '@/lib/auth';
 import { getStripe } from '@/lib/billing';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
-  const user = await getCurrentAppUser();
-  if (!user) {
+  const ctx = await getCurrentOrganisationContext();
+  if (!ctx) {
     return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   }
 
-  if (!user.stripe_customer_id) {
+  // P2.2: Resolve billing details via person identity (P2.4 will move to canonical subscriptions).
+  const supabase = createServiceClientV2();
+  const { data: user } = await supabase
+    .from('users')
+    .select('stripe_customer_id')
+    .eq('id', ctx.personId)
+    .single();
+
+  if (!user?.stripe_customer_id) {
     // No Stripe customer means they never checked out — there is nothing to manage, and saying so
     // is more useful than a portal error page.
     return NextResponse.json({ error: 'No subscription to manage' }, { status: 400 });

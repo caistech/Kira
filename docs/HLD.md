@@ -73,6 +73,16 @@ non-interchangeable webhook credentials — `kira-webhook` (email boundary: supp
 throttle, owner enrichment) and `kira-public` (beta codes) — and never holds a Supabase
 service-role key for the migrated capabilities.
 
+**Supabase Authentication Model (API Key Model — Target Architecture):**
+As of 2026-08-25, Kira is migrating from the legacy JWT-based authentication
+(`SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) to Supabase's **API Key Model**
+(`SUPABASE_SECRET_KEY` / `sb_secret_...` for service-role equivalence,
+`SUPABASE_PUBLISHABLE_KEY` / `sb_publishable_...` for anon/browser equivalence).
+Phase 0 validation (representative slice: one server route + one browser page) is complete and
+deployed to Preview only. Production remains on the legacy JWT model. Full migration requires
+explicit authorisation. See `docs/SUPABASE_API_KEY_MODEL_MIGRATION_VALIDATION.md` and
+`docs/security/LEGACY_JWT_ROTATION_RUNBOOK.md`.
+
 ---
 
 ## 3. The voice agent

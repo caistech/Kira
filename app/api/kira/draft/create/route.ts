@@ -10,11 +10,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { createServiceClient } from '@/lib/supabase/server';
-import { getCurrentAppUser } from '@/lib/auth';
+import { getCurrentOrganisationContext } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
-  const appUser = await getCurrentAppUser();
-  if (!appUser) {
+  // INV-020: kira_drafts is organisation-owned (organisation_id NOT NULL after the 20260830
+  // migration). Identity is derived from the session, never trusted from the body.
+  const organisationContext = await getCurrentOrganisationContext();
+  if (!organisationContext) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -35,6 +37,7 @@ export async function POST(req: NextRequest) {
   const { data: draft, error } = await supabase
     .from('kira_drafts')
     .insert({
+      organisation_id: organisationContext.organisationId,
       user_name: userName,
       first_name: userName.split(' ')[0],
       location,

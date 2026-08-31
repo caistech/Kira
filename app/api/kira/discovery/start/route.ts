@@ -3,16 +3,19 @@
 // the pushed prompt override (what we already know), which the DiscoveryWidget mounts.
 
 import { NextResponse } from 'next/server';
-import { getCurrentAppUser } from '@/lib/auth';
+import { getCurrentOrganisationContext } from '@/lib/auth';
 import { getDiscovery } from '@/lib/kira/discovery';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST() {
-  const user = await getCurrentAppUser();
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // INV-020: the Client Profile and discovery gate are organisation-owned. Resolve the canonical
+  // org context (personId is the discovery subject; organisationId scopes every read/write the
+  // session performs via primeContext/applyProfileExtraction).
+  const organisationContext = await getCurrentOrganisationContext();
+  if (!organisationContext) {
+    return NextResponse.json({ error: 'Not signed in or no organisation access' }, { status: 401 });
   }
   if (!process.env.DISCOVERY_AGENT_ID) {
     return NextResponse.json(
@@ -21,7 +24,7 @@ export async function POST() {
     );
   }
   try {
-    const session = await getDiscovery().startSession(user.id);
+    const session = await getDiscovery().startSession(organisationContext.personId);
     return NextResponse.json(session);
   } catch (e) {
     return NextResponse.json(

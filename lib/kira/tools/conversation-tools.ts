@@ -70,8 +70,8 @@ Be specific with your queries for better results.`,
 export const searchKnowledgeTool: KiraTool = {
   type: 'webhook',
   name: 'search_knowledge',
-  description: `Search the user's knowledge base for relevant information.
-Use this to find information from documents or URLs they've shared.`,
+  description: `Search the organisation's knowledge base for relevant information.
+Use this to find information from documents or URLs the organisation has shared.`,
   webhook: {
     url: `${getBaseUrl()}/api/kira/webhooks/search_knowledge`,
     method: 'POST',
@@ -80,16 +80,12 @@ Use this to find information from documents or URLs they've shared.`,
   parameters: {
     type: 'object',
     properties: {
-      user_id: {
-        type: 'string',
-        description: 'The user ID',
-      },
       query: {
         type: 'string',
-        description: 'What you want to find in their knowledge base',
+        description: 'What you want to find in the knowledge base',
       },
     },
-    required: ['user_id', 'query'],
+    required: ['query'],
   },
 };
 

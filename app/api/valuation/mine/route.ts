@@ -18,29 +18,23 @@
 
 import { NextResponse } from 'next/server';
 
-import { getCurrentAppUser } from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { getCurrentOrganisationContext } from '@/lib/auth';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const user = await getCurrentAppUser();
-  // Not an error. This route is called speculatively by a PUBLIC page, and a signed-out visitor is
-  // its normal case — 401 here would put a red line in the console of every anonymous pricing view.
-  // ⚠️ `signedIn` TRAVELS WITH IT, because the caller needs to know the difference between "no
-  // account valuation" and "no account". /plan offered a signed-in owner three doors he had already
-  // walked through — "Create an account without a card", "Already have an account? Sign in", and
-  // "Been invited to the beta?". Ray: "Three offers I have already taken."
-  if (!user?.id) return NextResponse.json({ valuation: null, signedIn: false });
+  const orgContext = await getCurrentOrganisationContext();
+  if (!orgContext) return NextResponse.json({ valuation: null, signedIn: false });
 
   try {
-    const svc = createServiceClient();
+    const svc = createServiceClientV2();
     const { data } = await svc
       .from('business_valuations')
       .select('inputs, currency')
-      .eq('user_id', user.id)
+      .eq('organisation_id', orgContext.organisationId)
       .maybeSingle();
 
     if (!data?.inputs) return NextResponse.json({ valuation: null, signedIn: true });

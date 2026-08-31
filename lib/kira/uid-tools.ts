@@ -9,6 +9,7 @@ import { normaliseFact } from '@caistech/mnemo';
 import { isNearDuplicate } from '@/lib/genome/similar';
 
 import { createServiceClient } from '@/lib/supabase/server';
+import { resolveOrganisationForPerson } from '@/lib/auth';
 import { mnemoAdd } from '@/lib/kira/mnemo';
 import { readTaskLedger } from '@/lib/kira/swarm/open-tasks';
 import { unconfirmedFacts } from '@/lib/kira/confirm';
@@ -75,6 +76,13 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
   const memoryType = VALID_MEMORY_TYPES.includes(category) ? category : 'context';
   const importance = Number(body.importance) || 6;
 
+  // Resolve organisational context from personId (uid). No fallback — if no org context, block.
+  const orgContext = await resolveOrganisationForPerson(uid);
+  if (!orgContext) {
+    // No active membership for this person → quarantine / fail safe per P0.4 contract.
+    return json(200, { success: false, error: 'No organisational context for user' });
+  }
+
   const supabase = createServiceClient();
 
   // Provenance: which conversation did he say this in.
@@ -98,10 +106,12 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
   }
 
   // One agent per user — link the fact to it so recall's agent-scoped query finds it.
+  // INV-020: kira_agents is organisation-owned, so scope the lookup by organisation only.
+  // The person (uid) remains the actor — provenance — in the row written below.
   const { data: agent } = await supabase
     .from('kira_agents')
     .select('id')
-    .eq('user_id', uid)
+    .eq('organisation_id', orgContext.organisationId)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -124,7 +134,7 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
   const { data: priorFacts } = await supabase
     .from('kira_memory')
     .select('content')
-    .eq('user_id', uid)
+    .eq('organisation_id', orgContext.organisationId)
     .neq('active', false)
     .limit(500);
   //
@@ -238,7 +248,7 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
     const { data: known } = await supabase
       .from('kira_memory')
       .select('parked_entity')
-      .eq('user_id', uid)
+      .eq('organisation_id', orgContext.organisationId)
       .not('parked_entity', 'is', null)
       .limit(200);
     const haystack = content.toLowerCase();
@@ -272,7 +282,7 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
     const { data: parked } = await supabase
       .from('kira_memory')
       .select('content')
-      .eq('user_id', uid)
+      .eq('organisation_id', orgContext.organisationId)
       .eq('parked_reason', 'entity:other')
       .limit(500);
     if ((parked ?? []).some((row) => isSameFact(normaliseFact(String(row.content ?? '')), key))) {
@@ -326,6 +336,7 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
     : {};
 
   const { error } = await supabase.from('kira_memory').insert({
+    organisation_id: orgContext.organisationId,
     user_id: uid,
     kira_agent_id: agent?.id ?? null,
     agent_id: agent?.id ?? null,
@@ -410,9 +421,14 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
 export async function handleKiraContext(req: Request): Promise<Response> {
   const uid = uidFrom(req);
   if (!uid) return json(200, { has_history: false });
+  // INV-020: the ledger and conversations are organisation-owned — resolve the owner's org once so
+  // both the open-task count and the history lookups are scoped by the organisation (a person's seat
+  // can move; the task and the conversation belong to the organisation).
+  const orgContext = await resolveOrganisationForPerson(uid);
+  const organisationId = orgContext?.organisationId || null;
   // Read the ledger regardless of whether there is conversation history: a first-session owner can
   // still have an open task, and the early-return below would otherwise hide it.
-  const ledger = await readTaskLedger(uid);
+  const ledger = await readTaskLedger(uid, organisationId ?? undefined);
   const openTasks = {
     open_count: ledger.openCount,
     open: ledger.open,
@@ -420,21 +436,25 @@ export async function handleKiraContext(req: Request): Promise<Response> {
   };
 
   const supabase = createServiceClient();
+
   // Find the user's genuinely most-recent conversation ACROSS all their agents (a user can have more
   // than one), and take context from that conversation's agent — otherwise "newest agent" ≠ "agent
   // that holds the last conversation" and we'd report no history when there is some.
-  const { data: lastConv } = await supabase
+  let lastConvQuery = supabase
     .from('conversations')
     .select('kira_agent_id, created_at, last_message_at, started_at')
-    .eq('user_id', uid)
     .in('status', ['active', 'completed'])
     .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
+  if (organisationId) lastConvQuery = lastConvQuery.eq('organisation_id', organisationId);
+  else lastConvQuery = lastConvQuery.eq('user_id', uid);
+
+  const { data: lastConv } = await lastConvQuery.maybeSingle();
   if (!lastConv?.kira_agent_id) return json(200, { has_history: false, ...openTasks });
 
   const { data: ctx } = await supabase.rpc('get_conversation_context', {
     p_agent_id: lastConv.kira_agent_id,
+    p_organisation_id: organisationId ?? null,
     p_user_id: uid,
     p_message_limit: 10,
   });
@@ -449,28 +469,34 @@ export async function handleKiraContext(req: Request): Promise<Response> {
   // plausible reason not to have it. It comes from HIS OWN thirteen answers and has nothing to do
   // with an accounting connector. Carried on the context so she cannot miss it, and derived through
   // `displayedFigures` so she speaks the same figure the screens print.
+  //
+  // ⚠️ ORG-SCOPED SINCE P2.4-B. The valuation belongs to the Organisation, so the baked `uid` (a
+  // person id) resolves to its organisation through membership before reading. The owner's number
+  // must survive a change of whoever owns the seat she talks from.
   let baseline: Record<string, string> | null = null;
   try {
-    const { data: val } = await supabase
-      .from('business_valuations')
-      .select('worth_today, worth_potential, currency, created_at')
-      .eq('user_id', uid)
-      .maybeSingle();
-    if (val) {
-      const figures = displayedFigures(
-        { worthToday: Number(val.worth_today) || 0, worthPotential: Number(val.worth_potential) || 0 },
-        (val.currency as string) || DEFAULT_CURRENCY,
-      );
-      baseline = {
-        worth_today: figures.todayText,
-        worth_once_captured: figures.potentialText,
-        gap: figures.gapText,
-        taken_on: String(val.created_at).slice(0, 10),
-        note:
-          'These are HIS OWN figures from the thirteen questions he answered. Never say you cannot ' +
-          'see the gap, and never blame a missing accounting connection for it — it does not come ' +
-          'from one.',
-      };
+    if (organisationId) {
+      const { data: val } = await supabase
+        .from('business_valuations')
+        .select('worth_today, worth_potential, currency, created_at')
+        .eq('organisation_id', organisationId)
+        .maybeSingle();
+      if (val) {
+        const figures = displayedFigures(
+          { worthToday: Number(val.worth_today) || 0, worthPotential: Number(val.worth_potential) || 0 },
+          (val.currency as string) || DEFAULT_CURRENCY,
+        );
+        baseline = {
+          worth_today: figures.todayText,
+          worth_once_captured: figures.potentialText,
+          gap: figures.gapText,
+          taken_on: String(val.created_at).slice(0, 10),
+          note:
+            'These are HIS OWN figures from the thirteen questions he answered. Never say you cannot ' +
+            'see the gap, and never blame a missing accounting connection for it — it does not come ' +
+            'from one.',
+        };
+      }
     }
   } catch (error) {
     // Degrade quietly: no baseline on the context is the state she has always been in.

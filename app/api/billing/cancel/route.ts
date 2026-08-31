@@ -15,20 +15,28 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-import { getCurrentAppUser } from '@/lib/auth';
+import { getCurrentOrganisationContext } from '@/lib/auth';
 import { cancelSubscriptionWithWaiver } from '@/lib/billing';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(_request: NextRequest) {
-  const user = await getCurrentAppUser();
-  if (!user) {
+  const ctx = await getCurrentOrganisationContext();
+  if (!ctx) {
     return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   }
 
-  if (!user.stripe_subscription_id) {
+  // P2.2: Resolve billing details via person identity (P2.4 will move to canonical subscriptions).
+  const supabase = createServiceClientV2();
+  const { data: user } = await supabase
+    .from('users')
+    .select('id, stripe_subscription_id')
+    .eq('id', ctx.personId)
+    .single();
+
+  if (!user?.stripe_subscription_id) {
     // Nothing to cancel. Saying so plainly beats a Stripe error the owner has to interpret.
     return NextResponse.json({ error: 'No active subscription' }, { status: 400 });
   }
@@ -40,7 +48,6 @@ export async function POST(_request: NextRequest) {
     // webhook is authoritative and will arrive, but the owner is looking at the screen now, and a
     // page that still says "active" after he pressed cancel is how a second cancellation attempt —
     // or a chargeback — starts.
-    const supabase = createServiceClient();
     await supabase
       .from('users')
       .update({ subscription_status: 'cancelled', updated_at: new Date().toISOString() })

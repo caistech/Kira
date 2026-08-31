@@ -152,23 +152,24 @@ export async function GET(request: NextRequest) {
   const discovered = await backfillMissingTasks(
     coordinator,
     {
-      async knownIntentIds(userId: string) {
+      async knownIntentIds(personId: string) {
+        const orgContext = await resolveOrganisationForPerson(personId);
+        if (!orgContext) return [];
+
         const { data, error: knownError } = await supabase
           .from('kira_tasks')
           .select('intent_id')
-          .eq('user_id', userId);
-        // Throwing is deliberate. An empty list on a failed read would look like "this tenant has
-        // nothing", and the caller INSERTS the difference — turning a transient error into duplicate
-        // rows for every task he has. Better to skip this tenant and try again in twenty minutes.
+          .eq('organisation_id', orgContext.organisationId);
         if (knownError) throw new Error(knownError.message);
         return (data ?? []).map((r) => r.intent_id as string);
       },
       async insert(rows: MirrorRow[]) {
         // Upsert on the same key the live mirror and the completion callback both use, so a task
-        // that lands here at the same moment a callback arrives ends as one row, not two.
+        // that lands here at the same moment a callback arrives ends as one row, not two. The key
+        // is organisation-anchored per the canonical model.
         const { error: insertError } = await supabase
           .from('kira_tasks')
-          .upsert(rows, { onConflict: 'user_id,intent_id' });
+          .upsert(rows, { onConflict: 'organisation_id,intent_id' });
         if (insertError) throw new Error(insertError.message);
       },
     },

@@ -9,7 +9,7 @@
 // Swapping ElevenLabs for local mammoth/pdf-parse later is a one-function change (extractText); the
 // owned store + retrieval do not change.
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { generateEmbeddings, EMBEDDING_DIMENSIONS } from '@/lib/embeddings/client';
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY || '';
@@ -104,13 +104,13 @@ export interface IngestResult {
  */
 export async function supersedeOlderVersions(
   keepId: string,
-  userId: string,
+  organisationId: string,
   match: { fileName?: string | null; url?: string | null },
 ): Promise<number> {
-  if (!userId) return 0;
-  const supabase = createServiceClient();
+  if (!organisationId) return 0;
+  const supabase = createServiceClientV2();
   try {
-    let q = supabase.from('kira_knowledge').select('id').eq('user_id', userId).neq('id', keepId);
+    let q = supabase.from('kira_knowledge').select('id').eq('organisation_id', organisationId).neq('id', keepId);
     if (match.url) q = q.eq('url', match.url);
     else if (match.fileName) q = q.eq('file_name', match.fileName);
     else return 0;
@@ -132,11 +132,11 @@ export async function supersedeOlderVersions(
  * a document with no extractable text is recorded (status) and skipped, never faked.
  */
 export async function ingestKnowledgeDocument(knowledgeId: string): Promise<IngestResult> {
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   const { data: doc, error } = await supabase
     .from('kira_knowledge')
-    .select('id, user_id, kira_agent_id, elevenlabs_document_id, title')
+    .select('id, organisation_id, kira_agent_id, elevenlabs_document_id, title')
     .eq('id', knowledgeId)
     .single();
   if (error || !doc) throw new Error(`knowledge row not found: ${knowledgeId}`);
@@ -157,11 +157,11 @@ export async function ingestKnowledgeDocument(knowledgeId: string): Promise<Inge
  * that arrives as text should never leave our infrastructure to come back as the same text.
  */
 export async function indexKnowledgeText(knowledgeId: string, text: string): Promise<IngestResult> {
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   const { data: doc, error } = await supabase
     .from('kira_knowledge')
-    .select('id, user_id, kira_agent_id')
+    .select('id, organisation_id, kira_agent_id')
     .eq('id', knowledgeId)
     .single();
   if (error || !doc) throw new Error(`knowledge row not found: ${knowledgeId}`);
@@ -182,7 +182,7 @@ export async function indexKnowledgeText(knowledgeId: string, text: string): Pro
 
   const rows = pieces.map((content, i) => ({
     knowledge_id: knowledgeId,
-    user_id: doc.user_id,
+    organisation_id: doc.organisation_id,
     kira_agent_id: doc.kira_agent_id ?? null,
     chunk_index: i,
     content,

@@ -45,6 +45,28 @@ export async function POST(request: NextRequest) {
     // Extract first name for greeting
     const firstName = payload.user_name.split(' ')[0];
 
+    // P0.6: Resolve organisation_id from conversation_id
+    let organisationId: string | null = null;
+    if (conversationId) {
+      const { data: conv, error: convError } = await supabase
+        .from('conversations')
+        .select('organisation_id')
+        .eq('elevenlabs_conversation_id', conversationId)
+        .maybeSingle();
+
+      if (conv && conv.organisation_id) {
+        organisationId = conv.organisation_id;
+      }
+    }
+
+    if (!organisationId) {
+      console.error('[save-framework-draft] Failed to resolve organisation_id for conversation:', conversationId);
+      return NextResponse.json(
+        { error: 'Failed to resolve organisation context' },
+        { status: 400 }
+      );
+    }
+
     // Save to kira_drafts table
     const { data: draft, error } = await supabase
       .from('kira_drafts')
@@ -59,6 +81,7 @@ export async function POST(request: NextRequest) {
         constraints: payload.constraints || [],
         status: 'draft',
         elevenlabs_conversation_id: conversationId,
+        organisation_id: organisationId,
       })
       .select()
       .single();

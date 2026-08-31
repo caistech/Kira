@@ -4,7 +4,7 @@
 // Backed by the owned-RAG store (kira_knowledge + kira_knowledge_chunks). User-level, spans all their
 // agents (search_knowledge resolves by user, not agent).
 
-import { getCurrentAppUser } from '@/lib/auth';
+import { getCurrentOrganisationContext } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { KiraShapeSection } from '@/components/KiraShapeSection';
 import { KnowledgeManager, type KnowledgeItem } from './KnowledgeManager';
@@ -13,20 +13,20 @@ export const metadata = { title: 'Knowledge · Kira' };
 export const dynamic = 'force-dynamic';
 
 export default async function KnowledgePage() {
-  const user = await getCurrentAppUser();
+  const ctx = await getCurrentOrganisationContext();
   const svc = createServiceClient();
 
-  const { data: docs } = user
+  const { data: docs } = ctx
     ? await svc
         .from('kira_knowledge')
         .select('id, title, source_type, url, summary, status, created_at')
-        .eq('user_id', user.id)
+        .eq('organisation_id', ctx.organisationId)
         .order('created_at', { ascending: false })
     : { data: [] as Array<Record<string, unknown>> };
 
   // Owned-RAG coverage per doc: how many embedded chunks exist = whether Kira can retrieve it.
-  const { data: chunkRows } = user
-    ? await svc.from('kira_knowledge_chunks').select('knowledge_id').eq('user_id', user.id)
+  const { data: chunkRows } = ctx
+    ? await svc.from('kira_knowledge_chunks').select('knowledge_id').eq('user_id', ctx.personId)
     : { data: [] as Array<{ knowledge_id: string }> };
 
   const counts = new Map<string, number>();
@@ -54,10 +54,11 @@ export default async function KnowledgePage() {
   // and until now the answer required leaving it.
   return (
     <>
-      <KnowledgeManager userId={user?.id ?? ''} initial={items} />
+      <KnowledgeManager userId={ctx?.personId ?? ''} initial={items} />
       <div className="mx-auto max-w-3xl px-5 pb-28">
         <KiraShapeSection surface="knowledge" />
       </div>
     </>
   );
 }
+

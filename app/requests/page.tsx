@@ -19,7 +19,7 @@
 
 import Link from 'next/link';
 
-import { getCurrentAppUser } from '@/lib/auth';
+import { getCurrentOrganisationContext } from '@/lib/auth';
 import { readTaskLedger, STALLED_AFTER_DAYS, type OpenTaskSummary } from '@/lib/kira/swarm/open-tasks';
 import { createServiceClient } from '@/lib/supabase/server';
 import { KiraShapeSection } from '@/components/KiraShapeSection';
@@ -50,19 +50,19 @@ function TaskRow({ task }: { task: OpenTaskSummary }) {
 }
 
 export default async function RequestsPage() {
-  const user = await getCurrentAppUser();
-  const ledger = user?.id
-    ? await readTaskLedger(user.id)
+  const orgContext = await getCurrentOrganisationContext();
+  const ledger = orgContext?.personId
+    ? await readTaskLedger(orgContext.personId)
     : { openCount: 0, open: [], recentlyDone: [], waitingOnOwner: [], waitingOnKira: [], stalled: [], spoken: '' };
 
   // The talk link, resolved the same way the dashboard resolves it, so "talk to her about these"
   // lands on his own Kira rather than the onboarding flow.
   const svc = createServiceClient();
-  const { data: agents } = user
+  const { data: agents } = orgContext
     ? await svc
         .from('kira_agents')
         .select('elevenlabs_agent_id, journey_type, status')
-        .eq('user_id', user.id)
+        .eq('organisation_id', orgContext.organisationId)
         .neq('status', 'deleted')
     : { data: [] as Array<Record<string, unknown>> };
   const businessAgent =

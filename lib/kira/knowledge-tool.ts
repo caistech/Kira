@@ -7,7 +7,7 @@
 //
 // Returns CITED chunks (title/source) — an un-provenanced finding is a bug per DATA_STANDARD R5.
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { generateEmbedding, isEmbeddingsConfigured } from '@/lib/embeddings/client';
 
 export interface KnowledgeHit {
@@ -37,28 +37,48 @@ export async function handleSearchKnowledge(req: Request): Promise<Response> {
     return json(200, { success: false, error: 'Knowledge search is not configured yet.' });
   }
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
-  // Identity is SERVER-BAKED into the tool URL (?uid=<user_id>) — ElevenLabs does not pass the
-  // conversation id to server-tool webhooks. One agent per user, so the owner is known at provision.
+  // Identity is SERVER-BAKED into the tool URL (?uid=<person_id>) — ElevenLabs does not pass the
+  // conversation id to server-tool webhooks. The person_id is resolved to organisation_id via membership.
   // Fall back to the conversation binding for a legacy caller that still sends conversation_id.
   const url = new URL(req.url);
-  let userId = url.searchParams.get('uid') || '';
-  if (!userId) {
+  let personId = url.searchParams.get('uid') || '';
+  let organisationId: string | null = null;
+  if (!personId) {
     const conversationId = String(body.conversation_id || '');
     if (conversationId) {
       const { data: c } = await supabase
         .from('conversations')
-        .select('user_id')
+        .select('user_id, organisation_id')
         .eq('elevenlabs_conversation_id', conversationId)
         .single();
-      userId = (c?.user_id as string) || '';
+      personId = (c?.user_id as string) || '';
+      // INV-020: prefer the conversation's OWN organisation anchor (it is already org-owned) over a
+      // membership re-resolve — the conversation is the authoritative owner of whose corpus this is.
+      organisationId = (c?.organisation_id as string) || null;
     }
   }
-  if (!userId) {
+  if (!personId) {
     return json(200, { success: false, error: 'No user identity on this request' });
   }
-  const conv = { user_id: userId };
+
+  // Resolve organisation from person membership (uid path) unless the conversation already carried
+  // its org anchor.
+  if (!organisationId) {
+    const { data: membership } = await supabase
+      .from('organisation_memberships')
+      .select('organisation_id')
+      .eq('person_id', personId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    organisationId = membership?.organisation_id ?? null;
+  }
+
+  if (!organisationId) {
+    return json(200, { success: false, error: 'No organisation context for this user' });
+  }
 
   let embedding: number[];
   try {
@@ -67,11 +87,11 @@ export async function handleSearchKnowledge(req: Request): Promise<Response> {
     return json(200, { success: false, error: 'Could not search knowledge right now.' });
   }
 
-  const { data: matches, error } = await supabase.rpc('match_kira_knowledge_chunks', {
-    p_user_id: conv.user_id,
+  const { data: matches, error } = await supabase.rpc('search_knowledge_semantic', {
+    p_organisation_id: organisationId,
     p_query_embedding: embedding,
     p_match_count: 6,
-    p_min_similarity: 0.15,
+    p_match_threshold: 0.15,
   });
 
   if (error) {

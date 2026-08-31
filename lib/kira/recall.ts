@@ -1,16 +1,13 @@
 // lib/kira/recall.ts
 // Kira's recall_memory handler — Mnemo-semantic + kira_memory, merged (#7).
 //
-// The canonical recall is substring-only over kira_memory, so a naturally-worded question ("what
-// happened on that job six weeks ago") returns nothing even when the fact is stored. This handler
-// adds the Mnemo semantic lane on top:
-//   1. Mnemo semantic search (the deep/cross-session layer) — finds differently-worded recurrences.
-//   2. kira_memory substring (the near-term layer) — catches facts written THIS session, not yet
-//      distilled into Mnemo, and is the fail-soft floor when Mnemo is unconfigured/down.
-// Merged + deduped. Identity is derived from the conversation binding (never the agent), exactly as
-// the memory tools do — so a caller cannot read another user's memory.
+// P0.4 REBOUND: Every kira_memory read crosses the canonical memory boundary.
+// Organisation context is resolved ONCE at the boundary via resolveOrganisationForPerson(uid),
+// then both the Mnemo semantic lane (person-scoped, frozen prefix) and the kira_memory substring
+// lane (org-scoped) are gated behind it.
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
+import { resolveOrganisationForPerson } from '@/lib/auth';
 import { mnemoSearch, mnemoEnabled } from '@/lib/kira/mnemo';
 
 const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
@@ -31,47 +28,73 @@ export async function handleKiraRecall(req: Request): Promise<Response> {
     return json(400, { success: false, error: 'Missing query' });
   }
 
-  const supabase = createServiceClient();
-
-  // Identity is SERVER-BAKED into the tool URL at provision time (?uid=<user_id>), because
-  // ElevenLabs does NOT pass the conversation id to server-tool webhooks — the agent only sends the
-  // LLM-filled params (proven from the live conversation record). Kira provisions one agent per
-  // user, so the owner is known at provision and baked in; the agent never has to identify anyone.
-  // Fall back to the conversation binding for any legacy caller that still sends conversation_id.
+  // P0.4: Resolve organisational context from personId (uid). Blocked if no membership.
   const url = new URL(req.url);
-  let userId = url.searchParams.get('uid') || '';
+  const uid = url.searchParams.get('uid') || '';
   let agentId: string | null = null;
-  if (!userId) {
+
+  // Resolve org context from person id. P0.4 contract: no org context = no recall.
+  const orgContext = uid ? await resolveOrganisationForPerson(uid) : null;
+
+  // Fallback: resolve from conversation binding for legacy callers.
+  if (!orgContext && !uid) {
+    const supabase = createServiceClientV2();
     const conversationId = String(body.conversation_id || '');
     if (conversationId) {
       const { data: conv } = await supabase
         .from('conversations')
-        .select('user_id, agent_id')
+        .select('user_id, agent_id, organisation_id')
         .eq('elevenlabs_conversation_id', conversationId)
         .single();
-      userId = (conv?.user_id as string) || '';
+      const convUserId = (conv?.user_id as string) || '';
+      const convOrgId = (conv?.organisation_id as string) || '';
       agentId = (conv?.agent_id as string) || null;
+      // INV-020: prefer the conversation's OWN organisation anchor (it is already org-owned) over a
+      // membership re-resolve — the conversation is the authoritative provenance of whose record
+      // this is. The person id is retained as provenance for the Mnemo semantic lane.
+      if (convOrgId && convUserId) {
+        return handleRecall({ organisationId: convOrgId, personId: convUserId }, query, agentId, json);
+      }
+      if (convUserId) {
+        const fallbackCtx = await resolveOrganisationForPerson(convUserId);
+        if (fallbackCtx) {
+          return handleRecall(fallbackCtx, query, agentId, json);
+        }
+      }
     }
   }
-  if (!userId) {
+
+  if (!orgContext) {
     return json(200, { success: false, error: 'No user identity on this request' });
   }
-  const conv = { user_id: userId, agent_id: agentId };
 
-  // 1. Mnemo semantic (deep) — the layer that makes cross-session, differently-worded recall work.
-  const semantic = mnemoEnabled() ? await mnemoSearch(conv.user_id as string, query, 6) : [];
+  return handleRecall(orgContext, query, agentId, json);
+}
 
-  // 2. kira_memory substring (near-term + fail-soft floor). Scoped by user (and agent when present).
+async function handleRecall(
+  orgContext: { organisationId: string; personId?: string },
+  query: string,
+  agentId: string | null,
+  json: (status: number, body: unknown) => Response,
+): Promise<Response> {
+  const supabase = createServiceClientV2();
+
+  // 1. Mnemo semantic (deep) — person-scoped (frozen prefix). Authorised by org membership.
+  const semantic = mnemoEnabled()
+    ? await mnemoSearch(orgContext.personId ?? '', query, 6)
+    : [];
+
+  // 2. kira_memory substring (near-term + fail-soft floor). Org-scoped.
   let q = supabase
     .from('kira_memory')
     .select('content, importance, created_at')
-    .eq('user_id', conv.user_id)
+    .eq('organisation_id', orgContext.organisationId)
     .eq('active', true)
     .ilike('content', `%${query}%`)
     .order('importance', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(6);
-  if (conv.agent_id) q = q.eq('agent_id', conv.agent_id);
+  if (agentId) q = q.eq('agent_id', agentId);
   const { data: nearTerm } = await q;
 
   // Merge: semantic first (usually the better hits), then any near-term rows not already covered.

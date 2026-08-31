@@ -16,8 +16,8 @@
 
 import { NextResponse } from 'next/server';
 
-import { getCurrentAppUser } from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { getCurrentOrganisationContext } from '@/lib/auth';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { KIRA_CONVAI_TABLES } from '@/lib/kira/convai';
 
 export const runtime = 'nodejs';
@@ -34,28 +34,28 @@ const LIMIT = 100;
 export async function GET(request: Request) {
   // ⚠️ IDENTITY FROM THE SESSION, NEVER FROM THE QUERY STRING. This returns a man's own words about
   // selling his business; a `?userId=` here would hand them to anyone who guessed a uuid.
-  const user = await getCurrentAppUser();
-  if (!user?.id) return NextResponse.json({ messages: [] }, { status: 200 });
+  const organisationContext = await getCurrentOrganisationContext();
+  if (!organisationContext) return NextResponse.json({ messages: [] }, { status: 401 });
+  const organisationId = organisationContext.organisationId;
 
   const agentId = new URL(request.url).searchParams.get('agentId');
   if (!agentId) return NextResponse.json({ messages: [] });
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
-  // The agent must belong to HIM. Scoped as a filter rather than checked afterwards, so there is no
-  // path where another owner's row is even fetched.
+  // The agent must belong to the organisation.
   const { data: agent } = await supabase
     .from(KIRA_CONVAI_TABLES.agents)
     .select('id')
     .eq('elevenlabs_agent_id', agentId)
-    .eq('user_id', user.id)
+    .eq('organisation_id', organisationId)
     .maybeSingle();
   if (!agent) return NextResponse.json({ messages: [] });
 
   const { data, error } = await supabase
     .from(KIRA_CONVAI_TABLES.messages)
     .select('role, content, created_at')
-    .eq('user_id', user.id)
+    .eq('organisation_id', organisationId)
     .eq('kira_agent_id', agent.id)
     .order('created_at', { ascending: false })
     .limit(LIMIT);

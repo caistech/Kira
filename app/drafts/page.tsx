@@ -61,7 +61,14 @@ export default async function DraftsPage() {
     .eq('auth_user_id', authUser.id)
     .maybeSingle();
 
-  const drafts = appUser ? await readDrafts(String(appUser.id)) : [];
+  const { data: membership } = await svc
+    .from('organisation_memberships')
+    .select('organisation_id')
+    .eq('person_id', appUser?.id)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  const drafts = membership ? await readDrafts(String(membership.organisation_id)) : [];
 
   return (
     <main className="mx-auto max-w-3xl px-5 py-10 pb-28">

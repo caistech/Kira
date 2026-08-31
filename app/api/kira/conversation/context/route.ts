@@ -3,27 +3,38 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { getCurrentOrganisationContext } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
     const supabase = createServiceClient();
     const { searchParams } = new URL(request.url);
     const agentId = searchParams.get('agentId');
-    const userId = searchParams.get('userId');
     const messageLimit = parseInt(searchParams.get('limit') || '20');
 
-    if (!agentId || !userId) {
+    // Canonical organisation-scoped authorization
+    const organisationContext = await getCurrentOrganisationContext();
+    if (!organisationContext) {
       return NextResponse.json(
-        { error: 'Missing agentId or userId' },
+        { error: 'Not signed in or no organisation access' },
+        { status: 401 }
+      );
+    }
+    const organisationId = organisationContext.organisationId;
+
+    if (!agentId) {
+      return NextResponse.json(
+        { error: 'Missing agentId' },
         { status: 400 }
       );
     }
 
-    // Get the internal kira_agent record
+    // Get the internal kira_agent record - organisation-scoped
     const { data: agent, error: agentError } = await supabase
       .from('kira_agents')
       .select('id')
       .eq('elevenlabs_agent_id', agentId)
+      .eq('organisation_id', organisationId)
       .single();
 
     if (agentError || !agent) {
@@ -33,11 +44,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Call the database function to get context
+    // Call the database function to get context - organisation-scoped
     const { data: context, error: contextError } = await supabase
       .rpc('get_conversation_context', {
         p_agent_id: agent.id,
-        p_user_id: userId,
+        p_organisation_id: organisationId,
         p_message_limit: messageLimit
       });
 

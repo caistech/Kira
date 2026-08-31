@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import type { EmailOtpType } from '@supabase/supabase-js';
-import { createSessionClient } from '@/lib/supabase/server-session';
+import { createSessionClientV2 } from '@/lib/supabase/server-session';
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get('type') as EmailOtpType | null;
   const next = searchParams.get('next') || '/dashboard';
 
-  const supabase = await createSessionClient();
+  const supabase = await createSessionClientV2();
 
   if (tokenHash && type) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });

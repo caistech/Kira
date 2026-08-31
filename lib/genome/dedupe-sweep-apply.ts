@@ -23,20 +23,21 @@
 // bad containment score away from removing a fact an owner told us once.
 
 import { createServiceClient } from '@/lib/supabase/server';
+import { resolveOrganisationForPerson } from '@/lib/auth';
 
 import { swallowedIds, type SweepableMemory } from './dedupe-sweep';
 
 /**
- * Drop the restatements from one owner's active memories.
+ * Drop the restatements from one organisation's active memories.
  *
  * Returns how many were parked. Never throws: this runs at the end of the post-call pipeline, and a
  * failure here must not lose the conversation that produced the facts.
  */
 export async function sweepDuplicateMemories(
-  userId: string | undefined,
+  organisationId: string | undefined,
   table: string,
 ): Promise<number> {
-  if (!userId) return 0;
+  if (!organisationId) return 0;
   try {
     const svc = createServiceClient();
     const { data, error } = await svc
@@ -45,7 +46,7 @@ export async function sweepDuplicateMemories(
       // exist, so the query errored into the catch below and the sweep did nothing — a caller that
       // reads exactly like a working one. Verified against the live table before wiring.
       .select('id, content, confirmed_at, genome_section')
-      .eq('user_id', userId)
+      .eq('organisation_id', organisationId)
       .eq('active', true)
       .limit(500);
     if (error) throw new Error(error.message);

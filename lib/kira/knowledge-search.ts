@@ -2,7 +2,7 @@
 // Cutting-edge hybrid search for Kira's knowledge base
 // Combines: pgvector semantic search + keyword matching + Jina reranking
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { generateEmbedding, isEmbeddingsConfigured, EMBEDDING_DIMENSIONS } from '@/lib/embeddings/client';
 import { rerankResults, isRerankerConfigured } from '@/lib/jina/reranker';
 
@@ -55,7 +55,7 @@ export interface SearchOptions {
  * });
  */
 export async function searchKnowledge(
-  userId: string,
+  organisationId: string,
   query: string,
   options: SearchOptions = {}
 ): Promise<KnowledgeSearchResult[]> {
@@ -68,7 +68,7 @@ export async function searchKnowledge(
     hybridWeight = 0.3, // 30% keyword, 70% semantic by default
   } = options;
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   // Fetch more results than needed for reranking
   const fetchLimit = useReranker ? Math.min(limit * 3, 50) : limit;
@@ -80,7 +80,7 @@ export async function searchKnowledge(
     try {
       const semanticResults = await semanticSearch(
         supabase,
-        userId,
+        organisationId,
         query,
         { limit: fetchLimit, threshold, topic, sourceType }
       );
@@ -94,7 +94,7 @@ export async function searchKnowledge(
   if (results.length === 0) {
     const keywordResults = await keywordSearch(
       supabase,
-      userId,
+      organisationId,
       query,
       { limit: fetchLimit, topic, sourceType }
     );
@@ -126,17 +126,17 @@ export async function searchKnowledge(
 // =============================================================================
 
 async function semanticSearch(
-  supabase: ReturnType<typeof createServiceClient>,
-  userId: string,
+  supabase: ReturnType<typeof createServiceClientV2>,
+  organisationId: string,
   query: string,
   options: { limit: number; threshold: number; topic?: string; sourceType?: string }
 ): Promise<KnowledgeSearchResult[]> {
   // Generate query embedding
   const queryEmbedding = await generateEmbedding(query);
 
-  // Call the semantic search function
+  // Call the semantic search function - needs to be updated to use organisation_id
   const { data, error } = await supabase.rpc('search_knowledge_semantic', {
-    p_user_id: userId,
+    p_organisation_id: organisationId,
     p_query_embedding: queryEmbedding,
     p_match_threshold: options.threshold,
     p_match_count: options.limit,
@@ -170,15 +170,15 @@ async function semanticSearch(
 // =============================================================================
 
 async function keywordSearch(
-  supabase: ReturnType<typeof createServiceClient>,
-  userId: string,
+  supabase: ReturnType<typeof createServiceClientV2>,
+  organisationId: string,
   query: string,
   options: { limit: number; topic?: string; sourceType?: string }
 ): Promise<KnowledgeSearchResult[]> {
   let queryBuilder = supabase
     .from('kira_knowledge')
     .select('id, title, summary, key_points, url, source_type, relevance_note, created_by, created_at, topic')
-    .eq('user_id', userId)
+    .eq('organisation_id', organisationId)
     .or(`title.ilike.%${query}%,summary.ilike.%${query}%,relevance_note.ilike.%${query}%`)
     .order('created_at', { ascending: false })
     .limit(options.limit);
@@ -230,7 +230,7 @@ export async function embedKnowledgeEntry(
     return;
   }
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   // Combine content for embedding
   const textToEmbed = [
@@ -272,13 +272,27 @@ export async function backfillEmbeddings(
     throw new Error('Embeddings not configured');
   }
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
+
+  // INV-020: kira_knowledge is organisation-owned — resolve the org from the person and scope the
+  // backfill by organisation_id (the person id is provenance only).
+  const { data: membership } = await supabase
+    .from('organisation_memberships')
+    .select('organisation_id')
+    .eq('person_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const organisationId = membership?.organisation_id;
+  if (!organisationId) {
+    throw new Error('No organisation context for this user');
+  }
 
   // Get entries without embeddings
   const { data: entries, error } = await supabase
     .from('kira_knowledge')
     .select('id, title, summary, key_points')
-    .eq('user_id', userId)
+    .eq('organisation_id', organisationId)
     .is('embedding', null)
     .limit(batchSize);
 

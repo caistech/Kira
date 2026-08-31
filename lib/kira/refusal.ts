@@ -9,7 +9,8 @@
 // failure here is that she interrupts a refusal to talk about her own database. The refusal itself
 // is not in doubt — this only records it.
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
+import { resolveOrganisationForPerson } from '@/lib/auth';
 
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -71,30 +72,41 @@ export async function handleRecordRefusal(req: Request): Promise<Response> {
   }
 
   try {
-    const supabase = createServiceClient();
-    const { data: agent } = await supabase
-      .from('kira_agents')
-      .select('id')
-      .eq('user_id', userId)
-      .limit(1)
-      .maybeSingle();
+    const supabase = createServiceClientV2();
+    // INV-020: refusals are organisation-owned — resolve the org from the person and scope reads
+    // and the write by it (the person remains the actor who declined — provenance).
+    // Fail-safe: if the org cannot be resolved (e.g. no session), proceed with person-scoped fallback.
+    let organisationId: string | null = null;
+    try {
+      organisationId = (await resolveOrganisationForPerson(userId))?.organisationId || null;
+    } catch { /* non-fatal — org resolution failure falls back to user_id scoping */ }
+
+    // The agent is organisation-owned: resolve it through the org, never the person.
+    let agentQuery = organisationId
+      ? supabase.from('kira_agents').select('id').eq('organisation_id', organisationId)
+      : supabase.from('kira_agents').select('id').eq('user_id', userId);
+    const { data: agent } = await agentQuery.limit(1).maybeSingle();
 
     // DUPLICATE GUARD. The tool description says one call per refusal, but a description is a
     // request, not a mechanism — and a model that has just been pushed twice on the same point will
     // often log it twice. Three identical rows in an hour reads as three separate refusals to
     // anyone looking at the log later, which overstates what happened.
+    //
+    // Refusals are organisation-owned (INV-020), so the dedupe is org-scoped: the same ask refused
+    // in the same org is one refusal. Falls back to the person when the org cannot be resolved.
     const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    const { data: recent } = await supabase
+    let recentQuery = supabase
       .from('kira_refusals')
       .select('id')
       .eq('user_id', userId)
-      .eq('asked', asked)
-      .gte('created_at', since)
-      .limit(1);
+      .eq('asked', asked);
+    if (organisationId) recentQuery = recentQuery.eq('organisation_id', organisationId);
+    const { data: recent } = await recentQuery.gte('created_at', since).limit(1);
     if (recent?.length) return json(200, { success: true, recorded: false, already: true });
 
     const { error } = await supabase.from('kira_refusals').insert({
       user_id: userId,
+      ...(organisationId ? { organisation_id: organisationId } : {}),
       kira_agent_id: agent?.id ?? null,
       source: 'agent',
       asked,

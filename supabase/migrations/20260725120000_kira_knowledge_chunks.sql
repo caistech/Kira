@@ -61,8 +61,7 @@ create or replace function match_kira_knowledge_chunks(
   similarity   float,
   title        text,
   url          text,
-  source_type  text,
-  file_name    text
+  source_type  text
 ) language sql stable security definer set search_path = public as $$
   select
     c.id,
@@ -71,8 +70,7 @@ create or replace function match_kira_knowledge_chunks(
     1 - (c.embedding <=> p_query_embedding) as similarity,
     k.title,
     k.url,
-    k.source_type,
-    k.file_name
+    k.source_type
   from kira_knowledge_chunks c
   join kira_knowledge k on k.id = c.knowledge_id
   where c.user_id = p_user_id

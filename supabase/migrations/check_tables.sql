@@ -1,0 +1,1 @@
+SELECT table_name FROM information_schema.tables WHERE table_name LIKE '%knowledge%' OR table_name LIKE '%evidence%' OR table_name LIKE '%promotion%';

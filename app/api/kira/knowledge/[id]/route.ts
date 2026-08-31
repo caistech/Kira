@@ -4,7 +4,7 @@
 // kira_knowledge row, and — best-effort — the legacy ElevenLabs vendor copy. Backs the KB surface (#15).
 
 import { NextResponse } from 'next/server';
-import { getCurrentAppUser } from '@/lib/auth';
+import { getCurrentOrganisationContext } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -12,19 +12,22 @@ export const dynamic = 'force-dynamic';
 
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
-  const user = await getCurrentAppUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // P0.6: Resolve canonical organisation context from session, never from client input.
+  const organisationContext = await getCurrentOrganisationContext();
+  if (!organisationContext) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const userId = organisationContext.personId;
 
   const supabase = createServiceClient();
 
   // Ownership check + fetch the vendor id before we delete.
+  // Knowledge is organisation-scoped; ownership is verified via organisation membership, not user_id.
   const { data: doc } = await supabase
     .from('kira_knowledge')
-    .select('id, user_id, elevenlabs_document_id')
+    .select('id, organisation_id, elevenlabs_document_id')
     .eq('id', id)
     .maybeSingle();
 
-  if (!doc || doc.user_id !== user.id) {
+  if (!doc || doc.organisation_id !== organisationContext.organisationId) {
     // Don't leak existence — same response whether missing or not-owned.
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
@@ -44,7 +47,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
   }
 
   // Delete the parent row; kira_knowledge_chunks cascade (FK on delete cascade).
-  const { error } = await supabase.from('kira_knowledge').delete().eq('id', id).eq('user_id', user.id);
+  const { error } = await supabase.from('kira_knowledge').delete().eq('id', id);
   if (error) {
     console.error('[knowledge/delete] DB error:', error);
     return NextResponse.json({ error: 'Delete failed' }, { status: 500 });

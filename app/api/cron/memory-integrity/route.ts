@@ -1,29 +1,22 @@
 // app/api/cron/memory-integrity/route.ts
+// The memory-ownership watchdog.
 //
-// The continuous check for cross-account memory contamination.
+// P0.4 REBIND: the canonical tables are `kira_memory` and `kira_agents` (this cron previously read
+// the dead `convai_memory`/`convai_agents` tables).
 //
-// WHY. AI_INCIDENT_RESPONSE.md §7 lists "no automated cross-account leakage detector" as a gap: the
-// memory-loop probe asserts isolation in CI, against a preview, at merge time. It says nothing
-// about production an hour later. Cross-account leakage is the S1 incident in this product — one
-// owner's business being described to another — and the whole history of memory bugs here is
-// silent failure behind a success signal: a NOT NULL constraint swallowed behind a 200, a NULL
-// filter hiding every saved fact while has_history cheerfully reported true.
+// What it guards now — THE OWNERSHIP INVARIANT:
+//   - Every kira_memory row must have organisation_id NOT NULL. An org-less row is unowned memory.
+//   - The row's organisation_id must agree with its agent's organisation_id (memory → agent).
+//   - A memory row names its owner (kira_memory.organisation_id).
+//   - A memory written over an agent whose org differs is cross-org leakage of the same class the
+//     cron was built for — it alarms loudly, and deliberately carries ids only, never content.
 //
-// THE INVARIANT. A memory row names its owner (convai_memory.user_id) and, optionally, the agent it
-// was written through (agent_id, nullable by design). Where an agent IS named, that agent's owner
-// must be the same person. If convai_memory.user_id ever disagrees with convai_agents.user_id for
-// the referenced agent, a memory has been attributed across an account boundary — which is exactly
-// what one-agent-per-user exists to make impossible, and therefore exactly what is worth checking.
-//
-// DETECT AND ALARM — DELIBERATELY NOT AUTO-HALT. Wiring this to throw the kill switch was tempting
-// and is the wrong first move: an unproven detector that can take production down unattended on a
-// false positive is a bigger risk than the thing it watches. Revisit once it has a track record of
-// being right. The switch is one UPDATE away for a human who has read the alarm.
+// Compared in JS rather than SQL because there is no cross-table view and adding one for a
+// watchdog would put the check's own correctness behind a migration.
 
 import { NextRequest, NextResponse } from 'next/server';
-
-import { rejectUnauthorisedCron } from '@/lib/cron-auth';
 import { createServiceClient } from '@/lib/supabase/server';
+import { rejectUnauthorisedCron } from '@/lib/cron-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,54 +27,61 @@ export async function GET(request: NextRequest) {
   try {
     const svc = createServiceClient();
 
-    // Every memory that names an agent, with that agent's true owner alongside it. Compared in JS
-    // rather than SQL because this table has no cross-table view and adding one for a watchdog
-    // would put the check's own correctness behind a migration.
+    // Unowned rows: organisation_id NULL. Cannot leak to another org, but violates the P0.4
+    // ownership invariant — every memory belongs to an organisation.
+    const { data: unowned, error: unownedErr } = await svc
+      .from('kira_memory')
+      .select('id')
+      .is('organisation_id', null)
+      .limit(1000);
+    if (unownedErr) {
+      console.error('[memory-integrity] could not read kira_memory:', unownedErr.message);
+      return NextResponse.json({ ok: false, error: 'read failed' }, { status: 500 });
+    }
+
+    // Every memory that names an agent, with that agent's true owning org alongside it. Only rows
+    // with an agent (and an org, to make the cross-check honest).
     const { data: memories, error: memErr } = await svc
-      .from('convai_memory')
-      .select('id, user_id, agent_id')
+      .from('kira_memory')
+      .select('id, organisation_id, agent_id')
       .not('agent_id', 'is', null)
+      .not('organisation_id', 'is', null)
       .limit(5000);
-
     if (memErr) {
-      console.error('[memory-integrity] could not read convai_memory:', memErr.message);
+      console.error('[memory-integrity] could not read kira_memory (agent rows):', memErr.message);
       return NextResponse.json({ ok: false, error: 'read failed' }, { status: 500 });
     }
 
-    const rows = memories ?? [];
-    if (rows.length === 0) {
-      return NextResponse.json({ ok: true, checked: 0, mismatches: 0 });
+    const agentsNeeded = [...new Set((memories ?? []).map((r) => String(r.agent_id)))];
+    let ownerOfAgent = new Map<string, string>();
+    if (agentsNeeded.length > 0) {
+      const { data: agents, error: agentErr } = await svc
+        .from('kira_agents')
+        .select('id, organisation_id')
+        .in('id', agentsNeeded);
+      if (agentErr) {
+        console.error('[memory-integrity] could not read kira_agents:', agentErr.message);
+        return NextResponse.json({ ok: false, error: 'read failed' }, { status: 500 });
+      }
+      ownerOfAgent = new Map((agents ?? []).map((a) => [String(a.id), String(a.organisation_id)]));
     }
 
-    const agentIds = [...new Set(rows.map((r) => String(r.agent_id)))];
-    const { data: agents, error: agentErr } = await svc
-      .from('convai_agents')
-      .select('id, user_id')
-      .in('id', agentIds);
+    const mismatches: Array<{ memoryId: string; memoryOrg: string; agentOrg: string }> = [];
+    let orphanedAgents = 0;
 
-    if (agentErr) {
-      console.error('[memory-integrity] could not read convai_agents:', agentErr.message);
-      return NextResponse.json({ ok: false, error: 'read failed' }, { status: 500 });
-    }
-
-    const ownerOfAgent = new Map((agents ?? []).map((a) => [String(a.id), String(a.user_id)]));
-
-    const mismatches: Array<{ memoryId: string; memoryUser: string; agentOwner: string }> = [];
-    let orphaned = 0;
-
-    for (const row of rows) {
-      const agentOwner = ownerOfAgent.get(String(row.agent_id));
-      if (!agentOwner) {
+    for (const row of memories ?? []) {
+      const agentOrg = ownerOfAgent.get(String(row.agent_id));
+      if (!agentOrg) {
         // The agent row is gone but the memory survived. Not a leak — the FK cascades — but it
-        // means something deleted an agent in a way the cascade did not cover. Worth counting.
-        orphaned += 1;
+        // means something deleted an agent in a way the cascade did not cover. Count it.
+        orphanedAgents += 1;
         continue;
       }
-      if (agentOwner !== String(row.user_id)) {
+      if (agentOrg !== String(row.organisation_id)) {
         mismatches.push({
           memoryId: String(row.id),
-          memoryUser: String(row.user_id),
-          agentOwner,
+          memoryOrg: String(row.organisation_id),
+          agentOrg,
         });
       }
     }
@@ -90,21 +90,18 @@ export async function GET(request: NextRequest) {
       // Loud, and deliberately without memory CONTENT — an alarm about a confidentiality breach
       // must not itself copy the confidential material into a log aggregator.
       console.error(
-        `[memory-integrity] S1 CROSS-ACCOUNT LEAKAGE: ${mismatches.length} memory rows whose owner ` +
-          `differs from their agent's owner. Follow docs/AI_INCIDENT_RESPONSE.md. Ids: ` +
+        `[memory-integrity] CROSS-ORGANISATION LEAKAGE: ${mismatches.length} memory rows whose ` +
+          `owning org differs from their agent's org. Follow docs/AI_INCIDENT_RESPONSE.md. Ids: ` +
           mismatches.slice(0, 20).map((m) => m.memoryId).join(', '),
       );
     }
 
-    if (orphaned > 0) {
-      console.warn(`[memory-integrity] ${orphaned} memory rows reference a missing agent.`);
-    }
-
     return NextResponse.json({
       ok: mismatches.length === 0,
-      checked: rows.length,
+      checked: (memories ?? []).length,
+      unowned,
       mismatches: mismatches.length,
-      orphaned,
+      orphanedAgents,
       // Ids only, never content, so an operator can go straight to the rows.
       mismatchIds: mismatches.slice(0, 20).map((m) => m.memoryId),
     });

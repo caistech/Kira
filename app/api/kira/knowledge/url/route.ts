@@ -2,8 +2,9 @@
 // Add URL to ElevenLabs knowledge base
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { ingestKnowledgeDocument, supersedeOlderVersions } from '@/lib/kira/knowledge-ingest';
+import { getCurrentOrganisationContext } from '@/lib/auth';
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
 
@@ -16,11 +17,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // P0.6: Resolve canonical organisation context from session, never from client input.
+    const organisationContext = await getCurrentOrganisationContext();
+    if (!organisationContext) {
+      return NextResponse.json({ error: 'Not signed in or no organisation access' }, { status: 401 });
+    }
+    const userId = organisationContext.personId;
+
     const body = await req.json();
-    const { url, agentId, userId, name } = body as {
+    const { url, agentId, name } = body as {
       url: string;
       agentId?: string;
-      userId?: string;
       name?: string;
     };
 
@@ -73,12 +80,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Save to our database
-    const supabase = createServiceClient();
+    const supabase = createServiceClientV2();
 
     const { data: knowledgeRecord, error: dbError } = await supabase
       .from('kira_knowledge')
       .insert({
         user_id: userId,
+        organisation_id: organisationContext.organisationId,
         created_by: userId,
         elevenlabs_document_id: documentId,
         source_type: 'user_url',
@@ -99,8 +107,8 @@ export async function POST(req: NextRequest) {
       try {
         const result = await ingestKnowledgeDocument(knowledgeRecord.id);
         console.log(`[knowledge/url] ingested ${result.chunks} chunk(s) from ${result.chars} chars${result.skipped ? ` (skipped: ${result.skipped})` : ''}`);
-        if (userId) {
-          const superseded = await supersedeOlderVersions(knowledgeRecord.id, userId, { url });
+        if (organisationContext.organisationId) {
+          const superseded = await supersedeOlderVersions(knowledgeRecord.id, organisationContext.organisationId, { url });
           if (superseded) console.log(`[knowledge/url] superseded ${superseded} older version(s) of ${url}`);
         }
       } catch (e) {

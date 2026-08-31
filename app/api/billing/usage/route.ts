@@ -17,20 +17,29 @@ import {
   VOICE_ACTION,
   VOICE_COST_CAP_USD,
 } from '@/lib/billing';
-import { getCurrentAppUser } from '@/lib/auth';
+import { getCurrentOrganisationContext } from '@/lib/auth';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const user = await getCurrentAppUser();
-  if (!user) {
+  const ctx = await getCurrentOrganisationContext();
+  if (!ctx) {
     return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   }
 
   try {
     // check(), not gate(): reading the meter must never record a use.
-    const usage = await getBetaGate().check(user.id, VOICE_ACTION);
+    const usage = await getBetaGate().check(ctx.personId, VOICE_ACTION);
+
+    // P2.2: Resolve subscription status via person identity (legacy users table — P2.4 will migrate).
+    const supabase = createServiceClientV2();
+    const { data: user } = await supabase
+      .from('users')
+      .select('subscription_status')
+      .eq('id', ctx.personId)
+      .single();
 
     return NextResponse.json({
       // The fair-use window (not a billing trial — Kira bills in arrears; see lib/billing/arrears.ts)
@@ -46,7 +55,7 @@ export async function GET() {
       // `trial_expired` means the month is over and billing has taken over.
       allowed: usage.allowed,
       reason: usage.reason ?? null,
-      subscriptionStatus: user.subscription_status ?? null,
+      subscriptionStatus: user?.subscription_status ?? null,
     });
   } catch (error) {
     // Degrade, don't fake: a meter that can't be read says so rather than reporting a cheerful 0%.

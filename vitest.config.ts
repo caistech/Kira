@@ -13,10 +13,11 @@ export default defineConfig({
     // vitest and the export came back undefined. Typechecking passes either way, because tsc uses
     // Next's order, which is what makes this the kind of divergence you only meet at runtime.
     extensions: ['.ts', '.tsx', '.mts', '.mjs', '.js', '.jsx', '.json'],
-    alias: {
-      // Match the tsconfig `@/*` path alias so tests can import app modules the same way the app does.
-      '@': path.resolve(__dirname, '.'),
-      // `server-only` is a Next build-time guard with no runtime module behind it: importing a file
+      alias: {
+        // Match the tsconfig `@/*` path alias so tests can import app modules the same way the app does.
+        '@': path.resolve(__dirname, './'),
+        // `server-only` is a Next build-time guard with no runtime module behind it: importing a file
+
       // that declares it fails to resolve under vitest, and it fails for the whole IMPORT CHAIN, so
       // one new import can take out a test file that never touched server code. Stubbed rather than
       // removed from the modules that declare it — the guard is doing its job in the app, and

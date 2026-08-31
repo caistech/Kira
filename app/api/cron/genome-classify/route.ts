@@ -34,11 +34,11 @@ export async function GET(request: NextRequest) {
 
   const supabase = createServiceClient();
 
-  // Only owners who actually have something waiting — asking every user every hour would spend the
-  // whole budget on people with nothing to file.
+  // Only organisations who actually have something waiting — organisation_id is the canonical
+  // ownership boundary. classifyPendingMemories now takes organisationId directly.
   const { data: waiting, error } = await supabase
     .from('kira_memory')
-    .select('user_id')
+    .select('organisation_id')
     .is('genome_section', null)
     .neq('active', false)
     .limit(2000);
@@ -48,18 +48,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Database error' }, { status: 500 });
   }
 
-  const owners = [...new Set((waiting ?? []).map((r) => r.user_id as string))].slice(0, OWNER_BATCH);
-  const result = { owners: owners.length, classified: 0, deferred: 0, failed: 0 };
+  const organisations = [...new Set((waiting ?? []).map((r) => r.organisation_id as string))].slice(0, OWNER_BATCH);
+  const result = { organisations: organisations.length, classified: 0, deferred: 0, failed: 0 };
 
-  for (const userId of owners) {
+  for (const organisationId of organisations) {
     try {
-      const filed = await classifyPendingMemories(userId, PER_OWNER);
+      const filed = await classifyPendingMemories(organisationId, PER_OWNER);
       result.classified += filed.classified;
       result.deferred += filed.deferred;
     } catch (sweepError) {
-      // One owner's failure must not end the sweep for everyone else.
+      // One organisation's failure must not end the sweep for everyone else.
       result.failed += 1;
-      console.error(`[cron/genome-classify] ${userId} failed (others continue):`, sweepError);
+      console.error(`[cron/genome-classify] ${organisationId} failed (others continue):`, sweepError);
     }
   }
 

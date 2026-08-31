@@ -16,6 +16,7 @@
 
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { resolveOrganisationForPerson } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -54,15 +55,20 @@ export async function POST(request: Request) {
 
   const supabase = createServiceClient();
 
-  // Mirror the orchestrator's state into kira_tasks so the owner's own surfaces can read ONE table
-  // regardless of which brain did the work. Upsert on (user_id, intent_id): a completion may arrive
-  // for a task Kira dispatched, or for one the orchestrator raised on its own (a sweep at 4am the
-  // owner never asked for) — both belong in his history.
+  // Upsert on (organisation_id, intent_id): a completion may arrive for a task Kira dispatched, or
+  // for one the orchestrator raised on its own (a sweep at 4am the owner never asked for) — both
+  // belong in his history. The idempotency key is org-scoped per the canonical model; a mirror that
+  // cannot resolve an owning org has no row to land in and is refused rather than stored tenantless.
+  const orgContext = await resolveOrganisationForPerson(body.tenantId);
+  if (!orgContext) {
+    return NextResponse.json({ error: 'No owning organisation could be resolved for this task' }, { status: 422 });
+  }
   const { error } = await supabase
     .from('kira_tasks')
     .upsert(
       {
         user_id: body.tenantId,
+        organisation_id: orgContext.organisationId,
         intent_id: `orch:${body.taskGroupId}`,
         kind: 'email',
         status: mapStatus(body.status),
@@ -71,7 +77,7 @@ export async function POST(request: Request) {
         handled_by: 'orchestrator',
         result: { event: body.event, detail: body.detail ?? {}, at: body.at ?? new Date().toISOString() },
       },
-      { onConflict: 'user_id,intent_id' },
+      { onConflict: 'organisation_id,intent_id' },
     );
 
   if (error) {

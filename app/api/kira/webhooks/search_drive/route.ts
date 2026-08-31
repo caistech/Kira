@@ -9,6 +9,7 @@
 import { toolSecretOk } from '@/lib/kira/convai';
 import { refuseThirdPartyDisclosure } from '@/lib/kira/speaking-to';
 import { searchDrive } from '@/lib/kira/lookup';
+import { resolveOrganisationForPerson } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,6 +22,13 @@ export async function POST(req: Request) {
     return Response.json({ ok: false, message: 'No user identity on this request' }, { status: 200 });
   }
 
+  // Resolve organisation from person at the auth boundary
+  const orgContext = await resolveOrganisationForPerson(userId);
+  if (!orgContext?.organisationId) {
+    return Response.json({ ok: false, message: 'No organisation context for this user' }, { status: 200 });
+  }
+  const organisationId = orgContext.organisationId;
+
   let query = '';
   try {
     const body = await req.json();
@@ -32,5 +40,5 @@ export async function POST(req: Request) {
     return Response.json({ ok: false, message: 'Invalid request' }, { status: 400 });
   }
 
-  return Response.json(await searchDrive(userId, query));
+  return Response.json(await searchDrive(organisationId, query));
 }

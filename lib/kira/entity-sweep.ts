@@ -38,16 +38,17 @@ const RECENT_MS = 10 * 60 * 1000;
  * @returns how many semantic copies were actually removed
  */
 export async function forgetParkedEntityLeaks(
-  userId: string | undefined,
+  organisationId: string | undefined,
   memoryTable: string,
+  userId?: string,
 ): Promise<number> {
-  if (!userId) return 0;
+  if (!organisationId) return 0;
   try {
     const supabase = createServiceClient();
     const { data } = await supabase
       .from(memoryTable)
       .select('content')
-      .eq('user_id', userId)
+      .eq('organisation_id', organisationId)
       .eq('parked_reason', 'entity:other')
       .gte('created_at', new Date(Date.now() - RECENT_MS).toISOString())
       .limit(50);
@@ -56,8 +57,11 @@ export async function forgetParkedEntityLeaks(
     for (const row of data ?? []) {
       const content = String((row as { content: unknown }).content ?? '');
       if (!content) continue;
-      const result = await mnemoForget(userId, content);
-      forgotten += result.forgotten;
+      // Mnemo is person-scoped; if userId provided, forget from their semantic lane
+      if (userId) {
+        const result = await mnemoForget(userId, content);
+        forgotten += result.forgotten;
+      }
     }
     if (forgotten) console.warn(`[entity-sweep] removed ${forgotten} other-business fact(s) from the semantic lane`);
     return forgotten;

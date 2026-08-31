@@ -131,11 +131,22 @@ export function getSubscriptionAdapter(): SubscriptionAdapter {
     // Cancelling the subscription must actually take the product away, or a cancelled owner keeps
     // a working voice agent (and keeps costing us ElevenLabs minutes).
     onCancelled: async ({ id }) => {
-      const { error } = await supabase
-        .from('kira_agents')
-        .update({ status: 'inactive' })
-        .eq('user_id', id);
-      if (error) throw new Error(`deactivate agents: ${error.message}`);
+      // Deactivate all agents owned by the organisation that this subscriber belongs to.
+      // id is the user_id of the subscriber.
+      const { data: membership } = await supabase
+        .from('organisation_memberships')
+        .select('organisation_id')
+        .eq('person_id', id)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (membership?.organisation_id) {
+        const { error } = await supabase
+          .from('kira_agents')
+          .update({ status: 'inactive' })
+          .eq('organisation_id', membership.organisation_id);
+        if (error) throw new Error(`deactivate agents: ${error.message}`);
+      }
     },
 
     // EXPECTED, not an error: Stripe frequently delivers checkout.session.completed before the

@@ -60,14 +60,14 @@ describe('the transcript is read back', () => {
   it('history resolves identity from the session, never the query string', () => {
     // This returns a man's own words about selling his business. A ?userId= here hands them to
     // anyone who guesses a uuid.
-    expect(history).toMatch(/getCurrentAppUser\(\)/);
+    expect(history).toMatch(/getCurrentOrganisationContext\(\)/);
     expect(history).not.toMatch(/searchParams\.get\('userId'\)/);
   });
 
   it('history scopes the agent to the signed-in owner as a FILTER', () => {
     // Scoped rather than checked afterwards, so there is no path where another owner's row is
     // even fetched.
-    expect(history).toMatch(/\.eq\('user_id', user\.id\)/);
+    expect(history).toMatch(/\.eq\('organisation_id', organisationId\)/);
   });
 
   it('history degrades to an empty transcript rather than an error page', () => {

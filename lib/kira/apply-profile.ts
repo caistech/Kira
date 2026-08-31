@@ -13,6 +13,8 @@ import {
   buildProfileBriefing,
   DISCOVERY_COMPLETE_THRESHOLD,
 } from './discovery-schema';
+import { resolveOrganisationForPerson } from '@/lib/auth';
+import { saveMemory } from './memory-contract';
 
 export async function applyProfileExtraction(
   supabase: SupabaseClient,
@@ -20,10 +22,19 @@ export async function applyProfileExtraction(
   extracted: ClientProfile,
   opts: { source: string; bumpSession: boolean },
 ): Promise<{ completeness: number; discovery_complete: boolean }> {
+  // INV-020: the Client Profile is organisation-owned. Resolve the org FIRST — it is required —
+  // and read/upsert by organisation_id; the person id is retained as provenance only.
+  const orgContext = await resolveOrganisationForPerson(userId);
+  if (!orgContext) {
+    console.error('[apply-profile] No organisational context for user:', userId);
+    return { completeness: 0, discovery_complete: false };
+  }
+  const organisationId = orgContext.organisationId;
+
   const { data: existing } = await supabase
     .from('client_profiles')
     .select('profile, sessions_count')
-    .eq('user_id', userId)
+    .eq('organisation_id', organisationId)
     .maybeSingle();
 
   const merged = mergeProfile((existing?.profile as Partial<ClientProfile>) ?? {}, extracted);
@@ -35,6 +46,7 @@ export async function applyProfileExtraction(
 
   const row: Record<string, unknown> = {
     user_id: userId,
+    organisation_id: organisationId,
     profile: merged,
     completeness,
     discovery_complete,
@@ -43,24 +55,31 @@ export async function applyProfileExtraction(
   };
   if (opts.bumpSession) row.last_discovery_at = new Date().toISOString();
 
-  await supabase.from('client_profiles').upsert(row, { onConflict: 'user_id' });
+  // INV-020: the Client Profile is organisation-owned, so it is read AND written by
+  // organisation_id. The transition migration added organisation_id (NOT NULL) but defined no
+  // unique constraint on it, so a plain upsert-with-conflict-target would reference an index that
+  // does not exist — a read-then-update-or-insert keyed by organisation_id is the same semantics
+  // without depending on one.
+  if (existing) {
+    await supabase.from('client_profiles').update(row).eq('organisation_id', organisationId);
+  } else {
+    await supabase.from('client_profiles').insert(row);
+  }
 
-  // Brief any active operational agents so their recall surfaces the deepened profile.
   const { data: agents } = await supabase
     .from('kira_agents')
     .select('id')
-    .eq('user_id', userId)
+    .eq('organisation_id', orgContext.organisationId)
     .eq('status', 'active');
   if (agents && agents.length > 0) {
     const briefing = buildProfileBriefing(merged);
     for (const a of agents) {
-      await supabase.from('kira_memory').insert({
-        user_id: userId,
-        kira_agent_id: a.id,
-        memory_type: 'context',
+      await saveMemory(orgContext, {
+        agentId: a.id,
+        memoryType: 'context',
         content: briefing,
         importance: 9,
-        tags: ['client_profile', opts.source],
+        assistantStateFields: { tags: ['client_profile', opts.source] },
       });
     }
   }

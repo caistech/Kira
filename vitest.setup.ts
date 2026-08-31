@@ -1,7 +1,6 @@
 // vitest.setup.ts
-// Load .env.local for tests that talk to real services. Tests that need credentials check for them
-// explicitly and skip when absent — nothing here fails a run on a machine without a .env.local.
-
+// Load .env.local for tests that talk to real services.
 import { config } from 'dotenv';
+import path from 'node:path';
 
-config({ path: '.env.local', quiet: true });
+config({ path: path.resolve(__dirname, '.env.local'), quiet: false });

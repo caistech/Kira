@@ -16,7 +16,7 @@
 //
 // Talking to her IS the product. She belongs on the page, not behind a link to one.
 
-import { getCurrentAppUser } from '@/lib/auth';
+import { getCurrentAppUser, getCurrentOrganisationContext } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { KiraShape } from '@/components/KiraShape';
 import type { VoiceSurface } from '@/lib/voice/connect-telemetry';
@@ -33,14 +33,19 @@ export async function KiraShapeSection({
    */
   firstMessage?: string;
 }) {
+  // INV-020: agents and conversations are organisation-owned — resolve the org first and scope the
+  // lookups by organisation_id. getCurrentAppUser is retained only for the person's first name
+  // (provenance/actor); ownership never comes from the legacy user row.
+  const organisationContext = await getCurrentOrganisationContext();
+  if (!organisationContext) return null;
+
   const user = await getCurrentAppUser();
-  if (!user?.id) return null;
 
   const svc = createServiceClient();
   const { data: agents } = await svc
     .from('kira_agents')
     .select('id, elevenlabs_agent_id, journey_type, status')
-    .eq('user_id', user.id)
+    .eq('organisation_id', organisationContext.organisationId)
     .neq('status', 'deleted');
 
   const businessAgent =
@@ -55,7 +60,7 @@ export async function KiraShapeSection({
     const { count } = await svc
       .from('conversations')
       .select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id)
+      .eq('organisation_id', organisationContext.organisationId)
       .eq('kira_agent_id', businessAgent.id);
     hasHistory = (count ?? 0) > 0;
   }
@@ -65,7 +70,7 @@ export async function KiraShapeSection({
       agentId={agentId}
       surface={surface}
       firstMessage={firstMessage}
-      firstName={(user as { first_name?: string }).first_name}
+      firstName={(user as { first_name?: string } | null)?.first_name}
       // ⚠️ ONLY WHEN THERE IS SOMETHING TO PICK UP. "Kira remembers where you left off" told to a man
       // with no history is the cheapest possible way to lose him: the claim is checkable, he checks
       // it, and it is false on the first screen he ever sees.

@@ -23,6 +23,7 @@
 // interview, which is the one thing the product cannot become.
 
 import { createServiceClient } from '@/lib/supabase/server';
+import { resolveOrganisationForPerson } from '@/lib/auth';
 
 import { GENOME_AREAS, type AreaKey } from '@/lib/genome/areas';
 import { itemsForArea, type ChecklistItem } from '@/lib/genome/checklist';
@@ -114,10 +115,19 @@ export async function handleAreaAgenda(req: Request): Promise<Response> {
   const items = itemsForArea(area);
 
   const supabase = createServiceClient();
+  // INV-020: genome item status is organisation-owned — resolve the org from the person and scope
+  // the read by it (a person's seat can change; the assessment belongs to the organisation).
+  const orgContext = await resolveOrganisationForPerson(uid);
+  if (!orgContext) {
+    return json(200, {
+      ok: false,
+      reason: 'I could not identify which account this belongs to just now.',
+    });
+  }
   const { data, error } = await supabase
     .from('genome_item_status')
     .select('item_key, status, why')
-    .eq('user_id', uid)
+    .eq('organisation_id', orgContext.organisationId)
     .eq('area', area);
 
   if (error) {

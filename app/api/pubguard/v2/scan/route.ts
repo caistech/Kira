@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       url,
       includeSocialSignals = true,
       userType,
-      userId,
+      organisationId,
       sessionId,
       agentId,
       conversationId,
@@ -376,7 +376,7 @@ export async function POST(request: NextRequest) {
       const saved = await saveScanToSupabase(
         report,
         duration,
-        userId || undefined,
+        organisationId || undefined,
         sessionId || undefined,
         (userType as 'writer' | 'developer' | 'user' | 'analyst') || 'user',
         agentId || undefined,

@@ -11,7 +11,7 @@
 
 import { createSubscriptionCheckoutSession } from '@caistech/subscription-billing';
 import { TERMS_VERSION } from '@/lib/terms';
-import { getCurrentAppUser } from '@/lib/auth';
+import { getCurrentOrganisationContext } from '@/lib/auth';
 import { formatPrice, taxSuffix } from '@/lib/valuation/currency';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     //
     // A signed-in buyer has an account already; the only thing checkout has to do for him is take
     // the subscription and put him back where he was.
-    const signedInUser = await getCurrentAppUser();
+    const signedInCtx = await getCurrentOrganisationContext().catch(() => null);
 
     // Recompute the gap here - the price must not be forgeable by the client.
     const result = computeValuation(inputs);
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
       // it Stripe creates the subscription with no payment method and the first charge fails when
       // the period closes, after a month of use.
       cardAtSignup: true,
-      successUrl: signedInUser?.id
+      successUrl: signedInCtx?.personId
         ? `${base}/dashboard?welcome=1`
         : `${base}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${base}/plan`,

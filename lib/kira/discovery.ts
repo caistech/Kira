@@ -47,10 +47,23 @@ export function getDiscovery(): Discovery<ClientProfile> {
       },
       // PUSH what we already know so the coach doesn't re-ask across sessions.
       primeContext: async (subjectId) => {
+        // INV-020: the Client Profile is organisation-owned — resolve the org from the person and
+        // read by organisation_id (the person id is provenance only).
+        const { data: membership } = await supabase
+          .from('organisation_memberships')
+          .select('organisation_id')
+          .eq('person_id', subjectId)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const organisationId = membership?.organisation_id;
+        if (!organisationId) return '';
+
         const { data } = await supabase
           .from('client_profiles')
           .select('profile, sessions_count')
-          .eq('user_id', subjectId)
+          .eq('organisation_id', organisationId)
           .maybeSingle();
         if (!data || !data.sessions_count) return '';
         return (

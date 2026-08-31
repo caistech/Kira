@@ -48,6 +48,7 @@ import {
   kiraSearchDriveToolDef,
 } from './lookup-tools-def.mjs';
 import { lookUpContact, searchDrive } from './lookup';
+import { resolveOrganisationForPerson } from '@/lib/auth';
 import { kiraRecordRefusalToolDef } from './refusal-tool-def.mjs';
 import { handleRecordRefusal } from './refusal';
 import { kiraConfirmFactToolDef, kiraFactsToConfirmToolDef } from './confirm-tool-def.mjs';
@@ -256,9 +257,10 @@ export function claimsWorkState(reply: string): boolean {
   });
 }
 
-/** A Request shaped exactly like the one ElevenLabs' webhook would produce, minus the network. */
-function asToolRequest(name: string, ownerId: string, args: Record<string, unknown>): Request {
-  return new Request(`https://kira.internal/api/kira/webhooks/${name}?uid=${encodeURIComponent(ownerId)}`, {
+/** A Request shaped exactly like the one ElevenLabs' webhook would produce, minus the network.
+ * Uses personId as the uid for webhook handlers that resolve organisation at their boundary. */
+function asToolRequest(name: string, personId: string, args: Record<string, unknown>): Request {
+  return new Request(`https://kira.internal/api/kira/webhooks/${name}?uid=${encodeURIComponent(personId)}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(args),
@@ -266,11 +268,16 @@ function asToolRequest(name: string, ownerId: string, args: Record<string, unkno
 }
 
 /**
- * Run one tool call for this owner and return what the model should see.
+ * Run one tool call for this organisation and return what the model should see.
  *
- * IDENTITY IS NOT NEGOTIABLE. `ownerId` comes from the authenticated session's agent row in the
- * route — never from the model's arguments. Any `user_id`/`uid` the model puts in `args` rides
- * along in the body and is ignored by every handler, which is the property `redteam.test.ts` pins.
+ * IDENTITY IS NOT NEGOTIABLE. `organisationId` comes from the authenticated session's agent row
+ * in the route — never from the model's arguments. Any `user_id`/`uid` the model puts in `args`
+ * rides along in the body and is ignored by every handler, which is the property
+ * `redteam.test.ts` pins.
+ *
+ * `personId` is optional, required only for webhook-based tools (dispatch_task, approve_task, etc.)
+ * that still use the ?uid=personId pattern. For direct library calls (search_drive, lookup_contact),
+ * only organisationId is used.
  *
  * Never throws. A tool that explodes must come back as a readable failure the model can speak,
  * because the alternative is a 502 in the middle of a sentence — and per the ok:false contract, a
@@ -279,49 +286,67 @@ function asToolRequest(name: string, ownerId: string, args: Record<string, unkno
 export async function runTextTool(
   name: string,
   args: Record<string, unknown>,
-  ownerId: string,
+  organisationId: string,
+  personId?: string,
 ): Promise<unknown> {
+  // personId is required for webhook-based tools that still use ?uid=personId
+  const resolvedPersonId = personId;
+
   try {
     switch (name) {
       case 'dispatch_task':
-        return await (await handleDispatchTask(asToolRequest(name, ownerId, args))).json();
+        if (!resolvedPersonId) throw new Error('personId required for dispatch_task');
+        return await (await handleDispatchTask(asToolRequest(name, resolvedPersonId, args))).json();
       case 'approve_task':
-        return await (await handleApproveTask(asToolRequest(name, ownerId, args))).json();
+        if (!resolvedPersonId) throw new Error('personId required for approve_task');
+        return await (await handleApproveTask(asToolRequest(name, resolvedPersonId, args))).json();
       case 'check_tasks':
-        return await (await handleCheckTasks(asToolRequest(name, ownerId, args))).json();
+        if (!resolvedPersonId) throw new Error('personId required for check_tasks');
+        return await (await handleCheckTasks(asToolRequest(name, resolvedPersonId, args))).json();
       case 'record_refusal':
-        return await (await handleRecordRefusal(asToolRequest(name, ownerId, args))).json();
+        if (!resolvedPersonId) throw new Error('personId required for record_refusal');
+        return await (await handleRecordRefusal(asToolRequest(name, resolvedPersonId, args))).json();
       case 'facts_to_confirm':
-        return await (await handleFactsToConfirm(asToolRequest(name, ownerId, args))).json();
+        if (!resolvedPersonId) throw new Error('personId required for facts_to_confirm');
+        return await (await handleFactsToConfirm(asToolRequest(name, resolvedPersonId, args))).json();
       // The agenda has to reach the typed transport too. He is as likely to work through a Genome
       // area at a keyboard as on a call, and a tool the voice fleet holds that typing cannot use is
       // one product with two answers — which is exactly what the guard above exists to stop.
       case 'area_agenda':
-        return await (await handleAreaAgenda(asToolRequest(name, ownerId, args))).json();
+        if (!resolvedPersonId) throw new Error('personId required for area_agenda');
+        return await (await handleAreaAgenda(asToolRequest(name, resolvedPersonId, args))).json();
       case 'confirm_fact':
-        return await (await handleConfirmFact(asToolRequest(name, ownerId, args))).json();
+        if (!resolvedPersonId) throw new Error('personId required for confirm_fact');
+        return await (await handleConfirmFact(asToolRequest(name, resolvedPersonId, args))).json();
       case 'search_knowledge':
-        return await (await handleSearchKnowledge(asToolRequest(name, ownerId, args))).json();
+        if (!resolvedPersonId) throw new Error('personId required for search_knowledge');
+        return await (await handleSearchKnowledge(asToolRequest(name, resolvedPersonId, args))).json();
       // Both take the owner from `?uid` exactly as the voice path does. save_memory is the same
       // handler that now refuses to store a fact it already holds, so a typed save cannot become a
       // second route into the duplicate-facts problem.
       case 'recall_memory':
-        return await (await handleKiraRecall(asToolRequest(name, ownerId, args))).json();
+        if (!resolvedPersonId) throw new Error('personId required for recall_memory');
+        return await (await handleKiraRecall(asToolRequest(name, resolvedPersonId, args))).json();
       case 'save_memory':
-        return await (await handleKiraSaveMemory(asToolRequest(name, ownerId, args))).json();
+        if (!resolvedPersonId) throw new Error('personId required for save_memory');
+        return await (await handleKiraSaveMemory(asToolRequest(name, resolvedPersonId, args))).json();
 
       // These libs already return the ok/message contract the descriptions promise, so they are
       // called directly rather than through a route that would only re-wrap them.
       case 'search_drive':
-        return await searchDrive(ownerId, String(args.query ?? ''));
+        return await searchDrive(organisationId, String(args.query ?? ''));
       case 'lookup_contact':
-        return await lookUpContact(ownerId, String(args.name ?? ''));
+        return await lookUpContact(organisationId, String(args.name ?? ''));
       case 'read_document':
-        return await readDocument(ownerId, String(args.file_id ?? ''));
-      case 'keep_document':
-        return await keepDocument(ownerId, String(args.file_id ?? ''));
+        if (!resolvedPersonId) throw new Error('personId required for read_document');
+        return await readDocument(resolvedPersonId, String(args.file_id ?? ''));
+      case 'keep_document': {
+        // Knowledge is organisation-scoped; use the organisationId directly
+        return await keepDocument(organisationId, String(args.file_id ?? ''));
+      }
       case 'look_up_financials':
-        return await lookUpFinancials(ownerId, String(args.resource ?? ''));
+        if (!resolvedPersonId) throw new Error('personId required for look_up_financials');
+        return await lookUpFinancials(resolvedPersonId, String(args.resource ?? ''));
 
       // Called directly, like the lookup family above: researchOrganisation already returns the
       // status/failures contract its description promises, so a route would only re-wrap it.

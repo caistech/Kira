@@ -44,7 +44,7 @@ describe('the failure/empty distinction', () => {
     const spoken = "your Google account is connected but Drive access wasn't granted — reconnect it in Settings and tick Drive";
     stubFetch({ ok: false, reason: spoken, results: [] });
 
-    const answer = await searchDrive('tenant-1', 'Lot 91');
+    const answer = await searchDrive('org-1', 'Lot 91');
 
     expect(answer.ok).toBe(false);
     // Verbatim. Rewording it is how "you didn't grant Drive access" becomes "I found nothing".
@@ -54,7 +54,7 @@ describe('the failure/empty distinction', () => {
   it('never reports a failed lookup as an empty result', async () => {
     stubFetch({ ok: false, reason: 'no Google account is connected', results: [] });
 
-    const answer = await lookUpContact('tenant-1', 'Roger');
+    const answer = await lookUpContact('org-1', 'Roger');
 
     expect(answer.ok).toBe(false);
     // The specific defect: a caller reading `count === 0` as "searched, nothing there".
@@ -66,7 +66,7 @@ describe('the failure/empty distinction', () => {
   it('gives a genuine empty result its own honest sentence', async () => {
     stubFetch({ ok: true, results: [] });
 
-    const answer = await lookUpContact('tenant-1', 'Roger');
+    const answer = await lookUpContact('org-1', 'Roger');
 
     expect(answer.ok).toBe(true);
     expect(answer.count).toBe(0);
@@ -78,7 +78,7 @@ describe('the failure/empty distinction', () => {
     delete process.env.ORCHESTRATOR_URL;
     const calls = stubFetch({ ok: true, results: [] });
 
-    const answer = await lookUpContact('tenant-1', 'Roger');
+    const answer = await lookUpContact('org-1', 'Roger');
 
     expect(answer.ok).toBe(false);
     expect(answer.reason).toBe('not_configured');
@@ -90,7 +90,7 @@ describe('the failure/empty distinction', () => {
   it('reports an upstream HTTP failure as a failure', async () => {
     stubFetch({}, { ok: false, status: 500 });
 
-    const answer = await searchDrive('tenant-1', 'Lot 91');
+    const answer = await searchDrive('org-1', 'Lot 91');
 
     expect(answer.ok).toBe(false);
     expect(answer.reason).toBe('upstream_error');
@@ -100,7 +100,7 @@ describe('the failure/empty distinction', () => {
   it('reports a thrown fetch as a failure rather than nothing found', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('socket hang up'); }));
 
-    const answer = await searchDrive('tenant-1', 'Lot 91');
+    const answer = await searchDrive('org-1', 'Lot 91');
 
     expect(answer.ok).toBe(false);
     expect(answer.reason).toBe('upstream_error');
@@ -109,16 +109,16 @@ describe('the failure/empty distinction', () => {
 });
 
 describe('the request it actually sends', () => {
-  it('addresses the owner\'s own tenant, authenticated, with the kind and query', async () => {
+  it('addresses the organisation\'s tenant, authenticated, with the kind and query', async () => {
     const calls = stubFetch({ ok: true, results: [{ name: 'Lot 91 plans.pdf', link: null, modifiedAt: null }] });
 
-    const answer = await searchDrive('tenant-abc', 'Lot 91');
+    const answer = await searchDrive('org-abc', 'Lot 91');
 
     expect(answer.ok).toBe(true);
     expect(answer.count).toBe(1);
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe(
-      'https://orchestrator.test/api/v1/tenants/tenant-abc/lookup?kind=drive&q=Lot%2091',
+      'https://orchestrator.test/api/v1/tenants/org-abc/lookup?kind=drive&q=Lot%2091',
     );
     // Without this header the orchestrator 401s and every lookup becomes "couldn't look".
     expect(calls[0].headers['x-orchestrator-secret']).toBe('test-secret');
@@ -126,14 +126,14 @@ describe('the request it actually sends', () => {
 
   it('sends kind=contacts for a contact lookup', async () => {
     const calls = stubFetch({ ok: true, results: [] });
-    await lookUpContact('tenant-abc', 'Roger');
+    await lookUpContact('org-abc', 'Roger');
     expect(calls[0].url).toContain('kind=contacts');
   });
 
   it('does not call out for an empty search term', async () => {
     const calls = stubFetch({ ok: true, results: [] });
 
-    const answer = await searchDrive('tenant-abc', '   ');
+    const answer = await searchDrive('org-abc', '   ');
 
     expect(answer.ok).toBe(false);
     expect(answer.reason).toBe('no_query');

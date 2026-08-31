@@ -126,7 +126,7 @@ export function OnboardingGate({
         </div>
 
         <h2 className="mt-2 font-display text-2xl font-bold text-stone-900 sm:text-3xl">
-          {firstName && step === 'baseline' ? `${firstName} — ${copy.title.toLowerCase()}` : copy.title}
+          {firstName && step === 'baseline' ? `${firstName} - ${copy.title.toLowerCase()}` : copy.title}
         </h2>
 
         <p className="mt-3 max-w-prose text-base leading-relaxed text-stone-700">{copy.body}</p>

@@ -283,26 +283,26 @@ function driveUrlFor(fileId: string, link?: string | null): string {
   return link || `https://drive.google.com/file/d/${fileId}`;
 }
 
-export async function keepDocument(userId: string, fileId: string): Promise<KeepAnswer> {
-  const { createServiceClient } = await import('@/lib/supabase/server');
+export async function keepDocument(organisationId: string, fileId: string): Promise<KeepAnswer> {
+  const { createServiceClientV2 } = await import('@/lib/supabase/server');
   const { ingestKnowledgeDocument, indexKnowledgeText, supersedeOlderVersions } = await import(
     '@/lib/kira/knowledge-ingest'
   );
 
-  const fetched = await fetchDriveFile(userId, fileId);
+  const fetched = await fetchDriveFile(organisationId, fileId);
   if ('failure' in fetched) return fetched.failure;
   const body = fetched.file;
 
   const name = body.name ?? 'that file';
   const url = driveUrlFor(fileId.trim(), body.link);
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   // Already kept? Say so rather than making a second copy — retrieval that returns the same document
   // twice reads as two sources agreeing with each other.
-  const { data: existing } = await supabase
+    const { data: existing } = await supabase
     .from('kira_knowledge')
     .select('id, status')
-    .eq('user_id', userId)
+    .eq('organisation_id', organisationId)
     .eq('url', url)
     .maybeSingle();
   if (existing?.id) {
@@ -316,8 +316,8 @@ export async function keepDocument(userId: string, fileId: string): Promise<Keep
       const { data: row, error } = await supabase
         .from('kira_knowledge')
         .insert({
-          user_id: userId,
-          created_by: userId,
+          organisation_id: organisationId,
+          created_by: 'kira',
           source_type: 'google_drive',
           title: name,
           file_name: name,
@@ -331,7 +331,7 @@ export async function keepDocument(userId: string, fileId: string): Promise<Keep
       if (error || !row) throw new Error(`knowledge insert failed: ${error?.message}`);
 
       const result = await indexKnowledgeText(row.id, body.text);
-      await supersedeOlderVersions(row.id, userId, { url });
+      await supersedeOlderVersions(row.id, organisationId, { url });
       return {
         ok: true,
         name,
@@ -374,8 +374,8 @@ export async function keepDocument(userId: string, fileId: string): Promise<Keep
     const { data: row, error } = await supabase
       .from('kira_knowledge')
       .insert({
-        user_id: userId,
-        created_by: userId,
+        organisation_id: organisationId,
+        created_by: 'kira',
         elevenlabs_document_id: documentId,
         source_type: 'google_drive',
         title: name,
@@ -391,7 +391,7 @@ export async function keepDocument(userId: string, fileId: string): Promise<Keep
     if (error || !row) throw new Error(`knowledge insert failed: ${error?.message}`);
 
     const result = await ingestKnowledgeDocument(row.id);
-    await supersedeOlderVersions(row.id, userId, { url });
+    await supersedeOlderVersions(row.id, organisationId, { url });
 
     if (!result.chunks) {
       // Recorded, but there is nothing to retrieve. Say that — "kept" implying she can now answer

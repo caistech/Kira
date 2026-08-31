@@ -15,6 +15,7 @@
 
 import 'server-only';
 import { createServiceClient } from '@/lib/supabase/server';
+import { resolveOrganisationForPerson } from '@/lib/auth';
 // PRIVATE_REASONS is still used to validate what the classifier answers before it is STORED — the
 // column keeps filling so a future re-measurement is free. It is `ownerPrivateReason` alone that
 // decides what the owner and the buyer actually see. See OwnerEntry.privateReason.
@@ -481,7 +482,7 @@ concludes we did not understand his business.
  *
  * Bounded per call so a long history cannot stall the caller; the sweep finishes what a burst leaves.
  */
-export async function classifyPendingMemories(userId: string, limit = 50): Promise<{ classified: number; deferred: number }> {
+export async function classifyPendingMemories(organisationId: string, limit = 50): Promise<{ classified: number; deferred: number }> {
   const supabase = createServiceClient();
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return { classified: 0, deferred: 0 };
@@ -489,7 +490,7 @@ export async function classifyPendingMemories(userId: string, limit = 50): Promi
   const { data: pending } = await supabase
     .from('kira_memory')
     .select('id, content, tags')
-    .eq('user_id', userId)
+    .eq('organisation_id', organisationId)
     .is('genome_section', null)
     .neq('active', false)
     .order('importance', { ascending: false, nullsFirst: false })
@@ -600,12 +601,19 @@ export async function classifyForReview({
 
   let q = supabase
     .from('kira_memory')
-    .select('id, user_id, content, genome_section, genome_about, genome_private_reason')
+    .select('id, user_id, organisation_id, content, genome_section, genome_about, genome_private_reason')
     .is('genome_privacy_classified_at', null)
     .neq('active', false)
     .order('created_at', { ascending: true })
     .limit(limit);
-  if (userId) q = q.eq('user_id', userId);
+  // P0.4: when the admin reclassify targets one account, ownership resolves through the canonical
+  // membership chain — never through user_id. A fleet-wide sweep (no userId) is the admin's explicit
+  // all-org lens and carries organisation_id so a re-save cannot drop it.
+  if (userId) {
+    const orgContext = await resolveOrganisationForPerson(userId);
+    if (!orgContext) return { considered: 0, failed: 0, changes: [], summary: { sectionMoves: 0, toNone: 0, newlyPrivate: 0, labelledOnly: 0 } };
+    q = q.eq('organisation_id', orgContext.organisationId);
+  }
 
   const { data: rows } = await q;
   if (!rows?.length) return { considered: 0, failed: 0, changes: [], summary: { sectionMoves: 0, toNone: 0, newlyPrivate: 0, labelledOnly: 0 } };
@@ -699,8 +707,10 @@ export async function applyReviewedClassification(
  * READ-ONLY. Classification happens at write time (above), so opening this page never changes what
  * it is about to show you.
  */
-export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
+export async function deriveOwnerGenome(organisationContext: { organisationId: string, personId: string }): Promise<OwnerGenome> {
   const supabase = createServiceClient();
+  const userId = organisationContext.personId;
+  const organisationId = organisationContext.organisationId;
 
   // ⚠️ HIS OWN NAME, SO IT CAN BE TAKEN BACK OUT OF EVERY LINE.
   //
@@ -721,7 +731,7 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
     .select(
       'id, content, created_at, importance, genome_section, genome_headline, source_conversation_id, confirmed_at, genome_private_reason',
     )
-    .eq('user_id', userId)
+    .eq('organisation_id', organisationId)
     .neq('active', false)
     .order('created_at', { ascending: false });
 
@@ -740,13 +750,13 @@ export async function deriveOwnerGenome(userId: string): Promise<OwnerGenome> {
   const { data: valuation } = await supabase
     .from('business_valuations')
     .select('readiness, gap, worth_today, inputs')
-    .eq('user_id', userId)
+    .eq('organisation_id', organisationId)
     .maybeSingle();
 
   const { count: documents } = await supabase
     .from('kira_knowledge')
     .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId);
+    .eq('organisation_id', organisationContext.organisationId);
 
   // 'none' is filed away rather than shown: it is real memory, but it is not about how the business
   // operates, and padding a Genome with chit-chat is how it stops being believable.

@@ -13,7 +13,7 @@
 import { NextResponse } from 'next/server';
 import { formatAbn } from '@caistech/abn-lookup';
 
-import { getAuthUser } from '@/lib/auth';
+import { getAuthUser, resolveOrganisationForPerson } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { renderSingleFile, type Audience } from '@/lib/genome/render';
@@ -65,15 +65,9 @@ export async function GET(request: Request) {
     );
   }
 
-  const svc = createServiceClient();
-  const { data: appUser } = await svc
-    .from('users')
-    .select('id, first_name, last_name')
-    .eq('auth_user_id', authUser.id)
-    .maybeSingle();
-  if (!appUser) return NextResponse.json({ error: 'No account record' }, { status: 404 });
-
-  const genome = await deriveOwnerGenome(appUser.id);
+  const orgContext = await resolveOrganisationForPerson(authUser.id);
+  if (!orgContext) return NextResponse.json({ error: 'No organisation context' }, { status: 403 });
+  const genome = await deriveOwnerGenome(orgContext);
 
   // Titled to the BUSINESS, not the person — the whole argument of this product is that the value
   // should stop being attached to him, and the document meant to prove it must not be named after
@@ -119,7 +113,7 @@ export async function GET(request: Request) {
     const { data: agents } = await svc
       .from('kira_agents')
       .select('draft_id')
-      .eq('user_id', appUser.id)
+      .eq('organisation_id', orgContext.organisationId)
       .not('draft_id', 'is', null)
       .order('created_at', { ascending: false })
       .limit(5);

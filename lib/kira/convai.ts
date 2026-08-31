@@ -25,7 +25,7 @@ import {
 } from '@caistech/elevenlabs-convai';
 import { accrueVoiceCost } from '@/lib/billing';
 import { classifyPendingMemories } from '@/lib/genome/derive';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { createMemoryExtractor } from '@/lib/kira/memory-extract';
 import { kiraKnowledgeToolDef } from '@/lib/kira/knowledge-tool-def.mjs';
 import { withEntityClassification } from '@/lib/kira/memory-entity-def.mjs';
@@ -49,6 +49,7 @@ import { parkedOtherBusinesses } from '@/lib/kira/other-businesses';
 import { sweepDuplicateMemories } from '@/lib/genome/dedupe-sweep-apply';
 import { forgetParkedEntityLeaks } from '@/lib/kira/entity-sweep';
 import { refileAssistantCapabilityClaims } from '@/lib/kira/capability-sweep';
+import { resolveOrganisationForPerson } from '@/lib/auth';
 
 // Kira's real tables mapped onto the canonical TableNames contract. The reconcile
 // migration adds the columns the handlers need (agent_id, anon_session_id, processed_at)
@@ -67,14 +68,14 @@ export const KIRA_WEBHOOK_BASE_PATH = '/api/kira/webhooks';
 let cachedRoutes: ConvaiWebhookRoutes | null = null;
 
 /**
- * The canonical webhook routes, built lazily so createServiceClient() (which throws when
- * SUPABASE_SERVICE_ROLE_KEY is missing) is never called at import/build time — only on the
+ * The canonical webhook routes, built lazily so createServiceClientV2() (which throws when
+ * SUPABASE_SECRET_KEY is missing) is never called at import/build time — only on the
  * first real request.
  */
 export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
   if (cachedRoutes) return cachedRoutes;
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
   const memoryExtractor = createMemoryExtractor(process.env.OPENAI_API_KEY || '');
 
   cachedRoutes = createConvaiWebhookRoutes({
@@ -98,16 +99,36 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
       // scopePrefix MUST stay 'kira-user-'. The Mnemo scope id IS the container; changing it would
       // orphan every fact already written for every Kira user.
       let userId: string | undefined;
+      let organisationId: string | undefined;
       let durationSeconds = 0;
       try {
         const { data: crow } = await sb
           .from(KIRA_CONVAI_TABLES.conversations)
-          .select('user_id, duration_seconds')
+          .select('user_id, organisation_id, duration_seconds')
           .eq('id', conv.id)
           .single();
         userId = crow?.user_id as string | undefined;
+        organisationId = crow?.organisation_id as string | undefined;
         durationSeconds = Number(crow?.duration_seconds ?? 0);
       } catch { /* non-fatal */ }
+      // P0.4: if the conversation carries no org, resolve it from the canonical membership chain —
+      // the memory this call produces must land in an owning organisation, never unowned.
+      if (!organisationId && userId) {
+        const orgCtx = await resolveOrganisationForPerson(userId);
+        organisationId = orgCtx?.organisationId;
+      }
+      // INV-020: stamp the ownership seat back onto the conversation row itself. The published
+      // @caistech/elevenlabs-convai start/update handlers cannot carry organisation_id, so the
+      // row is org-owned only when we write it here — covering every creation path (uid-baked and
+      // canonical alike). Non-fatal: the memory lane below is already org-scoped.
+      if (organisationId) {
+        try {
+          await sb
+            .from(KIRA_CONVAI_TABLES.conversations)
+            .update({ organisation_id: organisationId })
+            .eq('id', conv.id);
+        } catch { /* non-fatal — post-call must not fail on a housekeeping write */ }
+      }
 
       // THE EXTRACTOR IS BUILT HERE, NOT AT MODULE SCOPE, so it can carry this owner's exclusions.
       //
@@ -133,31 +154,41 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
       // Read from the refusal record rather than re-extracted: the sweep and the server-observed
       // approval guard have both already written what she declined, and asking a model the same
       // question twice invites two different answers.
-      const refusedRequests = userId
-        ? (
-            (
-              await sb
-                .from('kira_refusals')
-                .select('asked')
-                .eq('user_id', userId)
-                .gte('created_at', new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString())
-                .order('created_at', { ascending: false })
-                .limit(20)
-            ).data ?? []
-          ).map((r: { asked: unknown }) => String(r.asked ?? ''))
+      // INV-020: refusals are organisation-owned. Scope by the conversation's org when resolved
+      // (the person remains the actor who declined — provenance). Degrades to user-only during
+      // the transition when the org is not yet known.
+      let refusedQuery = sb
+        .from('kira_refusals')
+        .select('asked')
+        .gte('created_at', new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString())
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (organisationId) refusedQuery = refusedQuery.eq('organisation_id', organisationId);
+      else if (userId) refusedQuery = refusedQuery.eq('user_id', userId);
+      const refusedRequests = (userId || organisationId)
+        ? ((await refusedQuery).data ?? []).map((r: { asked: unknown }) => String(r.asked ?? ''))
         : [];
 
-      const memory = await completeConversationMemory(sb, {
-        conversationId: conv.id,
-        elevenlabsConversationId: conv.elevenlabsConversationId,
-        userId,
-        extract:
-          otherBusinesses.length || refusedRequests.length
-            ? createMemoryExtractor(process.env.OPENAI_API_KEY || '', { otherBusinesses, refusedRequests })
-            : memoryExtractor,
-        tables: KIRA_CONVAI_TABLES,
-        semantic: { scopePrefix: 'kira-user-' },
-      });
+      const memory = await completeConversationMemory(
+        sb,
+        // organisationId is carried forward-compatibly: inert on the published @caistech/
+        // elevenlabs-convai until the source extension ships (tables reworked for org ownership),
+        // then stamped on every distil row. See P0.4 memory rebinding.
+        Object.assign(
+          {
+            conversationId: conv.id,
+            elevenlabsConversationId: conv.elevenlabsConversationId,
+            userId,
+            extract:
+              otherBusinesses.length || refusedRequests.length
+                ? createMemoryExtractor(process.env.OPENAI_API_KEY || '', { otherBusinesses, refusedRequests })
+                : memoryExtractor,
+            tables: KIRA_CONVAI_TABLES,
+            semantic: { scopePrefix: 'kira-user-' },
+          },
+          organisationId ? { organisationId } : {},
+        ),
+      );
       if (memory.errors.length) {
         console.error('[kira/convai] memory pipeline reported:', memory.errors.join('; '));
       }
@@ -166,7 +197,7 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
       // exclusion list never matched. The trigger parks the row; this takes the semantic copy back
       // out, because parking it in one store while publishing it to the other is the guard being
       // technically satisfied and practically absent. See lib/kira/entity-sweep.ts.
-      await forgetParkedEntityLeaks(userId, KIRA_CONVAI_TABLES.memory);
+      await forgetParkedEntityLeaks(organisationId, KIRA_CONVAI_TABLES.memory, userId);
 
       // ⚠️ THE DEDUPE THE DISTIL DOES NOT DO. `handleKiraSaveMemory` dedupes on the way in; this
       // path inserts straight into the table, so a distil returning four overlapping memories writes
@@ -174,7 +205,7 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
       // pricing was still in Ray's handover document twice on the walkthrough after it was written,
       // and why one of two near-identical Gary rows was marked private while its twin was not, so
       // the screen and the file disagreed about the most sensitive thing in the product.
-      await sweepDuplicateMemories(userId, KIRA_CONVAI_TABLES.memory);
+      await sweepDuplicateMemories(organisationId, KIRA_CONVAI_TABLES.memory);
 
       // Same reasoning, different contamination: what she wrote about HER OWN reach.
       //
@@ -189,7 +220,7 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
       // The guard on save_memory does NOT cover this path — completeConversationMemory inserts
       // straight into the table. Measured, not assumed: the write-path guard shipped and the next
       // red-team run still filed six.
-      const refiled = await refileAssistantCapabilityClaims(userId, KIRA_CONVAI_TABLES.memory);
+      const refiled = await refileAssistantCapabilityClaims(organisationId, KIRA_CONVAI_TABLES.memory);
       if (refiled) console.log(`[kira/convai] re-filed ${refiled} capability claim(s) as assistant state`);
 
       // File the new facts into the Genome NOW, while the call that produced them just ended.
@@ -200,9 +231,9 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
       // head" cannot read as though it is still catching up.
       //
       // Fail-soft and after the memory write: a classification problem must never cost a fact.
-      if (userId) {
+      if (organisationId) {
         try {
-          const filed = await classifyPendingMemories(userId);
+          const filed = await classifyPendingMemories(organisationId);
           if (filed.deferred) {
             console.warn(`[kira/convai] ${filed.deferred} memories left unclassified — the sweep will retry.`);
           }

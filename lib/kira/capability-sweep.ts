@@ -25,22 +25,23 @@
 // Deleting would be the product quietly editing his record.
 
 import { createServiceClient } from '@/lib/supabase/server';
+import { resolveOrganisationForPerson } from '@/lib/auth';
 import { isAssistantOrProductClaim } from './poison-detect.mjs';
 
 /** Only rows from the conversation that just ended — never a retrospective rewrite of his record. */
 const RECENT_MS = 10 * 60 * 1000;
 
 export async function refileAssistantCapabilityClaims(
-  userId: string | undefined,
+  organisationId: string | undefined,
   memoryTable: string,
 ): Promise<number> {
-  if (!userId) return 0;
+  if (!organisationId) return 0;
   try {
     const supabase = createServiceClient();
     const { data } = await supabase
       .from(memoryTable)
       .select('id, content, genome_section, genome_about')
-      .eq('user_id', userId)
+      .eq('organisation_id', organisationId)
       .eq('active', true)
       .gte('created_at', new Date(Date.now() - RECENT_MS).toISOString())
       .limit(100);

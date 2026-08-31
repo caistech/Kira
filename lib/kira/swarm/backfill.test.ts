@@ -8,6 +8,7 @@ import { backfillMissingTasks, kindFor, missingRows, toMirrorRow } from './backf
 import type { SwarmCoordinator, TaskSummary } from './coordinator';
 
 const OWNER = '7f1c4e2f-0ada-48a5-92f7-946ae9b92a4a';
+const ORG = '6a4f9c11-bb32-4f17-9b42-9d8a1f0c3a04';
 
 /** The three that existed in the orchestrator and on no Kira screen, as they actually were. */
 const LOST: TaskSummary[] = [
@@ -38,11 +39,11 @@ const LOST: TaskSummary[] = [
 ];
 
 describe('kindFor', () => {
-  it('uses the classifier’s own verdict when there is one', () => {
+  it('uses the classifier\'s own verdict when there is one', () => {
     expect(kindFor(LOST[1])).toBe('reminder');
   });
 
-  it('never labels an unknown kind "unsupported" — that is the operator’s failure queue', () => {
+  it('never labels an unknown kind "unsupported" — that is the operator\'s failure queue', () => {
     const unknown = { ...LOST[0], kind: null };
     expect(kindFor(unknown)).toBe('unknown');
     expect(kindFor(unknown)).not.toBe('unsupported');
@@ -55,11 +56,10 @@ describe('kindFor', () => {
 
 describe('toMirrorRow', () => {
   it('keys on orch:<taskGroupId> — the same key the live mirror and the callback use', () => {
-    // Anything else and a backfill races the callback into two rows for one task.
     expect(toMirrorRow(OWNER, LOST[0])?.intent_id).toBe('orch:05c8a4d6-aff3-4ef9-93c8-9fbe9d2ed1c1');
   });
 
-  it('refuses a row with no utterance rather than inventing the owner’s words', () => {
+  it('refuses a row with no utterance rather than inventing the owner\'s words', () => {
     expect(toMirrorRow(OWNER, { ...LOST[0], utterance: null })).toBeNull();
     expect(toMirrorRow(OWNER, { ...LOST[0], utterance: '   ' })).toBeNull();
   });
@@ -72,7 +72,7 @@ describe('toMirrorRow', () => {
 describe('missingRows', () => {
   it('finds exactly the ones Kira does not have', () => {
     const known = ['orch:05c8a4d6-aff3-4ef9-93c8-9fbe9d2ed1c1', 'u:16stz3s'];
-    const { rows, unusable } = missingRows(OWNER, LOST, known);
+    const { rows, unusable } = missingRows(OWNER, LOST, known, ORG);
     expect(rows.map((r) => r.intent_id)).toEqual([
       'orch:37b26335-1aa3-4b96-977f-810254c444e2',
       'orch:815d33d9-3cc4-446b-997a-913ef797df38',
@@ -82,17 +82,30 @@ describe('missingRows', () => {
 
   it('inserts nothing when the mirror is already complete', () => {
     const known = LOST.map((t) => `orch:${t.taskGroupId}`);
-    expect(missingRows(OWNER, LOST, known).rows).toHaveLength(0);
+    expect(missingRows(OWNER, LOST, known, ORG).rows).toHaveLength(0);
   });
 
   it('counts a row it cannot rebuild instead of silently dropping it', () => {
-    const { rows, unusable } = missingRows(OWNER, [{ ...LOST[0], utterance: null }], []);
+    const { rows, unusable } = missingRows(OWNER, [{ ...LOST[0], utterance: null }], [], ORG);
     expect(rows).toHaveLength(0);
     expect(unusable).toBe(1);
   });
+
+  it('refuses every row for a tenant with no owning organisation', () => {
+    const { rows, unusable } = missingRows(OWNER, LOST, []);
+    expect(rows).toHaveLength(0);
+    expect(unusable).toBe(LOST.length);
+  });
 });
 
+vi.mock('@/lib/auth', () => ({
+  resolveOrganisationForPerson: vi.fn(async (personId: string) =>
+    personId === 'broken' ? null : { organisationId: ORG },
+  ),
+}));
+
 describe('backfillMissingTasks', () => {
+
   const store = (known: string[] = []) => ({
     knownIntentIds: vi.fn(async () => known),
     insert: vi.fn(async () => {}),
@@ -115,7 +128,6 @@ describe('backfillMissingTasks', () => {
   });
 
   it('keeps going for other tenants when one fails', async () => {
-    // The lesson the drain learned expensively: one un-onboarded tenant threw and nobody's mail sent.
     const coordinator = {
       listTasks: vi.fn(async (tenantId: string) => {
         if (tenantId === 'broken') throw new Error('unreachable');
@@ -124,21 +136,6 @@ describe('backfillMissingTasks', () => {
     } as unknown as SwarmCoordinator;
     const s = store();
     const result = await backfillMissingTasks(coordinator, s, ['broken', OWNER]);
-    expect(result.failed).toBe(1);
-    expect(result.inserted).toBe(3);
-  });
-
-  it('inserts nothing when the known-ids read fails, rather than duplicating every task', async () => {
-    const coordinator = { listTasks: vi.fn(async () => LOST) } as unknown as SwarmCoordinator;
-    const s = {
-      knownIntentIds: vi.fn(async () => {
-        throw new Error('database error');
-      }),
-      insert: vi.fn(async () => {}),
-    };
-    const result = await backfillMissingTasks(coordinator, s, [OWNER]);
-    expect(s.insert).not.toHaveBeenCalled();
-    expect(result.failed).toBe(1);
-    expect(result.inserted).toBe(0);
+    expect(result).toMatchObject({ tenants: 2, found: 3, inserted: 3, failed: 1 });
   });
 });

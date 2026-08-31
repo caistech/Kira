@@ -15,6 +15,7 @@
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServiceClient } from '@/lib/supabase/server';
+import { resolveOrganisationForPerson } from '@/lib/auth';
 import { createOpenAIRunner } from '@/lib/kira/structured-runner';
 import { sendEmail } from '@/lib/email/resend';
 import type {
@@ -119,11 +120,33 @@ export class LocalSwarmStub implements SwarmCoordinator {
     return createOpenAIRunner(this.openaiKey);
   }
 
+  /**
+   * The owning organisation for an owner, or null when it cannot be resolved.
+   * INV-020: kira_tasks are organisation-owned; the tenant id is the person who asked.
+   */
+  private async ownerOrganisationId(tenantId: TenantId): Promise<string | null> {
+    if (!tenantId) return null;
+    try {
+      const ctx = await resolveOrganisationForPerson(tenantId);
+      return ctx?.organisationId ?? null;
+    } catch {
+      return null; // fail-soft — never block a task on org resolution
+    }
+  }
+
   async dispatchIntent(intent: DispatchedIntent): Promise<DispatchResult> {
     // Idempotency: if this intent already dispatched, return its current state (no double-draft/send).
+    // INV-020: tasks are organisation-owned; the dedupe is org-scoped. Owned rows always carry
+    // organisation_id (the CHECK enforces it), so the keyed lookup resolves through the org and
+    // user_id stays provenance of who asked.
+    const organisationId = await this.ownerOrganisationId(intent.tenantId);
+    if (!organisationId) {
+      return { status: 'failed', message: 'No owning organisation could be resolved for this task.' };
+    }
     const existing = await this.supabase
       .from('kira_tasks')
       .select('*')
+      .eq('organisation_id', organisationId)
       .eq('user_id', intent.tenantId)
       .eq('intent_id', intent.intentId)
       .maybeSingle();
@@ -180,11 +203,13 @@ export class LocalSwarmStub implements SwarmCoordinator {
   }
 
   async getTaskState(taskGroupId: string, tenantId: TenantId): Promise<TaskStatus> {
+    const organisationId = await this.ownerOrganisationId(tenantId);
+    if (!organisationId) return { taskGroupId, status: 'failed', message: 'No owning organisation.' };
     const { data } = await this.supabase
       .from('kira_tasks')
       .select('*')
       .eq('id', taskGroupId)
-      .eq('user_id', tenantId)
+      .eq('organisation_id', organisationId)
       .maybeSingle();
     if (!data) return { taskGroupId, status: 'failed', message: 'Task not found.' };
     const r = this.toResult(data);
@@ -197,11 +222,13 @@ export class LocalSwarmStub implements SwarmCoordinator {
     approve: boolean,
     patch?: { recipientEmail?: string },
   ): Promise<DispatchResult> {
+    const organisationId = await this.ownerOrganisationId(tenantId);
+    if (!organisationId) return { taskGroupId, status: 'failed', message: 'No owning organisation.' };
     const { data: row } = await this.supabase
       .from('kira_tasks')
       .select('*')
       .eq('id', taskGroupId)
-      .eq('user_id', tenantId)
+      .eq('organisation_id', organisationId)
       .maybeSingle();
     if (!row) return { taskGroupId, status: 'failed', message: 'Task not found.' };
     if (row.status !== 'awaiting_approval') return this.toResult(row); // already resolved — idempotent
@@ -380,10 +407,18 @@ export class LocalSwarmStub implements SwarmCoordinator {
   // --- persistence helpers ---
 
   private async insert(intent: DispatchedIntent, fields: Partial<KiraTaskRow>): Promise<KiraTaskRow> {
+    // INV-020: kira_tasks.organisation_id is the ownership column (NOT NULL for owned rows) and the
+    // CHECK kira_tasks_owned_has_org rejects a tenantless owned row — resolve the owning org and
+    // fail loudly rather than store a row no surface can ever read. user_id stays provenance.
+    const organisationId = await this.ownerOrganisationId(intent.tenantId);
+    if (!organisationId) {
+      throw new Error('kira_tasks insert aborted: no owning organisation could be resolved for this task');
+    }
     const { data, error } = await this.supabase
       .from('kira_tasks')
       .insert({
         user_id: intent.tenantId,
+        organisation_id: organisationId,
         intent_id: intent.intentId,
         utterance: intent.utterance,
         handled_by: 'local-stub',

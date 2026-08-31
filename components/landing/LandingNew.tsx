@@ -44,6 +44,7 @@ import { VoiceWidget } from '@caistech/elevenlabs-convai/react';
 
 import { OWNER_FAQ } from '@/lib/faq';
 import { LandingDemo } from '@/components/LandingDemo';
+import { BetaFeedbackButton } from '@/components/BetaFeedbackButton';
 import { FULL_RATE_PERIOD_CAP, PRICE_TIERS } from '@/lib/valuation/pricing';
 import { formatPrice, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { HEADLINE_NUMBERS } from '@/lib/valuation/headline-numbers';
@@ -898,6 +899,9 @@ export function LandingNew() {
           </div>
         </div>
       </footer>
+
+      {/* BETA FEEDBACK BUTTON — public access for beta testers */}
+      <BetaFeedbackButton cohort="fresh" testerId="public" workflow="landing" />
     </div>
   );
 }

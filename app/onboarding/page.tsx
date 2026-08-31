@@ -8,7 +8,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2, Brain, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { PasswordInput } from '@/components/auth/PasswordInput';
-import { createClient } from '@/lib/supabase/browser';
+import { createClientV2 } from '@/lib/supabase/browser';
 import { formatMoney } from '@/lib/valuation/currency';
 
 interface SessionSummary {
@@ -73,7 +73,7 @@ export default function OnboardingPage() {
       }
 
       // Account exists + confirmed; sign in.
-      const supabase = createClient();
+      const supabase = createClientV2();
       const { error: signInErr } = await supabase.auth.signInWithPassword({ email: data.email, password });
       if (signInErr) throw signInErr;
 

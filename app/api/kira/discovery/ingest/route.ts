@@ -11,7 +11,7 @@
 
 import { NextResponse } from 'next/server';
 import { lookup } from 'node:dns/promises';
-import { getCurrentAppUser } from '@/lib/auth';
+import { getCurrentOrganisationContext } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { createOpenAIRunner } from '@/lib/kira/structured-runner';
 import { ClientProfileSchema } from '@/lib/kira/discovery-schema';
@@ -57,8 +57,10 @@ function htmlToText(html: string): string {
 }
 
 export async function POST(req: Request) {
-  const user = await getCurrentAppUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // P0.6: Resolve canonical organisation context from session, never from client input.
+  const organisationContext = await getCurrentOrganisationContext();
+  if (!organisationContext) return NextResponse.json({ error: 'Not signed in or no organisation access' }, { status: 401 });
+  const user = { id: organisationContext.personId } as { id: string };
   if (!process.env.OPENAI_API_KEY) {
     return NextResponse.json({ error: 'Ingestion not configured (OPENAI_API_KEY unset).' }, { status: 503 });
   }

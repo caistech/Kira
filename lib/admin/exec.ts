@@ -8,7 +8,7 @@
 // cohort is assembled from valuation / LOI / paid signals, so an account that only ever ran a
 // personal Kira never enters it in the first place.
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 /**
  * Is this account one of OURS rather than a client's?
@@ -77,43 +77,89 @@ export interface ExecUserRow {
 
 /** Fetch the Kira Exec cohort with the metrics the operator manages against. */
 export async function getExecUsers(): Promise<ExecUserRow[]> {
-  const sb = createServiceClient();
+  const sb = createServiceClientV2();
 
-  // 1. Assemble the exec cohort's user ids from the three signals.
+  // 1. Assemble the exec cohort.
+  //
+  // ⚠️ THE VALUATION SIGNAL IS ORGANISATION-SCOPED SINCE P2.4-B. `business_valuations` is owned by
+  // the Organisation, not the Person, so the cohort is assembled organisation-first: pull the
+  // valuation-participating organisation ids, resolve them to people via `organisation_memberships`,
+  // then union with the LOI and subscription signals (which remain person signals on their own
+  // resources). A cohort that keyed the valuation signal on `user_id` would silently strand every
+  // non-owner member of a business — the exact shape INV-020 exists to forbid.
   const [{ data: vals }, { data: lois }, { data: subs }] = await Promise.all([
-    sb.from('business_valuations').select('user_id'),
+    sb.from('business_valuations').select('organisation_id'),
     sb.from('loi_commitments').select('user_id').not('user_id', 'is', null),
     sb.from('users').select('id').eq('subscription_status', 'active'),
   ]);
+  const orgIds = new Set<string>();
+  (vals ?? []).forEach((r: any) => r.organisation_id && orgIds.add(r.organisation_id));
+
+  // Everyone with a membership in a valuation-participating organisation is part of that business's
+  // cohort row. Ownership resolution goes through membership — never through user_id.
+  const { data: memberships } =
+    orgIds.size > 0
+      ? await sb.from('organisation_memberships').select('person_id, organisation_id').in('organisation_id', [...orgIds])
+      : { data: null as Array<{ person_id: string; organisation_id: string }> | null };
+
   const ids = new Set<string>();
-  (vals ?? []).forEach((r: any) => r.user_id && ids.add(r.user_id));
+  (memberships ?? []).forEach((r: any) => r.person_id && ids.add(r.person_id));
   (lois ?? []).forEach((r: any) => r.user_id && ids.add(r.user_id));
   (subs ?? []).forEach((r: any) => r.id && ids.add(r.id));
   if (ids.size === 0) return [];
   const userIds = [...ids];
 
   // 2. Pull the per-user data in bulk, then stitch.
-  const [{ data: users }, { data: valuations }, { data: agents }, { data: profiles }, { data: knowledge }, { data: memories }] =
+  // Knowledge is organisation-scoped; for admin, show knowledge across all organisations the user belongs to
+  const [{ data: users }, { data: valuations }, { data: agents }, { data: profiles }, { data: memories }] =
     await Promise.all([
       sb.from('users').select('id, email, first_name, created_at, subscription_status').in('id', userIds),
-      sb.from('business_valuations').select('user_id, gap, worth_today, worth_potential, readiness, currency, industry').in('user_id', userIds),
-      sb.from('kira_agents').select('id, user_id, agent_name, elevenlabs_agent_id, status, journey_type, total_conversations, last_conversation_at').in('user_id', userIds).neq('status', 'deleted'),
+      sb.from('business_valuations').select('organisation_id, gap, worth_today, worth_potential, readiness, currency, industry').in('organisation_id', [...orgIds]),
+      sb.from('kira_agents').select('id, user_id, agent_name, elevenlabs_agent_id, status, journey_type, total_conversations, last_conversation_at').in('organisation_id', [...orgIds]).neq('status', 'deleted'),
       sb.from('client_profiles').select('user_id, completeness, sessions_count').in('user_id', userIds),
-      sb.from('kira_knowledge').select('user_id').in('user_id', userIds),
-      sb.from('kira_memory').select('user_id').in('user_id', userIds).eq('active', true),
+      // Memory is organisation-owned since P0.4. The admin lens reads it through the org partition —
+      // the organisations this cohort resolves to — never through user_id.
+      orgIds.size > 0
+        ? sb.from('kira_memory').select('user_id, organisation_id').in('organisation_id', [...orgIds]).eq('active', true)
+        : { data: [] as Array<{ user_id: string; organisation_id: string }> },
     ]);
+
+  // Resolve knowledge counts via organisation memberships
+  const allOrgIds = [...new Set((memberships ?? []).map((m: { organisation_id: string }) => m.organisation_id))];
+  const { data: knowledgeRows } = allOrgIds.length > 0
+    ? await sb.from('kira_knowledge').select('organisation_id').in('organisation_id', allOrgIds)
+    : { data: [] as Array<{ organisation_id: string }> };
+
+  // Map organisation_id → user_ids via memberships
+  const orgToUsers = new Map<string, string[]>();
+  for (const m of (memberships ?? []) as Array<{ person_id: string; organisation_id: string }>) {
+    const list = orgToUsers.get(m.organisation_id) ?? [];
+    list.push(m.person_id);
+    orgToUsers.set(m.organisation_id, list);
+  }
+
+  // Count knowledge per user (a user's knowledge = sum of knowledge across their organisations)
+  const knowledgeByUser = new Map<string, number>();
+  for (const kr of (knowledgeRows ?? []) as Array<{ organisation_id: string }>) {
+    const usersForOrg = orgToUsers.get(kr.organisation_id) ?? [];
+    for (const uid of usersForOrg) {
+      knowledgeByUser.set(uid, (knowledgeByUser.get(uid) ?? 0) + 1);
+    }
+  }
 
   // THE EXCLUSION THE HEADER PROMISES. Applied here, on the fetched users, rather than on the id
   // sets above — the ids come from three tables and only `users` carries the email, so this is the
   // first point where the question can actually be asked.
   const clientUsers = (users ?? []).filter((u: any) => !isNonClientAccount(u.email));
 
-  const valByUser = new Map((valuations ?? []).map((v: any) => [v.user_id, v]));
   const profByUser = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
   const count = (rows: any[] | null, uid: string) => (rows ?? []).filter((r) => r.user_id === uid).length;
 
   const rows: ExecUserRow[] = clientUsers.map((u: any) => {
-    const v: any = valByUser.get(u.id) ?? {};
+    // The user's valuation, resolved through their organisation memberships. `u.id` is the person
+    // id; find an organisation they belong to that has a valuation.
+    const userOrgs = (memberships ?? []).filter((m: any) => m.person_id === u.id).map((m: any) => m.organisation_id);
+    const v: any = (valuations ?? []).find((row: any) => userOrgs.includes(row.organisation_id)) ?? {};
     const p: any = profByUser.get(u.id) ?? {};
     return {
       userId: u.id,
@@ -140,7 +186,7 @@ export async function getExecUsers(): Promise<ExecUserRow[]> {
         })),
       discoveryCompleteness: Number(p.completeness ?? 0),
       discoverySessions: Number(p.sessions_count ?? 0),
-      docsCount: count(knowledge, u.id),
+      docsCount: knowledgeByUser.get(u.id) ?? 0,
       memoryCount: count(memories, u.id),
     };
   });

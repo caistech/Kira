@@ -72,3 +72,50 @@ docs/collaborator-terms/
 # synthetic QA account they are the shape of a thing that must never be committed
 # (PRODUCT_STANDARDS: data exports are treated as PII).
 manual-*.html
+
+# Local debug/secret artifacts — never commit test keys, secret test scripts, or
+# scratch temp files (SECURITY: these contain or read local credentials).
+test_key.txt
+phase0_test_key*.txt
+test_sb_secret.mjs
+create_test_users.sql
+.tmp-*.log
+.tmp-*.mjs
+.tmp-dev*
+
+# Scratch / debug outputs & diagnostics — local investigation only.
+*.out.txt
+policy_counts.txt
+mgmt_anon_clean.txt
+fks.txt
+push_out*.txt
+signing-keys-doc.html
+phase0_*_test.mjs
+phase0_2min_test.cjs
+extract-diag.mts
+genome-diag.mts
+scripts/test-auth-context.ts
+create_and_test.ps1
+deploy_preview.ps1
+rls_policies.txt
+tables.txt
+test-output*.txt
+users_fks.txt
+docs/powershell searches.txt
+
+# Audit-blocked files (live credentials / real PII) — excluded until redacted.
+scripts/record-beta-evidence.mjs
+scripts/find-user-agents.mjs
+scripts/create-missing-agent.mjs
+scripts/fix-agent-voice.mjs
+scripts/reprovision-agent-full.mjs
+scripts/reprovision-agent-full.mts
+docs/SUPABASE_API_KEY_MODEL_MIGRATION_VALIDATION.md
+docs/KIRA*P0.2-A.1*
+P2.4-E_PLAN.md
+supabase/migrations/20260829150000_p24e10_identity_bootstrap.sql
+supabase/migrations/archive/
+
+# Session-local project state (PROJECT_STATE / INCIDENT capture) - per-project save-game,
+# not part of the committed codebase.
+.context/

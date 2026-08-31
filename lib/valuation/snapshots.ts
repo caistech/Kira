@@ -27,6 +27,7 @@ export type SnapshotSource = 'onboarding' | 'weekly' | 'verification' | 'manual'
 
 export interface ValuationSnapshotInput {
   userId: string;
+  organisationId: string;
   /** The raw ValuationInputs the figures were computed from. */
   inputs: unknown;
   currency?: string;
@@ -60,6 +61,7 @@ export async function recordValuationSnapshot(snapshot: ValuationSnapshotInput):
     const svc = createServiceClient();
     const { error } = await svc.from('business_valuation_snapshots').insert({
       user_id: snapshot.userId,
+      organisation_id: snapshot.organisationId,
       model_version: MODEL_VERSION,
       inputs: snapshot.inputs ?? {},
       source: snapshot.source,

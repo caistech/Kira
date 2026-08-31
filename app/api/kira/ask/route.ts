@@ -25,7 +25,7 @@ import { NextResponse } from 'next/server';
 
 import { isAutomatedProbe, sendUnansweredRequestAlert } from '@/lib/email/unanswered-request';
 import { haltState } from '@/lib/kill-switch';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -126,7 +126,7 @@ export async function POST(request: Request) {
   // is worth more than the notification, because the notification can be reconstructed from it and
   // not the other way round.
   try {
-    const { error } = await createServiceClient().from('kira_tasks').insert({
+    const { error } = await createServiceClientV2().from('kira_tasks').insert({
       user_id: null,
       intent_id: `public-ask:${randomUUID()}`,
       kind: 'unsupported',

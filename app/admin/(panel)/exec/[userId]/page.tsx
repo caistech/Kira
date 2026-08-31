@@ -37,11 +37,25 @@ export default async function ExecUserManagePage({ params }: { params: Promise<{
     surface: 'admin-exec',
   });
 
+  // Knowledge is organisation-scoped; for admin, show knowledge across all organisations the user belongs to
+  const { data: memberships } = await sb
+    .from('organisation_memberships')
+    .select('organisation_id')
+    .eq('person_id', userId);
+  const orgIds = (memberships ?? []).map((m: { organisation_id: string }) => m.organisation_id);
+
   const [{ data: val }, { data: agents }, { data: docs }, { data: memory }] = await Promise.all([
-    sb.from('business_valuations').select('gap, worth_today, worth_potential, readiness, currency, industry').eq('user_id', userId).maybeSingle(),
-    sb.from('kira_agents').select('id, agent_name, elevenlabs_agent_id, status, journey_type, total_conversations, last_conversation_at').eq('user_id', userId).neq('status', 'deleted').order('last_conversation_at', { ascending: false, nullsFirst: false }),
-    sb.from('kira_knowledge').select('id, title, url, file_name, source_type, status, created_at').eq('user_id', userId).order('created_at', { ascending: false }),
-    sb.from('kira_memory').select('id, content, memory_type, importance, created_at').eq('user_id', userId).eq('active', true).order('importance', { ascending: false }).order('created_at', { ascending: false }),
+    // ⚠️ ORG-SCOPED SINCE P2.4-B. `business_valuations` is owned by the Organisation, so the record
+    // behind the person is read through the organisations they belong to — never keyed on their
+    // own `user_id`. The `orgIds` above ARE the admin's scoped lens into the business's baseline.
+    orgIds.length > 0
+      ? sb.from('business_valuations').select('gap, worth_today, worth_potential, readiness, currency, industry').in('organisation_id', orgIds).limit(1).maybeSingle()
+      : Promise.resolve({ data: null as { gap: number | null; worth_today: number | null; worth_potential: number | null; readiness: number | null; currency: string | null; industry: string | null } | null }),
+    sb.from('kira_agents').select('id, agent_name, elevenlabs_agent_id, status, journey_type, total_conversations, last_conversation_at').in('organisation_id', orgIds).neq('status', 'deleted').order('last_conversation_at', { ascending: false, nullsFirst: false }),
+    orgIds.length > 0
+      ? sb.from('kira_knowledge').select('id, title, url, file_name, source_type, status, created_at').in('organisation_id', orgIds).order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] as Array<Record<string, unknown>> }),
+    sb.from('kira_memory').select('id, content, memory_type, importance, created_at').in('organisation_id', orgIds).eq('active', true).order('importance', { ascending: false }).order('created_at', { ascending: false }),
   ]);
 
   const currency = val?.currency || DEFAULT_CURRENCY;

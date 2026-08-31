@@ -2,8 +2,9 @@
 // Upload files to ElevenLabs knowledge base and optionally attach to agent
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { ingestKnowledgeDocument, supersedeOlderVersions } from '@/lib/kira/knowledge-ingest';
+import { getCurrentOrganisationContext } from '@/lib/auth';
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
 
@@ -16,10 +17,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // P0.6: Resolve canonical organisation context from session, never from client input.
+    const organisationContext = await getCurrentOrganisationContext();
+    if (!organisationContext) {
+      return NextResponse.json({ error: 'Not signed in or no organisation access' }, { status: 401 });
+    }
+    const userId = organisationContext.personId;
+
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const agentId = formData.get('agentId') as string | null;
-    const userId = formData.get('userId') as string | null;
     const customName = formData.get('name') as string | null;
 
     if (!file) {
@@ -66,12 +73,13 @@ export async function POST(req: NextRequest) {
     console.log(`[knowledge/upload] Created document: ${documentId}`);
 
     // Save to our database for tracking
-    const supabase = createServiceClient();
+    const supabase = createServiceClientV2();
 
     const { data: knowledgeRecord, error: dbError } = await supabase
       .from('kira_knowledge')
       .insert({
         user_id: userId,
+        organisation_id: organisationContext.organisationId,
         created_by: userId,
         elevenlabs_document_id: documentId,
         source_type: 'user_upload',
@@ -100,8 +108,8 @@ export async function POST(req: NextRequest) {
         console.log(`[knowledge/upload] ingested ${result.chunks} chunk(s) from ${result.chars} chars${result.skipped ? ` (skipped: ${result.skipped})` : ''}`);
         // Latest upload of the same file wins — remove older versions so a re-upload (draft → final)
         // doesn't leave both in the store.
-        if (userId) {
-          const superseded = await supersedeOlderVersions(knowledgeRecord.id, userId, { fileName: file.name });
+        if (organisationContext.organisationId) {
+          const superseded = await supersedeOlderVersions(knowledgeRecord.id, organisationContext.organisationId, { fileName: file.name });
           if (superseded) console.log(`[knowledge/upload] superseded ${superseded} older version(s) of ${file.name}`);
         }
       } catch (e) {

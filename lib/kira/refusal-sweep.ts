@@ -150,7 +150,10 @@ export async function extractRefusals(
  */
 export async function sweepConversationForRefusals(args: {
   conversationId: string;
-  userId: string;
+  /** Provenance only — the person who refused. kira_refusals.organisation_id is the owner (INV-020). */
+  userId?: string | null | undefined;
+  /** The owning organisation (INV-020). kira_refusals.organisation_id is NOT NULL, so this must be supplied. */
+  organisationId?: string | null | undefined;
   agentRowId?: string | null;
   transcript: { role: string; content: string }[];
   apiKey: string;
@@ -160,13 +163,15 @@ export async function sweepConversationForRefusals(args: {
 
   const supabase = createServiceClient();
 
-  // Whatever is already on record for this owner in the window — from ANY source. She sometimes does
-  // call the tool, and a conversation that produced both an agent row and an observed one would read
-  // as two separate refusals to anyone looking at the log later, which overstates what happened.
+  // Whatever is already on record for this ORGANISATION in the window — from ANY source. She
+  // sometimes does call the tool, and a conversation that produced both an agent row and an
+  // observed one would read as two separate refusals to anyone looking at the log later, which
+  // overstates what happened. Refusals are organisation-owned, so dedupe is org-scoped — the same
+  // ask refused in the same org is one refusal, whoever was refused to.
   const { data: recent } = await supabase
     .from('kira_refusals')
     .select('asked')
-    .eq('user_id', args.userId)
+    .eq('organisation_id', args.organisationId ?? '')
     .gte('created_at', new Date(Date.now() - DEDUPE_WINDOW_MS).toISOString())
     .limit(200);
   const already = (recent ?? []).map((r) => normalise(String(r.asked ?? '')));
@@ -177,7 +182,9 @@ export async function sweepConversationForRefusals(args: {
     if (already.some((prior) => sameAsk(prior, key))) continue;
 
     const { error } = await supabase.from('kira_refusals').insert({
-      user_id: args.userId,
+      ...(args.userId ? { user_id: args.userId } : {}),
+      // INV-020: refusals are organisation-owned; user_id stays provenance of who declined.
+      ...(args.organisationId ? { organisation_id: args.organisationId } : {}),
       kira_agent_id: args.agentRowId ?? null,
       source: 'observed',
       asked: refusal.asked,

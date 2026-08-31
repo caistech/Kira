@@ -11,6 +11,7 @@
 
 import { toolSecretOk } from '@/lib/kira/convai';
 import { keepDocument } from '@/lib/kira/document';
+import { createServiceClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -25,6 +26,20 @@ export async function POST(req: Request) {
     return Response.json({ ok: false, message: 'No user identity on this request' }, { status: 200 });
   }
 
+  // Resolve organisation context from person ID
+  const supabase = createServiceClient();
+  const { data: membership } = await supabase
+    .from('organisation_memberships')
+    .select('organisation_id')
+    .eq('person_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!membership?.organisation_id) {
+    return Response.json({ ok: false, message: 'No organisation context' }, { status: 200 });
+  }
+
   let fileId = '';
   try {
     const body = await req.json();
@@ -33,5 +48,5 @@ export async function POST(req: Request) {
     return Response.json({ ok: false, message: 'Invalid request' }, { status: 400 });
   }
 
-  return Response.json(await keepDocument(userId, fileId));
+  return Response.json(await keepDocument(membership.organisation_id, fileId));
 }

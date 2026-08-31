@@ -22,7 +22,7 @@
 // as trustworthy as its weakest line.
 
 import { NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth';
+import { getAuthUser, resolveOrganisationForPerson } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { realSignOffName } from '@/lib/user-name';
@@ -94,7 +94,10 @@ export async function GET(request: Request) {
     .maybeSingle();
   if (!appUser) return NextResponse.json({ error: 'No account record' }, { status: 404 });
 
-  const g = await deriveOwnerGenome(appUser.id);
+  const orgContext = await resolveOrganisationForPerson(String(appUser.id));
+  if (!orgContext) return NextResponse.json({ error: 'No organisation context' }, { status: 403 });
+
+  const g = await deriveOwnerGenome(orgContext);
   const format = new URL(request.url).searchParams.get('format') === 'json' ? 'json' : 'md';
 
   // "Recorded by the owner" beats "Recorded by dennis+qauser" in the document an advisor reads.
@@ -141,7 +144,6 @@ export async function GET(request: Request) {
   // Use the latest fact date for the document filename stamp
   // Fallback to current date if no facts exist (new user, etc.)
   const filenameDate = latestFactDate.getTime() > 0 ? isoDateIn(timeZone, latestFactDate) : isoDateIn(timeZone, new Date());
-  const docExportDate = longDateIn(timeZone, new Date()); // The date the document was exported
   
   if (format === 'json') {
     // "EVERYTHING WE HOLD" HAS TO MEAN EVERYTHING WE HOLD.
@@ -161,8 +163,9 @@ export async function GET(request: Request) {
     const { data: everything } = await svc
       .from('kira_memory')
       .select('id, content, created_at, importance, genome_section, genome_about, genome_headline, genome_private_reason, genome_owner_dependent, confirmed_at, active, parked_reason')
-      .eq('user_id', appUser.id)
+      .eq('organisation_id', orgContext.organisationId)
       .order('created_at', { ascending: false });
+
 
     // ⚠️ WHAT HE REMOVED DOES NOT TRAVEL IN HIS FILE — even though this file is "everything we hold".
     //

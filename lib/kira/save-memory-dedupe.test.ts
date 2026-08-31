@@ -17,15 +17,13 @@ vi.mock('@/lib/supabase/server', () => ({
     from: (table: string) => {
       const chain: Record<string, unknown> = {
         select: () => chain,
+        or: () => chain,
         eq: () => chain,
-        // The other-business lookup (`.not('parked_entity','is',null)`) resolves to nothing here —
-        // this file is about the DUPLICATE guard, and returning known entities would park facts it
-        // is trying to assert get stored. Marked so `limit` can tell the two queries apart.
+        neq: () => chain,
         not: () => {
           chain.__entityQuery = true;
           return chain;
         },
-        neq: () => chain,
         order: () => chain,
         limit: () =>
           chain.__entityQuery
@@ -42,6 +40,31 @@ vi.mock('@/lib/supabase/server', () => ({
       return chain;
     },
   }),
+  createServiceClientV2: () => ({
+    from: (table: string) => {
+      const chain: Record<string, unknown> = {
+        select: () => chain,
+        or: () => chain,
+        eq: () => chain,
+        neq: () => chain,
+        order: () => chain,
+        limit: () =>
+          table === 'kira_memory'
+            ? Promise.resolve({ data: db.existing })
+            : chain,
+        maybeSingle: () => Promise.resolve({ data: null }),
+        insert: (row: Record<string, unknown>) => {
+          db.inserted.push(row);
+          return Promise.resolve({ error: null });
+        },
+      };
+      return chain;
+    },
+  }),
+}));
+
+vi.mock('@/lib/auth', () => ({
+  resolveOrganisationForPerson: vi.fn().mockResolvedValue({ organisationId: 'org-1', personId: 'owner-1' }),
 }));
 
 vi.mock('@/lib/kira/mnemo', () => ({ mnemoAdd: async () => undefined }));

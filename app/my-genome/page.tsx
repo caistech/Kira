@@ -1,4 +1,4 @@
-import { getAuthUser } from '@/lib/auth';
+import { getAuthUser, resolveOrganisationForPerson } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { KiraShapeSection } from '@/components/KiraShapeSection';
 import { buildGenomeOverviewFirstMessage } from '@/lib/kira/area-focus';
@@ -101,13 +101,22 @@ export default async function MyGenome() {
     );
   }
 
-  const g = await deriveOwnerGenome(appUser.id);
+  const orgContext = await resolveOrganisationForPerson(appUser.id);
+  if (!orgContext) {
+    return (
+      <main className="max-w-3xl mx-auto px-5 py-16">
+        <h1 className="font-display text-2xl font-bold">Your Business Genome</h1>
+        <p className="text-stone-600 mt-3">No organisation membership found.</p>
+      </main>
+    );
+  }
+  const g = await deriveOwnerGenome(orgContext);
 
   // The freshness window and the clock read both live above the component — see isStillFiling.
   const { data: lastConversation } = await svc
     .from('conversations')
     .select('started_at')
-    .eq('user_id', appUser.id)
+    .eq('organisation_id', orgContext.organisationId)
     .order('started_at', { ascending: false })
     .limit(1)
     .maybeSingle();

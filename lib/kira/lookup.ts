@@ -69,10 +69,12 @@ interface WireLookup {
  * One call for both kinds — the two differ only in what a result looks like, and splitting them
  * would mean two copies of the failure handling, which is the part that must not drift.
  *
- * `userId` is the tenant id: Kira's app user id IS the orchestrator tenant (same as financials).
- * It arrives from the server-baked `?uid`, never from the model.
+ * `organisationId` is the tenant identifier for the orchestrator. The organisation is the
+ * enduring subject; the orchestrator's tenant scope must be organisational, not personal.
+ * This value is resolved at the request/authentication boundary and passed down —
+ * lookup() performs no Person → Organisation resolution.
  */
-async function lookup(userId: string, kind: LookupKind, q: string): Promise<LookupAnswer> {
+async function lookup(organisationId: string, kind: LookupKind, q: string): Promise<LookupAnswer> {
   const baseUrl = (process.env.ORCHESTRATOR_URL || '').replace(/\/$/, '');
   const secret = process.env.ORCHESTRATOR_SECRET || '';
 
@@ -98,7 +100,7 @@ async function lookup(userId: string, kind: LookupKind, q: string): Promise<Look
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
     const url =
-      `${baseUrl}/api/v1/tenants/${encodeURIComponent(userId)}/lookup` +
+      `${baseUrl}/api/v1/tenants/${encodeURIComponent(organisationId)}/lookup` +
       `?kind=${kind}&q=${encodeURIComponent(term)}`;
     const res = await fetch(url, {
       headers: { [ORCHESTRATOR_AUTH_HEADER]: secret },
@@ -149,12 +151,12 @@ async function lookup(userId: string, kind: LookupKind, q: string): Promise<Look
   }
 }
 
-/** Search the owner's Drive by name and full text. Returns links, because he opens them himself. */
-export function searchDrive(userId: string, query: string): Promise<LookupAnswer> {
-  return lookup(userId, 'drive', query);
+/** Search the organisation's Drive by name and full text. Returns links, because the owner opens them himself. */
+export function searchDrive(organisationId: string, query: string): Promise<LookupAnswer> {
+  return lookup(organisationId, 'drive', query);
 }
 
-/** Look a person up in the owner's contacts. Zero matches with ok:true means genuinely no match. */
-export function lookUpContact(userId: string, name: string): Promise<LookupAnswer> {
-  return lookup(userId, 'contacts', name);
+/** Look a person up in the organisation's contacts. Zero matches with ok:true means genuinely no match. */
+export function lookUpContact(organisationId: string, name: string): Promise<LookupAnswer> {
+  return lookup(organisationId, 'contacts', name);
 }

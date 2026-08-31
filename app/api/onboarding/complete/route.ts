@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     }
 
     // The auth trigger (handle_new_auth_user) links/creates the public.users row by email.
-    const { data: appUser } = await svc.from('users').select('id').eq('email', email).maybeSingle();
+    const { data: appUser } = await svc.from('users').select('id, organisation_id').eq('email', email).maybeSingle();
     if (!appUser) {
       return NextResponse.json({ error: 'Account link not ready, please sign in' }, { status: 500 });
     }
@@ -141,6 +141,7 @@ export async function POST(request: NextRequest) {
 
     await svc.from('business_valuations').upsert(
       {
+        organisation_id: appUser.organisation_id,
         user_id: appUser.id,
         inputs,
         currency: m.val_currency || DEFAULT_CURRENCY,
@@ -154,7 +155,7 @@ export async function POST(request: NextRequest) {
         quoted_monthly: m.quoted_monthly ? Number(m.quoted_monthly) : null,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: 'user_id' },
+      { onConflict: 'organisation_id' },
     );
 
     // The first point on their curve. The upsert above keeps the CURRENT figures; this records that
@@ -163,6 +164,7 @@ export async function POST(request: NextRequest) {
     // already computed and paid for, and a history write must not fail a checkout.
     await recordValuationSnapshot({
       userId: appUser.id,
+      organisationId: appUser.organisation_id,
       inputs,
       source: 'onboarding',
       currency: m.val_currency || DEFAULT_CURRENCY,

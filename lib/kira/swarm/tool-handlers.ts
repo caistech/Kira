@@ -8,6 +8,7 @@
 // dispatch only drafts; approve_task(approve=true) is the only path that executes.
 
 import { sendUnansweredRequestAlert } from '@/lib/email/unanswered-request';
+import { resolveOrganisationForPerson } from '@/lib/auth';
 import { getSwarmCoordinator } from '@/lib/kira/swarm';
 import { readTaskLedger } from '@/lib/kira/swarm/open-tasks';
 import {
@@ -56,6 +57,7 @@ function usingRemoteBrain(): boolean {
  */
 async function mirrorTask(args: {
   userId: string;
+  organisationId?: string | null;
   taskGroupId: string;
   utterance: string;
   status: string;
@@ -70,6 +72,8 @@ async function mirrorTask(args: {
       .upsert(
         {
           user_id: args.userId,
+          // Ownership is organisation-scoped (INV-020); user_id remains provenance of who asked.
+          ...(args.organisationId ? { organisation_id: args.organisationId } : {}),
           intent_id: `orch:${args.taskGroupId}`,
           kind: args.kind ?? 'unsupported',
           status: args.status,
@@ -77,7 +81,7 @@ async function mirrorTask(args: {
           summary: args.summary,
           handled_by: 'orchestrator',
         },
-        { onConflict: 'user_id,intent_id' },
+        { onConflict: 'organisation_id,intent_id' },
       );
   } catch (error) {
     console.error('[swarm] could not mirror a task (ignored):', error);
@@ -147,8 +151,10 @@ export async function handleDispatchTask(req: Request): Promise<Response> {
     // 12:15 and 12:16 did not. Six of ten tasks ended up on no screen, three of them waiting on the
     // owner's approval. It costs one round trip and cannot break the voice path: mirrorTask catches
     // its own failures. Fire-and-forget is a browser idiom; here it is a data-loss bug.
+    const orgContext = await resolveOrganisationForPerson(userId);
     await mirrorTask({
       userId,
+      organisationId: orgContext?.organisationId ?? null,
       taskGroupId: result.taskGroupId,
       utterance,
       status: result.status,
@@ -208,6 +214,7 @@ export async function handleDispatchTask(req: Request): Promise<Response> {
  */
 async function recordRefusal(args: {
   userId: string;
+  organisationId?: string | null;
   source: 'approval' | 'agent';
   asked: string;
   reason: string | null;
@@ -221,14 +228,18 @@ async function recordRefusal(args: {
 }): Promise<void> {
   try {
     const supabase = createServiceClient();
-    const { data: agent } = await supabase
+    const orgContext = args.organisationId
+      ? { organisationId: args.organisationId }
+      : await resolveOrganisationForPerson(args.userId);
+    const agentQuery = supabase
       .from('kira_agents')
       .select('id')
-      .eq('user_id', args.userId)
-      .limit(1)
-      .maybeSingle();
+      .eq('organisation_id', orgContext?.organisationId ?? null)
+      .limit(1);
+    const { data: agent } = await agentQuery.maybeSingle();
     await supabase.from('kira_refusals').insert({
       user_id: args.userId,
+      ...(orgContext?.organisationId ? { organisation_id: orgContext.organisationId } : {}),
       kira_agent_id: agent?.id ?? null,
       source: args.source,
       asked: args.asked,
@@ -288,8 +299,10 @@ export async function handleApproveTask(req: Request): Promise<Response> {
   // Awaited so the row is written before the response returns — a floating promise on a serverless
   // runtime means "maybe", which is how the task mirror lost six rows.
   if (!approve) {
+    const orgContext = await resolveOrganisationForPerson(userId);
     await recordRefusal({
       userId,
+      organisationId: orgContext?.organisationId ?? null,
       source: 'approval',
       asked: `approve and send task ${taskId}`,
       reason: 'the owner did not approve it',
@@ -341,7 +354,8 @@ export async function handleCheckTasks(req: Request): Promise<Response> {
   const refusedLedger = refuseThirdPartyDisclosure(body);
   if (refusedLedger) return refusedLedger;
 
-  const ledger = await readTaskLedger(userId);
+  const orgContext = await resolveOrganisationForPerson(userId);
+  const ledger = await readTaskLedger(userId, orgContext?.organisationId ?? undefined);
   return json(200, {
     success: true,
     open_count: ledger.openCount,

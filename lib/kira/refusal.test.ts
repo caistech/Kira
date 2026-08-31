@@ -16,7 +16,7 @@ const inserted: Record<string, unknown>[] = [];
 let recentRows: { id: string }[] = [];
 
 vi.mock('@/lib/supabase/server', () => ({
-  createServiceClient: () => ({
+  createServiceClientV2: () => ({
     from: (table: string) => ({
       select: () => ({
         eq: () => ({

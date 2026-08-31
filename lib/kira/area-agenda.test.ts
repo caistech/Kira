@@ -59,6 +59,33 @@ describe('what comes back', () => {
           select: () => ({ eq: () => ({ eq: async () => ({ data: rows, error: null }) }) }),
         }),
       }),
+      createServiceClientV2: () => ({
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                or: () => ({
+                  order: () => ({
+                    limit: () => ({
+                      maybeSingle: async () => ({
+                        data: {
+                          membership_id: 'm1',
+                          organisation_id: 'test-org-id',
+                          role: 'owner',
+                          status: 'active',
+                          valid_from: '2020-01-01',
+                          valid_to: null,
+                        },
+                        error: null,
+                      }),
+                    }),
+                  }),
+                }),
+              }),
+            }),
+          }),
+        }),
+      }),
     }));
     vi.resetModules();
     const { handleAreaAgenda } = await import('./area-agenda');
@@ -133,6 +160,33 @@ describe('when it cannot answer', () => {
       createServiceClient: () => ({
         from: () => ({
           select: () => ({ eq: () => ({ eq: async () => ({ data: null, error: { message: 'boom' } }) }) }),
+        }),
+      }),
+      createServiceClientV2: () => ({
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                or: () => ({
+                  order: () => ({
+                    limit: () => ({
+                      maybeSingle: async () => ({
+                        data: {
+                          membership_id: 'm1',
+                          organisation_id: 'test-org-id',
+                          role: 'owner',
+                          status: 'active',
+                          valid_from: '2020-01-01',
+                          valid_to: null,
+                        },
+                        error: null,
+                      }),
+                    }),
+                  }),
+                }),
+              }),
+            }),
+          }),
         }),
       }),
     }));

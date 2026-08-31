@@ -22,7 +22,7 @@ import {
   type AuthExtraField,
   type AuthMode,
 } from '@caistech/corporate-components/auth';
-import { createClient } from '@/lib/supabase/browser';
+import { createClientV2 } from '@/lib/supabase/browser';
 import { TERMS_VERSION } from '@/lib/terms';
 
 type LocalMode = 'login' | 'signup' | 'forgot' | 'reset' | 'magic-link';
@@ -122,7 +122,7 @@ export function AuthForm({
   subtitle,
 }: AuthFormProps) {
   // SSR-safe: build the browser client once on the client.
-  const supabaseClient = useMemo(() => (typeof window === 'undefined' ? null : createClient()), []);
+  const supabaseClient = useMemo(() => (typeof window === 'undefined' ? null : createClientV2()), []);
 
   // ⚠️ DO NOT RENDER THE CANONICAL UNTIL THERE IS A CLIENT.
   //

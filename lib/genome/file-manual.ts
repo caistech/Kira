@@ -20,6 +20,7 @@ import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { renderAreas, type Audience } from '@/lib/genome/render';
 import { displayName, timeZoneForState } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
+import { resolveOrganisationForPerson } from '@/lib/auth';
 
 const DESTINATION = 'drive';
 
@@ -75,17 +76,23 @@ export async function fileManual(userId: string, audience: Audience): Promise<Fi
   const business = identity ? displayName(identity) : 'Your business';
   const timeZone = timeZoneForState(identity?.state);
 
-  const genome = await deriveOwnerGenome(userId);
+  const orgContext = await resolveOrganisationForPerson(userId);
+  if (!orgContext) {
+    return { ok: false, message: "No organisation membership found — cannot file.", written: 0, total: 0 };
+  }
+  const genome = await deriveOwnerGenome(orgContext);
   const documents = renderAreas(genome, audience, timeZone);
   if (documents.length === 0) {
     return { ok: false, message: "There's nothing in your Genome to file yet.", written: 0, total: 0 };
   }
 
   // The handles from last time. Without them every document below is a CREATE.
+  // INV-020: drive_documents is organisation-owned (organisation_id NOT NULL since 20260828) —
+  // scope the read by org; user_id is retained as provenance only.
   const { data: existing } = await supabase
     .from('drive_documents')
     .select('area_key, ref')
-    .eq('user_id', userId)
+    .eq('organisation_id', orgContext.organisationId)
     .eq('audience', audience)
     .eq('destination', DESTINATION);
   const refFor = new Map((existing ?? []).map((r) => [String(r.area_key), String(r.ref)]));
@@ -124,6 +131,7 @@ export async function fileManual(userId: string, audience: Audience): Promise<Fi
     const { error } = await supabase.from('drive_documents').upsert(
       landed.map((r) => ({
         user_id: userId,
+        organisation_id: orgContext.organisationId,
         audience,
         area_key: r.key,
         destination: DESTINATION,

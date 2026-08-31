@@ -17,6 +17,7 @@ import { revalidatePath } from 'next/cache';
 import { getCurrentAppUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { GENOME_AREAS, type AreaKey } from '@/lib/genome/areas';
+import { resolveOrganisationForPerson } from '@/lib/auth';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { assessAreaEntries } from '@/lib/genome/checklist-assess';
 import { recomputeEvidencedReadiness } from '@/lib/valuation/recompute-readiness';
@@ -37,7 +38,9 @@ export async function assessArea(area: string): Promise<AssessState> {
   if (!user?.id) return { error: 'You are not signed in.' };
   if (!AREA_KEYS.has(area as AreaKey)) return { error: 'That is not one of the nine areas.' };
 
-  const genome = await deriveOwnerGenome(user.id as string);
+  const orgContext = await resolveOrganisationForPerson(user.id as string);
+  if (!orgContext) return { error: 'No organisation membership found.' };
+  const genome = await deriveOwnerGenome(orgContext);
   const section = genome.sections.find((s) => s.key === area);
   const entries = (section?.entries ?? []).map((e) => ({
     id: e.id,

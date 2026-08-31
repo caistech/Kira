@@ -1,9 +1,9 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { getCurrentAppUser } from '@/lib/auth';
+import { getCurrentOrganisationContext } from '@/lib/auth';
 import { canSend, DEFAULT_TIME_ZONE as DASHBOARD_TIME_ZONE } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { KiraShapeSection } from '@/components/KiraShapeSection';
 import { formatMoney, formatMoneyApprox, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { displayedFigures } from '@/lib/valuation/displayed';
@@ -53,8 +53,8 @@ export default async function DashboardPage({
 }) {
   const sp = await searchParams;
   const isWelcome = sp?.welcome === '1';
-  const user = await getCurrentAppUser();
-  const svc = createServiceClient();
+  const user = await getCurrentOrganisationContext();
+  const svc = createServiceClientV2();
 
   // WHO IS KIRA WRITING AS — asked plainly, on the way past, instead of barring the door.
   //
@@ -68,8 +68,8 @@ export default async function DashboardPage({
   // tenant missing any of entity / ABN / address, so "there is a row" is the easier question, and
   // answering it is how a screen ends up reassuring someone about a send that will be refused.
   // The difference is what happens on a NO — he now reads it and keeps going.
-  const identity = user?.id ? await getBusinessIdentity(user.id) : null;
-  const cannotSendYet = Boolean(user?.id) && !canSend(identity);
+  const identity = user?.organisationId ? await getBusinessIdentity(user.organisationId) : null;
+  const cannotSendYet = Boolean(user?.organisationId) && !canSend(identity);
 
   // Saved here, not held by the system that sends. A real state, and one he must be able to see —
   // he is not trapped in setup over our outage, but he is not told it worked either. The grace
@@ -80,7 +80,7 @@ export default async function DashboardPage({
     ? await svc
         .from('kira_agents')
         .select('id, agent_name, elevenlabs_agent_id, journey_type, status, total_conversations, last_conversation_at')
-        .eq('user_id', user.id)
+        .eq('organisation_id', user.organisationId)
         .neq('status', 'deleted')
         .order('last_conversation_at', { ascending: false, nullsFirst: false })
     : { data: [] as Array<Record<string, unknown>> };
@@ -103,7 +103,7 @@ export default async function DashboardPage({
     const { data: convRows } = await svc
       .from('conversations')
       .select('kira_agent_id')
-      .eq('user_id', user.id);
+      .eq('organisation_id', user.organisationId);
     for (const row of convRows ?? []) {
       const key = String((row as { kira_agent_id?: string }).kira_agent_id ?? '');
       if (key) conversationCounts.set(key, (conversationCounts.get(key) ?? 0) + 1);
@@ -114,7 +114,7 @@ export default async function DashboardPage({
     ? await svc
         .from('business_valuations')
         .select('gap, worth_today, worth_potential, readiness, currency, industry, created_at')
-        .eq('user_id', user.id)
+        .eq('organisation_id', user.organisationId)
         .maybeSingle()
     : { data: null as Valuation | null };
 
@@ -147,7 +147,7 @@ export default async function DashboardPage({
     ? await svc
         .from('client_profiles')
         .select('completeness, discovery_complete, sessions_count')
-        .eq('user_id', user.id)
+        .eq('organisation_id', user.organisationId)
         .maybeSingle()
     : { data: null as { completeness: number; discovery_complete: boolean; sessions_count: number } | null };
 
@@ -240,7 +240,7 @@ export default async function DashboardPage({
             hasIdentity: Boolean(identity?.legal_name?.trim()),
             hasAgent: list.length > 0,
           })}
-          firstName={user?.first_name as string | undefined}
+          firstName={undefined}
         />
       )}
 
@@ -312,7 +312,7 @@ export default async function DashboardPage({
       {!gateStep && !val && showBaselineInvite && <NoBaselineYet />}
 
       {val && val.gap > 0 && (
-        <GapDashboard valuation={val} money={money} talkHref={talkHref} isWelcome={isWelcome} hasMetKira={list.length > 0} firstName={user?.first_name as string | undefined} />
+        <GapDashboard valuation={val} money={money} talkHref={talkHref} isWelcome={isWelcome} hasMetKira={list.length > 0} firstName={undefined} />
       )}
 
       {/* KIRA HERSELF, ON THE PAGE HE LANDS ON — not a button that goes to her.

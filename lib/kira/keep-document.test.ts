@@ -24,7 +24,7 @@ vi.mock('@/lib/kira/knowledge-ingest', async (importOriginal) => {
 });
 
 vi.mock('@/lib/supabase/server', () => ({
-  createServiceClient: () => ({
+  createServiceClientV2: () => ({
     from: () => ({
       select: () => ({
         eq: () => ({

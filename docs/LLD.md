@@ -37,12 +37,13 @@ supabase/migrations/   the ONLY migrations that run
 
 | Context | Use | Never |
 |---|---|---|
-| Browser component | `lib/supabase/browser.ts` | a service-role client |
-| API route (write/admin) | `lib/supabase/server.ts` → `createServiceClient()` | anon key |
+| Browser component | `lib/supabase/browser.ts` → `createClientV2()` (publishable key) | a service-role client |
+| API route (write/admin) | `lib/supabase/server.ts` → `createServiceClientV2()` (secret key) | anon key |
+| Server component / action (session) | `lib/supabase/server-session.ts` → `createSessionClientV2()` (publishable key) | service-role client |
 
-**Invariant:** a missing `SUPABASE_SERVICE_ROLE_KEY` **throws**. It must never silently fall back
-to the anon key — a write path that quietly degrades to anon permissions fails in a way that looks
-like a data bug months later, far from the cause.
+**Invariant:** a missing `SUPABASE_SECRET_KEY` (API route) or `SUPABASE_PUBLISHABLE_KEY` (browser/server-session) **throws**. It must never silently fall back to legacy JWT credentials (`SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) — a write path that quietly degrades to legacy credentials fails in a way that looks like a data bug months later, far from the cause.
+
+**Invariant (API Key Model — Target Architecture):** New code MUST use V2 clients (`createClientV2`, `createServiceClientV2`, `createSessionClientV2`). Legacy clients (`createClient`, `createServiceClient`, `createSessionClient`) are retained ONLY for unmigrated callers and MUST NOT be used in new code. The API Key Model (`sb_secret_` / `sb_publishable_`) is the target architecture. Phase 0 validation complete (Preview only); Production remains on legacy JWT pending explicit authorisation for full migration.
 
 ---
 

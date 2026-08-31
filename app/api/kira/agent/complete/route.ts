@@ -1,6 +1,7 @@
 // app/api/kira/agent/complete/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
+import { getCurrentOrganisationContext } from '@/lib/auth';
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
 
@@ -16,13 +17,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = createServiceClient();
+    // INV-020: kira_agents is organisation-owned. The caller is the authenticated session (this
+    // route is hit from /chat), so resolve the org server-side — never from the client body.
+    const organisationContext = await getCurrentOrganisationContext();
+    if (!organisationContext) {
+      return NextResponse.json({ error: 'Not signed in or no organisation access' }, { status: 401 });
+    }
+    const organisationId = organisationContext.organisationId;
 
-    // Get the agent details
+    const supabase = createServiceClientV2();
+
+    // Get the agent details — scoped to the caller's organisation.
     const { data: agent, error: fetchError } = await supabase
       .from('kira_agents')
       .select('*')
       .eq('elevenlabs_agent_id', agentId)
+      .eq('organisation_id', organisationId)
       .single();
 
     if (fetchError || !agent) {
@@ -32,7 +42,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update agent status to 'completed'
+    // Update agent status to 'completed' — scoped to the caller's organisation.
     const { error: updateError } = await supabase
       .from('kira_agents')
       .update({
@@ -40,7 +50,8 @@ export async function POST(request: NextRequest) {
         completed_at: new Date().toISOString(),
         completion_feedback: feedback || null,
       })
-      .eq('id', agent.id);
+      .eq('id', agent.id)
+      .eq('organisation_id', organisationId);
 
     if (updateError) {
       console.error('[agent/complete] Update error:', updateError);

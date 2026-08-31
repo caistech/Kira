@@ -102,6 +102,33 @@ vi.mock('@/lib/supabase/server', () => ({
       return chain;
     },
   }),
+  createServiceClientV2: () => ({
+    from: (table: string) => {
+      const chain: Record<string, unknown> = {};
+      Object.assign(chain, {
+        select: () => chain,
+        eq: () => chain,
+        or: () => chain,
+        order: () => chain,
+        limit: () => chain,
+        maybeSingle: async () =>
+          table === 'organisation_memberships'
+            ? {
+                data: {
+                  membership_id: 'm1',
+                  organisation_id: 'test-org-id',
+                  role: 'owner',
+                  status: 'active',
+                  valid_from: '2020-01-01',
+                  valid_to: null,
+                },
+                error: null,
+              }
+            : { data: null, error: null },
+      });
+      return chain;
+    },
+  }),
 }));
 
 vi.mock('@/lib/kira/mnemo', () => ({ mnemoAdd: async (_uid: string, facts: string[]) => void mnemoWrites.push(facts) }));

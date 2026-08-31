@@ -46,7 +46,7 @@ function makeSupabase({ bridged, orphan }: { bridged?: unknown; orphan?: unknown
 
 async function load(authUser: Record<string, unknown> | null, supa: { from: unknown }) {
   vi.resetModules();
-  vi.doMock('@/lib/supabase/server', () => ({ createServiceClient: () => supa }));
+  vi.doMock('@/lib/supabase/server', () => ({ createServiceClientV2: () => supa }));
   vi.doMock('@/lib/supabase/server-session', () => ({
     createSessionClient: async () => ({ auth: { getUser: async () => ({ data: { user: authUser } }) } }),
   }));

@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
+import { createClientV2 } from '@/lib/supabase/browser';
 import { Loader2, FileEdit, CheckCircle, Sparkles, Briefcase, ArrowLeft } from 'lucide-react';
 import { VoiceWidget } from '@caistech/elevenlabs-convai/react';
 import { reportVoiceConnect } from '@/lib/voice/connect-telemetry';
@@ -16,11 +16,8 @@ interface Draft {
   created_at: string;
 }
 
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+// Initialize Supabase client V2 (uses publishable key)
+const supabase = createClientV2();
 
 // Setup Kira's ElevenLabs agent ID
 const SETUP_KIRA_AGENT_ID = process.env.NEXT_PUBLIC_SETUP_KIRA_AGENT_ID;

@@ -15,14 +15,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
-import { createClient as createSessionBrowserClient } from '@/lib/supabase/browser';
+import { createClientV2, createClient as createSessionBrowserClientV2 } from '@/lib/supabase/browser';
 import { Loader2, Sparkles, MapPin, Target, CheckCircle, AlertCircle, Mail, Plus, X, Briefcase } from 'lucide-react';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supabase = createClientV2();
 
 interface KiraDraft {
   id: string;
@@ -117,7 +113,7 @@ export default function DraftReviewPage() {
   // looks the user up by email, and the auth trigger already linked the users row by email — so
   // the created agent is attributed to this user and appears on their dashboard.
   useEffect(() => {
-    const authClient = createSessionBrowserClient();
+    const authClient = createSessionBrowserClientV2();
     authClient.auth.getUser().then(({ data }) => {
       if (data.user?.email) {
         setEmail(data.user.email);

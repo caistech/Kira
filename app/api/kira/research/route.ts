@@ -3,7 +3,9 @@
 // With Serper search + pgvector embeddings + Jina reranking
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
+import { toolSecretOk } from '@/lib/kira/convai';
+import { resolveOrganisationFromUser } from '@/lib/auth';
 import { searchWeb, searchNews } from '@/lib/serper/client';
 import { searchKnowledge, embedKnowledgeEntry } from '@/lib/kira/knowledge-search';
 
@@ -36,27 +38,53 @@ function truncateToTokens(text: string, maxTokens: number): string {
 
 export async function POST(request: NextRequest) {
   try {
+    // Agent webhook trust boundary: HMAC verification, not session JWT.
+    if (!toolSecretOk(request)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Resolve user identity from conversation binding (server-derived, not client-supplied).
+    const conversationId = request.headers.get('x-conversation-id');
+    let userId: string | null = null;
+
+    if (conversationId) {
+      const supabase = createServiceClientV2();
+      const { data: conv } = await supabase
+        .from('conversations')
+        .select('user_id, organisation_id')
+        .eq('id', conversationId)
+        .single();
+      userId = conv?.user_id ?? null;
+    }
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unable to resolve user identity' }, { status: 401 });
+    }
+
+    // Canonical organisation resolution: user_id → auth_credentials → persons → organisation_memberships
+    const ctx = await resolveOrganisationFromUser(userId);
+    if (!ctx) {
+      return NextResponse.json({ error: 'No active organisation membership' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { tool_name } = body;
 
-    const conversationId = request.headers.get('x-conversation-id') || 'unknown';
-    const userId = body.user_id || request.headers.get('x-user-id');
-
-    console.log(`[research] Tool: ${tool_name}, Conversation: ${conversationId}`);
+    console.log(`[research] Tool: ${tool_name}, Conversation: ${conversationId}, Org: ${ctx.organisationId}`);
 
     switch (tool_name) {
       case 'start_research_session':
-        return handleStartResearch(body, userId);
+        return handleStartResearch(body, userId, ctx);
       case 'search_web':
-        return handleSearchWeb(body, userId);
+        return handleSearchWeb(body, userId, ctx);
       case 'fetch_url':
-        return handleFetchUrl(body, userId);
+        return handleFetchUrl(body, userId, ctx);
       case 'save_finding':
-        return handleSaveFinding(body, userId);
+        return handleSaveFinding(body, userId, ctx);
       case 'search_knowledge':
-        return handleSearchKnowledge(body, userId);
+        return handleSearchKnowledge(body, userId, ctx);
       case 'complete_research':
-        return handleCompleteResearch(body, userId);
+        return handleCompleteResearch(body, userId, ctx);
       default:
         return NextResponse.json({ error: `Unknown tool: ${tool_name}` }, { status: 400 });
     }
@@ -77,15 +105,13 @@ export async function POST(request: NextRequest) {
 async function handleStartResearch(
   body: {
     topic: string;
-    user_id: string;
     kira_agent_id?: string;
     research_angles?: string[];
   },
-  headerUserId?: string | null
+  userId: string,
+  ctx: { organisationId: string; personId: string }
 ) {
-  const supabase = createServiceClient();
-  const userId = body.user_id || headerUserId;
-
+  const supabase = createServiceClientV2();
   if (!userId) {
     return NextResponse.json({
       result: { success: false, message: "I need to know who you are to start research." }
@@ -96,7 +122,8 @@ async function handleStartResearch(
   const { data: existingSession } = await supabase
     .from('kira_research_sessions')
     .select('*')
-    .eq('user_id', userId)
+    // INV-020: sessions are organisation-owned
+    .eq('organisation_id', ctx.organisationId)
     .eq('status', 'active')
     .gt('expires_at', new Date().toISOString())
     .single();
@@ -122,7 +149,8 @@ async function handleStartResearch(
   const { data: session, error } = await supabase
     .from('kira_research_sessions')
     .insert({
-      user_id: userId,
+      // INV-020: sessions are organisation-owned; user_id is provenance (auto-filled by RLS context)
+      organisation_id: ctx.organisationId,
       kira_agent_id: body.kira_agent_id || null,
       topic: body.topic,
       status: 'active',
@@ -171,11 +199,11 @@ async function handleSearchWeb(
     query: string;
     reason: string;
     search_type?: 'web' | 'news';
-    user_id: string;
   },
-  headerUserId?: string | null
+  userId: string,
+  ctx: { organisationId: string; personId: string }
 ) {
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   if (!body.session_id || !body.query) {
     return NextResponse.json({
@@ -183,12 +211,13 @@ async function handleSearchWeb(
     });
   }
 
-  // Check session limits
-  const { data: session } = await supabase
-    .from('kira_research_sessions')
-    .select('*')
-    .eq('id', body.session_id)
-    .single();
+    // Check session limits
+    const { data: session } = await supabase
+      .from('kira_research_sessions')
+      .select('*')
+      .eq('id', body.session_id)
+      .eq('organisation_id', ctx.organisationId)
+      .single();
 
   if (!session) {
     return NextResponse.json({
@@ -227,7 +256,8 @@ async function handleSearchWeb(
     await supabase
       .from('kira_research_sessions')
       .update({ searches_used: session.searches_used + 1 })
-      .eq('id', body.session_id);
+      .eq('id', body.session_id)
+      .eq('organisation_id', ctx.organisationId);
 
     const searchesRemaining = session.max_searches - session.searches_used - 1;
 
@@ -264,11 +294,11 @@ async function handleFetchUrl(
     session_id?: string;
     url: string;
     reason: string;
-    user_id: string;
   },
-  headerUserId?: string | null
+  userId: string,
+  ctx: { organisationId: string; personId: string }
 ) {
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   if (!body.url) {
     return NextResponse.json({
@@ -283,6 +313,7 @@ async function handleFetchUrl(
       .from('kira_research_sessions')
       .select('*')
       .eq('id', body.session_id)
+      .eq('organisation_id', ctx.organisationId)
       .single();
     session = data;
 
@@ -324,7 +355,8 @@ async function handleFetchUrl(
           urls_fetched: session.urls_fetched + 1,
           tokens_used: session.tokens_used + tokenCount,
         })
-        .eq('id', body.session_id);
+        .eq('id', body.session_id)
+        .eq('organisation_id', ctx.organisationId);
     }
 
     return NextResponse.json({
@@ -352,7 +384,6 @@ async function handleFetchUrl(
 async function handleSaveFinding(
   body: {
     session_id?: string;
-    user_id: string;
     kira_agent_id?: string;
     title: string;
     url?: string;
@@ -364,10 +395,10 @@ async function handleSaveFinding(
     topic?: string;
     raw_content?: string;
   },
-  headerUserId?: string | null
+  userId: string,
+  ctx: { organisationId: string; personId: string }
 ) {
-  const supabase = createServiceClient();
-  const userId = body.user_id || headerUserId;
+  const supabase = createServiceClientV2();
 
   if (!userId || !body.title || !body.summary) {
     return NextResponse.json({
@@ -382,6 +413,7 @@ async function handleSaveFinding(
       .from('kira_research_sessions')
       .select('*')
       .eq('id', body.session_id)
+      .eq('organisation_id', ctx.organisationId)
       .single();
     session = data;
   }
@@ -395,7 +427,7 @@ async function handleSaveFinding(
   const { data: knowledge, error } = await supabase
     .from('kira_knowledge')
     .insert({
-      user_id: userId,
+      organisation_id: ctx.organisationId,
       kira_agent_id: body.kira_agent_id || null,
       source_type: body.source_type || 'kira_research',
       title: body.title,
@@ -429,13 +461,14 @@ async function handleSaveFinding(
 
   // Update session if applicable
   if (session) {
-    await supabase
-      .from('kira_research_sessions')
-      .update({
-        tokens_used: session.tokens_used + tokenCount,
-        kira_findings_count: session.kira_findings_count + 1,
-      })
-      .eq('id', body.session_id);
+      await supabase
+        .from('kira_research_sessions')
+        .update({
+          tokens_used: session.tokens_used + tokenCount,
+          kira_findings_count: session.kira_findings_count + 1,
+        })
+        .eq('id', body.session_id)
+        .eq('organisation_id', ctx.organisationId);
   }
 
   return NextResponse.json({
@@ -454,14 +487,13 @@ async function handleSaveFinding(
 
 async function handleSearchKnowledge(
   body: {
-    user_id: string;
     query: string;
     limit?: number;
     topic?: string;
   },
-  headerUserId?: string | null
+  userId: string,
+  ctx: { organisationId: string; personId: string }
 ) {
-  const userId = body.user_id || headerUserId;
 
   if (!userId || !body.query) {
     return NextResponse.json({
@@ -471,7 +503,7 @@ async function handleSearchKnowledge(
 
   try {
     // Use the cutting-edge hybrid search with reranking
-    const results = await searchKnowledge(userId, body.query, {
+    const results = await searchKnowledge(ctx.organisationId, body.query, {
       limit: body.limit || 10,
       topic: body.topic,
       useReranker: true,
@@ -503,12 +535,12 @@ async function handleSearchKnowledge(
 async function handleCompleteResearch(
   body: {
     session_id: string;
-    user_id: string;
     synthesis?: string;
   },
-  headerUserId?: string | null
+  userId: string,
+  ctx: { organisationId: string; personId: string }
 ) {
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   if (!body.session_id) {
     return NextResponse.json({
@@ -520,6 +552,7 @@ async function handleCompleteResearch(
     .from('kira_research_sessions')
     .select('*')
     .eq('id', body.session_id)
+    .eq('organisation_id', ctx.organisationId)
     .single();
 
   if (!session) {
@@ -543,7 +576,8 @@ async function handleCompleteResearch(
       completed_at: new Date().toISOString(),
       synthesis: body.synthesis || null,
     })
-    .eq('id', body.session_id);
+    .eq('id', body.session_id)
+    .eq('organisation_id', ctx.organisationId);
 
   const kiraFindings = findings?.filter(f => f.created_by === 'kira') || [];
   const userFindings = findings?.filter(f => f.created_by === 'user') || [];

@@ -15,14 +15,19 @@
 // This copies across the seam; it never decides anything.
 
 import type { SwarmCoordinator, TaskSummary, TenantId } from './coordinator';
+import { resolveOrganisationForPerson } from '@/lib/auth';
 
 /**
  * What a rebuilt row looks like. Deliberately the same shape and the same conflict key the live
  * mirror uses (`orch:<taskGroupId>` on `user_id,intent_id`) — anything else and a backfill would
  * race the callback into two rows for one task, which is a mirror turning into two opinions.
+ *
+ * INV-020: kira_tasks are organisation-owned (organisation_id NOT NULL) and user_id stays provenance
+ * of who asked. The owning org is resolved per tenant at insertion time.
  */
 export interface MirrorRow {
   user_id: string;
+  organisation_id?: string;
   intent_id: string;
   kind: string;
   status: string;
@@ -52,12 +57,17 @@ export function kindFor(task: TaskSummary): string {
  * words — the one field in this table that cannot be reconstructed, summarised or approximated. A
  * row invented around a blank utterance would put words in his mouth on his own dashboard.
  */
-export function toMirrorRow(userId: string, task: TaskSummary): MirrorRow | null {
+export function toMirrorRow(
+  userId: string,
+  task: TaskSummary,
+  organisationId?: string | null,
+): MirrorRow | null {
   if (!task.taskGroupId) return null;
   const utterance = (task.utterance ?? '').trim();
   if (!utterance) return null;
   return {
     user_id: userId,
+    ...(organisationId ? { organisation_id: organisationId } : {}),
     intent_id: `orch:${task.taskGroupId}`,
     kind: kindFor(task),
     status: task.status,
@@ -72,13 +82,22 @@ export function missingRows(
   userId: string,
   remote: TaskSummary[],
   knownIntentIds: Iterable<string>,
+  organisationId?: string | null,
 ): { rows: MirrorRow[]; unusable: number } {
   const known = new Set(knownIntentIds);
   const rows: MirrorRow[] = [];
   let unusable = 0;
   for (const task of remote) {
     if (known.has(`orch:${task.taskGroupId}`)) continue;
-    const row = toMirrorRow(userId, task);
+    // INV-020: a mirrored task without an owning org is tenantless. kira_tasks.organisation_id is
+    // the ownership column (NOT NULL for owned rows; CHECK kira_tasks_owned_has_org rejects a
+    // tenantless owned row), so a tenant with no resolvable org contributes NO rows — the task
+    // cannot be represented until its owning organisation exists. Count it unusable, never drop it.
+    if (!organisationId) {
+      unusable += 1;
+      continue;
+    }
+    const row = toMirrorRow(userId, task, organisationId);
     if (row) rows.push(row);
     else unusable += 1;
   }
@@ -125,7 +144,15 @@ export async function backfillMissingTasks(
       if (!remote.length) continue;
       result.found += remote.length;
 
-      const { rows, unusable } = missingRows(tenantId, remote, await store.knownIntentIds(tenantId));
+      // INV-020: kira_tasks are organisation-owned — resolve the owning org so restored rows satisfy
+      // the NOT NULL tenant column; user_id remains provenance of who asked.
+      const orgContext = await resolveOrganisationForPerson(tenantId);
+      const { rows, unusable } = missingRows(
+        tenantId,
+        remote,
+        await store.knownIntentIds(tenantId),
+        orgContext?.organisationId ?? null,
+      );
       result.unusable += unusable;
       if (!rows.length) continue;
 

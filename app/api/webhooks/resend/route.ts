@@ -2,7 +2,7 @@
 // Handles Resend webhooks for email delivery tracking
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import crypto from 'crypto';
 
 const RESEND_WEBHOOK_SECRET = process.env.RESEND_WEBHOOK_SECRET;
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
-    const supabase = createServiceClient();
+    const supabase = createServiceClientV2();
     const event = JSON.parse(payload);
     console.log('[resend-webhook] Received:', event.type);
 

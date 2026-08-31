@@ -15,6 +15,7 @@
 // fed the wrong forty rows.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { resolveOrganisationForPerson } from '@/lib/auth';
 
 /**
  * How many parked facts to carry into the extractor prompt.
@@ -37,10 +38,12 @@ export async function parkedOtherBusinesses(
 ): Promise<string[]> {
   if (!userId) return [];
   try {
+    const orgContext = await resolveOrganisationForPerson(userId);
+    if (!orgContext) return [];
     const { data } = await supabase
       .from(memoryTable)
       .select('content')
-      .eq('user_id', userId)
+      .eq('organisation_id', orgContext.organisationId)
       .eq('parked_reason', 'entity:other')
       // NEWEST FIRST — see the header. Without it the exclusion that matters is the one dropped.
       .order('created_at', { ascending: false })

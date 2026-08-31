@@ -5,7 +5,7 @@
 
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { getCurrentAppUser } from '@/lib/auth';
+import { getCurrentOrganisationContext } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import ChatPage from '@/app/chat/[agentId]/page';
 import { isAreaKey } from '@/lib/kira/area-focus';
@@ -19,11 +19,18 @@ export default async function TalkPage({
   // outstanding questions themselves are pulled by her, through area_agenda, at the moment she asks.
   searchParams?: Promise<{ area?: string }>;
 }) {
-  const appUser = await getCurrentAppUser();
+  const orgContext = await getCurrentOrganisationContext();
   const focusArea = (await searchParams)?.area ?? null;
-  if (!appUser) redirect(`/login?next=${encodeURIComponent(focusArea ? `/talk?area=${focusArea}` : '/talk')}`);
+  if (!orgContext) redirect(`/login?next=${encodeURIComponent(focusArea ? `/talk?area=${focusArea}` : '/talk')}`);
 
   const svc = createServiceClient();
+
+  // Resolve person's first_name for the ChatPage component (provenance display, not ownership).
+  const { data: person } = await svc
+    .from('persons')
+    .select('first_name')
+    .eq('person_id', orgContext.personId)
+    .maybeSingle();
 
   // A BUSINESS KIRA WINS, ALWAYS — even over a more recently used personal one.
   //
@@ -43,7 +50,7 @@ export default async function TalkPage({
   const { data: agents } = await svc
     .from('kira_agents')
     .select('elevenlabs_agent_id, journey_type')
-    .eq('user_id', appUser.id)
+    .eq('organisation_id', orgContext.organisationId)
     .eq('status', 'active')
     .order('last_conversation_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false });
@@ -67,7 +74,7 @@ export default async function TalkPage({
       <ChatPage
         agentId={agent.elevenlabs_agent_id as string}
         focusArea={isAreaKey(focusArea) ? focusArea : null}
-        firstName={(appUser.first_name as string) ?? null}
+        firstName={(person?.first_name as string) ?? null}
       />
     );
   }

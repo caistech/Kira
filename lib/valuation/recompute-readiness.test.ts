@@ -67,7 +67,7 @@ function mockDb({
 
 async function run() {
   const { recomputeEvidencedReadiness } = await import('./recompute-readiness');
-  return recomputeEvidencedReadiness('user-1');
+  return recomputeEvidencedReadiness('org-1');
 }
 
 async function realBaseline() {

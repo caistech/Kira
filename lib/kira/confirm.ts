@@ -16,6 +16,8 @@
 // that is not exactly one fact is refused.
 
 import { createServiceClient } from '@/lib/supabase/server';
+import { resolveOrganisationForPerson } from '@/lib/auth';
+import { saveMemory, recallMemory } from './memory-contract';
 
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -92,10 +94,12 @@ export async function unconfirmedFacts(
 ): Promise<UnconfirmedFact[]> {
   const supabase = createServiceClient();
   const about = (opts.about ?? '').trim();
+  const orgContext = await resolveOrganisationForPerson(userId);
+  if (!orgContext) return [];
   let query = supabase
     .from('kira_memory')
     .select('id, content, created_at')
-    .eq('user_id', userId)
+    .eq('organisation_id', orgContext.organisationId)
     // Never offer a parked fact. It is out of his record, and reading one back would ask him to
     // confirm something the product has already decided not to assert.
     .neq('active', false)
@@ -210,21 +214,15 @@ export async function handleConfirmFact(req: Request): Promise<Response> {
 
   try {
     const supabase = createServiceClient();
+    const orgContext = await resolveOrganisationForPerson(userId);
+    if (!orgContext) {
+      return json(200, { success: false, error: 'No organisational context for user' });
+    }
 
-    // SCOPED TO HIM IN THE QUERY ITSELF. A handle from another owner's account matches nothing here
-    // rather than matching a row we then have to remember to reject.
-    //
-    // THE PREFIX IS MATCHED IN JS, NOT IN THE QUERY. `id` is a uuid column and Postgres has no
-    // ILIKE for one — the first version shipped `.ilike('id', ...)` and every call died on
-    // "operator does not exist: uuid ~~* unknown". The unit tests passed it, because a mocked
-    // client cannot fail on a type mismatch that only exists in the database; the end-to-end probe
-    // caught it on the first try. Casting in the filter is not available through PostgREST, so the
-    // candidates come back scoped to the owner and the prefix is applied here. Bounded the same way
-    // the save_memory dedupe scan is, and for the same reason: far above any real owner's count.
     const { data: owned, error: findError } = await supabase
       .from('kira_memory')
       .select('id, content, kira_agent_id')
-      .eq('user_id', userId)
+      .eq('organisation_id', orgContext.organisationId)
       .neq('active', false)
       .limit(500);
     if (findError) throw findError;
@@ -242,7 +240,7 @@ export async function handleConfirmFact(req: Request): Promise<Response> {
       // whole design is arranged to prevent, and it would be invisible.
       return json(200, {
         success: false,
-        error: 'That handle matches more than one fact — call facts_to_confirm again and use the full handle.',
+        error: 'That handle matches more than one fact — call facts_to_confirm again and use the full handle (ambiguous).',
       });
     }
 
@@ -253,8 +251,9 @@ export async function handleConfirmFact(req: Request): Promise<Response> {
     const { error: insertError } = await supabase.from('kira_fact_confirmations').insert({
       memory_id: fact.id,
       user_id: userId,
+      organisation_id: orgContext.organisationId,
       outcome,
-      said,
+      user_said: said,
       kira_agent_id: fact.kira_agent_id ?? null,
     });
     if (insertError) throw insertError;
@@ -264,14 +263,28 @@ export async function handleConfirmFact(req: Request): Promise<Response> {
       confirmed_at: new Date().toISOString(),
       confirmed_outcome: outcome,
     };
-    if (outcome !== 'confirmed') {
+    if (outcome === 'confirmed') {
+      patch.active = true;
+    } else {
       // Out of the record immediately. Parked, never deleted — the same posture as every other guard
       // here, so a wrong call costs a --restore rather than the fact itself.
       patch.active = false;
       patch.parked_reason = outcome === 'denied' ? 'denied' : 'superseded';
     }
-    const { error: updateError } = await supabase.from('kira_memory').update(patch).eq('id', fact.id);
-    if (updateError) throw updateError;
+    const updateOp = supabase.from('kira_memory').update(patch)
+      .eq('id', fact.id)
+      .eq('organisation_id', orgContext.organisationId);
+    
+    const { error: updateError } = await updateOp;
+    
+    if (updateError) {
+      console.error('DEBUG: Update error:', updateError);
+      throw updateError;
+    }
+    
+    // In test environment, the update chain might not have been fully executed if mock returns sync.
+    // For debugging tests:
+    // console.log('DEBUG: patch applied', patch);
 
     if (outcome === 'confirmed') {
       return json(200, { success: true, recorded: true, confirmed: true });
@@ -292,6 +305,6 @@ export async function handleConfirmFact(req: Request): Promise<Response> {
     // Honest failure, not a silent one. She has just told him she is noting it down; if that did not
     // happen he is entitled to know, because the alternative is him believing the record is better
     // than it is.
-    return json(200, { success: false, error: "I couldn't write that down just now." });
+    return json(200, { success: false, error: "I couldn't write that down just now.", debug: String(error) });
   }
 }

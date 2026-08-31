@@ -158,18 +158,15 @@ export function refusalReason(kind: string, summary: string): string | null {
   return null;
 }
 
-export async function readDrafts(userId: string): Promise<DraftItem[]> {
-  if (!userId) return [];
+export async function readDrafts(organisationId: string): Promise<DraftItem[]> {
+  if (!organisationId) return [];
   try {
     const svc = createServiceClient();
-    // His own name, so the titles can have it taken back out — see plainTitle.
-    const { data: owner } = await svc.from('users').select('first_name').eq('id', userId).maybeSingle();
-    const ownerFirstName = (owner?.first_name as string | null) ?? null;
 
     const { data, error } = await svc
       .from('kira_tasks')
       .select('id, kind, status, summary, utterance, preview, artifact, created_at')
-      .eq('user_id', userId)
+      .eq('organisation_id', organisationId)
       .order('created_at', { ascending: false })
       .limit(50);
     if (error) throw new Error(error.message);
@@ -179,7 +176,7 @@ export async function readDrafts(userId: string): Promise<DraftItem[]> {
       kind: String(row.kind ?? 'task'),
       status: String(row.status),
       readiness: readinessOf(row as { status: string; preview?: unknown; artifact?: unknown }),
-      title: plainTitle(String(row.summary ?? ''), String(row.utterance ?? ''), ownerFirstName),
+      title: plainTitle(String(row.summary ?? ''), String(row.utterance ?? ''), null),
       asked: String(row.utterance || row.summary || ''),
       body: draftBody(row as { preview?: unknown; artifact?: unknown }),
       reason: refusalReason(String(row.kind ?? ''), String(row.summary ?? '')),
@@ -192,7 +189,7 @@ export async function readDrafts(userId: string): Promise<DraftItem[]> {
   }
 }
 
-export async function readDraft(userId: string, id: string): Promise<DraftItem | null> {
-  const all = await readDrafts(userId);
+export async function readDraft(organisationId: string, id: string): Promise<DraftItem | null> {
+  const all = await readDrafts(organisationId);
   return all.find((d) => d.id === id) ?? null;
 }

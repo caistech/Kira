@@ -15,6 +15,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { rejectUnauthorisedCron } from '@/lib/cron-auth';
+import { resolveOrganisationForPerson } from '@/lib/auth';
 import { sendTrialEndingEmail } from '@/lib/email/trial-ending';
 import { createServiceClient } from '@/lib/supabase/server';
 import { DEFAULT_CURRENCY } from '@/lib/valuation/currency';
@@ -74,13 +75,20 @@ export async function GET(request: NextRequest) {
 
       // The price is the valuation-derived band quoted at checkout. Read it back from the
       // valuation rather than re-deriving it here — one price, one source.
-      const { data: valuation } = await supabase
-        .from('business_valuations')
-        .select('quoted_monthly, currency')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      //
+      // ⚠️ ORG-SCOPED SINCE P2.4-B. The valuation belongs to the Organisation, so the person is
+      // resolved to its organisation through membership before reading — the price quoted at
+      // checkout is the business's price, and must survive a change of billing contact.
+      const orgContext = await resolveOrganisationForPerson(user.id);
+      const { data: valuation } = orgContext
+        ? await supabase
+            .from('business_valuations')
+            .select('quoted_monthly, currency')
+            .eq('organisation_id', orgContext.organisationId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+        : { data: null as { quoted_monthly: number | null; currency: string | null } | null };
 
       if (!valuation?.quoted_monthly) {
         // Degrade, don't fake: a reminder that guesses the amount is worse than no reminder.

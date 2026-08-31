@@ -15,8 +15,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-import { createServiceClient } from '@/lib/supabase/server';
-import { getCurrentAppUser } from '@/lib/auth';
+import { createServiceClientV2 } from '@/lib/supabase/server';
+import { getCurrentOrganisationContext } from '@/lib/auth';
 import { redactVoiceDetail } from '@/lib/voice/connect-telemetry';
 
 export const runtime = 'nodejs';
@@ -61,13 +61,14 @@ export async function POST(request: NextRequest) {
     // column must never hold a conversation signature regardless of who wrote the body.
     const detail = redactVoiceDetail((body as Record<string, unknown>).detail);
 
-    // Identity from the session, never from the payload. Null for the pre-sign-in surfaces.
-    const user = await getCurrentAppUser().catch(() => null);
+    // P2.2: Canonical identity resolution. Session is optional — unauthenticated visitors
+    // are a valid telemetry source (see file-level comment). Falls back to null gracefully.
+    const ctx = await getCurrentOrganisationContext().catch(() => null);
 
-    const { error } = await createServiceClient()
+    const { error } = await createServiceClientV2()
       .from('voice_connect_events')
       .insert({
-        user_id: (user as { id?: string } | null)?.id ?? null,
+        user_id: ctx?.personId ?? null,
         surface,
         outcome,
         detail,

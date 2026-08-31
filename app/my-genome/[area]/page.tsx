@@ -20,6 +20,7 @@ import { notFound } from 'next/navigation';
 import { getCurrentAppUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { GENOME_AREAS, type AreaKey } from '@/lib/genome/areas';
+import { resolveOrganisationForPerson } from '@/lib/auth';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { assessArea as assessAreaItems, type AssessedItem, type ItemStatus } from '@/lib/genome/checklist-bands';
 import { outstandingSplit } from '@/lib/genome/checklist-bands';
@@ -60,7 +61,16 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
     );
   }
 
-  const genome = await deriveOwnerGenome(user.id as string);
+  const orgContext = await resolveOrganisationForPerson(user.id as string);
+  if (!orgContext) {
+    return (
+      <main className="max-w-3xl mx-auto px-5 py-16">
+        <h1 className="font-display text-2xl font-bold">Your Business Genome</h1>
+        <p className="text-stone-600 mt-3">No organisation membership found.</p>
+      </main>
+    );
+  }
+  const genome = await deriveOwnerGenome(orgContext);
   const section = genome.sections.find((s) => s.key === area);
 
   const supabase = createServiceClient();

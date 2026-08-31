@@ -26,7 +26,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-import { getCurrentAppUser } from '@/lib/auth';
+import { getCurrentOrganisationContext } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { computeValuation, type ValuationInputs } from '@/lib/valuation/model';
 import { recordValuationSnapshot } from '@/lib/valuation/snapshots';
@@ -49,9 +49,9 @@ function isUsableInputs(value: unknown): value is ValuationInputs {
 }
 
 export async function POST(request: NextRequest) {
-  const user = await getCurrentAppUser();
-  if (!user?.id) {
-    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  const orgContext = await getCurrentOrganisationContext();
+  if (!orgContext) {
+    return NextResponse.json({ error: 'Not authorised to claim valuation' }, { status: 401 });
   }
 
   let body: { inputs?: unknown; currency?: unknown };
@@ -65,52 +65,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid valuation inputs' }, { status: 400 });
   }
 
-  // HE HAS TO SAY IT IS HIS.
-  //
-  // The handoff persists on the DEVICE for seven days, not per-tab (lib/valuation/persist.ts) — a
-  // deliberate trade so a closed tab does not cost him the baseline. The consequence is that on a
-  // shared machine the next person to sign in would inherit someone else's turnover, profit and sale
-  // plans as their own permanent starting point. A naive tester walked exactly that and called it
-  // out; his bookkeeper sits eight feet from his desk.
-  //
-  // Enforced here as well as in the UI, so a cached or stale client cannot go on claiming silently
-  // after this shipped. Not an error — the client asks, then calls back with the answer.
   if ((body as { confirmed?: unknown }).confirmed !== true) {
     return NextResponse.json({ claimed: false, reason: 'needs_confirmation' });
   }
 
-  // DEFAULT_CURRENCY, not a seventh hand-written 'USD'. The default was spelled out in six separate
-  // places and this was the seventh; that duplication is exactly why "the currency is wrong" was
-  // raised three times and fixed three times without ever being fixed.
   const currency = typeof body.currency === 'string' && body.currency ? body.currency : DEFAULT_CURRENCY;
   const svc = createServiceClient();
 
-  // HIS NAME, ON THE FREE PATH TOO.
-  //
-  // The paid path takes it through Stripe metadata (app/api/onboarding/complete). Someone who signs
-  // up by email or magic link never goes through checkout, so without this his account keeps
-  // whatever the signup inferred — which for one real owner was "shhahhussain", straight off the
-  // local part of his email address, and is then baked into her prompt at provision and used
-  // forever.
-  //
-  // Only ever FILLS A GAP: it will not overwrite a name he has set in Settings, and it will not
-  // overwrite a real-looking existing name. A valuation is claimed once, silently, on first
-  // authenticated load, and silently renaming someone is not a repair.
-  const askedName = String((body as { firstName?: unknown }).firstName ?? '').trim().slice(0, 40);
-  if (askedName) {
-    const { data: current } = await svc.from('users').select('first_name').eq('id', user.id).maybeSingle();
-    const existingName = String(current?.first_name ?? '').trim();
-    const looksInferred = !existingName || /[@+._]/.test(existingName);
-    if (looksInferred) {
-      await svc.from('users').update({ first_name: askedName.split(' ')[0] }).eq('id', user.id);
-    }
-  }
-
-  // First valuation wins — see the header note.
+  // First valuation wins - see the header note.
   const { data: existing } = await svc
     .from('business_valuations')
     .select('id')
-    .eq('user_id', user.id)
+    .eq('organisation_id', orgContext.organisationId)
     .maybeSingle();
 
   if (existing) {
@@ -122,7 +88,8 @@ export async function POST(request: NextRequest) {
 
   const { error: writeError } = await svc.from('business_valuations').upsert(
     {
-      user_id: user.id,
+      organisation_id: orgContext.organisationId,
+      user_id: orgContext.personId, // Retained for provenance
       inputs: body.inputs,
       currency,
       gap: result.gap,
@@ -134,7 +101,7 @@ export async function POST(request: NextRequest) {
       industry: body.inputs.industry,
       updated_at: new Date().toISOString(),
     },
-    { onConflict: 'user_id' },
+    { onConflict: 'organisation_id' },
   );
 
   if (writeError) {
@@ -145,7 +112,8 @@ export async function POST(request: NextRequest) {
   // The baseline point. Without this the introducer board has a current figure and no origin —
   // which is the state that made "valuation movement" a claim the data could not support.
   await recordValuationSnapshot({
-    userId: user.id,
+    userId: orgContext.personId,
+    organisationId: orgContext.organisationId,
     inputs: body.inputs,
     source: 'onboarding',
     currency,

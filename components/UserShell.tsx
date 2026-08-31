@@ -14,13 +14,14 @@
 // is the difference between arriving somewhere of his and arriving in software.
 
 import { redirect } from 'next/navigation';
-import { getAuthUser, getCurrentAppUser, isCurrentUserAdmin } from '@/lib/auth';
+import { getAuthUser, getCurrentAppUser, isCurrentUserAdmin, resolveOrganisationForPerson } from '@/lib/auth';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
 import { createServiceClient } from '@/lib/supabase/server';
 import { displayedFigures } from '@/lib/valuation/displayed';
 import { DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { PortalShell, type NavItem } from '@/components/PortalShell';
 import { ClaimStoredValuation } from '@/components/ClaimStoredValuation';
+import { BetaFeedbackButton } from '@/components/BetaFeedbackButton';
 
 const USER_NAV: NavItem[] = [
   { href: '/dashboard', label: 'Overview' },
@@ -125,20 +126,26 @@ export async function UserShell({
   let existingBaseline: { gapText: string; takenOn: string } | null = null;
   try {
     if (appUser?.id) {
-      const { data: row } = await createServiceClient()
-        .from('business_valuations')
-        .select('worth_today, worth_potential, currency, created_at')
-        .eq('user_id', appUser.id)
-        .maybeSingle();
-      if (row) {
-        const figures = displayedFigures(
-          { worthToday: Number(row.worth_today) || 0, worthPotential: Number(row.worth_potential) || 0 },
-          (row.currency as string) || DEFAULT_CURRENCY,
-        );
-        existingBaseline = {
-          gapText: figures.gapText,
-          takenOn: new Date(String(row.created_at)).toLocaleDateString('en-AU', { day: 'numeric', month: 'long' }),
-        };
+      // ⚠️ ORG-SCOPED SINCE P2.4-B. The valuation belongs to the Organisation, so the claim card's
+      // baseline is read through the person's membership — the starting point the card offers to
+      // replace is the business's starting point, whoever currently holds the seat.
+      const orgContext = await resolveOrganisationForPerson(appUser.id);
+      if (orgContext) {
+        const { data: row } = await createServiceClient()
+          .from('business_valuations')
+          .select('worth_today, worth_potential, currency, created_at')
+          .eq('organisation_id', orgContext.organisationId)
+          .maybeSingle();
+        if (row) {
+          const figures = displayedFigures(
+            { worthToday: Number(row.worth_today) || 0, worthPotential: Number(row.worth_potential) || 0 },
+            (row.currency as string) || DEFAULT_CURRENCY,
+          );
+          existingBaseline = {
+            gapText: figures.gapText,
+            takenOn: new Date(String(row.created_at)).toLocaleDateString('en-AU', { day: 'numeric', month: 'long' }),
+          };
+        }
       }
     }
   } catch (error) {
@@ -170,6 +177,8 @@ export async function UserShell({
           fixed and also blind to what it lands on — a tester found it covering the primary button at
           the foot of a page on a phone. Reserving the space in the shell fixes every page at once. */}
       <div className="pb-28">{children}</div>
+      {/* BETA FEEDBACK BUTTON — only renders in beta cohorts */}
+      <BetaFeedbackButton cohort="beta" testerId={authUser.id} workflow="authenticated" />
       {/* ⚠️ NO FLOATING PILL. `TalkFab` is gone from the shell for good — 2026-08-18 — and this
           note is the reason, because it has now been removed once, restored once and removed again
           inside four days, which is what happens when a symptom keeps being treated as the thing.

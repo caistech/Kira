@@ -33,7 +33,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-import { getCurrentAppUser } from '@/lib/auth';
+import { getCurrentAppUser, resolveOrganisationForPerson } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { mnemoForget } from '@/lib/kira/mnemo';
 import { restatementCluster } from '@/lib/genome/similar';
@@ -44,6 +44,12 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   const user = await getCurrentAppUser();
   if (!user?.id) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // P0.4: ownership is organisational. The person is provenance; the org context (resolved from the
+  // canonical membership chain) is what scopes the write.
+  const orgContext = await resolveOrganisationForPerson(user.id);
+  if (!orgContext) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  const orgId = orgContext.organisationId;
 
   let body: { id?: unknown; restore?: unknown };
   try {
@@ -57,9 +63,10 @@ export async function POST(request: NextRequest) {
 
   const svc = createServiceClient();
 
-  // SCOPED TO HIM, in the update itself rather than by a read-then-write. A check that fetches the
-  // row, compares the owner and then writes has a gap between the two; putting user_id in the
-  // predicate means another owner's id simply matches nothing.
+  // SCOPED TO THE ORGANISATION, in the update itself rather than by a read-then-write. A check that
+  // fetches the row, compares the owner and then writes has a gap between the two; putting
+  // organisation_id in the predicate means another organisation's id simply matches nothing. The
+  // person is provenance on the row; ownership was resolved through the canonical membership chain.
   const { data, error } = await svc
     .from('kira_memory')
     .update(
@@ -68,7 +75,7 @@ export async function POST(request: NextRequest) {
         : { active: false, parked_reason: 'owner:redacted' },
     )
     .eq('id', id)
-    .eq('user_id', user.id)
+    .eq('organisation_id', orgId)
     .select('id, content');
 
   if (error) {
@@ -93,7 +100,7 @@ export async function POST(request: NextRequest) {
     const { data: siblings } = await svc
       .from('kira_memory')
       .select('id, content')
-      .eq('user_id', user.id)
+      .eq('organisation_id', orgId)
       .neq('active', false)
       .neq('id', id);
     const cluster = restatementCluster(String(parkedRow.content), (siblings ?? []) as { id: string; content: string }[], (r) =>
@@ -104,7 +111,7 @@ export async function POST(request: NextRequest) {
         .from('kira_memory')
         .update({ active: false, parked_reason: 'owner:redacted-restatement' })
         .eq('id', dup.id)
-        .eq('user_id', user.id);
+        .eq('organisation_id', orgId);
       if (dupError) console.error('[genome/redact] restatement not parked:', dup.id, dupError.message);
       else alsoParked += 1;
       // The semantic copy of each restatement goes too, for the same reason the primary one does.

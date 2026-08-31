@@ -25,7 +25,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { createEmailSender, DEFAULT_FROM } from '@caistech/email-send';
 
-import { getAuthUser } from '@/lib/auth';
+import { getAuthUser, resolveOrganisationForPerson } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { renderSingleFile } from '@/lib/genome/render';
@@ -70,7 +70,9 @@ export async function POST(request: NextRequest) {
   const subject = String(body.subject ?? '').trim();
   const message = String(body.message ?? '').trim();
 
-  const genome = await deriveOwnerGenome(appUser.id);
+  const orgContext = await resolveOrganisationForPerson(appUser.id);
+  if (!orgContext) return NextResponse.json({ error: 'No organisation context' }, { status: 403 });
+  const genome = await deriveOwnerGenome(orgContext);
   const hasDocument = !genome.empty;
 
   const blocker = shareBlocker({ recipients, total, subject, hasDocument });
@@ -196,7 +198,8 @@ export async function POST(request: NextRequest) {
   // reconstruct later. Never fails the send — it has already happened by here.
   try {
     await svc.from('email_logs').insert({
-      user_id: appUser.id,
+      person_id: orgContext.personId,
+      organisation_id: orgContext.organisationId,
       email_type: 'genome_share',
       recipient: [...recipients.to, ...recipients.cc, ...recipients.bcc].join(', '),
       status: 'sent',
