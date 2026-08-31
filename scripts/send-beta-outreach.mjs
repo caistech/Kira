@@ -77,7 +77,7 @@ A short note, because what I sent you before no longer matches what happens.
 
 Most owner-run businesses are worth less than the owner thinks, and the reason is nearly always the same: the pricing, the judgement, the relationships and the "we don't do it that way" all live in one man's head. A buyer is not buying an asset, he is buying a job — and he prices it accordingly.
 
-Kira's whole job is to get that knowledge out of his head and onto paper, by talking to him rather than handing him a form. The deliverable is a handover document: his business in the nine areas a buyer's advisor works through, every line dated to the day he said it, his to keep whether or not he keeps paying us.
+Kira's whole job is to get that knowledge out of his head and onto paper, by talking to him rather than handing him a form. The deliverable is a handover document: his business in the nine areas a buyer's advisor works through, every line dated to the day he said it, his to keep whether or not he keeps paying us. Anything he marks private is kept out of the broker's copy — so the document he hands over is safe to put in front of an advisor or a buyer.
 
 Two things worth knowing before you start, because they are unusual and they are deliberate. It is priced as a <strong>project, not a subscription</strong> — after twelve months it drops to a third whether or not the work is done, because it is meant to end. And she is trying to make herself <strong>redundant</strong>: the point is the document, not the relationship.
 
