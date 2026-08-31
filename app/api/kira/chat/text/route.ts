@@ -238,12 +238,21 @@ export async function POST(req: NextRequest) {
 
   // OWNERSHIP, exactly as the voice route enforces it. These are per-user private agents, and the
   // memory behind them is the owner's business. An admin may open one; nobody else may.
-  const { data: agent } = await supabase
+  const { data: agent, error: agentError } = await supabase
     .from(KIRA_CONVAI_TABLES.agents)
     .select('id, user_id, organisation_id, elevenlabs_agent_id, status')
     .eq('elevenlabs_agent_id', agentId)
     .maybeSingle();
-  if (!agent) return NextResponse.json({ error: 'Kira agent not found' }, { status: 404 });
+
+  if (agentError) {
+    console.error('[kira/chat/text] agent lookup error:', agentError);
+    return NextResponse.json({ error: 'Database error during lookup' }, { status: 500 });
+  }
+
+  if (!agent) {
+    console.log('[kira/chat/text] agent lookup failed for agentId:', agentId, 'organisationId:', organisationId);
+    return NextResponse.json({ error: 'Kira agent not found' }, { status: 404 });
+  }
   // Check organisation membership for agent access
   const { data: membership } = await supabase
     .from('organisation_memberships')

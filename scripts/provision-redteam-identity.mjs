@@ -34,6 +34,16 @@ import { setAgentOverrides, setAgentTools } from '@caistech/elevenlabs-convai';
 import { buildToolsForUser } from './lib/redteam-tools.mjs';
 
 const APPLY = process.argv.includes('--apply');
+// --prompt "..." allows creating the synthetic agent when no donor business agent exists.
+// This breaks the "verbatim copy" design principle (see header) — use only when the DB has
+// zero agents and there is no donor to copy from. The prompt SHOULD match production.
+const OVERRIDE_PROMPT = (() => {
+  const idx = process.argv.indexOf('--prompt');
+  if (idx === -1) return null;
+  const val = process.argv[idx + 1];
+  if (!val) throw new Error('--prompt requires a value');
+  return val;
+})();
 
 const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ELEVENLABS_API_KEY } = process.env;
 
@@ -150,12 +160,22 @@ async function productionPromptSample() {
     .neq('user_id', appUser.id)
     .limit(1)
     .maybeSingle();
-  if (!donor) throw new Error('no business agent to copy a prompt from');
-  const cfg = await el(`agents/${donor.elevenlabs_agent_id}`);
-  const prompt = cfg?.conversation_config?.agent?.prompt?.prompt;
-  if (!prompt) throw new Error(`donor ${donor.agent_name} has no prompt`);
-  say(`prompt copied verbatim from ${donor.agent_name} (${prompt.length} chars)`);
-  return prompt;
+  if (donor) {
+    const cfg = await el(`agents/${donor.elevenlabs_agent_id}`);
+    const prompt = cfg?.conversation_config?.agent?.prompt?.prompt;
+    if (!prompt) throw new Error(`donor ${donor.agent_name} has no prompt`);
+    say(`prompt copied verbatim from ${donor.agent_name} (${prompt.length} chars)`);
+    return prompt;
+  }
+  // No donor agent — use the override if provided (breaks the verbatim-copy principle; see header).
+  if (OVERRIDE_PROMPT) {
+    say(`prompt supplied via --prompt (${OVERRIDE_PROMPT.length} chars) — no donor agent exists`);
+    return OVERRIDE_PROMPT;
+  }
+  throw new Error(
+    'no business agent to copy a prompt from. Either create a business agent via the Kira UI, ' +
+      'or pass --prompt "..." with a prompt that matches production.',
+  );
 }
 
 if (existingAgent) {
@@ -183,6 +203,7 @@ if (existingAgent) {
 
   const { error } = await db.from('kira_agents').insert({
     user_id: appUser.id,
+    organisation_id: appUser.id, // UUID-reuse convention (org id = users.id), per P0.5 migrations
     agent_name: `Kira_${LABEL}_Synthetic_${appUser.id.slice(0, 4)}`,
     journey_type: 'business',
     elevenlabs_agent_id: agentId,
@@ -275,28 +296,7 @@ const FIXTURE_IDENTITY = {
   sign_off_name: 'Pat Nolan',
 };
 
-const { data: haveIdentity } = await db
-  .from('business_identity')
-  .select('user_id')
-  .eq('user_id', appUser.id)
-  .maybeSingle();
-
-if (haveIdentity) {
-  say('business identity already present');
-} else if (APPLY) {
-  const { error } = await db.from('business_identity').insert({
-    user_id: appUser.id,
-    ...FIXTURE_IDENTITY,
-    authorised_at: new Date().toISOString(),
-    // synced_to_orchestrator_at stays NULL on purpose: nothing has told the orchestrator about this
-    // entity, and stamping it here would claim a sync that never happened — the exact thing
-    // lib/business-identity/store.ts refuses to do.
-  });
-  if (error) throw new Error(`seed business identity: ${error.message}`);
-  say('business identity CREATED — the account can now reach /dashboard and /chat');
-} else {
-  say('business identity would be CREATED (without it the account dead-ends at /setup/business)');
-}
+// Business identity is now handled by the organisations table (P0.5).
 
 console.log(
   APPLY
