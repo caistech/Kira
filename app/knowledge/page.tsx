@@ -54,7 +54,7 @@ export default async function KnowledgePage() {
   // and until now the answer required leaving it.
   return (
     <>
-      <KnowledgeManager userId={ctx?.personId ?? ''} initial={items} />
+      <KnowledgeManager personId={ctx?.personId ?? ''} initial={items} />
       <div className="mx-auto max-w-3xl px-5 pb-28">
         <KiraShapeSection surface="knowledge" />
       </div>

@@ -35,7 +35,7 @@ function readableSource(t: string) {
   }
 }
 
-export function KnowledgeManager({ userId, initial }: { userId: string; initial: KnowledgeItem[] }) {
+export function KnowledgeManager({ personId, initial }: { personId: string; initial: KnowledgeItem[] }) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -67,7 +67,7 @@ export function KnowledgeManager({ userId, initial }: { userId: string; initial:
       const res = await fetch('/api/kira/knowledge/url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: value, userId }),
+        body: JSON.stringify({ url: value, userId: personId }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error || 'Could not add that link');
       setUrl('');
@@ -87,7 +87,7 @@ export function KnowledgeManager({ userId, initial }: { userId: string; initial:
     try {
       const fd = new FormData();
       fd.append('file', file);
-      fd.append('userId', userId);
+      fd.append('userId', personId);
       const res = await fetch('/api/kira/knowledge/upload', { method: 'POST', body: fd });
       if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error || 'Could not upload that file');
       router.refresh();
