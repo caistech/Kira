@@ -238,7 +238,7 @@ export function LandingClassic() {
               profitable business that runs on <span className="font-semibold text-stone-800">them</span>. Everything that matters is
               in your head, not on paper — so a buyer isn&apos;t buying an asset, they&apos;re buying you, and they
               price it accordingly. <span className="font-semibold text-stone-800">Kira</span> works alongside you day to day, in
-              conversation, and turns what you know into a documented <a href="/sample-genome" className="font-semibold text-kira-600 underline decoration-kira-600 underline-offset-4 hover:decoration-kira-600">Business Genome</a> the
+              conversation, and turns what you know into a documented <a href="/sample-genome" className="font-semibold text-kira-600 underline decoration-kira-600 underline-offset-4 hover:decoration-kira-600">Operating Manual</a> the
               business can be sold with. Most owners start this <span className="font-semibold text-stone-800">before they&apos;ve told anyone</span>.
             </p>
 
@@ -377,7 +377,7 @@ export function LandingClassic() {
           <div className="grid md:grid-cols-3 gap-6 mb-12">
             {[
               { n: "1", grad: "gradient-sunny", title: "See the number", body: "A 3-minute valuation shows what your business is worth today — and the gap you're leaving on the table." },
-              { n: "2", grad: "gradient-lavender", title: "Capture your knowledge", body: "Kira interviews you like a smart buyer would, turning the systems and relationships in your head into a living Business Genome." },
+              { n: "2", grad: "gradient-lavender", title: "Capture your knowledge", body: "Kira interviews you like a smart buyer would, turning the systems and relationships in your head into a living Operating Manual." },
               { n: "3", grad: "gradient-coral", title: "Sell an asset, not a job", body: "A documented, transferable business commands a real multiple — and hands over cleanly to a buyer or successor." },
             ].map((s) => (
               <div key={s.n} className="journey-card bg-white rounded-3xl p-7 shadow-xl border-2 border-kira-mist">

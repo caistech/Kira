@@ -28,9 +28,9 @@ import { EXAMPLE_GENOME, EXAMPLE_BUSINESS, exampleTransferability, type Confiden
 // man comparing his own valuation against the worked example in another tab could not tell the two
 // apart. The distinguishing word goes first, because a tab strip shows about twenty characters.
 export const metadata: Metadata = {
-  title: 'See a real Business Genome · Kira',
+  title: 'See a real Operating Manual · Kira',
   description:
-    'A worked example of a finished Business Genome — the nine areas, what is captured in each, and what is still only in the owner’s head.',
+    'A worked example of a finished Operating Manual — the nine areas, what is captured in each, and what is still only in the owner’s head.',
 };
 
 // The bar is a VISUAL for the band, not a measurement. Four fixed widths, so nothing on screen
@@ -94,7 +94,7 @@ export default function GenomePage() {
             This is what &ldquo;getting it out of your head&rdquo; actually looks like.
           </h1>
           <p className="text-lg text-stone-600 max-w-2xl mt-5 leading-relaxed">
-            Your Business Genome is the operations manual your business never had. Kira builds it from
+            Your Operating Manual is the operations manual your business never had. Kira builds it from
             ordinary conversations while you work — no forms, no homework — and organises it around the
             questions a buyer&apos;s advisor will ask you anyway. Below is a worked example, so you can see
             exactly what you would end up owning.

@@ -408,7 +408,7 @@ export default function PlanPage() {
                 { icon: <Clock className="h-6 w-6" />, t: 'Time back, from week one', b: 'The jobs that only you can do start becoming jobs your systems can do. You get hours back before the month is out.' },
                 { icon: <HeartHandshake className="h-6 w-6" />, t: 'Less carried in your head', b: 'The mental load of being the only one who knows how it all works starts to lift. Less stress, fewer 2am worries.' },
                 { icon: <Users className="h-6 w-6" />, t: 'A business, not a job', b: 'As the systems build, the business leans on you less — better handovers, a calmer team, and a real asset forming.' },
-                { icon: <Brain className="h-6 w-6" />, t: 'A living Business Genome', b: 'Everything Kira captures becomes your Business Genome: the operating brain of the company, yours to keep and hand over.' },
+                { icon: <Brain className="h-6 w-6" />, t: 'A living Operating Manual', b: 'Everything Kira captures becomes your Operating Manual: how the business actually runs, yours to keep and hand over.' },
               ].map((c, i) => (
                 <div key={i} className="bg-white rounded-3xl p-6 border border-amber-100 shadow-sm">
                   <div className="grad-genome w-11 h-11 rounded-xl flex items-center justify-center text-white mb-4">{c.icon}</div>
@@ -568,7 +568,7 @@ export default function PlanPage() {
                 {[
                   copy.bullets[0],
                   'Always-on Kira — talk anytime, she remembers everything',
-                  'Kira quietly captures your know-how into a Business Genome',
+                  'Kira quietly captures your know-how into an Operating Manual',
                   'Your knowledge stays private and yours to keep',
                   copy.bullets[1],
                   copy.bullets[2],

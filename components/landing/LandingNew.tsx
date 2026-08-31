@@ -110,7 +110,7 @@ const STEPS = [
   {
     n: '02',
     title: 'Capture your knowledge',
-    body: 'Kira interviews you like a smart buyer would, turning the systems and relationships in your head into a living Business Genome.',
+    body: 'Kira interviews you like a smart buyer would, turning the systems and relationships in your head into a living Operating Manual of your business.',
   },
   {
     n: '03',
@@ -266,9 +266,11 @@ export function LandingNew() {
           you, and they price it accordingly. Kira works alongside you day to day, in conversation,
           and turns what you know into a documented{' '}
           <a href="/sample-genome" className="ln-link font-medium text-kira-600 underline underline-offset-4 hover:text-kira-700">
-            Business Genome
+            Operating Manual
           </a>{' '}
-          the business can be sold with. Most owners start this before they&apos;ve told anyone.
+          — the how-it-actually-runs of your business, written down so it no longer lives only in your
+          head — that the business can be sold with. Most owners start this before they&apos;ve told
+          anyone.
         </p>
 
         {/* TWO DOORS, not one. Ray wanted to see the thing before typing anything into it, and the
@@ -826,8 +828,8 @@ export function LandingNew() {
               time zone.
             </p>
             <p>
-              Your business details stay in your account. They are used to build your Genome and
-              nothing else — not sold, not pooled, not used to train anyone&apos;s model. The{' '}
+              Your business details stay in your account. They are used to build your Operating
+              Manual and nothing else — not sold, not pooled, not used to train anyone&apos;s model. The{' '}
               <a href="/privacy" className="text-kira-600 underline underline-offset-2 hover:text-kira-700">
                 privacy policy
               </a>{' '}
