@@ -607,7 +607,7 @@ function GapDashboard({
           </div>
         ))}
       </div>
-      <p className="mt-3 text-sm text-gray-500">…and beyond: Kira keeps building your Business Genome for as long as you keep talking to her.</p>
+      <p className="mt-3 text-sm text-gray-500">…and beyond: Kira keeps building your Operating Manual for as long as you keep talking to her.</p>
 
       {/* Meet Kira + always-on entry */}
       <div className="mt-8 rounded-3xl border-2 border-violet-200 bg-violet-50 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-6">

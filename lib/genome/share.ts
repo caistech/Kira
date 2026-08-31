@@ -111,7 +111,7 @@ export function shareBlocker(args: {
   hasDocument: boolean;
 }): string | null {
   if (!args.hasDocument) {
-    return 'There is nothing in your Genome to share yet. Have a conversation with Kira first.';
+    return 'There is nothing in your Operating Manual to share yet. Have a conversation with Kira first.';
   }
   if (args.recipients.to.length === 0) {
     return 'Add at least one address in the To field.';

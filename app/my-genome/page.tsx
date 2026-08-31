@@ -78,7 +78,7 @@ export default async function MyGenome() {
   if (!authUser) {
     return (
       <main className="max-w-3xl mx-auto px-5 py-16">
-        <h1 className="font-display text-2xl font-bold">Your Business Genome</h1>
+        <h1 className="font-display text-2xl font-bold">Your Operating Manual</h1>
         <p className="text-stone-600 mt-3">Sign in to see what Kira has captured about your business.</p>
         <a href="/login" className="mt-6 inline-flex items-center min-h-[44px] text-violet-600 underline underline-offset-4">Sign in</a>
       </main>
@@ -95,7 +95,7 @@ export default async function MyGenome() {
   if (!appUser) {
     return (
       <main className="max-w-3xl mx-auto px-5 py-16">
-        <h1 className="font-display text-2xl font-bold">Your Business Genome</h1>
+        <h1 className="font-display text-2xl font-bold">Your Operating Manual</h1>
         <p className="text-stone-600 mt-3">We could not find your account record. Please contact us.</p>
       </main>
     );
@@ -105,7 +105,7 @@ export default async function MyGenome() {
   if (!orgContext) {
     return (
       <main className="max-w-3xl mx-auto px-5 py-16">
-        <h1 className="font-display text-2xl font-bold">Your Business Genome</h1>
+        <h1 className="font-display text-2xl font-bold">Your Operating Manual</h1>
         <p className="text-stone-600 mt-3">No organisation membership found.</p>
       </main>
     );
@@ -159,7 +159,7 @@ export default async function MyGenome() {
 
   return (
     <main className="max-w-3xl mx-auto px-5 py-10 pb-20">
-      <h1 className="font-display text-3xl font-bold">Your Business Genome</h1>
+      <h1 className="font-display text-3xl font-bold">Your Operating Manual</h1>
       {/* SHARE, at the top with the title, because it is the reason the document exists.
           "Kira is a PROJECT, not a subscription — extraction is a migration; her job is to make
           herself redundant." The moment this leaves for a broker or an accountant is the moment the
@@ -499,7 +499,7 @@ export default async function MyGenome() {
                         <p className="text-xs text-stone-400">
                           From the answers you gave before signing up — not something Kira has captured yet.
                           {s.baseline.location === 'head'
-                            ? ' Talk to her and this becomes part of your Genome.'
+                            ? ' Talk to her and this becomes part of your Operating Manual.'
                             : ' Show her where it lives and she can bring it in.'}
                         </p>
                       </div>
@@ -740,7 +740,7 @@ export default async function MyGenome() {
             <section className="mt-6 rounded-2xl border border-stone-200 bg-white p-5">
               <p className="font-display font-bold">Other things she has noted ({g.otherHeld.length})</p>
               <p className="text-sm text-stone-600 mt-1 max-w-prose">
-                Kept out of your Genome and out of the handover document — these are notes about how
+                Kept out of your Operating Manual and out of the handover document — these are notes about how
                 you want her to work, or things that are not about the business. They are here because
                 they are still yours, and anything you would rather she did not keep can go.
               </p>

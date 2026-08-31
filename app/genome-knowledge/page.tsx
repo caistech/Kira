@@ -22,7 +22,7 @@ export default async function GenomeKnowledgePage() {
   if (!user?.id) {
     return (
       <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
-        <p className="text-[var(--text-secondary)]">Please sign in to view your genome knowledge.</p>
+        <p className="text-[var(--text-secondary)]">Please sign in to view your Operating Manual.</p>
       </div>
     );
   }
@@ -43,7 +43,7 @@ export default async function GenomeKnowledgePage() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">
-            Business Genome — Knowledge View
+            Operating Manual — Knowledge View
           </h1>
           <p className="text-[var(--text-secondary)]">
             What Kira knows about {businessName}, how reliable it is, and what&apos;s missing.

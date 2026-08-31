@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 // man comparing his own valuation against the worked example in another tab could not tell the two
 // apart. The distinguishing word goes first, because a tab strip shows about twenty characters.
 export const metadata: Metadata = {
-  title: 'Your Business Genome · Kira',
+  title: 'Your Operating Manual · Kira',
 };
 
 import { UserShell } from '@/components/UserShell';

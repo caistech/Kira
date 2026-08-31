@@ -1163,7 +1163,7 @@ function ResultView({
             On the figures you entered, the business isn't currently throwing off a profit a buyer can bank —
             so today it's valued mainly on its assets: <strong>{money(result.walkAway)}</strong>. The
             opportunity is to build transferable, documented earnings that a buyer will pay a multiple for.
-            That's exactly what capturing your operating knowledge into a Business Genome sets up.
+            That's exactly what capturing your operating knowledge into an Operating Manual sets up.
           </p>
         </div>
       ) : (
@@ -1376,7 +1376,7 @@ function ResultView({
             <p className="text-white/90 leading-relaxed max-w-xl">
               That's the difference between selling a job and selling an asset. It isn't extra hustle — it's the
               systems, relationships and know-how that today live only in your memory. Capture them into a
-              <strong> Business Genome</strong> and they become transferable: worth more to a buyer, and yours to
+              <strong> Operating Manual</strong> and they become transferable: worth more to a buyer, and yours to
               hand over cleanly.
             </p>
             {/* THE SCALE, not just the number. "Thirty-four out of what? Is 60 normal? Is 34 dire?
@@ -1504,7 +1504,7 @@ function ResultView({
         <p className="text-stone-600 max-w-xl mx-auto mb-7 leading-relaxed">
           {returningToApp
             ? "Kira will ask whether this one is yours the next time you open her, and then it becomes the figure everything from here is measured against. From that point on you close the gap by talking to her — she captures the operating knowledge in your head as you go."
-            : "Kira interviews you the way a smart buyer would — capturing the operating knowledge in your head into a living Business Genome. It's how you close the gap: a business worth more, and one you can actually hand over."}
+            : "Kira interviews you the way a smart buyer would — capturing the operating knowledge in your head into a living Operating Manual. It's how you close the gap: a business worth more, and one you can actually hand over."}
         </p>
 
         {/* HIS PRICE, HERE, where he was told it would be.
@@ -1544,7 +1544,7 @@ function ResultView({
           href={planHref}
           className="grad-coral text-white font-display font-bold px-8 py-4 rounded-full text-lg inline-flex items-center gap-2 min-h-[52px] shadow-lg shadow-pink-200 hover:opacity-95"
         >
-          {returningToApp ? 'Back to Kira' : 'Start building your Business Genome'} <ArrowRight className="h-5 w-5" />
+          {returningToApp ? 'Back to Kira' : 'Start building your Operating Manual'} <ArrowRight className="h-5 w-5" />
         </a>
         <div className="mt-5 flex items-center justify-center gap-5 text-sm">
           {/* THE LABEL SAYS WHAT THE BUTTON DOES (register P11).

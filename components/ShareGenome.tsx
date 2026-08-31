@@ -139,11 +139,11 @@ export function ShareGenome({
 
   return (
     <form onSubmit={share} className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6">
-      <h3 className="text-lg font-semibold text-stone-900">Share your Genome</h3>
+      <h3 className="text-lg font-semibold text-stone-900">Share your Operating Manual</h3>
       {/* THE EXPLANATORY HEADER — what it is, what leaves, and what does not. The middle sentence is
           the one that matters to this reader and it is stated before he types an address. */}
       <p className="mt-1 max-w-prose text-base leading-relaxed text-stone-600">
-        Sends the buyer&apos;s copy of your Genome — the same document you can read below. Anything
+        Sends the buyer&apos;s copy of your Operating Manual — the same document you can read below. Anything
         you have marked private stays out of it. It goes out under our name with your address as the
         reply-to, so replies come to you.
       </p>

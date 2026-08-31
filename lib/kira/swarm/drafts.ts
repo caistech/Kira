@@ -147,7 +147,7 @@ export function refusalReason(kind: string, summary: string): string | null {
   const text = `${kind} ${summary}`.toLowerCase();
   if (/draft|document|summar|write|letter|report/.test(text)) {
     return 'She cannot write documents for you yet — she can capture what you tell her, and it goes ' +
-      'into your Genome and your handover document. Nothing you said has been lost.';
+      'into your Operating Manual and your handover document. Nothing you said has been lost.';
   }
   if (/email|send|mail/.test(text)) {
     return 'She cannot send email as you yet — that needs your business name, ABN and address first.';

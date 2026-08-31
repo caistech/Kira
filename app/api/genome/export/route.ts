@@ -231,7 +231,7 @@ export async function GET(request: Request) {
   }
 
   const lines: string[] = [
-    `# Business Genome — ${businessName}`,
+    `# Operating Manual — ${businessName}`,
     '',
     // FORMATTED, like every other surface. This printed `ABN 99999999999` — an eleven-digit blob on
     // line two of the document a solicitor reads — while Settings rendered the same value correctly.

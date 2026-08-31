@@ -39,7 +39,7 @@ export function RedactEntry({ id }: { id: string }) {
   if (state === 'gone') {
     return (
       <p className="mt-1 text-sm text-stone-500">
-        Removed. It is out of your Genome and your export, and Kira will not bring it up again.
+        Removed. It is out of your Operating Manual and your export, and Kira will not bring it up again.
       </p>
     );
   }
@@ -49,7 +49,7 @@ export function RedactEntry({ id }: { id: string }) {
     // out later by seeing it in a document he has handed to a buyer.
     return (
       <p className="mt-1 text-sm text-red-700">
-        That did not save — it is still in your Genome.{' '}
+        That did not save — it is still in your Operating Manual.{' '}
         <button type="button" onClick={remove} className="min-h-[44px] underline underline-offset-4">
           Try again
         </button>
@@ -61,7 +61,7 @@ export function RedactEntry({ id }: { id: string }) {
     return (
       <div className="mt-1 flex flex-wrap items-center gap-3">
         <span className="text-sm text-stone-600">
-          Remove this from your Genome, your recall and your export?
+          Remove this from your Operating Manual, your recall and your export?
         </span>
         <button
           type="button"

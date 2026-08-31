@@ -53,7 +53,7 @@ export const TRUST_ANSWERS: TrustAnswer[] = [
   {
     q: 'If my client sells, retires or dies, does their information come out?',
     a:
-      'Yes, at any time and without asking us. The owner can export the whole Business Genome ' +
+      'Yes, at any time and without asking us. The owner can export the whole Operating Manual ' +
       'themselves in two forms: a handover document written for a buyer’s accountant to read cold, ' +
       'and the raw data in a form another system can read. Every entry is dated to the ' +
       'conversation in which the owner said it, so it reads as evidence rather than assertion. If ' +

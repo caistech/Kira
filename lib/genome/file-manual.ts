@@ -85,7 +85,7 @@ export async function fileManual(personId: string, audience: Audience): Promise<
   const genome = await deriveOwnerGenome(orgContext);
   const documents = renderAreas(genome, audience, timeZone);
   if (documents.length === 0) {
-    return { ok: false, message: "There's nothing in your Genome to file yet.", written: 0, total: 0 };
+    return { ok: false, message: "There's nothing in your Operating Manual to file yet.", written: 0, total: 0 };
   }
 
   // The handles from last time. Without them every document below is a CREATE.

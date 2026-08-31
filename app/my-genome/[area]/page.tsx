@@ -38,7 +38,7 @@ const BAND_LABEL: Record<string, string> = {
 export async function generateMetadata({ params }: { params: Promise<{ area: string }> }) {
   const { area } = await params;
   const def = GENOME_AREAS.find((a) => a.key === area);
-  return { title: def ? `${def.title} · Your Genome · Kira` : 'Your Genome · Kira' };
+  return { title: def ? `${def.title} · Your Operating Manual · Kira` : 'Your Operating Manual · Kira' };
 }
 
 export default async function AreaPage({ params }: { params: Promise<{ area: string }> }) {
@@ -54,7 +54,7 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
           <Link href="/login" className="underline">
             Sign in
           </Link>{' '}
-          to see your Genome.
+          to see your Operating Manual.
         </p>
       </div>
     );
@@ -64,7 +64,7 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
   if (!orgContext) {
     return (
       <main className="max-w-3xl mx-auto px-5 py-16">
-        <h1 className="font-display text-2xl font-bold">Your Business Genome</h1>
+        <h1 className="font-display text-2xl font-bold">Your Operating Manual</h1>
         <p className="text-stone-600 mt-3">No organisation membership found.</p>
       </main>
     );

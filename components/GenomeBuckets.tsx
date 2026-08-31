@@ -376,7 +376,7 @@ export function GenomeBuckets({
             href={href}
             className="inline-flex min-h-[44px] items-center text-base font-semibold text-violet-700 underline underline-offset-4"
           >
-            Open your Genome
+            Open your Operating Manual
           </Link>
         )}
       </div>

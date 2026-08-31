@@ -34,7 +34,7 @@ export function NextQuestions({ questions }: NextQuestionsProps) {
         What Kira Should Ask Next
       </h2>
       <p className="text-sm text-blue-700 mb-4">
-        These are the most valuable questions to improve your genome.
+        These are the most valuable questions to improve your Operating Manual.
       </p>
 
       <div className="space-y-3">

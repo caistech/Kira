@@ -74,7 +74,7 @@ describe('what stops a share going out', () => {
   it('refuses when there is nothing to send', () => {
     expect(
       shareBlocker({ recipients: ok, total: 1, subject: 's', hasDocument: false }),
-    ).toMatch(/nothing in your Genome/i);
+    ).toMatch(/nothing in your Operating Manual/i);
   });
 
   it('refuses with no To recipient, even if cc and bcc are populated', () => {

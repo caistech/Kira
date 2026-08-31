@@ -99,7 +99,7 @@ export default function AboutPage() {
             zone.
           </p>
           <p>
-            Your business details stay in your account. They are used to build your Genome and nothing
+            Your business details stay in your account. They are used to build your Operating Manual and nothing
             else — not sold, not pooled, not used to train anyone&apos;s model. The{' '}
             <a
               href="/privacy"
