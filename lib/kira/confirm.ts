@@ -16,7 +16,7 @@
 // that is not exactly one fact is refused.
 
 import { createServiceClient } from '@/lib/supabase/server';
-import { resolveOrganisationForPerson } from '@/lib/auth';
+import { resolveOrganisationForPerson, type OrganisationContext } from '@/lib/auth';
 import { saveMemory, recallMemory } from './memory-contract';
 
 function json(status: number, body: unknown): Response {
@@ -89,12 +89,11 @@ export interface UnconfirmedFact {
  * non-obvious (see the comments below on `none` and NULL).
  */
 export async function unconfirmedFacts(
-  userId: string,
+  orgContext: OrganisationContext,
   opts: { limit?: number; about?: string } = {},
 ): Promise<UnconfirmedFact[]> {
   const supabase = createServiceClient();
   const about = (opts.about ?? '').trim();
-  const orgContext = await resolveOrganisationForPerson(userId);
   if (!orgContext) return [];
   let query = supabase
     .from('kira_memory')
@@ -152,7 +151,9 @@ export async function handleFactsToConfirm(req: Request): Promise<Response> {
     // ONE FILTER, TWO CALLERS — see `unconfirmedFacts`, which holds the query and the reasons for
     // each exclusion. `told_you` lets her say "you told me back in March", which is what makes the
     // re-ask feel like care rather than like a form.
-    const facts = await unconfirmedFacts(userId, { about });
+    const orgContext = await resolveOrganisationForPerson(userId);
+    if (!orgContext) return json(200, { success: false, error: 'No organisational context for user' });
+    const facts = await unconfirmedFacts(orgContext, { about });
 
     if (facts.length === 0) {
       return json(200, {

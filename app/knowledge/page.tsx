@@ -26,7 +26,7 @@ export default async function KnowledgePage() {
 
   // Owned-RAG coverage per doc: how many embedded chunks exist = whether Kira can retrieve it.
   const { data: chunkRows } = ctx
-    ? await svc.from('kira_knowledge_chunks').select('knowledge_id').eq('user_id', ctx.personId)
+    ? await svc.from('kira_knowledge_chunks').select('knowledge_id').eq('organisation_id', ctx.organisationId)
     : { data: [] as Array<{ knowledge_id: string }> };
 
   const counts = new Map<string, number>();

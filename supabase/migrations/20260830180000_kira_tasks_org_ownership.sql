@@ -83,8 +83,7 @@ UPDATE kira_tasks t
 -- ---------------------------------------------------------------------------
 UPDATE kira_tasks
    SET quarantine_status = 'quarantined',
-       quarantine_reason = 'kira_tasks org rebinding: owner id has no resolvable active ' ||
-                           'organisation membership; not force-assigned per canonical model',
+       quarantine_reason = E'kira_tasks org rebinding: owner id has no resolvable active organisation membership; not force-assigned per canonical model',
        quarantined_at = NOW()
  WHERE user_id IS NOT NULL
    AND organisation_id IS NULL
@@ -157,8 +156,6 @@ ALTER TABLE kira_tasks
 -- replaced with the canonical provenance role.
 -- ---------------------------------------------------------------------------
 COMMENT ON COLUMN kira_tasks.user_id IS
-    'Provenance — who asked for the task (person id). NULL = asked by a visitor ' ||
-    'with no account via the public /api/kira/ask. Ownership is ' ||
-    'kira_tasks.organisation_id; this column is not the tenant.';
+    E'Provenance — who asked for the task (person id). NULL = asked by a visitor with no account via the public /api/kira/ask. Ownership is kira_tasks.organisation_id; this column is not the tenant.';
 
 COMMIT;

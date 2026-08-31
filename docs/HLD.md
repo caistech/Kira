@@ -27,8 +27,9 @@ Three things follow from that, and they shape every decision below:
 
 1. **Voice is the interface, not a feature.** Owners will talk for ten minutes and will not fill in
    a form. The product only works if speaking to Kira is the path of least resistance.
-2. **Memory is the product.** An assistant that forgets is a novelty. Continuity across sessions is
-   the thing being sold, which is why it is the most heavily guarded part of the system (§5).
+2. **Memory is the source material, not the product.** An assistant that forgets is a novelty. Memory
+   is the Interaction Evidence that powers the **Maturity Model** (the Business Understanding product).
+   Continuity across sessions is the source material that enables learning, which is the thing being sold.
 3. **The buyer is often not the user.** Kira reaches owners through **introducers** — brokers,
    accountants and advisers who already hold the relationship. That is a distribution channel with
    its own portal, permissions and commercial terms, not a referral link bolted on.
@@ -112,7 +113,7 @@ in the Kira application and secured by the owner's session.
 
 ## 4. The memory loop
 
-The memory loop is the product. Every conversation with the agent produces a transcript. That
+The memory loop is the source material. Every conversation with the agent produces a transcript. That
 transcript is:
 
 1. Stored verbatim in `conversations`.

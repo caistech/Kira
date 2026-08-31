@@ -23,6 +23,7 @@ import {
   DISCOVERY_VOICE_ID,
 } from '@/lib/kira/discovery-config';
 import { ClientProfileSchema, type ClientProfile } from '@/lib/kira/discovery-schema';
+import { resolveOrganisationForPerson } from '@/lib/auth';
 import { applyProfileExtraction } from '@/lib/kira/apply-profile';
 
 let cached: Discovery<ClientProfile> | null = null;
@@ -75,10 +76,13 @@ export function getDiscovery(): Discovery<ClientProfile> {
       // A voice discovery call counts as a session (bumpSession) — shared with the ingestion
       // pre-brief via applyProfileExtraction so the two paths never drift.
       onResult: async (result, meta) => {
-        await applyProfileExtraction(supabase, meta.subjectId, result, {
-          source: 'discovery',
-          bumpSession: true,
-        });
+        const orgContext = await resolveOrganisationForPerson(meta.subjectId);
+        if (orgContext) {
+          await applyProfileExtraction(supabase, orgContext, result, {
+            source: 'discovery',
+            bumpSession: true,
+          });
+        }
       },
     },
     {

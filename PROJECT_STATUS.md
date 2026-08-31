@@ -1,19 +1,32 @@
 # PROJECT STATUS — Kira
 
 **Last session:** 2026-08-29
-**Session focus:** Genome Verification Pass (COMPLETE) + Comprehensive Resource Migration Matrix
+**Session focus:** Maturity Model Alignment (ADMIN DECISIONS RECEIVED) + P2.3 Gate Closure
 
 ## CURRENT PHASE STATUS
 
 | Phase | Scope | Status |
 |---|---|---|
-| **P2.2** | Authentication & Trust Boundary | ✅ SUBSTANTIALLY COMPLETE |
 | **P2.3** | Resource Ownership Audit | ✅ COMPLETE — semantic ownership and migration targets established |
-| **P2.3-A** | Billing / Subscription semantics | ✅ RESOLVED — Organisation → Subscription |
-| **P2.3-B** | Knowledge stores | ✅ RESOLVED — Evidence vs Organisational Knowledge |
-| **P2.3-C** | kira_memory classification | ✅ RESOLVED — Interaction Evidence |
-| **P2.3-D** | Resource migration matrix | ✅ COMPLETE — comprehensive matrix for all `user_id` occurrences |
-| **P2.4** | Resource-specific migrations | 🔓 OPEN — blocked only by classification completion |
+| **P2.3 Gates** | Architecture & Business Decisions | ✅ CLOSED — Dennis approved Maturity Model + all 4 Gates |
+| **P2.4** | Resource-specific migrations | 🔓 OPEN — proceeding via "Strangler Fig" (incremental) approach |
+
+### Maturity Model Alignment (The Core Product Definition)
+
+Dennis approved the **Business Understanding Maturity Model (Levels 0–7)** as the primary product architecture.
+
+*   **Decision:** "Learning" (the process of refining the Business Genome) is the product.
+*   **Decision:** "Readiness" is a transient state at the bottom of the maturity ladder, not the end goal.
+*   **Decision:** The 13-question assessment is the "Spark" (Level 1), regardless of subscription status.
+*   **Decision:** Memory (the source material) is the Interaction Evidence, while the **Genome** is the Product.
+
+### P2.3 Entry Gates — All Resolved
+
+Dennis approved the following migration strategies:
+1.  **Gate 1 (Billing):** Move to First-Class Subscription Entity (`Organisation → Subscription`).
+2.  **Gate 2 (Knowledge):** Re-scope `kira_knowledge` to Organisation (Evidence).
+3.  **Gate 3 (Memory):** Treat `kira_memory` as Interaction Evidence; Genome is the Golden Record.
+4.  **Gate 4 (Migration):** Proceed via **Strangler Fig** approach (`organisation_id` on new writes, gradual backfill).
 
 ### P2.3-D Resource Migration Matrix — Summary
 

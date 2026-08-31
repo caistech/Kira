@@ -17,10 +17,9 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { getCurrentAppUser } from '@/lib/auth';
+import { getAuthUser, resolveOrganisationForPerson } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { GENOME_AREAS, type AreaKey } from '@/lib/genome/areas';
-import { resolveOrganisationForPerson } from '@/lib/auth';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { assessArea as assessAreaItems, type AssessedItem, type ItemStatus } from '@/lib/genome/checklist-bands';
 import { outstandingSplit } from '@/lib/genome/checklist-bands';
@@ -47,8 +46,8 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
   const def = GENOME_AREAS.find((a) => a.key === area);
   if (!def) notFound();
 
-  const user = await getCurrentAppUser();
-  if (!user?.id) {
+  const authUser = await getAuthUser();
+  if (!authUser?.id) {
     return (
       <div className="mx-auto w-full max-w-2xl px-5 py-10">
         <p className="text-base text-stone-700">
@@ -61,7 +60,7 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
     );
   }
 
-  const orgContext = await resolveOrganisationForPerson(user.id as string);
+  const orgContext = await resolveOrganisationForPerson(authUser.id);
   if (!orgContext) {
     return (
       <main className="max-w-3xl mx-auto px-5 py-16">
@@ -77,7 +76,7 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
   const { data: rows } = await supabase
     .from('genome_item_status')
     .select('item_key, status, why, evidence')
-    .eq('user_id', user.id)
+    .eq('organisation_id', orgContext.organisationId)
     .eq('area', area);
 
   const assessed: AssessedItem[] = (rows ?? []).map((r) => ({

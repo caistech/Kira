@@ -629,11 +629,7 @@ Design: `docs/SPEC_GENOME_CHECKLIST_AND_PATHWAYS.md`. Architecture: HLD §6.
    area), and Assets and Compliance evidence none of them. Mapping per area forces you to pretend
    Assets moves the multiple. This is also what lets the panel say *"two of these move your number,
    the rest complete your handover document."*
-2. **`readiness` is never recomputed in place.** It is the baseline he was shown when he paid.
-   `recompute-readiness.ts` re-derives the five sub-scores by re-running `computeValuation` on the
-   stored `inputs` (only the composite was ever persisted) and **self-checks**: if the recomputed
-   composite no longer matches the stored one the model has moved, and it REFUSES — a delta that is
-   partly evidence and partly a re-weighting cannot be separated afterwards.
+2. **`readiness` is never recomputed in place.** It is the baseline at Level 1 (Assessment Complete) of the Maturity Model. `recompute-readiness.ts` re-derives the five sub-scores by re-running `computeValuation` on the stored `inputs` (only the composite was ever persisted) and **self-checks**: if the recomputed composite no longer matches the stored one the model has moved, and it REFUSES — a delta that is partly evidence and partly a re-weighting cannot be separated afterwards.
    ⚠️ **Finiteness is checked BEFORE the drift comparison.** `Math.abs(a - b) > 0.005` passes
    silently on NaN, so a malformed `inputs` row would have read as "no drift" and written NaN.
    ⚠️ **`model_version` is on `valuation_snapshots`, not `business_valuations`** — selecting it here

@@ -13,23 +13,17 @@ import {
   buildProfileBriefing,
   DISCOVERY_COMPLETE_THRESHOLD,
 } from './discovery-schema';
-import { resolveOrganisationForPerson } from '@/lib/auth';
+import { type OrganisationContext } from '@/lib/auth';
 import { saveMemory } from './memory-contract';
 
 export async function applyProfileExtraction(
   supabase: SupabaseClient,
-  userId: string,
+  orgContext: OrganisationContext,
   extracted: ClientProfile,
   opts: { source: string; bumpSession: boolean },
 ): Promise<{ completeness: number; discovery_complete: boolean }> {
-  // INV-020: the Client Profile is organisation-owned. Resolve the org FIRST — it is required —
-  // and read/upsert by organisation_id; the person id is retained as provenance only.
-  const orgContext = await resolveOrganisationForPerson(userId);
-  if (!orgContext) {
-    console.error('[apply-profile] No organisational context for user:', userId);
-    return { completeness: 0, discovery_complete: false };
-  }
   const organisationId = orgContext.organisationId;
+  const userId = orgContext.personId;
 
   const { data: existing } = await supabase
     .from('client_profiles')

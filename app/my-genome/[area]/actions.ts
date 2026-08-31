@@ -14,10 +14,9 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { getCurrentAppUser } from '@/lib/auth';
+import { getAuthUser, resolveOrganisationForPerson } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { GENOME_AREAS, type AreaKey } from '@/lib/genome/areas';
-import { resolveOrganisationForPerson } from '@/lib/auth';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { assessAreaEntries } from '@/lib/genome/checklist-assess';
 import { recomputeEvidencedReadiness } from '@/lib/valuation/recompute-readiness';
@@ -34,11 +33,11 @@ export interface AssessState {
 }
 
 export async function assessArea(area: string): Promise<AssessState> {
-  const user = await getCurrentAppUser();
-  if (!user?.id) return { error: 'You are not signed in.' };
+  const authUser = await getAuthUser();
+  if (!authUser?.id) return { error: 'You are not signed in.' };
   if (!AREA_KEYS.has(area as AreaKey)) return { error: 'That is not one of the nine areas.' };
 
-  const orgContext = await resolveOrganisationForPerson(user.id as string);
+  const orgContext = await resolveOrganisationForPerson(authUser.id);
   if (!orgContext) return { error: 'No organisation membership found.' };
   const genome = await deriveOwnerGenome(orgContext);
   const section = genome.sections.find((s) => s.key === area);
@@ -61,8 +60,9 @@ export async function assessArea(area: string): Promise<AssessState> {
   const supabase = createServiceClient();
   const { error } = await supabase.from('genome_item_status').upsert(
     verdicts.map((v) => ({
-      // users.id — the APP id, matching every other genome table. Not auth.uid().
-      user_id: user.id,
+      // INV-020: organisation_id is the ownership anchor; user_id is provenance only.
+      organisation_id: orgContext.organisationId,
+      user_id: authUser.id,
       item_key: v.itemKey,
       area,
       status: v.status,
@@ -71,7 +71,7 @@ export async function assessArea(area: string): Promise<AssessState> {
       assessed_at: new Date().toISOString(),
       assessed_by: 'checklist-assess/gpt-4.1-mini',
     })),
-    { onConflict: 'user_id,item_key' },
+    { onConflict: 'organisation_id,item_key' },
   );
 
   if (error) {
@@ -85,7 +85,7 @@ export async function assessArea(area: string): Promise<AssessState> {
   //
   // Deliberately after the upsert and deliberately not awaited into the failure path: if the
   // recompute fails he still keeps the assessment he asked for, and the number simply does not move.
-  const movement = await recomputeEvidencedReadiness(user.id as string);
+  const movement = await recomputeEvidencedReadiness(authUser.id);
 
   revalidatePath(`/my-genome/${area}`);
   revalidatePath('/my-genome');

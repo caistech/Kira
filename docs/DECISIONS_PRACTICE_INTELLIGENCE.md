@@ -188,3 +188,33 @@ capability function), not in the route.
 7. **D13** — entitlements (D2, D14–D20 apply), with **D3** in the same change.
 
 **Not started, deliberately:** D24, D25, D26, D27, the Opportunity Discovery framework.
+
+---
+
+## 6. Maturity Model & P2.3 Gate Decisions (Admin Approved 2026-08-30)
+
+### D32 — Maturity Model is the primary product architecture · `decided, approved`
+
+The Business Understanding Maturity Model (Levels 0–7) is the architectural invariant.
+"Learning" (the process of refining the Business Genome) is the product. Memory is Interaction Evidence.
+Readiness is Level 1 (Assessment Complete), not a "paid" feature. The 13-question assessment is the Spark.
+
+### D33 — Gate 1: First-Class Subscription Entity · `decided, approved`
+
+Move to `Organisation → Subscription`. Person is the Commercial Actor (initiates, administers, pays);
+Organisation is the enduring anchor.
+
+### D34 — Gate 2: Knowledge stores re-scoped · `decided, approved`
+
+`kira_knowledge` re-scoped to Organisation as "Evidence". Governance process promotes to
+`organisation_knowledge`. Organisational intelligence survives personnel changes (INV-020).
+
+### D35 — Gate 3: Memory = Interaction Evidence · `decided, approved`
+
+`kira_memory` is Interaction Evidence (source material). The Genome (governed, interpreted, classified
+facts) is the Product. Lifecycle: Evidence → Governance → Knowledge.
+
+### D36 — Gate 4: Strangler Fig migration · `decided, approved`
+
+Proceed via incremental migration. New writes use `organisation_id`. Gradual backfill of existing rows.
+No big-bang schema swap.

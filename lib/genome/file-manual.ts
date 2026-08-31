@@ -55,7 +55,7 @@ function folderName(business: string, audience: Audience): string {
  * that" when nothing was written is the failure that costs an owner the whole product, because he
  * will not discover it until he sends someone to a folder that is not there.
  */
-export async function fileManual(userId: string, audience: Audience): Promise<FileManualResult> {
+export async function fileManual(personId: string, audience: Audience): Promise<FileManualResult> {
   const baseUrl = (process.env.ORCHESTRATOR_URL || '').replace(/\/$/, '');
   const secret = process.env.ORCHESTRATOR_SECRET || '';
   if (!baseUrl || !secret) {
@@ -67,16 +67,18 @@ export async function fileManual(userId: string, audience: Audience): Promise<Fi
 
   const supabase = createServiceClient();
 
+  // Business identity is keyed by the legacy users.id (person id). getBusinessIdentity uses a
+  // session client with RLS, so the parameter must be the authenticated user's own id.
   let identity = null;
   try {
-    identity = await getBusinessIdentity(userId);
+    identity = await getBusinessIdentity(personId);
   } catch (error) {
     console.error('[file-manual] business identity unavailable:', error);
   }
   const business = identity ? displayName(identity) : 'Your business';
   const timeZone = timeZoneForState(identity?.state);
 
-  const orgContext = await resolveOrganisationForPerson(userId);
+  const orgContext = await resolveOrganisationForPerson(personId);
   if (!orgContext) {
     return { ok: false, message: "No organisation membership found — cannot file.", written: 0, total: 0 };
   }
@@ -99,7 +101,7 @@ export async function fileManual(userId: string, audience: Audience): Promise<Fi
 
   let payload;
   try {
-    const res = await fetch(`${baseUrl}/api/v1/tenants/${encodeURIComponent(userId)}/record`, {
+    const res = await fetch(`${baseUrl}/api/v1/tenants/${encodeURIComponent(orgContext.organisationId)}/record`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-orchestrator-secret': secret },
       body: JSON.stringify({
@@ -130,7 +132,7 @@ export async function fileManual(userId: string, audience: Audience): Promise<Fi
   if (landed.length > 0) {
     const { error } = await supabase.from('drive_documents').upsert(
       landed.map((r) => ({
-        user_id: userId,
+        user_id: personId,
         organisation_id: orgContext.organisationId,
         audience,
         area_key: r.key,
