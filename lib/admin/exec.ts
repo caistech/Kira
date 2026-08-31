@@ -116,7 +116,7 @@ export async function getExecUsers(): Promise<ExecUserRow[]> {
       sb.from('users').select('id, email, first_name, created_at, subscription_status').in('id', userIds),
       sb.from('business_valuations').select('organisation_id, gap, worth_today, worth_potential, readiness, currency, industry').in('organisation_id', [...orgIds]),
       sb.from('kira_agents').select('id, user_id, agent_name, elevenlabs_agent_id, status, journey_type, total_conversations, last_conversation_at').in('organisation_id', [...orgIds]).neq('status', 'deleted'),
-      sb.from('client_profiles').select('user_id, completeness, sessions_count').in('user_id', userIds),
+      sb.from('client_profiles').select('organisation_id, completeness, sessions_count').in('organisation_id', [...orgIds]),
       // Memory is organisation-owned since P0.4. The admin lens reads it through the org partition —
       // the organisations this cohort resolves to — never through user_id.
       orgIds.size > 0
@@ -152,7 +152,7 @@ export async function getExecUsers(): Promise<ExecUserRow[]> {
   // first point where the question can actually be asked.
   const clientUsers = (users ?? []).filter((u: any) => !isNonClientAccount(u.email));
 
-  const profByUser = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
+  const profByOrg = new Map((profiles ?? []).map((p: any) => [p.organisation_id, p]));
   const count = (rows: any[] | null, uid: string) => (rows ?? []).filter((r) => r.user_id === uid).length;
 
   const rows: ExecUserRow[] = clientUsers.map((u: any) => {
@@ -160,7 +160,7 @@ export async function getExecUsers(): Promise<ExecUserRow[]> {
     // id; find an organisation they belong to that has a valuation.
     const userOrgs = (memberships ?? []).filter((m: any) => m.person_id === u.id).map((m: any) => m.organisation_id);
     const v: any = (valuations ?? []).find((row: any) => userOrgs.includes(row.organisation_id)) ?? {};
-    const p: any = profByUser.get(u.id) ?? {};
+    const p: any = profByOrg.get(userOrgs[0]) ?? {};
     return {
       userId: u.id,
       email: u.email,
@@ -174,7 +174,7 @@ export async function getExecUsers(): Promise<ExecUserRow[]> {
       currency: v.currency ?? 'USD',
       industry: v.industry ?? null,
       agents: (agents ?? [])
-        .filter((a: any) => a.user_id === u.id)
+        .filter((a: any) => userOrgs.includes(a.organisation_id))
         .map((a: any) => ({
           id: a.id,
           agentName: a.agent_name ?? null,
