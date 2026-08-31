@@ -94,7 +94,7 @@ describe('keepDocument', () => {
     // The property worth protecting: a document that arrived as text never left our infrastructure.
     expect(calls.some((c) => c.url.includes('elevenlabs'))).toBe(false);
     expect(ingestKnowledgeDocument).not.toHaveBeenCalled();
-    expect(inserted[0]).toMatchObject({ source_type: 'google_drive', user_id: 'tenant-1' });
+    expect(inserted[0]).toMatchObject({ source_type: 'google_drive', organisation_id: 'tenant-1' });
   });
 
   it('sends a docx through the parser and keeps that copy', async () => {
