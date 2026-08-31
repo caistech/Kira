@@ -16,7 +16,7 @@
     "@caistech/beta-gate": "^0.2.0",
     "@caistech/brave-search": "^0.1.0",
     "@caistech/coordination-sdk": "^0.4.1",
-    "@caistech/corporate-components": "^0.8.3",
+    "@caistech/corporate-components": "^0.8.5",
     "@caistech/discovery-agent": "^0.1.0",
     "@caistech/elevenlabs-convai": "^0.16.0",
     "@caistech/email-compliance": "^0.4.0",
@@ -26,7 +26,7 @@
     "@caistech/mnemo": "^0.2.0",
     "@caistech/platform-trust-middleware": "^0.4.1",
     "@caistech/sayfix-embed": "^0.7.1",
-    "@caistech/subscription-billing": "^0.4.0",
+    "@caistech/subscription-billing": "^0.5.0",
     "@caistech/webmcp-kit": "^0.1.0",
     "@elevenlabs/client": "^0.13.0",
     "@elevenlabs/react": "^1.10.1",
@@ -48,7 +48,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@caistech/portfolio-gate": "^0.14.0",
+    "@caistech/portfolio-gate": "^0.18.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
