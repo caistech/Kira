@@ -756,9 +756,11 @@ export default async function MyGenome() {
           )}
 
           <section className="mt-10">
-            <h2 className="font-display text-xl font-bold">Take it with you</h2>
+            <h2 className="font-display text-xl font-bold">Get it ready for your broker</h2>
             <p className="text-stone-600 mt-2 max-w-2xl leading-relaxed">
-              It is yours. Download a copy whenever you like — if you stop paying us, you keep it.
+              You can download the handover document whenever you like. Kira has already stripped out
+              everything marked private — your plans, your exit timing, and anything you asked her to
+              keep only for you. It is safe to send to an advisor or a prospective buyer.
             </p>
             {/* THE TWO FILES ARE NOT THE SAME FILE, and he has to know that before he forwards one.
                 The handover document is the one built to be sent on, so it leaves out anything about
@@ -789,7 +791,7 @@ export default async function MyGenome() {
                 href="/api/genome/manual?audience=buyer"
                 className="inline-flex items-center min-h-[48px] px-6 rounded-full border border-stone-300 font-display font-semibold"
               >
-                Download the handover document
+                Download: Broker-Safe Version
               </a>
               <a
                 href="/api/genome/manual?audience=owner"

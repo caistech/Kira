@@ -194,7 +194,7 @@ export const ADVISOR_FAQ: FaqItem[] = [
   },
   {
     q: 'If my client sells, retires or dies, does their information come out?',
-    a: "Yes, at any time, without asking us. They can export the whole Operating Manual themselves — a handover document a buyer's accountant can read cold, and the raw data in a form another system can read. Every entry is dated to the conversation the owner said it in, so it reads as evidence rather than assertion. If they stop paying us, they keep it.",
+    a: "Yes, at any time, without asking us. They can export the whole Operating Manual themselves — a handover document a buyer's accountant can read cold, and the raw data in a form another system can read. The handover document automatically strips all items marked 'yours only'. Every entry is dated to the conversation the owner said it in, so it reads as evidence rather than assertion. If they stop paying us, they keep it.",
   },
   {
     q: 'What can I see about my clients?',
