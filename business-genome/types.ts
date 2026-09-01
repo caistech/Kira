@@ -29,6 +29,7 @@ export interface GenomeEntity {
   confirmed_at: string | null;
   superseded_at: string | null;
   supersedes: string | null;
+  visibility: 'org' | 'owner';
 }
 
 /**
@@ -71,6 +72,7 @@ export interface GenomeFact {
   valid_to: string | null;
   superseded_at: string | null;
   supersedes: string | null;
+  visibility: 'org' | 'owner';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -97,6 +99,7 @@ export interface GenomeRelationship {
   confirmed_at: string | null;
   superseded_at: string | null;
   supersedes: string | null;
+  visibility: 'org' | 'owner';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -133,6 +136,7 @@ export interface GenomeEntityInput {
   source_id?: string;
   source_reference?: string;
   observed_at?: string;
+  visibility?: 'org' | 'owner';
 }
 
 export interface GenomeFactInput {
@@ -150,6 +154,7 @@ export interface GenomeFactInput {
   source_id?: string;
   source_reference?: string;
   observed_at?: string;
+  visibility?: 'org' | 'owner';
 }
 
 export interface GenomeRelationshipInput {

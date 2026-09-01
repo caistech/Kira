@@ -29,6 +29,7 @@ import type { GenomeEntity, GenomeFact } from './types';
 interface ExtractionItem {
   type: 'entity' | 'fact' | 'relationship';
   area_key: string;
+  visibility?: 'org' | 'owner';
   // Entity fields
   entity_type?: string;
   name?: string;
@@ -353,20 +354,21 @@ export async function extractGenomeFromConversation(
           result.facts.push(existing);
         }
       } else {
-        const fact = await createFact({
-          organisation_id: organisationId,
-          user_id: userId,
-          entity_id: entityId,
-          area_key: item.area_key,
-          subject: item.subject!,
-          predicate: item.predicate!,
-          value: item.value ?? undefined,
-          value_type: (item.value_type as any) ?? 'text',
-          unit: item.unit ?? undefined,
-          confidence,
-          source_type: 'conversation',
-          source_id: conversationId,
-        });
+const fact = await createFact({
+            organisation_id: organisationId,
+            user_id: userId,
+            entity_id: entityId,
+            area_key: item.area_key,
+            subject: item.subject!,
+            predicate: item.predicate!,
+            value: item.value ?? undefined,
+            value_type: (item.value_type as any) ?? 'text',
+            unit: item.unit ?? undefined,
+            confidence,
+            source_type: 'conversation',
+            source_id: conversationId,
+            visibility: item.visibility,
+          });
         result.facts.push(fact);
       }
       result.processed_items++;

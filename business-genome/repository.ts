@@ -142,6 +142,7 @@ export async function createFact(input: GenomeFactInput): Promise<GenomeFact> {
       source_id: input.source_id ?? null,
       source_reference: input.source_reference ?? null,
       observed_at: input.observed_at ?? new Date().toISOString(),
+      visibility: input.visibility ?? 'org',
     })
     .select()
     .single();

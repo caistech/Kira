@@ -15,6 +15,7 @@ import { SignOutEverywhere } from '@/components/SignOutEverywhere';
 import { CancelPlanButton } from '@/components/CancelPlanButton';
 import { ManageBillingButton } from '@/components/ManageBillingButton';
 import { UsageMeter } from '@/components/UsageMeter';
+import { TeamSection } from '@/components/TeamSection';
 import { updateProfile, updateNotifications } from './actions';
 
 export const metadata = { title: 'Settings · Kira' };
@@ -309,6 +310,8 @@ export default async function SettingsPage() {
             appUser?.subscription_status !== 'cancelled' && <CancelPlanButton />}
         </div>
       </section>
+
+      <TeamSection />
 
       <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-6">
         <h2 className="text-lg font-semibold text-gray-900">Password</h2>

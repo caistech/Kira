@@ -10,6 +10,7 @@ import { displayedFigures } from '@/lib/valuation/displayed';
 import { shouldInviteBaseline } from '@/lib/valuation/baseline-invite';
 import { OnboardingGate } from '@/components/OnboardingGate';
 import { AbsenceRecord } from '@/components/AbsenceRecord';
+import { LogAbsenceButton } from '@/components/LogAbsenceButton';
 import { nextOnboardingStep, onboardingProgress } from '@/lib/onboarding/gate';
 
 export const metadata = { title: 'Overview · Kira' };
@@ -329,6 +330,8 @@ export default async function DashboardPage({
           week one meets an uncluttered screen, and the one who has stepped away meets his proof.
           Only owner/admin members can create these (RLS); every member reads them. */}
       {!gateStep && <AbsenceRecord />}
+      {/* LOG ABSENCE BUTTON — only for owner/admin, right next to the evidence */}
+      {!gateStep && <LogAbsenceButton />}
 
       {/* ⚠️ THE FUNNELS ARE NOT ON THIS PAGE — operator decision, 2026-08-15. They live on
           /my-genome and /sample-genome: the page about the Genome, and the page that sells it.
