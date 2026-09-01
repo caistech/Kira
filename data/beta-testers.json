@@ -119,6 +119,16 @@
     "last_email_sent": "2026-08-15T00:00:00.000Z",
     "comment": "Needs nothing yet"
   },
+    {
+    "email": "dennis+brandnewkiratest@corporateaisolutions.com",
+    "name": "Dennis Brandnewkiratest",
+    "code": "CORP-3456-0987",
+    "group": "C",
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "Needs new email with code"
+  },
   {
     "email": "artem.gavrilov@dfuture.co",
     "name": "Artem Gavrilov",
@@ -341,7 +351,7 @@
   },
 
     {
-    "email": "mcmdennis+nonclaudetest@hmail.com",
+    "email": "mcmdennis+nonclaudetest@gmail.com",
     "name": "Dentester34 Smith",
     "code": "DENW-4567-8902",
     "group": "A",

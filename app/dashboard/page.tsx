@@ -9,6 +9,7 @@ import { formatMoney, formatMoneyApprox, DEFAULT_CURRENCY } from '@/lib/valuatio
 import { displayedFigures } from '@/lib/valuation/displayed';
 import { shouldInviteBaseline } from '@/lib/valuation/baseline-invite';
 import { OnboardingGate } from '@/components/OnboardingGate';
+import { AbsenceRecord } from '@/components/AbsenceRecord';
 import { nextOnboardingStep, onboardingProgress } from '@/lib/onboarding/gate';
 
 export const metadata = { title: 'Overview · Kira' };
@@ -321,6 +322,13 @@ export default async function DashboardPage({
           It renders; it does not connect, and it provisions nothing on load. See the component for
           why each of those is deliberate. */}
       {!gateStep && <KiraShapeSection surface="dashboard" />}
+
+      {/* THE SMALL-WIN EVIDENCE, NEXT TO KIRA HERSELF. The gap figure above is the long win;
+          this is the near-term one made real — the periods the owner was away and Kira held the
+          business. It renders nothing until there is an ended absence to show, so an owner in
+          week one meets an uncluttered screen, and the one who has stepped away meets his proof.
+          Only owner/admin members can create these (RLS); every member reads them. */}
+      {!gateStep && <AbsenceRecord />}
 
       {/* ⚠️ THE FUNNELS ARE NOT ON THIS PAGE — operator decision, 2026-08-15. They live on
           /my-genome and /sample-genome: the page about the Genome, and the page that sells it.

@@ -47,6 +47,19 @@ export async function POST(request: NextRequest) {
     // the subscription and put him back where he was.
     const signedInCtx = await getCurrentOrganisationContext().catch(() => null);
 
+    // THE SPEND GUARDRAIL — "no spend discretion" for a seat, not a blanket ban on the business.
+    // A member whose OWN membership has can_spend = false (e.g. a replacement or CFO seat that the
+    // owner has deliberately restrained) can use Kira and the shared knowledge, but cannot start a
+    // paid subscription on this organisation's behalf. Default is true, so no existing seat is
+    // affected unless an owner explicitly sets it false. There is deliberately NO override here:
+    // if a restrained seat must spend, the owner lifts it on the membership, not in this route.
+    if (signedInCtx && !signedInCtx.canSpend) {
+      return NextResponse.json(
+        { error: 'This account is set up without spend permission. Ask the owner to enable billing for your seat.' },
+        { status: 403 },
+      );
+    }
+
     // Recompute the gap here - the price must not be forgeable by the client.
     const result = computeValuation(inputs);
     const quote = priceForProfit(inputs.annualProfit, result.gap);

@@ -152,6 +152,16 @@ export default function OnboardingPage() {
               Set a password and you&apos;ll meet Kira — a short conversation so she learns how the
               business runs. Your dashboard is waiting behind it.
             </p>
+            {/* THE SMALL-WIN COMMITMENT, SAID AT THE DOOR. The first conversation should aim at
+                something he can feel this month, not the distant sale. Naming the near-term win
+                here — that the goal is being able to take time off — sets what the whole first
+                months are driving toward. Kept short and honest: no deadline promised in month one. */}
+            <p className="text-stone-600 text-center mb-6">
+              The first thing she&apos;ll work toward with you is the small win: getting the business to
+              the point where you can be away for a month or two and it still runs — because she watches
+              it, and whoever stands in can ask her. The bigger win, when you&apos;re ready, is selling it as
+              an asset. We build the small one first.
+            </p>
             <form onSubmit={finish} className="space-y-4">
               <PasswordInput
                 value={password}

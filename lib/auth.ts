@@ -103,6 +103,7 @@ export interface OrganisationContext {
   membershipId: string;
   role: string;
   membershipStatus: string;
+  canSpend: boolean;
   validFrom: string;
   validTo: string | null;
 }
@@ -142,7 +143,7 @@ export async function getCurrentOrganisationContext(): Promise<OrganisationConte
     // Get membership (role priority: owner > admin > consultant > employee > advisor > member)
     const { data: membership } = await supabase
       .from('organisation_memberships')
-      .select('membership_id, organisation_id, role, status, valid_from, valid_to')
+      .select('membership_id, organisation_id, role, status, can_spend, valid_from, valid_to')
       .eq('person_id', personId)
       .eq('status', 'active')
       .or('valid_to.is.null,valid_to.gt.now()')
@@ -158,6 +159,7 @@ export async function getCurrentOrganisationContext(): Promise<OrganisationConte
       membershipId: membership.membership_id,
       role: membership.role,
       membershipStatus: membership.status,
+      canSpend: membership.can_spend ?? true,
       validFrom: membership.valid_from,
       validTo: membership.valid_to,
     };
@@ -222,7 +224,7 @@ export async function resolveOrganisationFromUser(userId: string): Promise<Organ
 
     const { data: membership } = await supabase
       .from('organisation_memberships')
-      .select('membership_id, organisation_id, role, status, valid_from, valid_to')
+      .select('membership_id, organisation_id, role, status, can_spend, valid_from, valid_to')
       .eq('person_id', personId)
       .eq('status', 'active')
       .or('valid_to.is.null,valid_to.gt.now()')
@@ -238,6 +240,7 @@ export async function resolveOrganisationFromUser(userId: string): Promise<Organ
       membershipId: membership.membership_id,
       role: membership.role,
       membershipStatus: membership.status,
+      canSpend: membership.can_spend ?? true,
       validFrom: membership.valid_from,
       validTo: membership.valid_to,
     };
@@ -264,7 +267,7 @@ export async function resolveOrganisationForPerson(personId: string): Promise<Or
 
     const { data: membership, error: memError } = await supabase
       .from('organisation_memberships')
-      .select('membership_id, organisation_id, role, status, valid_from, valid_to')
+      .select('membership_id, organisation_id, role, status, can_spend, valid_from, valid_to')
       .eq('person_id', personId)
       .eq('status', 'active')
       .or('valid_to.is.null,valid_to.gt.now()')
@@ -280,6 +283,7 @@ export async function resolveOrganisationForPerson(personId: string): Promise<Or
       membershipId: membership.membership_id,
       role: membership.role,
       membershipStatus: membership.status,
+      canSpend: membership.can_spend ?? true,
       validFrom: membership.valid_from,
       validTo: membership.valid_to,
     };

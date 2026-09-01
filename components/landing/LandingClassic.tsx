@@ -242,6 +242,18 @@ export function LandingClassic() {
               business can be sold with. Most owners start this <span className="font-semibold text-stone-800">before they&apos;ve told anyone</span>.
             </p>
 
+            {/* THE SMALL WIN NAMED FIRST. The long win (sell it for what it's worth) is the reason to
+                start, but it is a distant, abstract number for a cautious owner. The near-term win —
+                "you can be away for a month or two and it still runs" — is something he can feel and
+                prove in private, before anyone is told he's thinking of leaving. The whole product
+                premise stands or falls on that test, so it deserves a line at the top, not only a
+                section below. */}
+            <p className="font-body text-base lg:text-lg text-stone-600 max-w-2xl mx-auto mb-6 leading-relaxed">
+              Kira&apos;s first promise: <span className="font-semibold text-stone-800">you take two months off and the business doesn&apos;t skip a beat</span> —
+              she watches it while you&apos;re away, and answers your replacement as though you were still there to ask.
+              Her second promise: when it comes time, <span className="font-semibold text-stone-800">you sell it as an asset, not a job</span>.
+            </p>
+
             {/* STACKED, NEVER A ROW. These two were siblings in a `sm:flex-row`, so on a laptop the
                 800px demo card below took the row and squeezed the primary CTA — the one thing this
                 page exists to get pressed — into the leftover 166px: a two-line pill in the left
@@ -395,29 +407,79 @@ export function LandingClassic() {
         </div>
       </section>
 
+      {/* THE SMALL WIN — THE FIRST WIN TO FEEL, THE SECOND TO SELL. The "Built to sell" arc above
+          leads with the endpoint. This section is the near-term proof, placed straight after it,
+          because the long win only feels real once the owner has evidence he can actually leave.
+          Two wins, sequenced: the small one first (private, provable, this month), the big one after. */}
+      <section className="bg-kira-mist py-24">
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="text-center mb-12">
+            <span className="text-5xl mb-4 block">🏖️</span>
+            <h2 className="font-display text-4xl lg:text-5xl font-bold text-stone-800 mb-6">Start with the smaller win: <span className="bg-gradient-to-r from-kira-600 to-kira-600 bg-clip-text text-transparent">take two months off.</span></h2>
+            <p className="font-body text-xl text-stone-600 max-w-2xl mx-auto leading-relaxed">The big win is selling it as an asset. The small win is leaving your business and watching it still run — a month, two months, while you&apos;re away.</p>
+          </div>
+
+          <div className="text-center mb-10">
+            <p className="font-body text-stone-600 max-w-2xl mx-auto leading-relaxed mb-6">
+              Most owners can&apos;t leave their own business. Not for a fortnight — the phone follows them,
+              the yard doesn&apos;t run, the one big customer calls. Even the thought of a proper break
+              probably feels like it isn&apos;t on the table.
+            </p>
+            <p className="font-body text-stone-600 max-w-2xl mx-auto leading-relaxed">
+              But Kira&apos;s first job is the win you can feel this month: <span className="font-semibold text-stone-800">she makes it safe to be away.</span> She
+              watches the things that would normally pull you back, and plays your part while you&apos;re
+              gone — so whoever&apos;s standing in asks Kira and gets the answer you&apos;d have given.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6 mb-10">
+            <div className="journey-card bg-white rounded-3xl p-7 shadow-xl border-2 border-kira-soft">
+              <div className="gradient-sunny w-12 h-12 rounded-2xl flex items-center justify-center mb-5 text-white text-xl">👀</div>
+              <h3 className="font-display text-xl font-bold text-stone-800 mb-2">While you&apos;re away — she watches</h3>
+              <p className="font-body text-stone-600 text-sm leading-relaxed">Kira monitors the business and surfaces what actually needs you, so you&apos;re not carrying it mentally on a beach.</p>
+            </div>
+            <div className="journey-card bg-white rounded-3xl p-7 shadow-xl border-2 border-kira-soft">
+              <div className="gradient-lavender w-12 h-12 rounded-2xl flex items-center justify-center mb-5 text-white text-xl">💬</div>
+              <h3 className="font-display text-xl font-bold text-stone-800 mb-2">While you&apos;re away — she answers for you</h3>
+              <p className="font-body text-stone-600 text-sm leading-relaxed">The person running things in your absence asks Kira &quot;what would the owner do here?&quot; and gets your way of doing it, not a guess.</p>
+            </div>
+          </div>
+
+          <div className="text-center">
+            <p className="font-body text-stone-600 max-w-2xl mx-auto leading-relaxed mb-6">
+              So before anyone&apos;s told you&apos;re thinking of leaving — before it&apos;s even a decision — you get to
+              test the whole premise privately. <span className="font-semibold text-stone-800">Can you be away for two months?</span> When Kira makes
+              the answer yes, you&apos;ll know the asset is real.
+            </p>
+            <a href="/business-valuation" className="font-display gradient-coral text-white px-8 py-4 rounded-full text-lg font-bold hover-pop shadow-xl shadow-kira-500/20 inline-block">See what your business is worth →</a>
+            <p className="font-body text-stone-500 text-sm mt-3">A 3-minute valuation — no sign-up, no card.</p>
+          </div>
+        </div>
+      </section>
+
       {/* How It Actually Works - The Real Flow */}
       <section id="how-it-works" className="bg-white py-24">
         <div className="max-w-5xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="font-display text-4xl lg:text-5xl font-bold text-stone-800 mb-4">How it works 🛠️</h2>
-            <p className="font-body text-xl text-stone-600">From first hello to your personalized guide in under 5 minutes.</p>
+            <p className="font-body text-xl text-stone-600">One Kira for your business, in under 5 minutes — you and your team work through her, each with your own seat.</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8 mb-16">
             <div className="text-center step-connector">
               <div className="gradient-sunny w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 text-white font-display font-bold text-3xl shadow-lg">1</div>
               <h3 className="font-display text-xl font-bold text-stone-800 mb-3">Tell Kira about your business</h3>
-              <p className="font-body text-stone-600">Tell Setup Kira what you do and what you're trying to sort out — she builds a guide around your business from the first hello.</p>
+              <p className="font-body text-stone-600">Kira learns what you do and what you're trying to sort out — she builds a picture of how your business actually runs from the first hello.</p>
             </div>
             <div className="text-center step-connector">
               <div className="gradient-coral w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 text-white font-display font-bold text-3xl shadow-lg">2</div>
-              <h3 className="font-display text-xl font-bold text-stone-800 mb-3">Setup Kira learns you</h3>
-              <p className="font-body text-stone-600">A quick voice conversation to understand your context, constraints, and what success looks like for you.</p>
+              <h3 className="font-display text-xl font-bold text-stone-800 mb-3">Kira learns the business</h3>
+              <p className="font-body text-stone-600">Voice conversations capture your context, constraints, and what success looks like — the knowledge only you carry.</p>
             </div>
             <div className="text-center">
               <div className="gradient-lavender w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 text-white font-display font-bold text-3xl shadow-lg">3</div>
-              <h3 className="font-display text-xl font-bold text-stone-800 mb-3">YOUR Kira is born</h3>
-              <p className="font-body text-stone-600">We create a unique Kira just for you — loaded with your context, ready to think through problems together.</p>
+              <h3 className="font-display text-xl font-bold text-stone-800 mb-3">Your Kira runs the whole business</h3>
+              <p className="font-body text-stone-600">One shared Kira for the business. You, and whoever you bring in — a manager, a replacement while you're away — work through her, each seeing only what their position should.</p>
             </div>
           </div>
 
@@ -430,14 +492,14 @@ export function LandingClassic() {
               </div>
               <span className="text-kira-600 text-2xl">→</span>
               <div className="flex items-center gap-3 bg-white rounded-full px-5 py-3 shadow-sm">
-                <div className="avatar-ring"><div className="w-8 h-8 rounded-full overflow-hidden bg-white"><img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" /></div></div>
-                <span className="font-body font-medium text-stone-700">Setup Kira</span>
+                <span className="text-2xl">👥</span>
+                <span className="font-body font-medium text-stone-700">Your team</span>
               </div>
               <span className="text-kira-600 text-2xl">→</span>
               <div className="flex items-center gap-3 bg-gradient-to-r from-kira-mist to-kira-50 rounded-full px-5 py-3 shadow-sm border-2 border-kira-mist">
                 <div className="avatar-ring"><div className="w-8 h-8 rounded-full overflow-hidden bg-white"><img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" /></div></div>
-                <span className="font-display font-bold text-stone-800">YOUR Kira</span>
-                <span className="text-sm bg-kira-600 text-stone-800 px-2 py-0.5 rounded-full font-bold">Personalized</span>
+                <span className="font-display font-bold text-stone-800">Your business's Kira</span>
+                <span className="text-sm bg-kira-600 text-stone-800 px-2 py-0.5 rounded-full font-bold">One shared</span>
               </div>
             </div>
           </div>
