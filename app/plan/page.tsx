@@ -648,7 +648,7 @@ export default function PlanPage() {
                   it is 16px — the responsive floor this line was under anyway, on the page where
                   being unreadable costs the most. The invitation now also carries `?code=`, so this
                   is the second of two defences, not the only one. */}
-              {signedIn ? null : betaOpen ? (
+              {betaOpen ? (
                 <div className="mt-6">
                   <BetaRedeem initialCode={betaCode ?? ''} firstName={payload?.firstName} />
                 </div>
@@ -687,7 +687,6 @@ export default function PlanPage() {
                   The only two access gates now: Stripe checkout OR beta code. Uninvited visitors who
                   want access are directed to request a code rather than offered a hidden free tier
                   that competes with the intended beta path. */}
-              {!signedIn && (
               <p className="mt-3 text-sm text-stone-600">
                 No beta tester code but want to try it out?{' '}
                 <a href="mailto:dennis@corporateaisolutions.com" className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500">
@@ -697,12 +696,8 @@ export default function PlanPage() {
                 <a href="https://www.linkedin.com/in/denniskl/" target="_blank" rel="noopener noreferrer" className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500">
                   connect on LinkedIn
                 </a>{' '}
-                and request one there. Already have an account?{' '}
-                <a href="/login" className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500">
-                  Sign in
-                </a>
+                and request one there.
               </p>
-              )}
               <p className="mt-3 text-sm text-stone-500">
                 Before you decide:{' '}
                 <a href="/what-she-does" className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500">
@@ -724,7 +719,6 @@ export default function PlanPage() {
                   It also catches the invitation-code dead end: a code that has already been redeemed
                   means he has an account, and this is the line that resolves it without the API
                   having to say which of the three rejection reasons applied. */}
-              {!signedIn && (
               <p className="mt-3 text-sm text-stone-500">
                 Already have an account?{' '}
                 <a
@@ -735,7 +729,6 @@ export default function PlanPage() {
                 </a>
                 .
               </p>
-              )}
               <p className="text-xs text-stone-400 mt-3">
                 {copy.finePrint(`${money(model.quote.monthly)} ${tax}`)} You set your password and meet Kira right after.
               </p>

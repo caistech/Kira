@@ -5,7 +5,7 @@
 
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { getCurrentOrganisationContext } from '@/lib/auth';
+import { getAuthUser, getCurrentOrganisationContext } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import ChatPage from '@/app/chat/[agentId]/page';
 import { isAreaKey } from '@/lib/kira/area-focus';
@@ -19,18 +19,26 @@ export default async function TalkPage({
   // outstanding questions themselves are pulled by her, through area_agenda, at the moment she asks.
   searchParams?: Promise<{ area?: string }>;
 }) {
-  const orgContext = await getCurrentOrganisationContext();
+  const authUser = await getAuthUser();
   const focusArea = (await searchParams)?.area ?? null;
-  if (!orgContext) redirect(`/login?next=${encodeURIComponent(focusArea ? `/talk?area=${focusArea}` : '/talk')}`);
+  // NOT SIGNED IN → send to login, remembering where they were headed.
+  if (!authUser) redirect(`/login?next=${encodeURIComponent(focusArea ? `/talk?area=${focusArea}` : '/talk')}`);
+  // SIGNED IN. Resolve org context for the request. It is null for a brand-new account that is
+  // mid-setup (an auth identity exists but no organisation membership yet — found via the engine
+  // test of 2026-09-01). That MUST NOT bounce the owner back to /login: he just signed in, and a
+  // hard redirect here loops him straight back past sign-in. It is handled the same way as the
+  // no-agent case below — the honest "Kira isn't set up yet" screen is rendered instead of a
+  // silent/forcible redirect (see the 2026-08-16 note at the render site).
+  const orgContext = await getCurrentOrganisationContext();
 
   const svc = createServiceClient();
 
   // Resolve person's first_name for the ChatPage component (provenance display, not ownership).
-  const { data: person } = await svc
-    .from('persons')
-    .select('first_name')
-    .eq('person_id', orgContext.personId)
-    .maybeSingle();
+  // Guarded on orgContext the same way as the agent query below: only reachable once an owner has a
+  // resolved org/membership, null otherwise.
+  const { data: person } = orgContext
+    ? await svc.from('persons').select('first_name').eq('person_id', orgContext.personId).maybeSingle()
+    : { data: null };
 
   // A BUSINESS KIRA WINS, ALWAYS — even over a more recently used personal one.
   //
@@ -47,13 +55,17 @@ export default async function TalkPage({
   // as a fact about his business, where it would have been recalled and repeated indefinitely.
   //
   // Ordering, not filtering: an owner who genuinely only has a personal Kira should still reach it.
-  const { data: agents } = await svc
-    .from('kira_agents')
-    .select('elevenlabs_agent_id, journey_type')
-    .eq('organisation_id', orgContext.organisationId)
-    .eq('status', 'active')
-    .order('last_conversation_at', { ascending: false, nullsFirst: false })
-    .order('created_at', { ascending: false });
+  // Guarded on orgContext so a signed-in-but-mid-setup owner (no org/membership yet) produces an
+  // empty list rather than a null-dereference, and falls through to the "isn't set up yet" render.
+  const { data: agents } = orgContext
+    ? await svc
+        .from('kira_agents')
+        .select('elevenlabs_agent_id, journey_type')
+        .eq('organisation_id', orgContext.organisationId)
+        .eq('status', 'active')
+        .order('last_conversation_at', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false })
+    : { data: [] };
 
   const list = agents ?? [];
   const agent = list.find((a) => a.journey_type === 'business') ?? list[0];
