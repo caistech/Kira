@@ -273,6 +273,19 @@ export function LandingNew() {
           anyone.
         </p>
 
+        {/* THE SMALL WIN NAMED FIRST. The long win (sell it for what it's worth) is the reason to
+            start, but it is a distant, abstract number for a cautious owner. The near-term win —
+            "you can be away for a month or two and it still runs" — is something he can feel and
+            prove in private, before anyone is told he's thinking of leaving. The whole product
+            premise stands or falls on that test, so it deserves a line at the top, not only the
+            section below. */}
+        <p className="ln-measure mt-6 text-[17px] leading-[1.65] text-kira-charcoal">
+          Kira&apos;s first promise: <strong className="font-semibold text-kira-dark">you take two months off and the
+          business doesn&apos;t skip a beat</strong> — she watches it while you&apos;re away, and answers your
+          replacement as though you were still there to ask. Her second promise: when it comes time,{' '}
+          <strong className="font-semibold text-kira-dark">you sell it as an asset, not a job</strong>.
+        </p>
+
         {/* TWO DOORS, not one. Ray wanted to see the thing before typing anything into it, and the
             only route to /sample-genome was a text link on the pricing page — two steps past the point he
             had already decided whether to bother. */}
@@ -621,6 +634,76 @@ export function LandingNew() {
           <p className="mt-3 text-[16px] sm:text-[15px] text-kira-soft">
             Retiring, selling, or planning succession — start here.
           </p>
+        </div>
+      </section>
+
+      {/* THE SMALL WIN — THE FIRST WIN TO FEEL, THE SECOND TO SELL.
+          The "Built to sell" section above leads with the endpoint. This section is the near-term
+          proof, placed straight after it, because the long win only feels real once the owner has
+          evidence he can actually leave. Two wins, sequenced: the small one first (private,
+          provable, this month), the big one after. Copy carried over verbatim from the classic
+          page — same promise, same proof, same CTA. */}
+      <section className="border-y border-kira-line bg-kira-mist">
+        <div className="mx-auto max-w-5xl px-6 py-16">
+          <h2 className="max-w-[24ch] text-[27px] font-semibold tracking-tight text-kira-dark lg:text-[34px]">
+            Start with the smaller win: take two months off.
+          </h2>
+          <p className="ln-measure mt-3 text-[17px] leading-[1.65] text-kira-charcoal">
+            The big win is selling it as an asset. The small win is leaving your business and
+            watching it still run — a month, two months, while you&apos;re away.
+          </p>
+
+          <div className="ln-measure mt-6 space-y-4 text-[17px] leading-[1.65] text-kira-charcoal">
+            <p>
+              Most owners can&apos;t leave their own business. Not for a fortnight — the phone follows
+              them, the yard doesn&apos;t run, the one big customer calls. Even the thought of a proper
+              break probably feels like it isn&apos;t on the table.
+            </p>
+            <p>
+              But Kira&apos;s first job is the win you can feel this month:
+              {' '}<span className="font-semibold text-kira-dark">she makes it safe to be away.</span> She
+              watches the things that would normally pull you back, and plays your part while
+              you&apos;re gone — so whoever&apos;s standing in asks Kira and gets the answer you&apos;d have
+              given.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-10 md:grid-cols-2">
+            <div>
+              <h3 className="text-[21px] font-semibold text-kira-dark">While you&apos;re away — she watches</h3>
+              <p className="ln-measure mt-3 text-[17px] leading-[1.65] text-kira-charcoal">
+                Kira monitors the business, and no conversation or decision gets lost while you&apos;re
+                not there — she surfaces what actually needs you, so you&apos;re not carrying it
+                mentally on a beach.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-[21px] font-semibold text-kira-dark">While you&apos;re away — she answers for you</h3>
+              <p className="ln-measure mt-3 text-[17px] leading-[1.65] text-kira-charcoal">
+                The person running things in your absence asks Kira &quot;what would the owner do
+                here?&quot; and gets your way of doing it, not a guess.
+              </p>
+            </div>
+          </div>
+
+          <p className="ln-measure mt-10 text-[17px] leading-[1.65] text-kira-charcoal">
+            So before anyone&apos;s told you&apos;re thinking of leaving — before it&apos;s even a decision — you
+            get to test the whole premise privately.{' '}
+            <span className="font-semibold text-kira-dark">Can you be away for two months?</span> When
+            Kira makes the answer yes, you&apos;ll know the asset is real.
+          </p>
+
+          <div className="mt-8">
+            <a
+              href="/business-valuation"
+              className="ln-link inline-flex min-h-[52px] items-center rounded-md bg-kira-600 px-7 text-[17px] font-medium text-white hover:bg-kira-700"
+            >
+              See what your business is worth
+            </a>
+            <p className="mt-3 text-[16px] sm:text-[15px] text-kira-soft">
+              A 3-minute valuation — no sign-up, no card.
+            </p>
+          </div>
         </div>
       </section>
 
