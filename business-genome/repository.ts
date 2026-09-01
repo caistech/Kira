@@ -51,6 +51,7 @@ export async function createEntity(input: GenomeEntityInput): Promise<GenomeEnti
       source_id: input.source_id ?? null,
       source_reference: input.source_reference ?? null,
       observed_at: input.observed_at ?? new Date().toISOString(),
+      visibility: input.visibility ?? 'org',
     })
     .select()
     .single();
@@ -251,6 +252,7 @@ export async function createRelationship(
       source_id: input.source_id ?? null,
       source_reference: input.source_reference ?? null,
       observed_at: input.observed_at ?? new Date().toISOString(),
+      visibility: input.visibility ?? 'org',
     })
     .select()
     .single();
@@ -361,6 +363,7 @@ export async function supersedeFact(
     source_id: newValue.source_id ?? current.source_id,
     source_reference: newValue.source_reference ?? current.source_reference,
     observed_at: newValue.observed_at ?? new Date().toISOString(),
+    visibility: newValue.visibility ?? current.visibility ?? 'org',
   });
 
   // Update the new fact's supersedes field

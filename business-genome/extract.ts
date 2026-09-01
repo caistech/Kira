@@ -81,6 +81,8 @@ const VALID_PREDICATES = new Set([
   'is', 'has', 'generates', 'requires',
 ]);
 
+const VALID_VISIBILITY = new Set(['org', 'owner']);
+
 function validateItem(item: ExtractionItem): string | null {
   if (!item.area_key || !VALID_AREA_KEYS.has(item.area_key)) {
     return `Invalid area_key: ${item.area_key}`;
@@ -90,15 +92,24 @@ function validateItem(item: ExtractionItem): string | null {
     if (!item.entity_type || !VALID_ENTITY_TYPES.has(item.entity_type)) {
       return `Invalid entity_type: ${item.entity_type}`;
     }
+    if (item.visibility && !VALID_VISIBILITY.has(item.visibility)) {
+      return `Invalid visibility: ${item.visibility}`;
+    }
   }
   if (item.type === 'fact') {
     if (!item.subject) return 'Fact missing subject';
     if (!item.predicate) return 'Fact missing predicate';
+    if (item.visibility && !VALID_VISIBILITY.has(item.visibility)) {
+      return `Invalid visibility: ${item.visibility}`;
+    }
   }
   if (item.type === 'relationship') {
     if (!item.subject_name) return 'Relationship missing subject_name';
     if (!item.predicate || !VALID_PREDICATES.has(item.predicate)) {
       return `Invalid predicate: ${item.predicate}`;
+    }
+    if (item.visibility && !VALID_VISIBILITY.has(item.visibility)) {
+      return `Invalid visibility: ${item.visibility}`;
     }
   }
   return null;
@@ -258,16 +269,17 @@ export async function extractGenomeFromConversation(
       if (existing) {
         result.entities.push(existing);
       } else {
-        const entity = await createEntity({
-          organisation_id: organisationId,
-          user_id: userId,
-          area_key: item.area_key,
-          entity_type: item.entity_type!,
-          name: item.name!,
-          confidence,
-          source_type: 'conversation',
-          source_id: conversationId,
-        });
+const entity = await createEntity({
+            organisation_id: organisationId,
+            user_id: userId,
+            area_key: item.area_key,
+            entity_type: item.entity_type!,
+            name: item.name!,
+            confidence,
+            source_type: 'conversation',
+            source_id: conversationId,
+            visibility: item.visibility ?? 'org',
+          });
         result.entities.push(entity);
       }
       result.processed_items++;
@@ -410,9 +422,10 @@ const fact = await createFact({
             area_key: item.area_key,
             entity_type: item.object_type,
             name: item.object_name,
-            confidence: confidence * 0.8, // slightly lower confidence for inferred entities
+            confidence: confidence * 0.8,
             source_type: 'conversation',
             source_id: conversationId,
+            visibility: item.visibility ?? 'org',
           });
         }
         objectEntityId = objEntity.id;
@@ -429,6 +442,7 @@ const fact = await createFact({
         confidence,
         source_type: 'conversation',
         source_id: conversationId,
+        visibility: item.visibility,
       });
       result.relationships.push(rel);
       result.processed_items++;

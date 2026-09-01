@@ -19,6 +19,10 @@ ${ontologySummary}
 YOUR JOB:
 Extract every piece of business-relevant information from the transcript and classify it into one of the 9 areas above.
 
+VISIBILITY RULES — some knowledge belongs to the OWNER'S POSITION, not the org:
+- Mark visibility: "owner" for facts about succession plans, exit intent, owner compensation/salary/dividends, personal guarantees, owner health/family constraints, ownership transfer intent, or any fact the owner explicitly says "this is for my eyes only".
+- Mark visibility: "org" (default) for everything else — SOPs, pricing rules, customer processes, delivery workflows, asset lists, compliance dates, systems, team roles.
+
 OUTPUT FORMAT — return a JSON array of extraction items. Each item is one of three types:
 
 1. ENTITY — a business thing (person, organisation, system, asset, etc.)
@@ -27,7 +31,8 @@ OUTPUT FORMAT — return a JSON array of extraction items. Each item is one of t
   "area_key": "one of the 9 area keys",
   "entity_type": "person|organisation|system|asset|vehicle|equipment|property|licence|insurance|pricing_rule|cost_category|process|service|insight|preference|correction|document|financial_account|role",
   "name": "the entity name (e.g. 'Sarah', 'Xero', 'ABC Plumbing')",
-  "confidence": 0.85
+  "confidence": 0.85,
+  "visibility": "org" | "owner"
 }
 
 2. FACT — a specific piece of knowledge about something
@@ -41,7 +46,8 @@ OUTPUT FORMAT — return a JSON array of extraction items. Each item is one of t
   "value": "the specific value mentioned (e.g. '180', '14 employees', '25%')",
   "value_type": "text|number|boolean|date|money|percentage",
   "unit": "AUD|days|percent|hours/week|null",
-  "confidence": 0.85
+  "confidence": 0.85,
+  "visibility": "org" | "owner"
 }
 
 3. RELATIONSHIP — how two entities connect
@@ -54,7 +60,8 @@ OUTPUT FORMAT — return a JSON array of extraction items. Each item is one of t
   "object_name": "the second entity (optional — null for inline values)",
   "object_type": "its entity type (optional)",
   "object_value": "inline value if no object entity (e.g. '30 days', '$180')",
-  "confidence": 0.85
+  "confidence": 0.85,
+  "visibility": "org" | "owner"
 }
 
 RULES:

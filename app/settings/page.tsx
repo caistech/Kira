@@ -1,7 +1,7 @@
 // @no-voice-route: a settings form — name, password, notifications. Nothing here is a question
 // worth asking out loud, and a voice surface on it would be decoration competing with the fields.
 import Link from 'next/link';
-import { getAuthUser, getCurrentAppUser } from '@/lib/auth';
+import { getAuthUser, getCurrentAppUser, getCurrentOrganisationContext } from '@/lib/auth';
 import { composePostalAddress, displayName, formatAbn } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
 import { fetchConnections, DRIVE_ACCESS_LABEL } from '@/lib/connectors/status';
@@ -15,7 +15,7 @@ import { SignOutEverywhere } from '@/components/SignOutEverywhere';
 import { CancelPlanButton } from '@/components/CancelPlanButton';
 import { ManageBillingButton } from '@/components/ManageBillingButton';
 import { UsageMeter } from '@/components/UsageMeter';
-import { TeamSection } from '@/components/TeamSection';
+import { TeamSectionClient } from '@/components/TeamSectionClient';
 import { updateProfile, updateNotifications } from './actions';
 
 export const metadata = { title: 'Settings · Kira' };
@@ -24,6 +24,7 @@ export const dynamic = 'force-dynamic';
 export default async function SettingsPage() {
   const authUser = await getAuthUser();
   const appUser = await getCurrentAppUser();
+  const org = await getCurrentOrganisationContext();
 
   // Degrade, don't fake: a read failure omits the section rather than rendering an empty one that
   // reads as "you have no business details" and invites a pointless re-entry.
@@ -311,7 +312,7 @@ export default async function SettingsPage() {
         </div>
       </section>
 
-      <TeamSection />
+      <TeamSectionClient organisationId={org?.organisationId ?? ''} />
 
       <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-6">
         <h2 className="text-lg font-semibold text-gray-900">Password</h2>

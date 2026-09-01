@@ -170,6 +170,7 @@ export interface GenomeRelationshipInput {
   source_id?: string;
   source_reference?: string;
   observed_at?: string;
+  visibility?: 'org' | 'owner';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
