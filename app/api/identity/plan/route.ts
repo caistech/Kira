@@ -193,6 +193,7 @@ export async function POST(request: Request) { // Beta code redemption path
     //
 
     const user = await getAuthUser();
+const betaSessionCookie = request.cookies.get('betaSession')?.value;
 
     if (!user) {
       return NextResponse.json(
