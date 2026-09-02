@@ -99,7 +99,7 @@ async function sendEmail(to: string, subject: string, body: string, dryRun: bool
 }
 
 function createEmailContent(tester: BetaTester): { subject: string; body: string } {
-  const baseUrl = 'https://kiraexec.com/plan?code=';
+  const baseUrl = 'https://kiraexec.com/?code=';
 
 
   if (tester.group === 'A') {

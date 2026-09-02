@@ -34,11 +34,17 @@
 // DEFAULTS TO CLASSIC ON PURPOSE, exactly like KIRA_SWARM_ADAPTER: a misspelt or missing value
 // must not route a visitor at something nobody has looked at.
 
+import { BetaCodeCarrier } from '@/components/BetaCodeCarrier';
 import { LandingClassic } from '@/components/landing/LandingClassic';
 import { LandingNew } from '@/components/landing/LandingNew';
 
 const USE_NEW_STYLE = process.env.NEXT_PUBLIC_STYLE_NEW === 'true';
 
 export default function KiraLandingPage() {
-  return USE_NEW_STYLE ? <LandingNew /> : <LandingClassic />;
+  return (
+    <>
+      <BetaCodeCarrier />
+      {USE_NEW_STYLE ? <LandingNew /> : <LandingClassic />}
+    </>
+  );
 }

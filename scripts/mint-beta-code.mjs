@@ -111,12 +111,12 @@ async function mint() {
   console.log(`  For:     ${email}`);
   console.log(`  Expires: ${expires.toISOString().slice(0, 10)} (${days} days)\n`);
   console.log('  ── Send them this ─────────────────────────────────────────────\n');
-  console.log(`  Go to ${appUrl}/business-valuation and answer the questions —`);
-  console.log('  it takes about three minutes and you get your number at the end.');
-  console.log('  On the next page, instead of paying, choose "Enter your invitation');
-  console.log(`  code" and use:  ${pretty}`);
-  console.log('');
-  console.log(`  Or go straight there: ${appUrl}/plan?code=${code}`);
+  console.log(`  Go to ${appUrl}/?code=${code} — it lands on our main page with your`);
+  console.log('  code in your pocket. From there it is the same visit any owner makes:');
+  console.log('  a look at what Kira does, then the questions about a business.');
+  console.log('  Three honest numbers at the end.');
+  console.log('  When you reach the pricing step your code is already applied.');
+  console.log('  No card is asked for and nothing is charged.');
   console.log('');
   console.log('  The code works for the next few weeks, so there is no rush — and');
   console.log('  it only works for this email address.\n');

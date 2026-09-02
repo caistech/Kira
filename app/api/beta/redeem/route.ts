@@ -1,25 +1,81 @@
+```ts
 // app/api/beta/redeem/route.ts
 //
-// The non-Stripe way in. A beta tester walks the same funnel as everybody else — the same eleven
-// questions, the same result, the same /plan — and instead of paying, redeems a code.
+// BETA REDEMPTION
+// ---------------
 //
-// DELIBERATELY THE SAME SHAPE AS /api/onboarding/complete, which is the paid twin. Account created
-// already confirmed (no email round-trip), the users bridge linked by the auth trigger, attribution
-// attached, and then the client signs in and is led into /start. Anything the paid path does that
-// this one does not is a difference a beta tester will hit and a paying owner will not, which is the
-// opposite of what a beta is for.
+// Beta redemption is a provisioning path, not an identity-definition path.
 //
-// ⚠️ THE EMAIL COMES FROM THE CODE, NEVER FROM THE FORM. This is the single most important line in
-// the file. Its twin was the site of the worst defect this codebase has carried: the paid path took
-// the address out of `session.customer_details.email` — typed into Stripe's form, never verified —
-// and, when an account already existed for it, SET THE PASSWORD the caller had just chosen. Enter
-// someone else's address, complete a $0 checkout on your own card, and their account and their
-// Genome were yours (found and closed 2026-08-08).
+// Every acquisition path in Kira converges on /plan before entering the product:
+//   organic signup
+//   direct invitation
+//   system invitation
+//   distributor invitation
+//   beta invitation
+//   paid acquisition
 //
-// Here the address is bound to the code at mint and read out of our own table, so the class of
-// attack does not arise. The existing-account branch below still refuses to mutate anything anyway —
-// not because it is reachable the same way, but because "we only touch accounts we just created" is
-// the rule, and a rule with one carefully-reasoned exception is a rule that gets a second one.
+// /plan is the universal organisational identity and initial ownership-claim boundary.
+//
+// By the time this route runs, the Person has:
+//   - identified themselves;
+//   - supplied their first and last name;
+//   - identified or confirmed the Organisation;
+//   - explicitly declared whether they are the Owner.
+//
+// A checked "I am the Owner of this Business" creates the initial
+// SELF_DECLARED ownership claim.
+//
+// The beta code does NOT establish ownership.
+//
+// The beta code establishes:
+//   - invitation provenance;
+//   - the email address to which the invitation is bound;
+//   - the Organisation context associated with the invitation.
+//
+// This route therefore must never infer ownership from:
+//   - auth.users.id;
+//   - public.users.id;
+//   - email;
+//   - invitation provenance;
+//   - the fact that this is the first Person associated with the Organisation;
+//   - or the beta code itself.
+//
+// CANONICAL IDENTITY
+// ------------------
+//
+// The canonical model is:
+//
+//   Auth account
+//        ↓
+//   Person
+//        ↓
+//   Organisation
+//        ↓
+//   Membership
+//        ↓
+//   Organisation context
+//
+// Organisation is the enduring organisational subject.
+// Person is the human identity.
+// Membership establishes the Person's relationship to the Organisation.
+//
+// `users.id` is an Auth/application bridge identifier.
+// It is NOT the Organisation identity.
+//
+// This route therefore:
+//   1. atomically claims the beta code;
+//   2. creates the new Auth account;
+//   3. resolves the canonical Person;
+//   4. verifies the Organisation supplied by the /plan flow / beta code;
+//   5. establishes the Person → Organisation membership;
+//   6. records the initial SELF_DECLARED ownership claim when supplied by /plan;
+//   7. links the beta code to the application user;
+//   8. starts the beta trial in Organisation context;
+//   9. records attribution against the Person/application identity.
+//
+// Existing Auth accounts are never mutated by this route.
+// In particular, this route never changes an existing user's password,
+// ownership, Organisation membership, or beta status.
 
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -37,183 +93,636 @@ import { TERMS_VERSION } from '@/lib/terms';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/**
- * ONE MESSAGE FOR EVERY REJECTION.
- *
- * "No such code", "already used" and "expired" are different facts, and telling an anonymous caller
- * which one applies confirms whether a code exists — the only thing a guesser can learn here. The
- * real reason is logged, so an operator on the phone to a stuck tester can see it in seconds.
- *
- * It names a way forward, because the person most likely to read it is a real invitee who typed
- * something wrong, not an attacker.
- *
- * ⚠️ AND THE WAY FORWARD HAS TO EXIST. It used to read "Check it against the email we sent you — or
- * reply to it and we will send a new one", which assumes a channel that is often not there: codes
- * are handed over in person, by text, by a broker, or by an operator on a call. Ray was given his
- * directly and hit a wall:
- *
- *   "There is no email. I don't have one to reply to. If that code was already used on one of my
- *    earlier visits then the message is also wrong… For an invited beta user that's a full stop with
- *    nowhere to go."
- *
- * He is right about the dead end and wrong about the cure — naming "already redeemed" is exactly the
- * disclosure this message exists to withhold. So the fix is a route out that works for ALL THREE
- * reasons without revealing which applies: an already-redeemed code means he has an account, so
- * "sign in" resolves it; a mistyped or unknown code needs a human. Neither line says which he is.
- */
-// ⚠️ NOW SHARED WITH /peek RATHER THAN DECLARED HERE. The sentence was repaired on this route and
-// left stale on that one, and /peek is the route a tester reaches first — so for four weeks the fix
-// existed and no real person could see it. The wording, and the reasoning above it, moved into
-// `BETA_CODE_REJECTION_MESSAGE` so there is exactly one of it. (`SUPPORT_EMAIL` is interpolated
-// there, on the same monitored-mailbox grounds: an address that bounces on the screen someone
-// reaches BECAUSE they are locked out costs them their last attempt.)
 const REJECTION_MESSAGE = BETA_CODE_REJECTION_MESSAGE;
 
+type BootstrapIdentity = {
+  authUserId: string;
+  appUserId: string;
+  personId: string;
+  organisationId: string;
+  membershipId: string;
+};
+
+/**
+ * Establish the canonical identity for a newly-created Auth account.
+ *
+ * IMPORTANT:
+ *
+ * This function does not discover or invent organisational identity.
+ *
+ * The Organisation context has already been established by the acquisition
+ * flow and /plan. This function verifies that the supplied Organisation exists
+ * and then establishes the canonical Person → Organisation relationship.
+ *
+ * Ownership is likewise NOT inferred here.
+ *
+ * If the /plan flow declared that this Person is the Owner, the initial
+ * ownership claim is explicitly represented as SELF_DECLARED.
+ */
+async function bootstrapCanonicalIdentity(params: {
+  svc: ReturnType<typeof createServiceClient>;
+  authUserId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  organisationId: string;
+  isOwner: boolean;
+}): Promise<BootstrapIdentity> {
+  const {
+    svc,
+    authUserId,
+    email,
+    firstName,
+    lastName,
+    organisationId,
+    isOwner,
+  } = params;
+
+  // ---------------------------------------------------------------------------
+  // 1. AUTH → APPLICATION BRIDGE
+  // ---------------------------------------------------------------------------
+  //
+  // The Auth account is not the canonical application identity.
+  //
+  // public.users is only the bridge between Supabase Auth and the application.
+
+  const { data: appUser, error: appUserError } = await svc
+    .from('users')
+    .select('id')
+    .eq('id', authUserId)
+    .maybeSingle();
+
+  if (appUserError) {
+    throw new Error(`users bridge lookup failed: ${appUserError.message}`);
+  }
+
+  if (!appUser) {
+    throw new Error(
+      'Auth account exists but public.users bridge was not created',
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 2. AUTH → PERSON
+  // ---------------------------------------------------------------------------
+  //
+  // Resolve the human identity.
+  //
+  // Person remains distinct from:
+  //   - Auth;
+  //   - Organisation;
+  //   - membership;
+  //   - ownership.
+  //
+  // We first prefer an explicit Auth identity relationship.
+  // Email is only a fallback for resolving the human identity. It is never an
+  // Organisation identifier.
+
+  let person: { id: string } | null = null;
+
+  const { data: personByAuth, error: personAuthError } = await svc
+    .from('persons')
+    .select('id')
+    .eq('auth_user_id', authUserId)
+    .maybeSingle();
+
+  if (!personAuthError && personByAuth) {
+    person = personByAuth;
+  }
+
+  if (!person) {
+    const { data: personByEmail, error: personEmailError } = await svc
+      .from('persons')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (personEmailError) {
+      throw new Error(`person lookup failed: ${personEmailError.message}`);
+    }
+
+    if (personByEmail) {
+      person = personByEmail;
+    }
+  }
+
+  if (!person) {
+    const { data: createdPerson, error: createPersonError } = await svc
+      .from('persons')
+      .insert({
+        email,
+        first_name: firstName,
+        last_name: lastName,
+        auth_user_id: authUserId,
+      })
+      .select('id')
+      .single();
+
+    if (createPersonError || !createdPerson) {
+      throw new Error(
+        `person creation failed: ${
+          createPersonError?.message ?? 'no person returned'
+        }`,
+      );
+    }
+
+    person = createdPerson;
+  }
+
+  // ---------------------------------------------------------------------------
+  // 3. VERIFY ORGANISATION
+  // ---------------------------------------------------------------------------
+  //
+  // The Organisation is NOT created here.
+  //
+  // The Organisation context was established by /plan.
+  //
+  // Never derive an Organisation from:
+  //   - authUserId;
+  //   - appUser.id;
+  //   - email;
+  //   - person.id;
+  //   - "first user";
+  //   - beta invitation provenance.
+  //
+  // We only accept the already-established Organisation identity and verify
+  // that it exists.
+
+  const { data: organisation, error: organisationError } = await svc
+    .from('organisations')
+    .select('id')
+    .eq('id', organisationId)
+    .maybeSingle();
+
+  if (organisationError) {
+    throw new Error(
+      `organisation lookup failed: ${organisationError.message}`,
+    );
+  }
+
+  if (!organisation) {
+    throw new Error(
+      'The Organisation established during /plan could not be found',
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 4. PERSON → ORGANISATION MEMBERSHIP
+  // ---------------------------------------------------------------------------
+  //
+  // Membership is the canonical relationship between the Person and the
+  // Organisation.
+  //
+  // Do not encode this relationship by treating users.id as organisation_id.
+
+  const { data: existingMembership, error: membershipLookupError } = await svc
+    .from('organisation_memberships')
+    .select('id, role')
+    .eq('organisation_id', organisation.id)
+    .eq('person_id', person.id)
+    .maybeSingle();
+
+  if (membershipLookupError) {
+    throw new Error(
+      `organisation membership lookup failed: ${membershipLookupError.message}`,
+    );
+  }
+
+  let membershipId: string;
+
+  if (existingMembership) {
+    membershipId = existingMembership.id;
+  } else {
+    const { data: membership, error: membershipError } = await svc
+      .from('organisation_memberships')
+      .insert({
+        organisation_id: organisation.id,
+        person_id: person.id,
+        role: isOwner ? 'owner' : 'member',
+      })
+      .select('id')
+      .single();
+
+    if (membershipError || !membership) {
+      throw new Error(
+        `organisation membership creation failed: ${
+          membershipError?.message ?? 'no membership returned'
+        }`,
+      );
+    }
+
+    membershipId = membership.id;
+  }
+
+  // ---------------------------------------------------------------------------
+  // 5. INITIAL OWNERSHIP CLAIM
+  // ---------------------------------------------------------------------------
+  //
+  // Ownership is NOT inferred from being the first Person.
+  //
+  // Ownership exists only because the Person explicitly declared it during
+  // /plan.
+  //
+  // The initial declaration is represented as:
+  //
+  //   SELF_DECLARED
+  //
+  // The precise ownership-period schema is authoritative here. If the target
+  // schema does not yet expose the required ownership-claim write surface,
+  // this route must fail rather than silently substituting membership.role
+  // for an ownership claim.
+
+  if (isOwner) {
+    const { error: ownershipError } = await svc
+      .from('ownership_periods')
+      .insert({
+        organisation_id: organisation.id,
+        person_id: person.id,
+        claim_type: 'SELF_DECLARED',
+      });
+
+    if (ownershipError) {
+      throw new Error(
+        `initial SELF_DECLARED ownership claim failed: ${ownershipError.message}`,
+      );
+    }
+  }
+
+  return {
+    authUserId,
+    appUserId: appUser.id,
+    personId: person.id,
+    organisationId: organisation.id,
+    membershipId,
+  };
+}
+
+/**
+ * ONE MESSAGE FOR EVERY BETA-CODE REJECTION.
+ *
+ * "No such code", "already used" and "expired" are intentionally not
+ * distinguished to an anonymous caller.
+ *
+ * The actual reason is logged for operators.
+ */
 export async function POST(request: NextRequest) {
-  let body: { code?: unknown; password?: unknown; firstName?: unknown; termsAccepted?: unknown };
+  let body: {
+    code?: unknown;
+    password?: unknown;
+    firstName?: unknown;
+    lastName?: unknown;
+    organisationId?: unknown;
+    isOwner?: unknown;
+    termsAccepted?: unknown;
+  };
+
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid body' },
+      { status: 400 },
+    );
   }
 
   const rawCode = typeof body.code === 'string' ? body.code : '';
   const password = typeof body.password === 'string' ? body.password : '';
 
   if (!rawCode.trim()) {
-    return NextResponse.json({ error: 'Enter your invitation code.' }, { status: 400 });
-  }
-  if (password.length < 8) {
-    return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
-  }
-
-  // ⚠️ THIS PATH REFUSES, AND THE PAID PATH DOES NOT. The asymmetry is the point.
-  //
-  // /api/onboarding/complete degrades to creating the account without an acceptance record, because
-  // by the time it runs the owner has already been charged — a gate that can only turn away someone
-  // who has paid is not a gate, it is a way to take money and give nothing back. So there the real
-  // gate lives on /plan, before the money moves.
-  //
-  // Nothing has been paid here. There is no cost to refusing, and an account created without a
-  // recorded acceptance is exactly the defect this change exists to close, so a request without one
-  // is rejected rather than quietly accepted. The checkbox is required in the UI, so this is only
-  // reachable by a stale client or a direct call.
-  //
-  // The code is checked BEFORE the claim below, so a refusal here does not burn it.
-  if (body.termsAccepted !== true) {
     return NextResponse.json(
-      { error: 'Please agree to the Terms and Privacy Policy to continue.' },
+      { error: 'Enter your invitation code.' },
       { status: 400 },
     );
   }
 
-  // Claimed FIRST, atomically — see claimBetaCode. A burnt code is recoverable by re-minting; a code
-  // that could create a second account is not.
+  if (password.length < 8) {
+    return NextResponse.json(
+      { error: 'Password must be at least 8 characters' },
+      { status: 400 },
+    );
+  }
+
+  if (body.termsAccepted !== true) {
+    return NextResponse.json(
+      {
+        error:
+          'Please agree to the Terms and Privacy Policy to continue.',
+      },
+      { status: 400 },
+    );
+  }
+
+  // /plan is the identity boundary.
+  //
+  // Do not allow redemption to invent an Organisation or silently assign one.
+  const organisationId =
+    typeof body.organisationId === 'string'
+      ? body.organisationId.trim()
+      : '';
+
+  if (!organisationId) {
+    return NextResponse.json(
+      {
+        error:
+          'Please complete the business details before redeeming your invitation.',
+      },
+      { status: 400 },
+    );
+  }
+
+  const isOwner = body.isOwner === true;
+
+  // ---------------------------------------------------------------------------
+  // 1. CLAIM BETA CODE
+  // ---------------------------------------------------------------------------
+  //
+  // Claim first, atomically.
+  //
+  // The beta code remains authoritative for the invited email.
+  // The request body is never trusted for email identity.
+
   const claim = await claimBetaCode(rawCode);
+
   if (!claim.ok) {
-    console.warn(`[api/beta/redeem] rejected a code: reason=${claim.reason}`);
-    return NextResponse.json({ error: REJECTION_MESSAGE }, { status: 400 });
+    console.warn(
+      `[api/beta/redeem] rejected a code: reason=${claim.reason}`,
+    );
+
+    return NextResponse.json(
+      { error: REJECTION_MESSAGE },
+      { status: 400 },
+    );
   }
 
   const email = claim.email;
   const svc = createServiceClient();
 
-  // His own name, asked once on the valuation intro and carried here — the same source the paid path
-  // uses. Without it the account keeps whatever the signup inferred, which for one real owner was
-  // "shhahhussain" straight off the local part of his address, and which is then baked into the
-  // agent's prompt at provision and used forever.
-  const askedName = String(body.firstName ?? '').trim().slice(0, 40);
-  const firstName = (askedName || email.split('@')[0]).split(' ')[0];
+  // ---------------------------------------------------------------------------
+  // 2. VALIDATE ORGANISATION CONTEXT
+  // ---------------------------------------------------------------------------
+  //
+  // The beta code may carry an Organisation context, but that does not itself
+  // constitute ownership.
+  //
+  // The Organisation must match the Organisation established by /plan.
+  //
+  // This prevents an invitation from silently moving a Person into a different
+  // Organisation.
 
-  const { error: createErr } = await svc.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    // The DB trigger stamps `users.terms_accepted_at` from these two, and records the VERSION rather
-    // than merely that a box was ticked — a product that can show someone agreed but not WHAT they
-    // agreed to has kept the half of the record that settles nothing.
-    //
-    // TERMS_VERSION is taken from OUR module, never from the request. The client asserts the tick,
-    // which is all a checkbox can ever be; it does not get to name the wording it agreed to.
-    user_metadata: { first_name: firstName, terms_accepted: 'true', terms_version: TERMS_VERSION },
-  });
+  if (claim.organisation_id !== organisationId) {
+    await releaseBetaCode(rawCode);
 
-  if (createErr) {
-    const already = /already|registered|exists/i.test(createErr.message);
+    console.warn(
+      `[api/beta/redeem] organisation mismatch: ` +
+        `code_organisation_id=${claim.organisation_id} ` +
+        `plan_organisation_id=${organisationId}`,
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          'The invitation does not match the business selected during setup.',
+      },
+      { status: 400 },
+    );
+  }
+
+  const askedFirstName =
+    typeof body.firstName === 'string'
+      ? body.firstName.trim().slice(0, 40)
+      : '';
+
+  const askedLastName =
+    typeof body.lastName === 'string'
+      ? body.lastName.trim().slice(0, 40)
+      : '';
+
+  const firstName =
+    askedFirstName || email.split('@')[0].split(' ')[0];
+
+  const lastName = askedLastName;
+
+  // ---------------------------------------------------------------------------
+  // 3. CREATE AUTH ACCOUNT
+  // ---------------------------------------------------------------------------
+
+  const { data: createdAuth, error: createErr } =
+    await svc.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        first_name: firstName,
+        last_name: lastName,
+        terms_accepted: 'true',
+        terms_version: TERMS_VERSION,
+      },
+    });
+
+  if (createErr || !createdAuth.user) {
+    const already = /already|registered|exists/i.test(
+      createErr?.message ?? '',
+    );
 
     if (!already) {
-      // A real failure — the provider is down, or the password was refused. NOTHING was created, so
-      // the code goes back in the tin. This is the one case where releasing is safe, and it matters:
-      // otherwise a provider blip permanently costs a real tester the only code he has.
       await releaseBetaCode(rawCode);
-      console.error('[api/beta/redeem] createUser failed, code released:', createErr);
-      return NextResponse.json({ error: 'Could not create your account. Please try again.' }, { status: 500 });
+
+      console.error(
+        '[api/beta/redeem] createUser failed, code released:',
+        createErr,
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            'Could not create your account. Please try again.',
+        },
+        { status: 500 },
+      );
     }
 
-    // THE EMAIL ALREADY HAS AN ACCOUNT. WE CHANGE NOTHING AND STOP.
+    // Existing accounts are NEVER mutated.
     //
-    // Same rule and same reasoning as the paid path: we do not set a password on an account we did
-    // not just create, ever, regardless of how confident we are about who is asking. Here that
-    // confidence is genuinely higher — the address came from our own table rather than a form — and
-    // the answer is still no, because the value of the rule is that it has no exceptions.
+    // Do not change:
+    //   - password;
+    //   - ownership;
+    //   - membership;
+    //   - Organisation;
+    //   - beta state.
     //
-    // The realistic case is a tester who redeemed on his laptop and is now doing it again on his
-    // phone. He is not stuck: he signs in, or resets by email. The code is left CONSUMED, because
-    // it did its job the first time.
+    // A beta code arriving for an existing account is therefore not a
+    // second identity-bootstrap operation.
+
     console.warn(
-      `[api/beta/redeem] code redeemed for an address that already has an account — nothing mutated. ` +
-        `email=${email}. Expected if they are redeeming twice; if not, the account is safe.`,
+      `[api/beta/redeem] code supplied for an existing account — ` +
+        `nothing mutated. email=${email}`,
     );
-    return NextResponse.json({ ok: true, existing: true, email }, { status: 200 });
+
+    return NextResponse.json(
+      {
+        ok: true,
+        existing: true,
+        email,
+      },
+      { status: 200 },
+    );
   }
 
-  // The auth trigger (handle_new_auth_user) links/creates the public.users row by email.
-  const { data: appUser } = await svc.from('users').select('id').eq('email', email).maybeSingle();
-  if (!appUser) {
-    console.error(`[api/beta/redeem] account created but users row not ready for ${email}`);
-    return NextResponse.json({ error: 'Account link not ready, please sign in' }, { status: 500 });
+  const authUserId = createdAuth.user.id;
+
+  // ---------------------------------------------------------------------------
+  // 4. ESTABLISH CANONICAL IDENTITY
+  // ---------------------------------------------------------------------------
+  //
+  // Auth creation alone is insufficient.
+  //
+  // Required canonical chain:
+  //
+  //   Auth
+  //     ↓
+  //   Person
+  //     ↓
+  //   Organisation
+  //     ↓
+  //   Membership
+  //     ↓
+  //   Organisation context
+  //
+  // Ownership, where declared on /plan, is represented independently as the
+  // initial SELF_DECLARED ownership claim.
+
+  let identity: BootstrapIdentity;
+
+  try {
+    identity = await bootstrapCanonicalIdentity({
+      svc,
+      authUserId,
+      email,
+      firstName,
+      lastName,
+      organisationId,
+      isOwner,
+    });
+  } catch (identityError) {
+    console.error(
+      '[api/beta/redeem] canonical identity bootstrap failed:',
+      identityError,
+    );
+
+    // The Auth account now exists.
+    //
+    // Do NOT release the beta code and attempt to create another account on
+    // retry. The account must remain the unique identity for this email.
+    //
+    // The caller receives a retryable response. The actual failure remains in
+    // operator logs.
+
+    return NextResponse.json(
+      {
+        error:
+          'Account setup is not ready. Please sign in or try again shortly.',
+      },
+      { status: 500 },
+    );
   }
 
-  await linkBetaCodeToUser(rawCode, appUser.id);
+  const {
+    appUserId,
+    personId,
+    organisationId: canonicalOrganisationId,
+    membershipId,
+  } = identity;
+
+  console.info(
+    `[api/beta/redeem] canonical identity established: ` +
+      `auth_user_id=${authUserId} ` +
+      `person_id=${personId} ` +
+      `organisation_id=${canonicalOrganisationId} ` +
+      `membership_id=${membershipId} ` +
+      `ownership_claim=${isOwner ? 'SELF_DECLARED' : 'NONE'}`,
+  );
+
+  // ---------------------------------------------------------------------------
+  // 5. LINK BETA CODE TO APPLICATION USER
+  // ---------------------------------------------------------------------------
+  //
+  // users.id is retained only as the Auth/application bridge.
+  //
+  // It is never treated as organisation_id.
+
+  await linkBetaCodeToUser(rawCode, appUserId);
 
   await svc
     .from('users')
-    .update({ journey_type: 'business', updated_at: new Date().toISOString() })
-    .eq('id', appUser.id);
+    .update({
+      journey_type: 'business',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', appUserId);
 
-  // THE TRIAL CLOCK STARTS HERE, and it is what makes this a beta account rather than a free one.
+  // ---------------------------------------------------------------------------
+  // 6. START BETA TRIAL IN ORGANISATION CONTEXT
+  // ---------------------------------------------------------------------------
   //
-  // `derivePlanState` already understands an active trial with no subscription, so nothing
-  // downstream needs to know a code was involved — a beta tester and a trialling customer are the
-  // same state to every screen that asks. Never throws: a metering failure must not cost someone
-  // the account they just created, and an unstarted trial is visible and fixable, whereas a lost
-  // signup is neither.
+  // The Organisation is now the application subject.
+  //
+  // Downstream beta/billing services receive organisation_id, never users.id.
+
   try {
-    await getBetaGate().ensureTrial(appUser.id);
+    await getBetaGate().ensureTrial(canonicalOrganisationId);
   } catch (trialError) {
-    console.error('[api/beta/redeem] trial not started (account IS created):', trialError);
+    console.error(
+      '[api/beta/redeem] trial not started (canonical account IS created):',
+      trialError,
+    );
   }
 
-  // Attribution, if they arrived through an introducer's link. Same placement and same failure
-  // posture as the paid path: last, and never allowed to fail the request.
+  // ---------------------------------------------------------------------------
+  // 7. ATTRIBUTION
+  // ---------------------------------------------------------------------------
+  //
+  // Attribution describes how the Person arrived.
+  //
+  // It does not establish:
+  //   - Organisation identity;
+  //   - ownership;
+  //   - membership.
+  //
+  // Attribution therefore remains attached to the Person/application identity.
+
   try {
-    const touch = attribution.parse(request.cookies.get(ATTRIBUTION_COOKIE)?.value);
+    const touch = attribution.parse(
+      request.cookies.get(ATTRIBUTION_COOKIE)?.value,
+    );
+
     if (touch) {
       await attachFirstTouch({
-        userId: appUser.id,
+        userId: appUserId,
         userEmail: email,
         introducerId: touch.referrerId,
         firstTouchAt: touch.firstTouchAt,
       });
     }
   } catch (attributionError) {
-    console.error('[api/beta/redeem] attribution not recorded:', attributionError);
+    console.error(
+      '[api/beta/redeem] attribution not recorded:',
+      attributionError,
+    );
   }
 
-  // NO VALUATION IS WRITTEN HERE, deliberately — unlike the paid path, which lifts it out of Stripe
-  // metadata because that is where checkout parked it. A beta tester's answers are still on his
-  // device, and `/api/valuation/claim` already attaches them on the first authenticated load, for
-  // exactly this case (any signup that does not pass through checkout). Duplicating that here would
-  // be a second writer to the one row the product treats as a fixed origin.
-  return NextResponse.json({ ok: true, email });
+  // ---------------------------------------------------------------------------
+  // 8. NO VALUATION WRITE
+  // ---------------------------------------------------------------------------
+  //
+  // Valuation answers remain owned by their dedicated claim/provisioning path.
+  //
+  // This route establishes canonical identity and beta service entitlement.
+  // It must not become a second valuation writer.
+
+  return NextResponse.json({
+    ok: true,
+    email,
+    organisationId: canonicalOrganisationId,
+  });
 }
+```

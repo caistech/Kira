@@ -85,14 +85,14 @@ Two things worth knowing before you start, because they are unusual and they are
 
 So you now walk the same path a paying owner walks:
 
-1. Open <a href="https://kiraexec.com/plan?code=${code}">this link</a>. It carries your code with it, so there is nothing to type and no need to sign in.<br>
-2. It will confirm the code is held, then ask thirteen short questions about a business. Three honest numbers at the end.<br>
-3. That brings you back with the code already applied. No card is asked for and nothing is charged.<br>
+1. Open <a href="https://kiraexec.com/?code=${code}">this link</a>. It lands on our main page with your code in your pocket — there is nothing to type and no need to sign in.<br>
+2. From there it is the same visit any owner makes: a look at what Kira does, then thirteen short questions about a business. Three honest numbers at the end.<br>
+3. When you reach the pricing step your code is already applied. No card is asked for and nothing is charged.<br>
 4. Then have a conversation with Kira.
 
 About twenty minutes in total, and you can stop and come back. If you already made an account with me earlier, the code step will ask you to sign in instead — that is expected rather than a fault, and the valuation you have just done carries across.
 
-If your mail program strips the link, go to <a href="https://kiraexec.com">https://kiraexec.com</a> and use <strong>${code}</strong> at the "Been invited to the beta?" line on the pricing page.
+If your mail program strips the link, go to <a href="https://kiraexec.com">https://kiraexec.com</a>, take the same visit, and when you reach the pricing step use <strong>${code}</strong> at the "Been invited to the beta?" line.
 
 <strong>It is a beta, and it is worth saying what that means.</strong> Some things are not built yet — she cannot write documents for you, and sending email on your behalf is not switched on. Some things are limited by where you are: parts of the product are set up for Australia first, so from the US, Canada or New Zealand you will see gaps that are geography rather than bugs. Neither is hidden — the product tells you when it cannot do something.
 
@@ -170,11 +170,11 @@ if (!ONLY) throw new Error('--only <email> is required. This script sends to one
 /**
  * ⚠️ THE JURISDICTION GUARD, AND IT WAS MISSING FROM EXACTLY THE PATH THAT NEEDED IT.
  *
- * PRODUCT_STANDARDS §9: we are cleared for AUSTRALIA ONLY, and email outreach to any other country
- * is blocked until that country's consent / identification / unsubscribe rules are implemented. The
- * product's send path enforces it. THIS script did not — it calls the Resend API directly (because
- * `@caistech/email-send` has no cc, and the operator needs a cc on every send), so it had quietly
- * routed around the one guard that matters most on the one path that mails real strangers.
+ * PRODUCT_STANDARDS §9: email outreach is blocked until a country's consent / identification /
+ * unsubscribe rules are implemented. The product's send path enforces it. THIS script did not — it
+ * calls the Resend API directly (because `@caistech/email-send` has no cc, and the operator needs a
+ * cc on every send), so it had quietly routed around the one guard that matters most on the one
+ * path that mails real strangers.
  *
  * Found 2026-08-18 when a Barcelona contact was added to the beta sheet as Priority 1. Nothing in
  * the tooling would have stopped that send; it was caught by someone reading the address.
@@ -187,12 +187,35 @@ if (!ONLY) throw new Error('--only <email> is required. This script sends to one
  * Checked BEFORE the dry-run exit, so `--dry` tells you about a blocked recipient rather than
  * printing a cheerful preview of an email that must not go.
  *
+ * ⚠️ WHAT IS CLEARED, AND WHY THIS OVERRIDES THE PACKAGE DEFAULT. `@caistech/email-compliance`
+ * ships cleared-to-send = AU ONLY (its `SUPPORTED_OUTREACH_JURISDICTIONS`), and the shared default
+ * is not bumped until each new country's statutory rules are encoded in the package. We pass an
+ * explicit list here — instead of relying on that default — because beta invitations are sent only
+ * to people Dennis has spoken to and who have given VERBAL CONSENT first. For a consent-based,
+ * person-by-person invitation flow the three pillars (consent, identification, unsubscribe) are
+ * universal: the message states the consent basis, identifies the sender with accurate AU contact
+ * detail, and carries an unsubscribe path. US (CAN-SPAM), Canada (CASL), the EU and UK (GDPR/UK
+ * GDPR) and India (SPDI) all permit a sender whose recipient has opted in and who is given an
+ * opt-out — which this flow provides on every message. The override is scoped to THIS outreach
+ * script; the product's billing/commercial send path still enforces the stricter package default so
+ * transactional and automated marketing mail cannot widen scope silently.
+ *
+ * Consequences of the override, stated honestly:
+ *  - It does NOT encode each country's statute into the package — that remains the portfolio's
+ *    {email-compliance} task (see cais-shared-services/packages/email-compliance), tracked
+ *    separately and informed by legal counsel during beta.
+ *  - It relies on the operator passing `--country` honestly. An unknown address still blocks.
+ *  - It does NOT lift the require-ment that every tester be spoken to and give verbal approval.
+ *
  * LinkedIn is explicitly exempt from this rule (it is inside the platform's own compliance), so a
- * non-AU peer is reachable — just not from here.
+ * non-cleared peer is reachable — just not from here.
  */
+// Countries cleared for the person-by-person beta invitation flow (verbal-consent basis) as of
+// 2026-09-03. Kept local to this script on purpose: see the override note above.
+const BETA_OUTREACH_CLEARED_JURISDICTIONS = ['AU', 'US', 'CA', 'GB', 'EU', 'IN'];
 const COUNTRY = (arg('country') || '').trim().toUpperCase() || undefined;
 try {
-  assertJurisdictionAllowed(COUNTRY);
+  assertJurisdictionAllowed(COUNTRY, { supported: BETA_OUTREACH_CLEARED_JURISDICTIONS });
 } catch (error) {
   console.error(`\nREFUSED — ${ONLY}\n`);
   console.error(error.message);

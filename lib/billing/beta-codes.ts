@@ -2,47 +2,33 @@
 //
 // Beta access codes — minting, normalising and claiming.
 //
-// The judgement lives in the two pure functions at the top so it can be tested without a database.
-// `claimBetaCode` is the only part that touches the database, and it does exactly one interesting
-// thing: claims the row atomically.
+// A beta code is bound to both:
+//   1. the invited email address; and
+//   2. the canonical Organisation the new account is being created for.
 //
-// PERSISTENCE PATH. The four DB operations (peek, claim, link, release) now route through the
-// Orchestrator rather than reaching for the service-role key directly. The Orchestrator holds the
-// Kira Supabase credential and enforces caller identity; Kira stays unprivileged. The exported
-// interface is unchanged — callers do not know the persistence path moved.
+// This is deliberate. Beta redemption happens PRE-authentication, so there is no authenticated
+// Person from whom organisation context can safely be resolved. The beta code therefore carries
+// the organisation context explicitly from the invitation stage.
+//
+// `user_id` / `redeemed_user_id` remains contextual account/person linkage only. It is NOT used as
+// the organisational anchor.
+//
+// The judgement lives in the pure functions above a note on persistence so it can be tested without
+// a database. `claimBetaCode` does exactly one interesting thing: claims the row atomically.
+//
+// PERSISTENCE PATH. These four DB operations run against Kira's own Supabase project with Kira's
+// own service-role client — the same client every other admin route in this app uses. They were
+// briefly proxied through the Orchestrator (which held the credential on Kira's behalf), but a
+// 2026-09 production outage showed that path adds a deployment dependency without buying security:
+// Kira already holds SUPABASE_SERVICE_ROLE_KEY and uses createServiceClient() across the app, so the
+// proxy did not make Kira less privileged, it only made pre-auth onboarding wait on a separate
+// service's health. Beta redemption runs PRE-authentication by definition — the code creates the
+// account — so RLS cannot authorise it and a service-role path is required regardless. The atomic
+// claim lives in the guarded UPDATE below; the network hop does not add to it.
+//
 
+import { createServiceClient } from '@/lib/supabase/server';
 import { SUPPORT_EMAIL } from '@/lib/contact';
-
-const ORCH_URL = (process.env.ORCHESTRATOR_URL || '').replace(/\/$/, '');
-const ORCH_SECRET = process.env.ORCHESTRATOR_PUBLIC_SECRET || '';
-
-/**
- * Single outbound call to the Orchestrator's beta-codes boundary. All four operations share the
- * same shape: POST with JSON body, receive JSON back, throw on non-200. Error details are logged
- * server-side; the caller sees a thrown Error whose message carries the status code.
- */
-async function callKiraBetaCode(
-  action: 'peek' | 'claim' | 'link' | 'release',
-  code: string,
-  userId?: string,
-): Promise<Record<string, unknown>> {
-  if (!ORCH_URL || !ORCH_SECRET) {
-    throw new Error('ORCHESTRATOR_URL / ORCHESTRATOR_PUBLIC_SECRET not configured');
-  }
-  const res = await fetch(`${ORCH_URL}/api/v1/kira/beta-codes`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-orchestrator-secret': ORCH_SECRET,
-    },
-    body: JSON.stringify({ action, code, ...(userId !== undefined ? { userId } : {}) }),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => 'unknown error');
-    throw new Error(`Orchestrator beta-codes call failed (${res.status}): ${text.slice(0, 200)}`);
-  }
-  return (await res.json()) as Record<string, unknown>;
-}
 
 /**
  * THE ONE SENTENCE EVERY REJECTED CODE GETS, on every route.
@@ -117,8 +103,13 @@ const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRTUVWXYZ2346789';
 export function generateBetaCode(length = 12): string {
   const bytes = new Uint32Array(length);
   crypto.getRandomValues(bytes);
+
   let out = '';
-  for (let i = 0; i < length; i += 1) out += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
+
+  for (let i = 0; i < length; i += 1) {
+    out += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
+  }
+
   return out;
 }
 
@@ -127,6 +118,16 @@ export type BetaCodeRejection = 'unknown' | 'redeemed' | 'revoked' | 'expired';
 export interface BetaCodeRow {
   code: string;
   email: string;
+
+  /**
+   * Canonical organisational anchor for the invitation.
+   *
+   * This is deliberately present on the beta code because redemption occurs before authentication.
+   * It means the eventual account can be attached to the correct Organisation without deriving
+   * organisational ownership from a user/auth identity that does not yet exist.
+   */
+  organisation_id: string;
+
   expires_at: string;
   redeemed_at: string | null;
   revoked_at: string | null;
@@ -148,25 +149,62 @@ export function checkBetaCode(row: BetaCodeRow | null, now: Date): BetaCodeRejec
   if (row.revoked_at) return 'revoked';
   if (row.redeemed_at) return 'redeemed';
   if (new Date(row.expires_at).getTime() <= now.getTime()) return 'expired';
+
   return null;
 }
 
 /**
  * Look a code up without consuming it, for the `?code=` landing.
  *
- * Returns the bound email so the page can show WHO the invitation is for. The tester never types
- * his own address — it comes from the code — which is both kinder (one less thing to get wrong) and
- * the security property: redemption cannot be pointed at an address we did not choose.
+ * Returns BOTH:
+ *   - the bound email; and
+ *   - the canonical organisation_id bound to the invitation.
+ *
+ * The tester never types his own address or organisation. Both come from the invitation code.
+ *
+ * This is intentional: beta redemption is pre-authentication, so there is no authenticated
+ * Person/session from which organisational context can safely be derived.
+ *
+ * `organisation_id` is therefore the canonical organisational anchor at the onboarding boundary.
+ * The later authenticated identity is linked to that Organisation through the canonical identity
+ * model; the auth user does not become the Organisation.
  */
 export async function peekBetaCode(
   raw: string,
-): Promise<{ ok: true; email: string } | { ok: false; reason: BetaCodeRejection }> {
+): Promise<
+  | { ok: true; email: string; organisation_id: string }
+  | { ok: false; reason: BetaCodeRejection }
+> {
   const code = normaliseBetaCode(raw);
-  if (!code) return { ok: false, reason: 'unknown' };
 
-  const body = await callKiraBetaCode('peek', code);
-  if (!body.ok) return { ok: false, reason: body.reason as BetaCodeRejection };
-  return { ok: true, email: String(body.email) };
+  if (!code) {
+    return { ok: false, reason: 'unknown' };
+  }
+
+  const svc = createServiceClient();
+
+  const { data, error } = await svc
+    .from('beta_codes')
+    .select('code, email, organisation_id, expires_at, redeemed_at, revoked_at')
+    .eq('code', code)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`beta_codes read failed: ${error.message}`);
+  }
+
+  const row = (data as BetaCodeRow | null) ?? null;
+  const rejection = checkBetaCode(row, new Date());
+
+  if (rejection) {
+    return { ok: false, reason: rejection };
+  }
+
+  return {
+    ok: true,
+    email: String(row!.email).toLowerCase(),
+    organisation_id: String(row!.organisation_id),
+  };
 }
 
 /**
@@ -180,22 +218,79 @@ export async function peekBetaCode(
  *
  * Claimed BEFORE the account is created, so the failure mode is a burnt code rather than a code that
  * can create a second account. An operator can re-mint; there is no undoing an extra account.
+ *
+ * The organisation_id is returned from the claimed beta-code row and must be carried into the
+ * pre-auth account-creation flow. It is the canonical organisation context supplied by the
+ * invitation, not something inferred from the new auth user.
  */
 export async function claimBetaCode(
   raw: string,
-): Promise<{ ok: true; email: string } | { ok: false; reason: BetaCodeRejection }> {
+): Promise<
+  | { ok: true; email: string; organisation_id: string }
+  | { ok: false; reason: BetaCodeRejection }
+> {
   const code = normaliseBetaCode(raw);
-  const body = await callKiraBetaCode('claim', code);
-  if (!body.ok) return { ok: false, reason: body.reason as BetaCodeRejection };
-  return { ok: true, email: String(body.email) };
+
+  const peek = await peekBetaCode(code);
+
+  if (!peek.ok) {
+    return peek;
+  }
+
+  const svc = createServiceClient();
+
+  const { data, error } = await svc
+    .from('beta_codes')
+    .update({
+      redeemed_at: new Date().toISOString(),
+    })
+    .eq('code', code)
+    .is('redeemed_at', null)
+    .select('code, email, organisation_id')
+    .maybeSingle();
+
+  if (error || !data) {
+    // Lost the race, or the row moved between the peek and the claim. Reported as already-redeemed
+    // because that is what it is from here.
+    if (error) {
+      console.error('[beta-codes] claim failed:', error.message);
+    }
+
+    return { ok: false, reason: 'redeemed' };
+  }
+
+  return {
+    ok: true,
+    email: String(data.email).toLowerCase(),
+    organisation_id: String(data.organisation_id),
+  };
 }
 
-/** Attach the account to the code after the fact, for the operator's record. Never throws. */
+/**
+ * Attach the account to the code after the fact, for the operator's record.
+ *
+ * `userId` is deliberately retained here as PERSON/AUTH linkage only.
+ *
+ * It does NOT establish or change organisation ownership. The Organisation was already fixed by
+ * `beta_codes.organisation_id` before authentication/account creation.
+ *
+ * Never throws.
+ */
 export async function linkBetaCodeToUser(raw: string, userId: string): Promise<void> {
   try {
-    await callKiraBetaCode('link', normaliseBetaCode(raw), userId);
+    const svc = createServiceClient();
+
+    await svc
+      .from('beta_codes')
+      .update({
+        redeemed_user_id: userId,
+      })
+      .eq('code', normaliseBetaCode(raw));
   } catch (error) {
-    console.error('[beta-codes] could not link code to user (harmless, record only):', error);
+    console.error(
+      '[beta-codes] could not link code to user (harmless, record only):',
+      error,
+    );
   }
 }
 
@@ -204,13 +299,29 @@ export async function linkBetaCodeToUser(raw: string, userId: string): Promise<v
  *
  * The claim happens first on purpose (see `claimBetaCode`), which means a genuine failure further
  * down — the auth provider being down, say — would otherwise burn a real tester's only code and
- * leave him unable to retry. This is the deliberate, narrow exception: it is called ONLY when no
- * account was created, so it can never release a code that already produced one.
+ * leave him unable to retry.
+ *
+ * This is the deliberate, narrow exception: it is called ONLY when no account was created, so it
+ * can never release a code that already produced one.
+ *
+ * `redeemed_user_id IS NULL` is the additional safety boundary: once the code has been linked to a
+ * created account, releaseBetaCode cannot release it.
  */
 export async function releaseBetaCode(raw: string): Promise<void> {
   try {
-    await callKiraBetaCode('release', normaliseBetaCode(raw));
+    const svc = createServiceClient();
+
+    await svc
+      .from('beta_codes')
+      .update({
+        redeemed_at: null,
+      })
+      .eq('code', normaliseBetaCode(raw))
+      .is('redeemed_user_id', null);
   } catch (error) {
-    console.error('[beta-codes] could not release code after a failed redemption:', error);
+    console.error(
+      '[beta-codes] could not release code after a failed redemption:',
+      error,
+    );
   }
 }
