@@ -10,7 +10,6 @@
 //   - Legacy users.id is historical/provenance only, NOT authority
 
 import 'server-only';
-import { createSessionClient } from '@/lib/supabase/server-session';
 import { createSessionClientV2 } from '@/lib/supabase/server-session';
 
 export function adminEmails(): string[] {
@@ -131,7 +130,7 @@ export interface OrganisationContext {
  */
 export async function getCurrentOrganisationContext(): Promise<OrganisationContext | null> {
   try {
-    const supabase = await createSessionClient();
+    const supabase = await createSessionClientV2();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) return null;
