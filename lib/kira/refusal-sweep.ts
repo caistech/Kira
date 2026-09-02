@@ -23,7 +23,7 @@
 // as a row 24 minutes after it shipped. So this extractor is biased hard towards returning NOTHING,
 // classifies with the same four values, and its rows are subject to the same DB CHECK.
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 /** The only kinds of refusal there are — must match lib/kira/refusal.ts and the DB CHECK. */
 const DECLINED_BECAUSE = ['no_approval', 'not_asked_to_keep', 'unverified', 'outside_scope'] as const;
@@ -161,7 +161,7 @@ export async function sweepConversationForRefusals(args: {
   const found = await extractRefusals(args.transcript, args.apiKey);
   if (found.length === 0) return { written: 0, refusals: [] };
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   // Whatever is already on record for this ORGANISATION in the window — from ANY source. She
   // sometimes does call the tool, and a conversation that produced both an agent row and an

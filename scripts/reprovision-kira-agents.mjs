@@ -51,7 +51,7 @@ import {
 const {
   ELEVENLABS_API_KEY,
   NEXT_PUBLIC_SUPABASE_URL,
-  SUPABASE_SERVICE_ROLE_KEY,
+  SUPABASE_SECRET_KEY,
   NEXT_PUBLIC_APP_URL,
   DISCOVERY_AGENT_ID,
 } = process.env;
@@ -70,9 +70,9 @@ const TOOLS_ONLY = process.argv.includes('--tools-only');
 const DRY_RUN = process.argv.includes('--dry-run');
 
 if (!ELEVENLABS_API_KEY) throw new Error('ELEVENLABS_API_KEY missing (run: vercel env pull .env.local --environment=production)');
-if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) throw new Error('Supabase env missing');
+if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SECRET_KEY) throw new Error('Supabase env missing');
 
-const supabase = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY);
 
 // Build the tool set for a SPECIFIC agent owner. recall_memory + search_knowledge get the owner's
 // user id baked into the URL (?uid=<userId>), because ElevenLabs does not pass the conversation id

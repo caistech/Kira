@@ -10,7 +10,7 @@
 // and the injected convai/ElevenLabs/Supabase deps.
 
 import { defineDiscovery, type Discovery } from '@caistech/discovery-agent';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { createOpenAIRunner } from '@/lib/kira/structured-runner';
 import { KIRA_CONVAI_TABLES } from '@/lib/kira/convai';
 import {
@@ -32,7 +32,7 @@ let cached: Discovery<ClientProfile> | null = null;
 export function getDiscovery(): Discovery<ClientProfile> {
   if (cached) return cached;
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   cached = defineDiscovery<ClientProfile>(
     {

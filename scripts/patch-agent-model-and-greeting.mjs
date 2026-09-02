@@ -27,7 +27,7 @@ import { SESSION_FOCUS, SESSION_FOCUS_MARKER } from '../lib/kira/session-focus.m
 const {
   ELEVENLABS_API_KEY,
   NEXT_PUBLIC_SUPABASE_URL,
-  SUPABASE_SERVICE_ROLE_KEY,
+  SUPABASE_SECRET_KEY,
   DISCOVERY_AGENT_ID,
 } = process.env;
 
@@ -51,9 +51,9 @@ refreshed. It is frequently months out of date and is NOT what the person is wor
 ${SESSION_FOCUS}`;
 
 if (!ELEVENLABS_API_KEY) throw new Error('ELEVENLABS_API_KEY missing (run: vercel env pull .env.local --environment=production)');
-if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) throw new Error('Supabase env missing');
+if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SECRET_KEY) throw new Error('Supabase env missing');
 
-const supabase = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY);
 const auth = { 'xi-api-key': ELEVENLABS_API_KEY };
 
 // EXCLUDE the shared discovery agent — it is not an operational Kira and has its own persona,

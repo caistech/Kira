@@ -41,7 +41,7 @@ supabase/migrations/   the ONLY migrations that run
 | API route (write/admin) | `lib/supabase/server.ts` → `createServiceClientV2()` (secret key) | anon key |
 | Server component / action (session) | `lib/supabase/server-session.ts` → `createSessionClientV2()` (publishable key) | service-role client |
 
-**Invariant:** a missing `SUPABASE_SECRET_KEY` (API route) or `SUPABASE_PUBLISHABLE_KEY` (browser/server-session) **throws**. It must never silently fall back to legacy JWT credentials (`SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) — a write path that quietly degrades to legacy credentials fails in a way that looks like a data bug months later, far from the cause.
+**Invariant:** a missing `SUPABASE_SECRET_KEY` (API route) or `SUPABASE_PUBLISHABLE_KEY` (browser/server-session) **throws**. It must never silently fall back to legacy JWT credentials (`SUPABASE_SECRET_KEY`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) — a write path that quietly degrades to legacy credentials fails in a way that looks like a data bug months later, far from the cause.
 
 **Invariant (API Key Model — Target Architecture):** New code MUST use V2 clients (`createClientV2`, `createServiceClientV2`, `createSessionClientV2`). Legacy clients (`createClient`, `createServiceClient`, `createSessionClient`) are retained ONLY for unmigrated callers and MUST NOT be used in new code. The API Key Model (`sb_secret_` / `sb_publishable_`) is the target architecture. Phase 0 validation complete (Preview only); Production remains on legacy JWT pending explicit authorisation for full migration.
 
@@ -485,7 +485,7 @@ invalid secret returned HTTP 401.
 | `UNSUBSCRIBE_SECRET` | HMAC secret for unsubscribe tokens (no service-role fallback) | Sensitive |
 
 **Invariant:** `UNSUBSCRIBE_SECRET` **must be set explicitly**. No fallback to
-`SUPABASE_SERVICE_ROLE_KEY`.
+`SUPABASE_SECRET_KEY`.
 
 ---
 
@@ -746,7 +746,7 @@ lambda its own memory; an in-process limiter limits one instance and lets every 
 Required in production:
 
 ```
-NEXT_PUBLIC_SUPABASE_URL · NEXT_PUBLIC_SUPABASE_ANON_KEY · SUPABASE_SERVICE_ROLE_KEY
+NEXT_PUBLIC_SUPABASE_URL · NEXT_PUBLIC_SUPABASE_ANON_KEY · SUPABASE_SECRET_KEY
 ELEVENLABS_API_KEY · ELEVENLABS_WEBHOOK_SECRET · KIRA_TOOL_WEBHOOK_SECRET
 STRIPE_LIVE_MODE · STRIPE_SECRET_KEY_TEST/_LIVE · STRIPE_WEBHOOK_SECRET_TEST/_LIVE
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY

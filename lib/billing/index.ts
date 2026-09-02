@@ -16,7 +16,7 @@ import {
   type SubscriptionAdapter,
 } from '@caistech/subscription-billing';
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 import { syncIntroductionForSubscription } from '@/lib/introducer';
 
@@ -80,7 +80,7 @@ export {
  */
 export function getBetaGate(): BetaGate {
   return createBetaGate({
-    supabase: createServiceClient(),
+    supabase: createServiceClientV2(),
     config: {
       trialDays: FAIR_USE_WINDOW_DAYS,
       warnAt: USAGE_WARN_AT,
@@ -118,7 +118,7 @@ export async function accrueVoiceCost(userId: string, durationSeconds: number): 
  * onboarding race.
  */
 export function getSubscriptionAdapter(): SubscriptionAdapter {
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   const adapter = createSupabaseSubscriptionAdapter({
     supabase,
@@ -189,5 +189,5 @@ export function getSubscriptionAdapter(): SubscriptionAdapter {
 
 /** Webhook idempotency, backed by `stripe_webhook_events`. */
 export function getIdempotencyStore() {
-  return createSupabaseIdempotencyStore({ supabase: createServiceClient() });
+  return createSupabaseIdempotencyStore({ supabase: createServiceClientV2() });
 }

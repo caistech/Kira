@@ -13,7 +13,7 @@
 // can see the record but not alter it.
 
 import { getCurrentOrganisationContext } from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 interface Absence {
   absence_id: string;
@@ -39,7 +39,7 @@ function startedLabel(startedAt: string): string {
 
 export async function AbsenceRecord() {
   const org = await getCurrentOrganisationContext();
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
 
   const { data: absences } = org?.organisationId
     ? await svc

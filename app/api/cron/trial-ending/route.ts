@@ -17,7 +17,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { rejectUnauthorisedCron } from '@/lib/cron-auth';
 import { resolveOrganisationForPerson } from '@/lib/auth';
 import { sendTrialEndingEmail } from '@/lib/email/trial-ending';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 
 export const runtime = 'nodejs';
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
   const unauthorised = rejectUnauthorisedCron(request);
   if (unauthorised) return unauthorised;
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   // The window is a whole day, not an instant: the job runs once daily, so "3 days out" means
   // "the period closes some time during the day that is 3 days from now".

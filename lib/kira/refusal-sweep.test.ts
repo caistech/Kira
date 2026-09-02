@@ -14,7 +14,7 @@ let modelReply = '{"refusals": []}';
 let modelShouldThrow = false;
 
 vi.mock('@/lib/supabase/server', () => ({
-  createServiceClient: () => ({
+  createServiceClientV2: () => ({
     from: () => {
       const chain: Record<string, unknown> = {};
       Object.assign(chain, {

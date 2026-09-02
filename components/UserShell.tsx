@@ -16,7 +16,7 @@
 import { redirect } from 'next/navigation';
 import { getAuthUser, getCurrentAppUser, isCurrentUserAdmin, resolveOrganisationForPerson } from '@/lib/auth';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { displayedFigures } from '@/lib/valuation/displayed';
 import { DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { PortalShell, type NavItem } from '@/components/PortalShell';
@@ -131,7 +131,7 @@ export async function UserShell({
       // replace is the business's starting point, whoever currently holds the seat.
       const orgContext = await resolveOrganisationForPerson(appUser.id);
       if (orgContext) {
-        const { data: row } = await createServiceClient()
+        const { data: row } = await createServiceClientV2()
           .from('business_valuations')
           .select('worth_today, worth_potential, currency, created_at')
           .eq('organisation_id', orgContext.organisationId)

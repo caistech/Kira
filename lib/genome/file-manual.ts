@@ -15,7 +15,7 @@
 
 import 'server-only';
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { renderAreas, type Audience } from '@/lib/genome/render';
 import { displayName, timeZoneForState } from '@/lib/business-identity';
@@ -65,7 +65,7 @@ export async function fileManual(personId: string, audience: Audience): Promise<
     return { ok: false, message: "I can't file it just now — that's a problem at my end, not yours.", written: 0, total: 0 };
   }
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   // Business identity is keyed by the legacy users.id (person id). getBusinessIdentity uses a
   // session client with RLS, so the parameter must be the authenticated user's own id.

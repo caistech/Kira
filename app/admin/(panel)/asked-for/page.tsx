@@ -35,7 +35,7 @@
 
 import { TASK_STATES } from '@/lib/kira/swarm/coordinator';
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 export const metadata = { title: 'Asked for · Kira Admin' };
 export const dynamic = 'force-dynamic';
@@ -199,7 +199,7 @@ function StillOpen({ rows }: { rows: Task[] }) {
 }
 
 export default async function AskedForPage() {
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
   const { data } = await svc
     .from('kira_tasks')
     .select('id, created_at, status, kind, utterance, summary, handled_by, artifact, result')

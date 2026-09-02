@@ -15,7 +15,7 @@
 // so nothing throws, nothing logs, and the return leg silently never runs.
 
 import { NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { resolveOrganisationForPerson } from '@/lib/auth';
 
 export const runtime = 'nodejs';
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'taskGroupId and tenantId are required' }, { status: 400 });
   }
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   // Upsert on (organisation_id, intent_id): a completion may arrive for a task Kira dispatched, or
   // for one the orchestrator raised on its own (a sweep at 4am the owner never asked for) — both

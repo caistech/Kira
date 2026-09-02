@@ -21,7 +21,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { rejectUnauthorisedCron } from '@/lib/cron-auth';
 import { sendRedTeamDriftAlert } from '@/lib/email/redteam-drift';
 import { detectDrift, type DriftResult, type DriftRun } from '@/lib/kira/redteam-drift';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
   // way to check the watcher works is to wait for something to break.
   const dry = request.nextUrl.searchParams.get('dry') === '1';
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   const [{ data: runRows, error: runError }, { data: resultRows, error: resultError }] = await Promise.all([
     supabase

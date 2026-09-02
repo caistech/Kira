@@ -8,7 +8,7 @@
 // If not set, they are skipped.
 
 import { describe, it, expect, vi, beforeAll } from 'vitest';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { extractGenomeFromConversation } from './extract';
 
 // LLM calls can take 10-60s; raise the suite timeout well above the 5s default.
@@ -19,7 +19,7 @@ let TEST_ORGANISATION_ID: string;
 const TEST_USER_ID = '00000000-0000-0000-0000-000000000003';
 
 beforeAll(async () => {
-  const sb = createServiceClient();
+  const sb = createServiceClientV2();
   const { data, error } = await sb
     .from('organisations')
     .insert({

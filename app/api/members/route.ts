@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentOrganisationContext } from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 export async function GET() {
   const org = await getCurrentOrganisationContext();
@@ -8,7 +8,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
 
   const { data: memberships, error: memErr } = await svc
     .from('organisation_memberships')

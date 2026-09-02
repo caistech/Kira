@@ -18,10 +18,10 @@
 import { createClient } from '@supabase/supabase-js';
 import { handlePostCallWebhook } from '@caistech/elevenlabs-convai';
 
-const { ELEVENLABS_API_KEY, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
+const { ELEVENLABS_API_KEY, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY } = process.env;
 
 if (!ELEVENLABS_API_KEY) throw new Error('ELEVENLABS_API_KEY missing');
-if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) throw new Error('Supabase env missing');
+if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SECRET_KEY) throw new Error('Supabase env missing');
 
 const ELEVEN = 'https://api.elevenlabs.io/v1/convai';
 const KIRA_TABLES = {
@@ -31,7 +31,7 @@ const KIRA_TABLES = {
   memory: 'kira_memory',
 };
 
-const supabase = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY);
 
 async function eleven(path) {
   const res = await fetch(`${ELEVEN}${path}`, { headers: { 'xi-api-key': ELEVENLABS_API_KEY } });

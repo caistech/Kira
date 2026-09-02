@@ -18,7 +18,7 @@
 // diversification and recurring revenue. That must never render like a regression, so the reason it
 // moved travels with the row (FINANCIAL_DATA_SCOPE.md §4.1).
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { MODEL_VERSION } from '@/lib/valuation/model';
 import { DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 
@@ -58,7 +58,7 @@ export interface ValuationSnapshotInput {
  */
 export async function recordValuationSnapshot(snapshot: ValuationSnapshotInput): Promise<void> {
   try {
-    const svc = createServiceClient();
+    const svc = createServiceClientV2();
     const { error } = await svc.from('business_valuation_snapshots').insert({
       user_id: snapshot.userId,
       organisation_id: snapshot.organisationId,

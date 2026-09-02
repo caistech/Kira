@@ -46,7 +46,7 @@ function mockDb({
 }) {
   vi.resetModules();
   vi.doMock('@/lib/supabase/server', () => ({
-    createServiceClient: () => ({
+    createServiceClientV2: () => ({
       from: (table: string) => {
         if (table === 'business_valuations') {
           return {

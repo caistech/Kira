@@ -29,9 +29,9 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, OPENAI_API_KEY } = process.env;
-if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('Need NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY');
+const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY, OPENAI_API_KEY } = process.env;
+if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SECRET_KEY) {
+  throw new Error('Need NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SECRET_KEY');
 }
 
 const args = process.argv.slice(2);
@@ -57,7 +57,7 @@ const LIMIT = Number(valueOf('--limit')) || 500;
 const MODEL = process.env.KIRA_EXTRACTION_MODEL || 'gpt-4.1-mini';
 const BASE_URL = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
 
-const sb = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const sb = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY);
 
 const SYSTEM = `You rewrite one sentence of a business's handover manual.
 

@@ -14,7 +14,7 @@
 
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { resolveOrganisationForPerson } from '@/lib/auth';
 import { createOpenAIRunner } from '@/lib/kira/structured-runner';
 import { sendEmail } from '@/lib/email/resend';
@@ -112,7 +112,7 @@ function draftSystem(kind: OwnedKind, ownerName: string | null): string {
 
 export class LocalSwarmStub implements SwarmCoordinator {
   constructor(
-    private readonly supabase: SupabaseClient = createServiceClient(),
+    private readonly supabase: SupabaseClient = createServiceClientV2(),
     private readonly openaiKey: string = process.env.OPENAI_API_KEY || '',
   ) {}
 

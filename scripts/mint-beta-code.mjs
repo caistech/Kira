@@ -41,9 +41,9 @@ const group = (code) => (code.match(/.{1,4}/g) ?? []).join('-');
 const normalise = (raw) => String(raw ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const key = process.env.SUPABASE_SECRET_KEY;
 if (!url || !key) {
-  console.error('Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY first.');
+  console.error('Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY first.');
   process.exit(1);
 }
 const db = createClient(url, key, { auth: { persistSession: false } });

@@ -27,7 +27,7 @@ import { rejectUnauthorisedCron } from '@/lib/cron-auth';
 import { getSwarmCoordinator } from '@/lib/kira/swarm';
 import { backfillMissingTasks, type MirrorRow } from '@/lib/kira/swarm/backfill';
 import { asTaskState } from '@/lib/kira/swarm/coordinator';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
   const unauthorised = rejectUnauthorisedCron(request);
   if (unauthorised) return unauthorised;
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
   const cutoff = new Date(Date.now() - GRACE_MINUTES * 60_000).toISOString();
 
   const { data: stale, error } = await supabase

@@ -13,7 +13,7 @@
 //     caller cannot record an absence in someone else's organisation.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { getCurrentOrganisationContext } from '@/lib/auth';
 
 const ADMIN_ROLES = ['owner', 'admin'];
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
   }
 
   // The org is the actor's OWN org; it never comes from the request.
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
   const { data, error } = await svc
     .from('absences')
     .insert({

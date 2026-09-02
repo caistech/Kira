@@ -19,7 +19,7 @@ import {
   setAgentOverrides,
   conversationContinuityPrompt,
 } from '@caistech/elevenlabs-convai';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { getKiraPrompt, upgradeBusinessPersona, type KiraFramework } from '@/lib/kira/prompts';
 import { kiraAllTools } from '@/lib/kira/convai';
 
@@ -83,7 +83,7 @@ export async function reprovisionBusinessAgentsForExec(opts: { apply: boolean })
   if (!apiKey) throw new Error('ELEVENLABS_API_KEY missing');
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app').replace(/\/$/, '');
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
   const discoveryId = process.env.DISCOVERY_AGENT_ID;
 
   let query = supabase

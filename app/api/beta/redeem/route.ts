@@ -86,7 +86,7 @@ import {
   releaseBetaCode,
 } from '@/lib/billing/beta-codes';
 import { getBetaGate } from '@/lib/billing';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { TERMS_VERSION } from '@/lib/terms';
 
 export const runtime = 'nodejs';
@@ -119,7 +119,7 @@ type BootstrapIdentity = {
  * ownership claim is explicitly represented as SELF_DECLARED.
  */
 async function bootstrapCanonicalIdentity(params: {
-  svc: ReturnType<typeof createServiceClient>;
+  svc: ReturnType<typeof createServiceClientV2>;
   authUserId: string;
   email: string;
   firstName: string;
@@ -454,7 +454,7 @@ export async function POST(request: NextRequest) {
   }
 
   const email = claim.email;
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
 
   // ---------------------------------------------------------------------------
   // 2. VALIDATE / ANCHOR ORGANISATION CONTEXT

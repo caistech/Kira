@@ -54,7 +54,7 @@ const CONVAI = 'https://api.elevenlabs.io/v1/convai';
 const APPLY = process.argv.includes('--apply');
 const apiKey = process.env.ELEVENLABS_API_KEY;
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseKey = process.env.SUPABASE_SECRET_KEY;
 
 // The CANONICAL host, stated here rather than read from NEXT_PUBLIC_APP_URL. That variable still
 // carries the Vercel default in places and .env.local has been stale before; binding the webhook to
@@ -72,7 +72,7 @@ const VERCEL_PROJECT = 'prj_itVurDE9CD77K9rGWEQZNDmn33yz';
 const VERCEL_TEAM = 'team_hwN7IFtd2Fo3DCj9C67ZwI1t';
 
 if (!apiKey || !supabaseUrl || !supabaseKey) {
-  console.error('Need ELEVENLABS_API_KEY, NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
+  console.error('Need ELEVENLABS_API_KEY, NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY.');
   console.error('Run with --env-file=.env.local');
   process.exit(1);
 }

@@ -48,7 +48,7 @@ const FROM = 'Dennis McMahon <noreply@updates.corporateaisolutions.com>';
 const REPLY_TO = 'dennis@corporateaisolutions.com';
 const CC = 'dennis@corporateaisolutions.com';
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 
 /** The identification footer. Required on every commercial send — Spam Act pillar 2. */
 const FOOTER = `

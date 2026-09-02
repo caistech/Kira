@@ -142,7 +142,7 @@ and repeated the error back to the operator as fact. The word "widget" was doing
 ```
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
-SUPABASE_SERVICE_ROLE_KEY          ← required; never fall back to anon key
+SUPABASE_SECRET_KEY          ← required; never fall back to anon key
 ELEVENLABS_API_KEY
 ELEVENLABS_WEBHOOK_SECRET          ← required; never use a hardcoded fallback
 STRIPE_SECRET_KEY

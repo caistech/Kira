@@ -148,7 +148,7 @@ async function getSupersessionChainDepth(factId: string): Promise<number> {
   let currentId: string | null = factId;
 
   while (currentId) {
-    const sb = (await import('@/lib/supabase/server')).createServiceClient();
+    const sb = (await import('@/lib/supabase/server')).createServiceClientV2();
     const { data }: { data: { supersedes: string | null } | null } = await sb
       .from('genome_facts')
       .select('supersedes')
@@ -258,8 +258,8 @@ export interface SupersessionChain {
  * Get the full supersession chain for a fact.
  */
 export async function getSupersessionChain(factId: string): Promise<SupersessionChain | null> {
-  const { createServiceClient } = await import('@/lib/supabase/server');
-  const sb = createServiceClient();
+  const { createServiceClientV2 } = await import('@/lib/supabase/server');
+  const sb = createServiceClientV2();
 
   // Get the root (oldest) fact
   let currentId = factId;
@@ -331,7 +331,7 @@ export async function consolidateSupersessionChain(
 
   // Mark all facts in chain as superseded
   for (const fact of chain.chain) {
-    await (await import('@/lib/supabase/server')).createServiceClient()
+    await (await import('@/lib/supabase/server')).createServiceClientV2()
       .from('genome_facts')
       .update({ superseded_at: new Date().toISOString(), status: 'superseded' })
       .eq('id', fact.id);
@@ -411,8 +411,8 @@ export async function markFactContradicted(
   userId: string,
   reason: string
 ): Promise<GenomeFact> {
-  const { createServiceClient } = await import('@/lib/supabase/server');
-  const sb = createServiceClient();
+  const { createServiceClientV2 } = await import('@/lib/supabase/server');
+  const sb = createServiceClientV2();
 
   const { data, error } = await sb
     .from('genome_facts')

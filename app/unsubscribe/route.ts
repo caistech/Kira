@@ -13,7 +13,7 @@ import { createUnsubscribeRoute } from '@caistech/email-compliance';
 
 import { senderIdentityOrNull } from '@/lib/email/sender';
 import { suppressionStore, unsubscribeSecret } from '@/lib/email/suppressions';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,7 +41,7 @@ const route = createUnsubscribeRoute({
   // Mirror the opt-out onto the account so Settings reflects reality rather than contradicting it.
   // The suppression list is the authority; this keeps the UI honest. Never blocks the response.
   onUnsubscribed: async (email) => {
-    await createServiceClient()
+    await createServiceClientV2()
       .from('users')
       .update({ email_notifications_opt_in: false })
       .eq('email', email);

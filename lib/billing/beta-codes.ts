@@ -20,14 +20,14 @@
 // own service-role client — the same client every other admin route in this app uses. They were
 // briefly proxied through the Orchestrator (which held the credential on Kira's behalf), but a
 // 2026-09 production outage showed that path adds a deployment dependency without buying security:
-// Kira already holds SUPABASE_SERVICE_ROLE_KEY and uses createServiceClient() across the app, so the
+// Kira already holds SUPABASE_SECRET_KEY and uses createServiceClientV2() across the app, so the
 // proxy did not make Kira less privileged, it only made pre-auth onboarding wait on a separate
 // service's health. Beta redemption runs PRE-authentication by definition — the code creates the
 // account — so RLS cannot authorise it and a service-role path is required regardless. The atomic
 // claim lives in the guarded UPDATE below; the network hop does not add to it.
 //
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { SUPPORT_EMAIL } from '@/lib/contact';
 
 /**
@@ -181,7 +181,7 @@ export async function peekBetaCode(
     return { ok: false, reason: 'unknown' };
   }
 
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
 
   const { data, error } = await svc
     .from('beta_codes')
@@ -237,7 +237,7 @@ export async function claimBetaCode(
     return peek;
   }
 
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
 
   const { data, error } = await svc
     .from('beta_codes')
@@ -278,7 +278,7 @@ export async function claimBetaCode(
  */
 export async function linkBetaCodeToUser(raw: string, userId: string): Promise<void> {
   try {
-    const svc = createServiceClient();
+    const svc = createServiceClientV2();
 
     await svc
       .from('beta_codes')
@@ -309,7 +309,7 @@ export async function linkBetaCodeToUser(raw: string, userId: string): Promise<v
  */
 export async function releaseBetaCode(raw: string): Promise<void> {
   try {
-    const svc = createServiceClient();
+    const svc = createServiceClientV2();
 
     await svc
       .from('beta_codes')

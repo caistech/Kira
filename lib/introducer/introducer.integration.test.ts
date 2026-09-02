@@ -18,7 +18,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { issueMagicLink, resolveMagicLink } from '@/lib/introducer';
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+const key = process.env.SUPABASE_SECRET_KEY ?? '';
 const canRun = Boolean(url && key);
 
 const EMAIL = `introducer-verify-${Date.now()}@example.invalid`;

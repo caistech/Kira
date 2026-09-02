@@ -9,7 +9,7 @@
 //       close it as 'ended' with questions_handled/required_owner estimated from activity.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 const ABSENCE_THRESHOLD_DAYS = 7;
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
   const threshold = new Date();
   threshold.setDate(threshold.getDate() - ABSENCE_THRESHOLD_DAYS);
   const thresholdIso = threshold.toISOString();

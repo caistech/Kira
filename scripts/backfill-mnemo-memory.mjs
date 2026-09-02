@@ -7,11 +7,11 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, MNEMO_API_KEY } = process.env;
+const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY, MNEMO_API_KEY } = process.env;
 const API_URL = (process.env.MNEMO_API_URL || 'https://api.mnemohq.com').replace(/\/$/, '');
-if (!SUPABASE_SERVICE_ROLE_KEY || !MNEMO_API_KEY) throw new Error('Need SUPABASE_SERVICE_ROLE_KEY + MNEMO_API_KEY');
+if (!SUPABASE_SECRET_KEY || !MNEMO_API_KEY) throw new Error('Need SUPABASE_SECRET_KEY + MNEMO_API_KEY');
 
-const sb = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const sb = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY);
 
 async function mnemoAdd(userId, contents) {
   const items = contents.map((c) => c?.trim()).filter(Boolean);

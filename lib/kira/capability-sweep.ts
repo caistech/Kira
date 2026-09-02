@@ -24,7 +24,7 @@
 // renders, so he can still see it and remove it, while the buyer's handover never carries it.
 // Deleting would be the product quietly editing his record.
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { resolveOrganisationForPerson } from '@/lib/auth';
 import { isAssistantOrProductClaim } from './poison-detect.mjs';
 
@@ -37,7 +37,7 @@ export async function refileAssistantCapabilityClaims(
 ): Promise<number> {
   if (!organisationId) return 0;
   try {
-    const supabase = createServiceClient();
+    const supabase = createServiceClientV2();
     const { data } = await supabase
       .from(memoryTable)
       .select('id, content, genome_section, genome_about')

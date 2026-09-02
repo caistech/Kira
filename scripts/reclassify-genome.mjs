@@ -19,9 +19,9 @@
 import { readFileSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
 
-const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, OPENAI_API_KEY } = process.env;
-if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !OPENAI_API_KEY) {
-  throw new Error('Need NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY + OPENAI_API_KEY');
+const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY, OPENAI_API_KEY } = process.env;
+if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SECRET_KEY || !OPENAI_API_KEY) {
+  throw new Error('Need NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SECRET_KEY + OPENAI_API_KEY');
 }
 
 const args = process.argv.slice(2);
@@ -30,7 +30,7 @@ const USER = args.includes('--user') ? args[args.indexOf('--user') + 1] : null;
 const MODEL = process.env.KIRA_EXTRACTION_MODEL || 'gpt-4.1-mini';
 const BASE_URL = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
 
-const sb = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const sb = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY);
 
 /** Lift the live prompt out of the source, so this can never disagree with what production does. */
 function classifySystem() {

@@ -23,7 +23,7 @@
 
 import { NextResponse } from 'next/server';
 import { getAuthUser, resolveOrganisationForPerson } from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { realSignOffName } from '@/lib/user-name';
 import { displayedFigures } from '@/lib/valuation/displayed';
@@ -86,7 +86,7 @@ export async function GET(request: Request) {
   const authUser = await getAuthUser();
   if (!authUser) return NextResponse.json({ error: 'Sign in first' }, { status: 401 });
 
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
   const { data: appUser } = await svc
     .from('users')
     .select('id, first_name, last_name')

@@ -15,7 +15,7 @@
 // document has. So the handle is short, checked for ambiguity, and resolved server-side; anything
 // that is not exactly one fact is refused.
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { resolveOrganisationForPerson, type OrganisationContext } from '@/lib/auth';
 import { saveMemory, recallMemory } from './memory-contract';
 
@@ -92,7 +92,7 @@ export async function unconfirmedFacts(
   orgContext: OrganisationContext,
   opts: { limit?: number; about?: string } = {},
 ): Promise<UnconfirmedFact[]> {
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
   const about = (opts.about ?? '').trim();
   if (!orgContext) return [];
   let query = supabase
@@ -214,7 +214,7 @@ export async function handleConfirmFact(req: Request): Promise<Response> {
   }
 
   try {
-    const supabase = createServiceClient();
+    const supabase = createServiceClientV2();
     const orgContext = await resolveOrganisationForPerson(userId);
     if (!orgContext) {
       return json(200, { success: false, error: 'No organisational context for user' });

@@ -1,5 +1,5 @@
 import { getAuthUser, resolveOrganisationForPerson } from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { KiraShapeSection } from '@/components/KiraShapeSection';
 import { buildGenomeOverviewFirstMessage } from '@/lib/kira/area-focus';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
@@ -85,7 +85,7 @@ export default async function MyGenome() {
     );
   }
 
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
   const { data: appUser } = await svc
     .from('users')
     .select('id, first_name')

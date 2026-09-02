@@ -5,7 +5,7 @@
 
 import { kiraConvaiRoutes, toolSecretOk } from '@/lib/kira/convai';
 import { handleKiraContext } from '@/lib/kira/uid-tools';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
 
   if (elevenLabsAgentId && elevenLabsConversationId) {
     try {
-      const supabase = createServiceClient();
+      const supabase = createServiceClientV2();
       const { data: agent } = await supabase
         .from('kira_agents')
         .select('organisation_id')

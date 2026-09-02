@@ -12,7 +12,7 @@
 import { NextResponse } from 'next/server';
 import { lookup } from 'node:dns/promises';
 import { getCurrentOrganisationContext } from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { createOpenAIRunner } from '@/lib/kira/structured-runner';
 import { ClientProfileSchema } from '@/lib/kira/discovery-schema';
 import { DISCOVERY_EXTRACTION_MODEL } from '@/lib/kira/discovery-config';
@@ -137,7 +137,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Could not extract a profile from that source' }, { status: 422 });
   }
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
   const { completeness, discovery_complete } = await applyProfileExtraction(
     supabase,
     user.id,

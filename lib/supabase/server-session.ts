@@ -1,15 +1,16 @@
 // lib/supabase/server-session.ts
-// SSR user-SESSION Supabase client (anon key + cookies), for auth in server components,
-// route handlers, and server actions. Distinct from server.ts's createServiceClient (service
-// role, no session) which stays the client for privileged data access.
+// SSR user-session Supabase client using the publishable API key + cookies.
+// Used by server components, route handlers, and server actions.
+//
+// Privileged/server-side database access remains in server.ts via
+// createServiceClientV2().
 
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
-
-// NEW API KEY MODEL — session client with publishable key
-export async function createSessionClientV2() {
+export async function createSessionClient() {
   const cookieStore = await cookies();
+
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_PUBLISHABLE_KEY!,
@@ -18,21 +19,38 @@ export async function createSessionClientV2() {
         get(name: string) {
           return cookieStore.get(name)?.value;
         },
-        set(name: string, value: string, options: Record<string, unknown>) {
+
+        set(
+          name: string,
+          value: string,
+          options: Record<string, unknown>,
+        ) {
           try {
-            cookieStore.set({ name, value, ...options });
+            cookieStore.set({
+              name,
+              value,
+              ...options,
+            });
           } catch {
-            /* called from a Server Component — ignore */
+            // Called from a Server Component where cookies are read-only.
           }
         },
-        remove(name: string, options: Record<string, unknown>) {
+
+        remove(
+          name: string,
+          options: Record<string, unknown>,
+        ) {
           try {
-            cookieStore.set({ name, value: '', ...options });
+            cookieStore.set({
+              name,
+              value: '',
+              ...options,
+            });
           } catch {
-            /* called from a Server Component — ignore */
+            // Called from a Server Component where cookies are read-only.
           }
         },
       },
-    }
+    },
   );
 }

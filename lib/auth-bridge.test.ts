@@ -48,7 +48,7 @@ async function load(authUser: Record<string, unknown> | null, supa: { from: unkn
   vi.resetModules();
   vi.doMock('@/lib/supabase/server', () => ({ createServiceClientV2: () => supa }));
   vi.doMock('@/lib/supabase/server-session', () => ({
-    createSessionClient: async () => ({ auth: { getUser: async () => ({ data: { user: authUser } }) } }),
+    createSessionClientV2: async () => ({ auth: { getUser: async () => ({ data: { user: authUser } }) } }),
   }));
   const mod = await import('./auth');
   return mod;

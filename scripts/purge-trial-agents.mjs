@@ -22,7 +22,7 @@ const groupArg = (() => {
   return i > -1 ? (process.argv[i + 1] || '') : '';
 })();
 
-const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SECRET_KEY, {
   auth: { persistSession: false },
 });
 const elevenKey = process.env.ELEVENLABS_API_KEY;

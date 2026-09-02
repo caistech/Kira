@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ATTRIBUTION_COOKIE, attachFirstTouch, attribution } from '@/lib/introducer';
 import { getStripe } from '@/lib/billing';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { recordValuationSnapshot } from '@/lib/valuation/snapshots';
 import { DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     // the email survive only as fallbacks for someone who skipped the question.
     const askedName = String(m.val_first_name ?? '').trim();
     const firstName = (askedName || session.customer_details?.name || email.split('@')[0]).split(' ')[0];
-    const svc = createServiceClient();
+    const svc = createServiceClientV2();
 
     // Create the account already confirmed. If it already exists, set the password they chose.
     // TERMS ACCEPTANCE, FROM THE METADATA /plan PUT THERE BEFORE HE PAID.

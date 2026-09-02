@@ -7,7 +7,7 @@
 // The Supabase client is created with the service role key (bypasses RLS).
 
 import { describe, it, expect, beforeAll } from 'vitest';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import {
   createEntity,
   findEntity,
@@ -37,7 +37,7 @@ let TEST_ORGANISATION_ID: string;
 const TEST_USER_ID = '00000000-0000-0000-0000-000000000002';
 
 beforeAll(async () => {
-  const sb = createServiceClient();
+  const sb = createServiceClientV2();
   const { data, error } = await sb
     .from('organisations')
     .insert({
@@ -234,7 +234,7 @@ describe('Genome Repository', () => {
       expect(current?.supersedes).toBe(factId);
 
       // History is retained — original is accessible via the supersession chain
-      const { data: original } = await createServiceClient()
+      const { data: original } = await createServiceClientV2()
         .from('genome_facts')
         .select('id, value, superseded_at')
         .eq('id', factId)

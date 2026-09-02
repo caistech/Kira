@@ -34,7 +34,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getCurrentAppUser, resolveOrganisationForPerson } from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { mnemoForget } from '@/lib/kira/mnemo';
 import { restatementCluster } from '@/lib/genome/similar';
 
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
   const id = String(body.id ?? '').trim();
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
 
   // SCOPED TO THE ORGANISATION, in the update itself rather than by a read-then-write. A check that
   // fetches the row, compares the owner and then writes has a gap between the two; putting

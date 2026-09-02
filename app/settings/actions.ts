@@ -4,14 +4,14 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { getAuthUser } from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 export async function updateProfile(formData: FormData) {
   const authUser = await getAuthUser();
   if (!authUser) return;
   const firstName = String(formData.get('first_name') || '').trim();
   const lastName = String(formData.get('last_name') || '').trim();
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
   await svc
     .from('users')
     .update({ first_name: firstName, last_name: lastName || null, updated_at: new Date().toISOString() })
@@ -27,7 +27,7 @@ export async function updateNotifications(formData: FormData) {
   const authUser = await getAuthUser();
   if (!authUser) return;
   const emailOptIn = formData.get('email_notifications_opt_in') === 'on';
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
   await svc
     .from('users')
     .update({ email_notifications_opt_in: emailOptIn, updated_at: new Date().toISOString() })
@@ -51,7 +51,7 @@ export async function deleteAccount(
   if (typed !== (authUser.email || '').toLowerCase()) {
     return { error: 'That email doesn’t match your account.' };
   }
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
   const { error } = await svc.auth.admin.deleteUser(authUser.id);
   if (error) return { error: error.message };
   // The session cookie is now orphaned (the user is gone); land on the marketing home.

@@ -99,7 +99,7 @@ organisations (organisation_id)
 **Supabase clients:**
 | File | Client | Key | RLS |
 |------|--------|-----|-----|
-| `lib/supabase/server.ts:5` | `createServiceClient()` | `SUPABASE_SERVICE_ROLE_KEY` | **BYPASSES** |
+| `lib/supabase/server.ts:5` | `createServiceClient()` | `SUPABASE_SECRET_KEY` | **BYPASSES** |
 | `lib/supabase/server.ts:19` | `createServiceClientV2()` | `SUPABASE_SECRET_KEY` | **BYPASSES** |
 | `lib/supabase/server-session.ts:10` | `createSessionClient()` | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Enforced |
 | `lib/supabase/browser.ts:7` | `createClient()` | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Enforced |

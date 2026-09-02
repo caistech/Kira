@@ -24,22 +24,39 @@ export function isAdminEmail(email?: string | null): boolean {
   return adminEmails().includes(email.toLowerCase());
 }
 
-export async function getAuthUser() {
-  const supabase = await createSessionClientV2();
-
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error) {
-    console.error('[auth] getAuthUser failed:', error.message);
-    return null;
-  }
-
+export async function getAuthUser(): Promise<User | null> {
+  const supabase = createSessionClientV2(); // Use publishable key client
+  const { data: { user } } = await supabase.auth.getUser();
   return user;
 }
 
+/**
+ * Creates a short-lived anonymous session for beta testers.
+ * @param validation Beta code validation result.
+ * @returns Session ID and expiration.
+ */
+export async function createAnonymousSession(validation: { isValid: boolean; betaCodeId: string }) {
+  if (!validation.isValid) {
+    throw new Error('Invalid beta code');
+  }
+
+  const supabase = createSessionClientV2(); // Reuse existing client
+  const sessionId = crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15-minute session
+
+  // Store in 'beta_sessions' table (create if not exists)
+  const { error } = await supabase
+    .from('beta_sessions')
+    .insert({
+      id: sessionId,
+      beta_code_id: validation.betaCodeId,
+      expires_at: expiresAt
+    });
+
+  if (error) throw error;
+
+  return { id: sessionId, expiresAt };
+}
 
 /**
  * @deprecated Use getCurrentOrganisationContext() or getCurrentOrganisationId() instead.

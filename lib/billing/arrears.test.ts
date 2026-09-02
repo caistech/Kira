@@ -144,7 +144,7 @@ function tableStub() {
 }
 
 vi.mock('@/lib/supabase/server', () => ({
-  createServiceClient: () => ({ from: () => tableStub() }),
+  createServiceClientV2: () => ({ from: () => tableStub() }),
 }));
 
 const { cancelSubscriptionWithWaiver, reportPeriodIfNew, stepDownIfCapReached, MAINTAIN_LOOKUP_PREFIX } =

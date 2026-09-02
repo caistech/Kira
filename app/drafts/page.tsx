@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 import { getAuthUser } from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { KiraShapeSection } from '@/components/KiraShapeSection';
 import { readDrafts, type DraftItem } from '@/lib/kira/swarm/drafts';
 
@@ -54,7 +54,7 @@ export default async function DraftsPage() {
     );
   }
 
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
   const { data: appUser } = await svc
     .from('users')
     .select('id')

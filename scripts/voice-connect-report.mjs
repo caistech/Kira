@@ -34,8 +34,8 @@ for (const line of readFileSync('.env.local', 'utf8').split('\n')) {
 }
 
 const URL_ = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-if (!URL_ || !KEY) throw new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required');
+const KEY = process.env.SUPABASE_SECRET_KEY;
+if (!URL_ || !KEY) throw new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY are required');
 
 const since = new Date(Date.now() - DAYS * 86_400_000).toISOString();
 const res = await fetch(

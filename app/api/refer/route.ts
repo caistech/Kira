@@ -1,6 +1,6 @@
 // app/api/refer/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = createServiceClient();
+    const supabase = createServiceClientV2();
 
     // Store the referral in the database
     const { data: referral, error: dbError } = await supabase

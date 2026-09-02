@@ -12,7 +12,7 @@
 // So: never throw, always console.error loudly. The page that reads it says plainly that it lists
 // operator views and nothing else, rather than implying a completeness it cannot guarantee.
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 export interface GenomeView {
   viewedBy: string;
@@ -32,7 +32,7 @@ export async function recordGenomeView(input: {
 }): Promise<void> {
   if (!input.userId || !input.viewedBy) return;
   try {
-    const { error } = await createServiceClient().from('genome_access_log').insert({
+    const { error } = await createServiceClientV2().from('genome_access_log').insert({
       user_id: input.userId,
       viewed_by: input.viewedBy,
       surface: input.surface,
@@ -54,7 +54,7 @@ export async function recordGenomeView(input: {
 export async function readGenomeViews(userId: string, limit = 50): Promise<GenomeView[]> {
   if (!userId) return [];
   try {
-    const { data, error } = await createServiceClient()
+    const { data, error } = await createServiceClientV2()
       .from('genome_access_log')
       .select('viewed_by, surface, viewed_at')
       .eq('user_id', userId)

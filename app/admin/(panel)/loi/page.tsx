@@ -4,7 +4,7 @@
 // businesses. §6 is a promise to the owner about his own product, not to every signed-in user.
 // (/admin/exec is the deliberate exception and keeps its voice surface: it is the operator
 // looking at ONE owner, where hearing what she says is the point of the screen.)
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 export const metadata = { title: 'LOIs · Kira Admin' };
 export const dynamic = 'force-dynamic';
@@ -38,7 +38,7 @@ const LEVEL_CLASS: Record<string, string> = {
 };
 
 export default async function AdminLoiPage() {
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
   const { data } = await svc
     .from('loi_commitments')
     .select(

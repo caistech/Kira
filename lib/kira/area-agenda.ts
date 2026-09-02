@@ -22,7 +22,7 @@
 // QUESTIONS TO ASK, that one hands her FACTS TO CHECK. A tool that did both would produce an
 // interview, which is the one thing the product cannot become.
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { resolveOrganisationForPerson } from '@/lib/auth';
 
 import { GENOME_AREAS, type AreaKey } from '@/lib/genome/areas';
@@ -114,7 +114,7 @@ export async function handleAreaAgenda(req: Request): Promise<Response> {
   const def = GENOME_AREAS.find((a) => a.key === area)!;
   const items = itemsForArea(area);
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
   // INV-020: genome item status is organisation-owned — resolve the org from the person and scope
   // the read by it (a person's seat can change; the assessment belongs to the organisation).
   const orgContext = await resolveOrganisationForPerson(uid);

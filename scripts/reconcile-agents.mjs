@@ -6,11 +6,11 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ELEVENLABS_API_KEY } = process.env;
+const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY, ELEVENLABS_API_KEY } = process.env;
 const DRY = process.argv.includes('--dry-run');
-if (!SUPABASE_SERVICE_ROLE_KEY || !ELEVENLABS_API_KEY) throw new Error('Need SUPABASE_SERVICE_ROLE_KEY + ELEVENLABS_API_KEY');
+if (!SUPABASE_SECRET_KEY || !ELEVENLABS_API_KEY) throw new Error('Need SUPABASE_SECRET_KEY + ELEVENLABS_API_KEY');
 
-const sb = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const sb = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY);
 const { data: agents } = await sb
   .from('kira_agents')
   .select('id, elevenlabs_agent_id, agent_name, status')

@@ -21,7 +21,7 @@ const ORCH_SECRET = process.env.ORCHESTRATOR_WEBHOOK_SECRET || '';
 /**
  * The HMAC secret for unsubscribe links.
  *
- * No longer falls back to SUPABASE_SERVICE_ROLE_KEY — that key is removed from Kira.
+ * No longer falls back to SUPABASE_SECRET_KEY — that key is removed from Kira.
  * UNSUBSCRIBE_SECRET must be set explicitly in the environment.
  */
 export function unsubscribeSecret(): string {

@@ -68,7 +68,7 @@ let knownEntities: { parked_entity: string }[] = [];
 // .eq()/.neq()/.limit() calls — a mock that encodes call order breaks on a refactor that changes
 // nothing about behaviour.
 vi.mock('@/lib/supabase/server', () => ({
-  createServiceClient: () => ({
+  createServiceClientV2: () => ({
     from: (table: string) => {
       const chain: Record<string, unknown> = {};
       Object.assign(chain, {

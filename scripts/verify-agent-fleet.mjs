@@ -28,11 +28,11 @@ import { createClient } from '@supabase/supabase-js';
 import { UID_TOOL_NAMES } from '../lib/kira/uid-tools.mjs';
 import { toolDefsFor } from '../lib/kira/tool-manifest.mjs';
 
-const { ELEVENLABS_API_KEY, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, DISCOVERY_AGENT_ID } =
+const { ELEVENLABS_API_KEY, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY, DISCOVERY_AGENT_ID } =
   process.env;
 
 if (!ELEVENLABS_API_KEY) throw new Error('ELEVENLABS_API_KEY missing');
-if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) throw new Error('Supabase env missing');
+if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SECRET_KEY) throw new Error('Supabase env missing');
 
 const TOOL_SECRET_HEADER = 'x-convai-tool-secret';
 
@@ -109,7 +109,7 @@ const el = (path) =>
     (r) => r.json(),
   );
 
-const supabase = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY);
 const { data: agents, error } = await supabase
   .from('kira_agents')
   .select('elevenlabs_agent_id,agent_name,journey_type,user_id,status')

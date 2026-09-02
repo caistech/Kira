@@ -2,12 +2,12 @@
 // Returns conversation history and context for seamless continuation
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { getCurrentOrganisationContext } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createServiceClient();
+    const supabase = createServiceClientV2();
     const { searchParams } = new URL(request.url);
     const agentId = searchParams.get('agentId');
     const messageLimit = parseInt(searchParams.get('limit') || '20');

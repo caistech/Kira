@@ -41,7 +41,7 @@ if (fs.existsSync(envPath)) {
 const APPLY = process.argv.includes('--apply');
 const apiKey = process.env.ELEVENLABS_API_KEY;
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const serviceKey = process.env.SUPABASE_SECRET_KEY;
 
 if (!apiKey) throw new Error('ELEVENLABS_API_KEY missing');
 if (!supabaseUrl || !serviceKey) throw new Error('Supabase service credentials missing');

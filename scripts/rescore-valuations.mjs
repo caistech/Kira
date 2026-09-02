@@ -20,7 +20,7 @@
  *   node scripts/rescore-valuations.mjs            # show every change, write nothing
  *   node scripts/rescore-valuations.mjs --apply    # write
  *
- * Needs NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (read from .env.local).
+ * Needs NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SECRET_KEY (read from .env.local).
  */
 import { readFileSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
@@ -94,9 +94,9 @@ function env(name) {
 }
 
 const url = env('NEXT_PUBLIC_SUPABASE_URL')
-const key = env('SUPABASE_SERVICE_ROLE_KEY')
+const key = env('SUPABASE_SECRET_KEY')
 if (!url || !key) {
-  console.error('missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
+  console.error('missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SECRET_KEY')
   process.exit(2)
 }
 const db = createClient(url, key, { auth: { persistSession: false } })

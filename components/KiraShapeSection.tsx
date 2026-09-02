@@ -17,7 +17,7 @@
 // Talking to her IS the product. She belongs on the page, not behind a link to one.
 
 import { getCurrentAppUser, getCurrentOrganisationContext } from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { KiraShape } from '@/components/KiraShape';
 import type { VoiceSurface } from '@/lib/voice/connect-telemetry';
 
@@ -41,7 +41,7 @@ export async function KiraShapeSection({
 
   const user = await getCurrentAppUser();
 
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
   const { data: agents } = await svc
     .from('kira_agents')
     .select('id, elevenlabs_agent_id, journey_type, status')

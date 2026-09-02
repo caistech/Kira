@@ -13,7 +13,7 @@
 // This is a READ MODEL. The orchestrator owns execution state; nothing here decides an approval or a
 // send. If the mirror is behind, the reconcile cron is what corrects it — not this.
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 import { readinessOf } from './drafts';
 
@@ -203,7 +203,7 @@ export async function readTaskLedger(userId: string, organisationId?: string): P
 
   try {
     const since = new Date(Date.now() - RECENT_DAYS * 86_400_000).toISOString();
-    let query = createServiceClient()
+    let query = createServiceClientV2()
       .from('kira_tasks')
       .select('id, kind, status, summary, utterance, preview, artifact, created_at');
 

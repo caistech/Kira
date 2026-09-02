@@ -28,7 +28,7 @@ import type { SubscriptionState } from '@caistech/subscription-billing';
 import { getStripe } from './stripe-mode';
 import { FULL_RATE_PERIOD_CAP, maintainPrice } from '@/lib/valuation/pricing';
 import { taxSuffix } from '@/lib/valuation/currency';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 /**
  * The meter every Kira subscription period is reported against. Stable forever — it is the join
@@ -133,7 +133,7 @@ export async function reportPeriodIfNew(state: SubscriptionState): Promise<Repor
   if (!stripeSubscriptionId || !stripeCustomerId || !currentPeriodEnd) return 'not_billable';
   if (!BILLABLE_STATUSES.has(status)) return 'not_billable';
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   // Claim the period. A duplicate key here is the normal, expected path — most events about a
   // subscription arrive inside a period that has already been reported.
@@ -211,7 +211,7 @@ export async function stepDownIfCapReached(state: SubscriptionState): Promise<St
   if (!stripeSubscriptionId || !currentPeriodEnd) return 'not_billable';
   if (!BILLABLE_STATUSES.has(status)) return 'not_billable';
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
   const { count, error } = await supabase
     .from('billing_periods_reported')
     .select('period_end', { count: 'exact', head: true })

@@ -1,4 +1,4 @@
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
@@ -10,7 +10,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'tester_id and description are required' }, { status: 400 });
     }
 
-    const supabase = createServiceClient();
+    const supabase = createServiceClientV2();
     const { data, error } = await supabase
       .from('kira_feedback')
       .insert({

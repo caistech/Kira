@@ -15,7 +15,7 @@
 // failure path here returns a result Kira can SAY — never an exception that surfaces as silence in
 // the middle of a conversation.
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { asTaskState } from './coordinator';
 import type {
   SwarmCoordinator,
@@ -113,7 +113,7 @@ export class OrchestratorAdapter implements SwarmCoordinator {
    */
   private async ownerName(tenantId: TenantId): Promise<string | null> {
     try {
-      const { data } = await createServiceClient()
+      const { data } = await createServiceClientV2()
         .from('users')
         .select('first_name, name')
         .eq('id', tenantId)

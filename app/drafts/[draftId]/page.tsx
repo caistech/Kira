@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { getAuthUser } from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { readDraft } from '@/lib/kira/swarm/drafts';
 
 export const dynamic = 'force-dynamic';
@@ -31,7 +31,7 @@ export default async function DraftPage({ params }: { params: Promise<{ draftId:
     );
   }
 
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
   const { data: appUser } = await svc
     .from('users')
     .select('id')

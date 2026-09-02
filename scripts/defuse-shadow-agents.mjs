@@ -25,9 +25,9 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const { ELEVENLABS_API_KEY, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
+const { ELEVENLABS_API_KEY, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY } = process.env;
 if (!ELEVENLABS_API_KEY) throw new Error('ELEVENLABS_API_KEY missing');
-if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) throw new Error('Supabase env missing');
+if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SECRET_KEY) throw new Error('Supabase env missing');
 
 const APPLY = process.argv.includes('--apply');
 
@@ -45,7 +45,7 @@ const el = (path, init) =>
     headers: { 'xi-api-key': ELEVENLABS_API_KEY, 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
   });
 
-const supabase = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY);
 
 // EVERY row, not just active/paused. An archived row still owns its name for collision purposes —
 // the provisioner searches ElevenLabs by name and has no idea what our status column says.

@@ -15,7 +15,7 @@
 // watchdog would put the check's own correctness behind a migration.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { rejectUnauthorisedCron } from '@/lib/cron-auth';
 
 export const dynamic = 'force-dynamic';
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
   if (unauthorised) return unauthorised;
 
   try {
-    const svc = createServiceClient();
+    const svc = createServiceClientV2();
 
     // Unowned rows: organisation_id NULL. Cannot leak to another org, but violates the P0.4
     // ownership invariant — every memory belongs to an organisation.

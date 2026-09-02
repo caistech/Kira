@@ -24,10 +24,10 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 const APPLY = process.argv.includes('--apply');
 const API_KEY = process.env.ELEVENLABS_API_KEY;
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SERVICE_KEY = process.env.SUPABASE_SECRET_KEY;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app';
 
-for (const [name, val] of Object.entries({ ELEVENLABS_API_KEY: API_KEY, NEXT_PUBLIC_SUPABASE_URL: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY: SERVICE_KEY })) {
+for (const [name, val] of Object.entries({ ELEVENLABS_API_KEY: API_KEY, NEXT_PUBLIC_SUPABASE_URL: SUPABASE_URL, SUPABASE_SECRET_KEY: SERVICE_KEY })) {
   if (!val) { console.error(`${name} missing from .env.local`); process.exit(1); }
 }
 

@@ -3,7 +3,7 @@
 // AREA DETAIL PAGE — shows detailed knowledge for a specific area.
 
 import { getAuthUser } from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { AreaKnowledgeDetail } from '@/components/genome-knowledge/AreaKnowledgeDetail';
 import { notFound } from 'next/navigation';
 

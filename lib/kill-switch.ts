@@ -22,7 +22,7 @@
 //
 // Standard: docs/AI_INCIDENT_RESPONSE.md §4.1.
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 /** Scopes that can be halted. Mirrors the rows seeded in 20260727180000_kill_switch.sql. */
 export type HaltScope = 'all' | 'conversations' | 'outbound_email';
@@ -44,7 +44,7 @@ let cache: CacheEntry | null = null;
 
 async function readFlags(): Promise<CacheEntry['rows'] | null> {
   try {
-    const svc = createServiceClient();
+    const svc = createServiceClientV2();
     const { data, error } = await svc.from('system_flags').select('flag, halted, reason');
     if (error || !data) return null;
     const rows = new Map<string, { halted: boolean; reason: string | null }>();

@@ -13,7 +13,7 @@ const db = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
-  createServiceClient: () => ({
+  createServiceClientV2: () => ({
     from: (table: string) => {
       const chain: Record<string, unknown> = {
         select: () => chain,

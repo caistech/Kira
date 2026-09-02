@@ -17,7 +17,7 @@ import { revalidatePath } from 'next/cache';
 import { isCurrentUserAdmin } from '@/lib/auth';
 import { sendIntroducerInvite } from '@/lib/email/introducer-invite';
 import { issueMagicLink } from '@/lib/introducer';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
@@ -58,7 +58,7 @@ export async function addIntroducer(formData: FormData): Promise<ActionResult> {
     return { ok: false, message: 'Enter a valid email address.' };
   }
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   const { data: existing } = await supabase
     .from('introducers')
@@ -118,7 +118,7 @@ export async function resendInvite(formData: FormData): Promise<ActionResult> {
   const introducerId = String(formData.get('introducer_id') || '');
   if (!introducerId) return { ok: false, message: 'Missing introducer.' };
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
   const { data: introducer } = await supabase
     .from('introducers')
     .select('id, email, name, referral_token, status')
@@ -164,7 +164,7 @@ export async function setIntroducerStatus(formData: FormData): Promise<ActionRes
   const suspend = String(formData.get('suspend') || '') === 'true';
   if (!introducerId) return { ok: false, message: 'Missing introducer.' };
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
   const { error } = await supabase
     .from('introducers')
     .update({ status: suspend ? 'suspended' : 'active', updated_at: new Date().toISOString() })

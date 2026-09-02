@@ -18,7 +18,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { getAuthUser, resolveOrganisationForPerson } from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { GENOME_AREAS, type AreaKey } from '@/lib/genome/areas';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { assessArea as assessAreaItems, type AssessedItem, type ItemStatus } from '@/lib/genome/checklist-bands';
@@ -72,7 +72,7 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
   const genome = await deriveOwnerGenome(orgContext);
   const section = genome.sections.find((s) => s.key === area);
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
   const { data: rows } = await supabase
     .from('genome_item_status')
     .select('item_key, status, why, evidence')

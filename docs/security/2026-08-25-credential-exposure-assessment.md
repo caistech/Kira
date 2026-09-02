@@ -52,7 +52,7 @@ The `[SENSITIVE]` class **includes all four Stripe secrets**, both Orchestrator 
 
 ### P0 — highest blast radius; rotate first
 
-#### 4.1 `SUPABASE_SERVICE_ROLE_KEY` (Kira project)
+#### 4.1 `SUPABASE_SECRET_KEY` (Kira project)
 
 - **Service:** Supabase, project `kmrskyewwnwettlycpfe`
 - **Prefix:** `sb_secret_` (new-format API key)
@@ -61,7 +61,7 @@ The `[SENSITIVE]` class **includes all four Stripe secrets**, both Orchestrator 
 - **Update after rotation:**
   - Vercel: production + preview environment variables
   - Local: `.env.local`
-  - GitHub Actions: repository secret `SUPABASE_SERVICE_ROLE_KEY`
+  - GitHub Actions: repository secret `SUPABASE_SECRET_KEY`
   - QA secrets: `cais-shared-services/.secrets/qa-secrets.json` (if present)
 - **Verify after rotation:**
   1. Server client constructs: `lib/supabase/server.ts` produces a valid client (test by hitting any server-rendered authenticated page)
@@ -191,7 +191,7 @@ Execute in order; each step verified before proceeding to the next.
 
 ```
 Phase 1: P0 — infrastructure credentials
-  ├─ [A] Rotate SUPABASE_SERVICE_ROLE_KEY (Kira)  ← rotate first, most dependents
+  ├─ [A] Rotate SUPABASE_SECRET_KEY (Kira)  ← rotate first, most dependents
   │       Update: Vercel prod+preview, .env.local, GitHub Actions secrets, qa-secrets.json
   │       Verify: server client, CI workflows, fleet scripts
   ├─ [B] Rotate PLATFORM_TRUST_SERVICE_KEY (platform-trust) — parallel with [A]

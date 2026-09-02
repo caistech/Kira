@@ -13,7 +13,7 @@
 // Counts come from introductions, so "sent" means someone genuinely opened their link — not how
 // many emails they claim to have written.
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 import { AddIntroducerForm } from './AddIntroducerForm';
 import { IntroducerActions } from './IntroducerActions';
@@ -41,7 +41,7 @@ const STATUS_CLASS: Record<string, string> = {
 };
 
 export default async function AdminIntroducersPage() {
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
 
   const [{ data: introducerData }, { data: introductionData }] = await Promise.all([
     svc

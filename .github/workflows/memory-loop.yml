@@ -12,7 +12,7 @@
 # catching the continuity case the package added in 0.7.3.
 #
 # Secrets required (synced from cais-shared-services QA secrets):
-#   NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, KIRA_TOOL_WEBHOOK_SECRET
+#   NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY, KIRA_TOOL_WEBHOOK_SECRET
 #   (optional) QA_TEST_USER_EMAIL — defaults to dennis@factory2key.com.au
 #   (optional var) MEMORY_LOOP_APP_URL — defaults to https://kira-rho.vercel.app
 
@@ -43,7 +43,7 @@ jobs:
     timeout-minutes: 10
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       # ONE credential, ONE secret name. This read `secrets.KIRA_TOOL_WEBHOOK_SECRET` while
       # gate.yml read `secrets.CONVAI_TOOL_SECRET` — the same value stored twice, so a rotation
       # updated Vercel and the agent fleet and neither of these, and BOTH workflows spent days red
@@ -72,8 +72,8 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.CAISTECH_PACKAGES_TOKEN }}
       - name: Guard — required config present
         run: |
-          if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] || [ -z "$KIRA_TOOL_WEBHOOK_SECRET" ]; then
-            echo "::error::Missing SUPABASE_SERVICE_ROLE_KEY or KIRA_TOOL_WEBHOOK_SECRET — sync QA secrets from cais-shared-services."
+          if [ -z "$SUPABASE_SECRET_KEY" ] || [ -z "$KIRA_TOOL_WEBHOOK_SECRET" ]; then
+            echo "::error::Missing SUPABASE_SECRET_KEY or KIRA_TOOL_WEBHOOK_SECRET — sync QA secrets from cais-shared-services."
             exit 1
           fi
           if [ -z "$MEMORY_LOOP_APP_URL" ]; then

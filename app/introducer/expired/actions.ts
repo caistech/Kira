@@ -22,7 +22,7 @@ import { randomInt } from 'node:crypto';
 
 import { sendIntroducerInvite } from '@/lib/email/introducer-invite';
 import { issueMagicLink } from '@/lib/introducer';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app';
 
@@ -62,7 +62,7 @@ export async function requestIntroducerLink(formData: FormData): Promise<Request
   const jitter = new Promise((resolve) => setTimeout(resolve, randomInt(120, 400)));
 
   try {
-    const supabase = createServiceClient();
+    const supabase = createServiceClientV2();
     const { data: introducer } = await supabase
       .from('introducers')
       .select('id, email, name, referral_token, status, last_link_sent_at')

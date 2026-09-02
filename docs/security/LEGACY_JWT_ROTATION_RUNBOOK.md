@@ -18,7 +18,7 @@ The legacy `service_role` JWT was present in the deleted `.vercel-env-check` art
 
 ## 1. Pre-rotation inventory
 
-### 1.1 Production consumers of `SUPABASE_SERVICE_ROLE_KEY`
+### 1.1 Production consumers of `SUPABASE_SECRET_KEY`
 
 | Consumer | File:Line | Impact if JWT invalidated |
 |---|---|---|
@@ -40,11 +40,11 @@ All three read the secret at job start. Updating the GitHub Actions secret **bef
 
 ### 1.3 Local/operator tooling (36 scripts)
 
-36 scripts in `scripts/*.mjs` reference `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_SERVICE_KEY` (verified via `git grep` against HEAD). All read from `.env.local` at process start and will fail if the credential is invalid. This includes provisioning, patching, backfill, red-team (`red-team.mjs`), and diagnostic scripts (`verify-agent-fleet.mjs`). **Update `.env.local` before running any script.**
+36 scripts in `scripts/*.mjs` reference `SUPABASE_SECRET_KEY` or `SUPABASE_SERVICE_KEY` (verified via `git grep` against HEAD). All read from `.env.local` at process start and will fail if the credential is invalid. This includes provisioning, patching, backfill, red-team (`red-team.mjs`), and diagnostic scripts (`verify-agent-fleet.mjs`). **Update `.env.local` before running any script.**
 
 ### 1.4 Vercel Production + Preview
 
-Single environment variable entry (`SUPABASE_SERVICE_ROLE_KEY`, type=sensitive, targets=production+preview) managed via the Vercel Management API. Serverless functions read this at invocation time from the deployment's baked snapshot — **a redeploy is required** for changes to take effect in runtime.
+Single environment variable entry (`SUPABASE_SECRET_KEY`, type=sensitive, targets=production+preview) managed via the Vercel Management API. Serverless functions read this at invocation time from the deployment's baked snapshot — **a redeploy is required** for changes to take effect in runtime.
 
 ### 1.5 Anon key dependency — `NEXT_PUBLIC_SUPABASE_ANON_KEY` (CRITICAL)
 
@@ -96,11 +96,11 @@ Run these **before** beginning the rotation sequence. All must pass.
 |---|---|---|---|
 | P1 | Production homepage | `curl -s -o /dev/null -w "%{http_code}" https://kiraexec.com` | 200 |
 | P2 | Health endpoint | `curl -s -o /dev/null -w "%{http_code}" https://kiraexec.com/api/health` | 200 |
-| P3 | SRK authenticated query | `node --env-file=.env.local -e "const {createClient}=require('@supabase/supabase-js');const sb=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{autoRefreshToken:false,persistSession:false}});sb.from('users').select('id').limit(1).then(({error})=>console.log(error?'FAIL':'PASS'))"` | PASS |
+| P3 | SRK authenticated query | `node --env-file=.env.local -e "const {createClient}=require('@supabase/supabase-js');const sb=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SECRET_KEY,{auth:{autoRefreshToken:false,persistSession:false}});sb.from('users').select('id').limit(1).then(({error})=>console.log(error?'FAIL':'PASS'))"` | PASS |
 | P4 | Current deployment commit | `git log --oneline -1` | `98099b6` (or whatever is current) |
 | P5 | Vercel prod entry exists | Management API: `GET /v9/projects/prj_itVur.../env` → SRK entry with target=production | Present |
 | P6 | GH Actions secret present | `gh secret list --repo caistech/Kira \| Select-String SUPABASE_SERVICE_ROLE` | Timestamp present |
-| P7 | Local `.env.local` has SRK | `Select-String .env.local -Pattern '^SUPABASE_SERVICE_ROLE_KEY='` | Match found |
+| P7 | Local `.env.local` has SRK | `Select-String .env.local -Pattern '^SUPABASE_SECRET_KEY='` | Match found |
 | P8 | No `sb_secret_` keys active | Supabase Management API: `GET /api-keys` → filter type=secret → count | 0 |
 | P9 | `vercel` CLI authenticated | `vercel whoami` | Account name returned |
 | P10 | `gh` CLI authenticated | `gh auth status` | Token present |
@@ -127,10 +127,10 @@ Run these **before** beginning the rotation sequence. All must pass.
 | **3.4** | Open GitHub Actions secrets page — **do not edit anything yet** | Dennis | Browser | — |
 | **3.5** | **Click "Rotate JWT secret"** in Supabase Dashboard | Dennis | Dashboard | **T+0 — clock starts** |
 | **3.6** | Copy the new JWT secret value (shown once). **Also copy the NEW `anon` key value** — the dashboard reissues both after rotation | Dennis | Dashboard | Immediately after 3.5 |
-| **3.7** | Update Vercel `SUPABASE_SERVICE_ROLE_KEY` — Production + Preview with new JWT value | Dennis | Dashboard or API | Within 1 minute of 3.5 |
+| **3.7** | Update Vercel `SUPABASE_SECRET_KEY` — Production + Preview with new JWT value | Dennis | Dashboard or API | Within 1 minute of 3.5 |
 | **3.7a** | Update Vercel `NEXT_PUBLIC_SUPABASE_ANON_KEY` (entry `dz5emxu7pehkfAYJ`, targets production+preview+development) with the new anon value | Dennis | Dashboard or API | Within 1 minute of 3.5 |
-| **3.8** | Update GitHub Actions `SUPABASE_SERVICE_ROLE_KEY` with new JWT value | Coder or Dennis | `gh secret set` or Dashboard | Within 1 minute of 3.5 |
-| **3.9** | Update local `.env.local`: line 75 (`SUPABASE_SERVICE_ROLE_KEY`) AND the `NEXT_PUBLIC_SUPABASE_ANON_KEY` line with the new values | Coder | Edit file | Within 1 minute of 3.5 |
+| **3.8** | Update GitHub Actions `SUPABASE_SECRET_KEY` with new JWT value | Coder or Dennis | `gh secret set` or Dashboard | Within 1 minute of 3.5 |
+| **3.9** | Update local `.env.local`: line 75 (`SUPABASE_SECRET_KEY`) AND the `NEXT_PUBLIC_SUPABASE_ANON_KEY` line with the new values | Coder | Edit file | Within 1 minute of 3.5 |
 | **3.10** | **Trigger Vercel redeploy** of current commit (no code change — env rebake). Mandatory for BOTH credentials: serverless functions read SRK at invocation; browser bundles have the anon key compiled in at build time (`NEXT_PUBLIC_*`) | Coder | `vercel --prod --yes` or Dashboard redeploy | Immediately after 3.7/3.7a |
 | **3.11** | Wait for Vercel deploy to complete (Ready state) | Coder | `vercel` CLI or Dashboard | ~30–60 seconds |
 | **3.12** | Run post-rotation verification (§4) | Coder | Terminal | After 3.11 |
@@ -212,7 +212,7 @@ If the new JWT fails (e.g., misconfiguration prevents authentication):
 | # | Gate | Confirmed by |
 |---|---|---|
 | G1 | Pre-flight checks P1–P11 all pass | Coder |
-| G2 | Vercel dashboard open, ready to update `SUPABASE_SERVICE_ROLE_KEY` **and** `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Dennis |
+| G2 | Vercel dashboard open, ready to update `SUPABASE_SECRET_KEY` **and** `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Dennis |
 | G3 | GitHub Actions secrets page open, ready to update | Dennis or Coder |
 | G4 | `.env.local` ready to update immediately (both SRK line 75 and anon key line) | Coder |
 | G5 | No active deployments in progress on Vercel | Coder |

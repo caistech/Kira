@@ -11,7 +11,7 @@
 
 import { toolSecretOk } from '@/lib/kira/convai';
 import { keepDocument } from '@/lib/kira/document';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   }
 
   // Resolve organisation context from person ID
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
   const { data: membership } = await supabase
     .from('organisation_memberships')
     .select('organisation_id')

@@ -18,7 +18,7 @@ import {
   recipientPrompt,
   type RecipientBearingArtifact,
 } from '@/lib/kira/swarm/recipient';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { refuseThirdPartyDisclosure } from '@/lib/kira/speaking-to';
 
 /** True when dispatch is going to the orchestrator rather than Kira's own local stub. */
@@ -67,7 +67,7 @@ async function mirrorTask(args: {
   if (!usingRemoteBrain()) return; // the local stub writes its own row — don't double-record
   if (!args.taskGroupId) return; // nothing to key on; the dispatch itself never landed
   try {
-    await createServiceClient()
+    await createServiceClientV2()
       .from('kira_tasks')
       .upsert(
         {
@@ -227,7 +227,7 @@ async function recordRefusal(args: {
   declinedBecause?: 'no_approval' | 'not_asked_to_keep' | 'unverified' | 'outside_scope';
 }): Promise<void> {
   try {
-    const supabase = createServiceClient();
+    const supabase = createServiceClientV2();
     const orgContext = args.organisationId
       ? { organisationId: args.organisationId }
       : await resolveOrganisationForPerson(args.userId);

@@ -22,7 +22,7 @@
 // which is the same park-don't-drop posture the entity guard takes. A dedupe that destroys is one
 // bad containment score away from removing a fact an owner told us once.
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { resolveOrganisationForPerson } from '@/lib/auth';
 
 import { swallowedIds, type SweepableMemory } from './dedupe-sweep';
@@ -39,7 +39,7 @@ export async function sweepDuplicateMemories(
 ): Promise<number> {
   if (!organisationId) return 0;
   try {
-    const svc = createServiceClient();
+    const svc = createServiceClientV2();
     const { data, error } = await svc
       .from(table)
       // ⚠️ `confirmed_at`, NOT `genome_confirmed_at`. The first version named a column that does not

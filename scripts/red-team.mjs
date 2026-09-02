@@ -45,7 +45,7 @@ import { isContaminatedMemory } from '../lib/kira/poison-detect.mjs';
 const VERBOSE = process.argv.includes('--verbose');
 const BASE_URL = (process.env.RED_TEAM_BASE_URL || 'https://kiraexec.com').replace(/\/$/, '');
 
-const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, QA_REDTEAM_EMAIL, QA_REDTEAM_PASSWORD, OPENAI_API_KEY, LOCAL_JUDGE_API, LOCAL_JUDGE_MODEL, KIRA_TESTING_MODEL_COMBO } =
+const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY, QA_REDTEAM_EMAIL, QA_REDTEAM_PASSWORD, OPENAI_API_KEY, LOCAL_JUDGE_API, LOCAL_JUDGE_MODEL, KIRA_TESTING_MODEL_COMBO } =
   process.env;
 
 // Determine which judge backend to use. Priority:
@@ -59,7 +59,7 @@ const JUDGE_API = USE_LOCAL_JUDGE ? (LOCAL_JUDGE_API || 'http://localhost:11434/
 
 for (const [name, value] of Object.entries({
   NEXT_PUBLIC_SUPABASE_URL,
-  SUPABASE_SERVICE_ROLE_KEY,
+  SUPABASE_SECRET_KEY,
   QA_REDTEAM_EMAIL,
   QA_REDTEAM_PASSWORD,
   // OPENAI_API_KEY is only required if not using a local judge
@@ -68,7 +68,7 @@ for (const [name, value] of Object.entries({
   if (!value) throw new Error(`${name} is not set — see docs/TESTING.md for injecting the canonical QA secrets`);
 }
 
-const db = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+const db = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 

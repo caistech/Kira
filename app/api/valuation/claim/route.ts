@@ -27,7 +27,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getCurrentOrganisationContext } from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { computeValuation, type ValuationInputs } from '@/lib/valuation/model';
 import { recordValuationSnapshot } from '@/lib/valuation/snapshots';
 import { DEFAULT_CURRENCY } from '@/lib/valuation/currency';
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
   }
 
   const currency = typeof body.currency === 'string' && body.currency ? body.currency : DEFAULT_CURRENCY;
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
 
   // First valuation wins - see the header note.
   const { data: existing } = await svc

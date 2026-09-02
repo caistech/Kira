@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { rejectUnauthorisedCron } from '@/lib/cron-auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { sendWelcomeBackEmail } from '@/lib/email/resend';
 
 export async function GET(request: NextRequest) {
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const unauthorised = rejectUnauthorisedCron(request);
     if (unauthorised) return unauthorised;
 
-    const supabase = createServiceClient();
+    const supabase = createServiceClientV2();
 
     console.log('[reengagement-emails] Starting cron job');
 

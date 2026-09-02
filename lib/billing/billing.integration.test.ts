@@ -33,7 +33,7 @@ const FIXTURE_TRIAL_DAYS = 30;
 
 const stripeKey = process.env.STRIPE_SECRET_KEY ?? '';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+const serviceKey = process.env.SUPABASE_SECRET_KEY ?? '';
 
 /**
  * The signing secret is generated here rather than read from env, and deliberately so: this test

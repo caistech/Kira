@@ -11,7 +11,7 @@
 //   3. Identity is server-baked from the organisation_id — no cross-organisation leakage
 //   4. user_id = provenance (who performed / created / confirmed), NOT ownership
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import type {
   GenomeEntity,
   GenomeFact,
@@ -28,7 +28,7 @@ import type {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function supabase() {
-  return createServiceClient();
+  return createServiceClientV2();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

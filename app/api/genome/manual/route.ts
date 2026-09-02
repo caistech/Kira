@@ -14,7 +14,7 @@ import { NextResponse } from 'next/server';
 import { formatAbn } from '@caistech/abn-lookup';
 
 import { getAuthUser, resolveOrganisationForPerson } from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { renderSingleFile, type Audience } from '@/lib/genome/render';
 import { displayName, isoDateIn, timeZoneForState } from '@/lib/business-identity';

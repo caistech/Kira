@@ -8,7 +8,7 @@
 // manager / CI secrets) and are NEVER committed or printed. Re-running just resets the passwords.
 //
 // Usage:  node --env-file=.env.local scripts/provision-qa-accounts.mjs
-// Requires: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
+// Requires: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY,
 //           QA_TEST_ADMIN_EMAIL, QA_TEST_ADMIN_PASSWORD, QA_TEST_USER_EMAIL, QA_TEST_USER_PASSWORD
 //
 // After running: ensure ADMIN_EMAILS (Vercel + .env.local) CONTAINS QA_TEST_ADMIN_EMAIL and does
@@ -18,15 +18,15 @@ import { createClient } from '@supabase/supabase-js';
 
 const {
   NEXT_PUBLIC_SUPABASE_URL,
-  SUPABASE_SERVICE_ROLE_KEY,
+  SUPABASE_SECRET_KEY,
   QA_TEST_ADMIN_EMAIL,
   QA_TEST_ADMIN_PASSWORD,
   QA_TEST_USER_EMAIL,
   QA_TEST_USER_PASSWORD,
 } = process.env;
 
-if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY missing');
+if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SECRET_KEY) {
+  throw new Error('NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SECRET_KEY missing');
 }
 
 const accounts = [
@@ -39,7 +39,7 @@ for (const a of accounts) {
   }
 }
 
-const admin = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+const admin = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 

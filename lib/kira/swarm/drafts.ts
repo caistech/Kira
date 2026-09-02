@@ -25,7 +25,7 @@
 // A screen that showed only "drafted and waiting on your go-ahead" for all three is how a man ends
 // up waiting on something that was refused two hours earlier.
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { withoutOwnerName } from '@/lib/genome/owner-name';
 
 import { days } from './open-tasks';
@@ -161,7 +161,7 @@ export function refusalReason(kind: string, summary: string): string | null {
 export async function readDrafts(organisationId: string): Promise<DraftItem[]> {
   if (!organisationId) return [];
   try {
-    const svc = createServiceClient();
+    const svc = createServiceClientV2();
 
     const { data, error } = await svc
       .from('kira_tasks')

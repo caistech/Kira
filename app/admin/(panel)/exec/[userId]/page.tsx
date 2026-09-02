@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { getAuthUser } from '@/lib/auth';
 import { recordGenomeView } from '@/lib/genome/access-log';
 import { formatMoneyApprox, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function ExecUserManagePage({ params }: { params: Promise<{ userId: string }> }) {
   const { userId } = await params;
-  const sb = createServiceClient();
+  const sb = createServiceClientV2();
 
   const { data: user } = await sb
     .from('users')

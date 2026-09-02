@@ -21,7 +21,7 @@ Target: `createClient()` -> `createClientV2()`, `createSessionClient()` -> `crea
 | ... | ... | ... |
 
 ## Phase 3: Batch 3 — Scripts
-Target: `SUPABASE_SERVICE_ROLE_KEY` -> V2 Service Role environment access
+Target: `SUPABASE_SECRET_KEY` -> V2 Service Role environment access
 
 | Script | File | Status |
 |---|---|---|

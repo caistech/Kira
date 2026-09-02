@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentOrganisationContext } from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { TERMS_VERSION } from '@/lib/terms';
 
 const VALID_ROLES = ['owner', 'admin', 'consultant', 'employee', 'advisor', 'member'];
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid role.' }, { status: 400 });
   }
 
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
 
   const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-4).toUpperCase();
 

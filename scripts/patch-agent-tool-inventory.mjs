@@ -56,7 +56,7 @@ const apiKey = process.env.ELEVENLABS_API_KEY;
 const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app').replace(/\/$/, '');
 if (!apiKey) throw new Error('ELEVENLABS_API_KEY missing');
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 
 // The sentence, anchored on its own opening words so it cannot match anything else in the prompt.
 const LIST_RE = /(These are the tools you have, and there are no others: )([^.]+)(\.)/;

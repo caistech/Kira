@@ -13,7 +13,7 @@ import crypto from 'node:crypto';
 
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app').replace(/\/$/, '');
 const VOICE = process.env.KIRA_VOICE_ID || 'EXAVITQu4vr4xnSDxMaL';
-const svc = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+const svc = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SECRET_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 

@@ -25,7 +25,7 @@
 //   - All genome tables must exist (run migration first)
 
 import { describe, it, expect, beforeAll, vi } from 'vitest';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { extractGenomeFromConversation } from './extract';
 import {
   getAllEntities,
@@ -97,7 +97,7 @@ async function createTestOrg(
   email: string,
   userId: string
 ): Promise<TestOrg> {
-  const sb = createServiceClient();
+  const sb = createServiceClientV2();
 
   // 1. Create organisation (organisation_id = a fresh UUID)
   const orgId = crypto.randomUUID();
@@ -145,7 +145,7 @@ async function createTestOrg(
  * Clean all genome data for an organisation.
  */
 async function cleanOrgGenomeData(organisationId: string): Promise<void> {
-  const sb = createServiceClient();
+  const sb = createServiceClientV2();
   // Delete in FK-safe order
   await sb.from('genome_events').delete().eq('organisation_id', organisationId);
   await sb.from('genome_relationships').delete().eq('organisation_id', organisationId);

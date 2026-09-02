@@ -15,7 +15,7 @@
 import { revalidatePath } from 'next/cache';
 
 import { getAuthUser, resolveOrganisationForPerson } from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { GENOME_AREAS, type AreaKey } from '@/lib/genome/areas';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { assessAreaEntries } from '@/lib/genome/checklist-assess';
@@ -57,7 +57,7 @@ export async function assessArea(area: string): Promise<AssessState> {
     return { assessed: 0 };
   }
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
   const { error } = await supabase.from('genome_item_status').upsert(
     verdicts.map((v) => ({
       // INV-020: organisation_id is the ownership anchor; user_id is provenance only.

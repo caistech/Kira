@@ -228,7 +228,7 @@ Landing → Sign-in → Start/Setup → Create Agent → Chat (text + voice) →
 ### 4.5 Credential Proof (Preview)
 - [ ] Migrated routes authenticate via `SUPABASE_SECRET_KEY` (server)
 - [ ] Browser components authenticate via `SUPABASE_PUBLISHABLE_KEY`
-- [ ] No critical-path route reads `SUPABASE_SERVICE_ROLE_KEY`
+- [ ] No critical-path route reads `SUPABASE_SECRET_KEY`
 - [ ] No critical-path route reads `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - [ ] V2 service client bypasses RLS as expected
 - [ ] V2 browser client enforces RLS as expected
@@ -247,7 +247,7 @@ Landing → Sign-in → Start/Setup → Create Agent → Chat (text + voice) →
 
 ### 5.2 Deployment Steps
 1. Add `SUPABASE_SECRET_KEY` and `SUPABASE_PUBLISHABLE_KEY` to Vercel Production environment
-2. **Do NOT remove** `SUPABASE_SERVICE_ROLE_KEY` or `NEXT_PUBLIC_SUPABASE_ANON_KEY` from Production
+2. **Do NOT remove** `SUPABASE_SECRET_KEY` or `NEXT_PUBLIC_SUPABASE_ANON_KEY` from Production
 3. Deploy `main` branch to Production
 4. Verify Production health (canary check)
 5. Run Production smoke tests (subset of Preview tests)
@@ -273,7 +273,7 @@ Landing → Sign-in → Start/Setup → Create Agent → Chat (text + voice) →
 
 ## 7. Security Position — Explicit
 
-> **The legacy `SUPABASE_SERVICE_ROLE_KEY` JWT remains exposed and active in Production.**
+> **The legacy `SUPABASE_SECRET_KEY` JWT remains exposed and active in Production.**
 >
 > This deployment does **not** complete the credential remediation. It moves beta traffic to the secure V2 path while retaining the exposed credential as a temporary compatibility layer for Batch 2 consumers.
 >

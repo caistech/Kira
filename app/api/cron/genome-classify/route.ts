@@ -19,7 +19,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { rejectUnauthorisedCron } from '@/lib/cron-auth';
 import { classifyPendingMemories } from '@/lib/genome/derive';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
   const unauthorised = rejectUnauthorisedCron(request);
   if (unauthorised) return unauthorised;
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   // Only organisations who actually have something waiting — organisation_id is the canonical
   // ownership boundary. classifyPendingMemories now takes organisationId directly.

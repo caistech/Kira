@@ -68,7 +68,7 @@ const anchorMatch = promptsSrc.match(/export const CONFIRMATION_MARKER = '([^']+
 if (!anchorMatch) throw new Error('Could not read CONFIRMATION_MARKER from lib/kira/prompts.ts');
 const ANCHOR = anchorMatch[1];
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 
 const { data: rows, error } = await supabase
   .from('kira_agents')

@@ -29,9 +29,9 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, OPENAI_API_KEY } = process.env;
-if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('Need NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY');
+const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY, OPENAI_API_KEY } = process.env;
+if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SECRET_KEY) {
+  throw new Error('Need NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SECRET_KEY');
 }
 
 const args = process.argv.slice(2);
@@ -49,7 +49,7 @@ const MODEL = process.env.KIRA_EXTRACTION_MODEL || 'gpt-4.1-mini';
 const BASE_URL = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
 const PARKED_REASON = 'entity:ai_business';
 
-const sb = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const sb = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY);
 
 const SYSTEM = `You sort one fact into the business it belongs to. The person these notes are about
 runs two separate businesses and the notes are mixed together.

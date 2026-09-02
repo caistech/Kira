@@ -1,7 +1,7 @@
 # API Key Model Migration — Live Inventory
 
 **Status:** Phase 1 Authorised — Batch 1 in progress  
-**Target:** Zero active dependencies on `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`  
+**Target:** Zero active dependencies on `SUPABASE_SECRET_KEY`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`  
 **Current Phase:** Batch 1 — Production Server Consumers  
 **Validation Target:** Preview only (Production frozen)
 
@@ -157,54 +157,54 @@
 
 | # | File | Type | Current Credential | Target | Status | Notes |
 |---|------|------|-------------------|--------|--------|-------|
-| 95 | `scripts/provision-existing-agents.mjs` | Provisioning | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 96 | `scripts/provision-qa-accounts.mjs` | Provisioning | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 97 | `scripts/provision-redteam-identity.mjs` | Provisioning | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 98 | `scripts/provision-reviewer.mjs` | Provisioning | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 99 | `scripts/provision-discovery-agent.mjs` | Provisioning | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 100 | `scripts/create-missing-agent.mjs` | Provisioning | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 101 | `scripts/reprovision-kira-agents.mjs` | Provisioning | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 102 | `scripts/reprovision-agent-full.mjs` | Provisioning | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 103 | `scripts/reprovision-agent-full.mts` | Provisioning | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 104 | `scripts/reconcile-agents.mjs` | Provisioning | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 105 | `scripts/purge-trial-agents.mjs` | Provisioning | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 95 | `scripts/provision-existing-agents.mjs` | Provisioning | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 96 | `scripts/provision-qa-accounts.mjs` | Provisioning | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 97 | `scripts/provision-redteam-identity.mjs` | Provisioning | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 98 | `scripts/provision-reviewer.mjs` | Provisioning | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 99 | `scripts/provision-discovery-agent.mjs` | Provisioning | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 100 | `scripts/create-missing-agent.mjs` | Provisioning | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 101 | `scripts/reprovision-kira-agents.mjs` | Provisioning | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 102 | `scripts/reprovision-agent-full.mjs` | Provisioning | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 103 | `scripts/reprovision-agent-full.mts` | Provisioning | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 104 | `scripts/reconcile-agents.mjs` | Provisioning | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 105 | `scripts/purge-trial-agents.mjs` | Provisioning | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
 
 ### Agent Patching
 
 | # | File | Type | Current Credential | Target | Status | Notes |
 |---|------|------|-------------------|--------|--------|-------|
-| 106 | `scripts/patch-agent-capabilities.mjs` | Patching | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 107 | `scripts/patch-agent-area-work.mjs` | Patching | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 108 | `scripts/patch-agent-ask-this-now.mjs` | Patching | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 109 | `scripts/patch-agent-call-debrief.mjs` | Patching | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 110 | `scripts/patch-agent-model-and-greeting.mjs` | Patching | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 111 | `scripts/patch-agent-no-document-offers.mjs` | Patching | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 112 | `scripts/patch-agent-tool-inventory.mjs` | Patching | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 113 | `scripts/patch-agent-value-questions.mjs` | Patching | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 114 | `scripts/check-agent-names.mjs` | Patching | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 115 | `scripts/defuse-shadow-agents.mjs` | Patching | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 116 | `scripts/find-user-agents.mjs` | Patching | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 106 | `scripts/patch-agent-capabilities.mjs` | Patching | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 107 | `scripts/patch-agent-area-work.mjs` | Patching | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 108 | `scripts/patch-agent-ask-this-now.mjs` | Patching | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 109 | `scripts/patch-agent-call-debrief.mjs` | Patching | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 110 | `scripts/patch-agent-model-and-greeting.mjs` | Patching | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 111 | `scripts/patch-agent-no-document-offers.mjs` | Patching | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 112 | `scripts/patch-agent-tool-inventory.mjs` | Patching | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 113 | `scripts/patch-agent-value-questions.mjs` | Patching | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 114 | `scripts/check-agent-names.mjs` | Patching | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 115 | `scripts/defuse-shadow-agents.mjs` | Patching | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 116 | `scripts/find-user-agents.mjs` | Patching | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
 
 ### Backfill & Data Migration
 
 | # | File | Type | Current Credential | Target | Status | Notes |
 |---|------|------|-------------------|--------|--------|-------|
-| 117 | `scripts/backfill-genome-register.mjs` | Backfill | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 118 | `scripts/backfill-knowledge-chunks.mjs` | Backfill | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 119 | `scripts/backfill-mnemo-memory.mjs` | Backfill | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 120 | `scripts/backfill-kira-conversations.mjs` | Backfill | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 121 | `scripts/reclassify-genome.mjs` | Backfill | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 117 | `scripts/backfill-genome-register.mjs` | Backfill | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 118 | `scripts/backfill-knowledge-chunks.mjs` | Backfill | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 119 | `scripts/backfill-mnemo-memory.mjs` | Backfill | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 120 | `scripts/backfill-kira-conversations.mjs` | Backfill | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 121 | `scripts/reclassify-genome.mjs` | Backfill | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
 
 ### Diagnostics & Verification
 
 | # | File | Type | Current Credential | Target | Status | Notes |
 |---|------|------|-------------------|--------|--------|-------|
-| 122 | `scripts/verify-agent-fleet.mjs` | Diagnostic | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 123 | `scripts/probe-auth-adoption.mjs` | Diagnostic | `SUPABASE_SERVICE_ROLE_KEY` + `ANON` | `SUPABASE_SECRET_KEY` + `PUBLISHABLE` | 🔴 | |
+| 122 | `scripts/verify-agent-fleet.mjs` | Diagnostic | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 123 | `scripts/probe-auth-adoption.mjs` | Diagnostic | `SUPABASE_SECRET_KEY` + `ANON` | `SUPABASE_SECRET_KEY` + `PUBLISHABLE` | 🔴 | |
 | 124 | `scripts/analyze-voice-agent.ts` | Diagnostic | `createClient` (direct) | `createServiceClientV2` | 🔴 | TS file |
-| 125 | `scripts/onboard-tester.mjs` | Diagnostic | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 126 | `scripts/mint-beta-code.mjs` | Diagnostic | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
-| 127 | `scripts/rebind-post-call-webhook.mjs` | Diagnostic | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 125 | `scripts/onboard-tester.mjs` | Diagnostic | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 126 | `scripts/mint-beta-code.mjs` | Diagnostic | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
+| 127 | `scripts/rebind-post-call-webhook.mjs` | Diagnostic | `SUPABASE_SECRET_KEY` | `SUPABASE_SECRET_KEY` | 🔴 | |
 
 ### Other
 

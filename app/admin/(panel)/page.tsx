@@ -6,19 +6,19 @@
 // looking at ONE owner, where hearing what she says is the point of the screen.)
 import { isLiveMode } from '@/lib/billing';
 import { billingCopy } from '@/lib/billing/copy';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 export const metadata = { title: 'Admin · Kira' };
 export const dynamic = 'force-dynamic';
 
 async function count(table: string): Promise<number> {
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
   const { count } = await svc.from(table).select('id', { count: 'exact', head: true });
   return count ?? 0;
 }
 
 export default async function AdminOverviewPage() {
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
   const [users, agents, conversations] = await Promise.all([
     count('users'),
     count('kira_agents'),

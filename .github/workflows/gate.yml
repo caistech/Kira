@@ -141,7 +141,7 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
-          SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
+          SUPABASE_SECRET_KEY: placeholder-service-role-key
           # Dummy like the rest. Deliberately NOT `kira.vercel.app` — that bare slug is
           # hijacked by an unrelated external app, so it reads as a real host and is not one.
           NEXT_PUBLIC_APP_URL: https://placeholder.example.com
@@ -193,14 +193,14 @@ jobs:
       # Needs, in repos that DO have a voice agent:
       #   MEMORY_LOOP_UID / QA_TEST_USER_ID   a real test user's id
       #   CONVAI_TOOL_SECRET                  if the webhook routes are secret-guarded
-      #   NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY   for sentinel cleanup
+      #   NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SECRET_KEY   for sentinel cleanup
       # and a memory-loop.config.json naming the webhook path, memory table and tool-secret header.
       - name: Voice memory-loop gate (skips where there is no voice agent)
         env:
           MEMORY_LOOP_UID: ${{ secrets.QA_TEST_USER_ID }}
           CONVAI_TOOL_SECRET: ${{ secrets.CONVAI_TOOL_SECRET }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: |
           # Resolve the binary from node_modules DIRECTLY, never via a bare `npx <name>`.
           #

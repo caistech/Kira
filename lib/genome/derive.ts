@@ -14,7 +14,7 @@
 // instant and free, and a wrong call is fixable in a row rather than re-argued with a prompt.
 
 import 'server-only';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { resolveOrganisationForPerson } from '@/lib/auth';
 // PRIVATE_REASONS is still used to validate what the classifier answers before it is STORED — the
 // column keeps filling so a future re-measurement is free. It is `ownerPrivateReason` alone that
@@ -483,7 +483,7 @@ concludes we did not understand his business.
  * Bounded per call so a long history cannot stall the caller; the sweep finishes what a burst leaves.
  */
 export async function classifyPendingMemories(organisationId: string, limit = 50): Promise<{ classified: number; deferred: number }> {
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return { classified: 0, deferred: 0 };
 
@@ -595,7 +595,7 @@ export async function classifyForReview({
   changes: ProposedChange[];
   summary: { sectionMoves: number; toNone: number; newlyPrivate: number; labelledOnly: number };
 }> {
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return { considered: 0, failed: 0, changes: [], summary: { sectionMoves: 0, toNone: 0, newlyPrivate: 0, labelledOnly: 0 } };
 
@@ -677,7 +677,7 @@ export async function applyReviewedClassification(
   changes: ProposedChange[],
   { direction }: { direction: 'after' | 'before' },
 ): Promise<number> {
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
   const now = new Date().toISOString();
   let written = 0;
 
@@ -708,7 +708,7 @@ export async function applyReviewedClassification(
  * it is about to show you.
  */
 export async function deriveOwnerGenome(organisationContext: { organisationId: string, personId: string }): Promise<OwnerGenome> {
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
   const userId = organisationContext.personId;
   const organisationId = organisationContext.organisationId;
 

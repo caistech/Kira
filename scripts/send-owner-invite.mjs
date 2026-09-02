@@ -37,7 +37,7 @@ if (!email) throw new Error('--email is required');
 // REFUSE TO INVITE SOMEONE WHO HAS NO ACCOUNT. The whole message says "your account is already
 // there"; sending it to an address with nothing behind it walks the reader into a dead end and is
 // exactly the failure the never-invited introducer page was fixed for earlier today.
-const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SECRET_KEY, {
   auth: { persistSession: false },
 });
 const { data: appUser } = await db.from('users').select('id, auth_user_id').eq('email', email).maybeSingle();

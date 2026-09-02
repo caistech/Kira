@@ -21,7 +21,7 @@ import Link from 'next/link';
 
 import { getCurrentOrganisationContext } from '@/lib/auth';
 import { readTaskLedger, STALLED_AFTER_DAYS, type OpenTaskSummary } from '@/lib/kira/swarm/open-tasks';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { KiraShapeSection } from '@/components/KiraShapeSection';
 
 export const dynamic = 'force-dynamic';
@@ -57,7 +57,7 @@ export default async function RequestsPage() {
 
   // The talk link, resolved the same way the dashboard resolves it, so "talk to her about these"
   // lands on his own Kira rather than the onboarding flow.
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
   const { data: agents } = orgContext
     ? await svc
         .from('kira_agents')

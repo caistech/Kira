@@ -12,7 +12,7 @@
 // The genome works programmatically; this page makes it visible.
 
 import { getAuthUser } from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { GenomeKnowledgeDashboard } from '@/components/genome-knowledge/GenomeKnowledgeDashboard';
 
 export const dynamic = 'force-dynamic';
@@ -28,7 +28,7 @@ export default async function GenomeKnowledgePage() {
   }
 
   // Fetch data from genome API
-  const sb = createServiceClient();
+  const sb = createServiceClientV2();
   const { data: profile } = await sb
     .from('profiles')
     .select('business_name')

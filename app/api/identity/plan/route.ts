@@ -3,7 +3,7 @@ import {
   getCurrentOrganisationContext,
   getAuthUser,
 } from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,7 +86,7 @@ export async function GET() {
       );
     }
 
-    const supabase = createServiceClient();
+    const supabase = createServiceClientV2();
 
     /*
      * organisationId comes exclusively from the canonical
@@ -267,7 +267,7 @@ export async function POST(request: Request) {
     // Organisation, Membership and Ownership writes below.
     //
 
-    const supabase = createServiceClient();
+    const supabase = createServiceClientV2();
 
     // -------------------------------------------------------------------------
     // 4. RESOLVE / CREATE PERSON

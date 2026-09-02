@@ -24,12 +24,12 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ELEVENLABS_API_KEY } = process.env;
-for (const [name, value] of Object.entries({ NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ELEVENLABS_API_KEY })) {
+const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY, ELEVENLABS_API_KEY } = process.env;
+for (const [name, value] of Object.entries({ NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY, ELEVENLABS_API_KEY })) {
   if (!value) throw new Error(`${name} is not set`);
 }
 
-const db = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+const db = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 

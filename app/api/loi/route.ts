@@ -8,7 +8,7 @@
 // Both SILENTLY no-op to a success response (never 400 a real user, never store a bot).
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { getCurrentAppUser } from '@/lib/auth';
 
 const MIN_FILL_MS = 2500; // faster than this = almost certainly a bot
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
 
   const monthly = Number(body.monthly_intent);
   const refer = Number(body.refer_count);
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
   const { error } = await svc.from('loi_commitments').insert({
     name,
     email,

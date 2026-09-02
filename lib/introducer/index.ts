@@ -12,7 +12,7 @@ import { createAttribution } from '@caistech/attribution';
 import { canViewContent } from '@caistech/coordination-sdk/server';
 import { createHash, randomBytes } from 'node:crypto';
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { UNDERTAKING_VERSION } from './undertaking';
 
 /** The scope an introduction is TO. Kira has one product, so it's constant — but scoped cookies
@@ -24,7 +24,7 @@ export const attribution = createAttribution({
   cookiePrefix: 'kira_ft_',
   // ATTRIBUTION_SECRET is the dedicated name; fall back to the app's existing secret so the
   // channel doesn't require a new env var on day one.
-  secretEnvKeys: ['ATTRIBUTION_SECRET', 'SUPABASE_SERVICE_ROLE_KEY'],
+  secretEnvKeys: ['ATTRIBUTION_SECRET', 'SUPABASE_SECRET_KEY'],
 });
 
 export const ATTRIBUTION_COOKIE = attribution.cookieName(ATTRIBUTION_SCOPE);
@@ -87,7 +87,7 @@ export async function acceptUndertaking(
   introducerId: string,
   payee?: PayeeDetails,
 ): Promise<void> {
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   const update: Record<string, string | null> = {
     terms_accepted_at: new Date().toISOString(),
@@ -112,7 +112,7 @@ export async function acceptUndertaking(
 
 /** Single-row read used when a write needs the introducer's existing values. */
 async function getIntroducerById(introducerId: string): Promise<Introducer | null> {
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
   const { data } = await supabase
     .from('introducers')
     .select(INTRODUCER_COLUMNS)
@@ -161,7 +161,7 @@ function hashToken(token: string): string {
  * lift; it is local because that package's links live in the coordination project's own Supabase.
  */
 export async function issueMagicLink(introducerId: string): Promise<{ token: string; url: string }> {
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
   const token = randomBytes(32).toString('base64url');
   const expiresAt = new Date(Date.now() + MAGIC_LINK_EXPIRY_DAYS * 86_400_000);
 
@@ -185,7 +185,7 @@ export async function issueMagicLink(introducerId: string): Promise<{ token: str
  */
 export async function resolveMagicLink(token: string): Promise<Introducer | null> {
   if (!token) return null;
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   const { data: link } = await supabase
     .from('introducer_magic_links')
@@ -243,7 +243,7 @@ export async function getIntroducerFromSession(token: string | undefined): Promi
  * cannot select content columns. Never widen this to a table read.
  */
 export async function ownerProjection(introducerId: string): Promise<OwnerProjection[]> {
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
   const { data, error } = await supabase.rpc('introducer_owner_projection', {
     p_introducer_id: introducerId,
   });
@@ -277,7 +277,7 @@ export async function ownerProjection(introducerId: string): Promise<OwnerProjec
 /** The introducer behind a referral token from a `/r/<token>` link, if it's live. */
 export async function introducerByReferralToken(token: string): Promise<Introducer | null> {
   if (!token) return null;
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
   const { data } = await supabase
     .from('introducers')
     .select(INTRODUCER_COLUMNS)
@@ -293,7 +293,7 @@ export async function introducerByReferralToken(token: string): Promise<Introduc
  * looking — not only the ones who convert.
  */
 export async function recordClick(introducerId: string): Promise<void> {
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
   const { error } = await supabase.from('introductions').insert({
     introducer_id: introducerId,
     status: 'clicked',
@@ -317,7 +317,7 @@ export async function attachFirstTouch(params: {
   introducerId: string;
   firstTouchAt: string;
 }): Promise<void> {
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   const { data: existing } = await supabase
     .from('users')
@@ -396,7 +396,7 @@ export async function syncIntroductionForSubscription(
   if (!next) return;
 
   try {
-    const supabase = createServiceClient();
+    const supabase = createServiceClientV2();
     await supabase
       .from('introductions')
       .update({ status: next, updated_at: new Date().toISOString() })

@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { sendEmail } from '@/lib/email/resend';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    const supabase = createServiceClient();
+    const supabase = createServiceClientV2();
     const { error } = await supabase.from('advisor_enquiries').insert({
       name,
       first_name: firstName,

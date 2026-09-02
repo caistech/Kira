@@ -54,7 +54,7 @@ describe('what comes back', () => {
   async function agendaFor(rows: { item_key: string; status: string; why: string | null }[], area = 'people') {
     vi.resetModules();
     vi.doMock('@/lib/supabase/server', () => ({
-      createServiceClient: () => ({
+      createServiceClientV2: () => ({
         from: () => ({
           select: () => ({ eq: () => ({ eq: async () => ({ data: rows, error: null }) }) }),
         }),
@@ -157,7 +157,7 @@ describe('when it cannot answer', () => {
     // reason is said verbatim. Collapsing that into "there is nothing" is how a working capability
     // comes to look absent — which this product has already done once, over Gmail.
     vi.doMock('@/lib/supabase/server', () => ({
-      createServiceClient: () => ({
+      createServiceClientV2: () => ({
         from: () => ({
           select: () => ({ eq: () => ({ eq: async () => ({ data: null, error: { message: 'boom' } }) }) }),
         }),

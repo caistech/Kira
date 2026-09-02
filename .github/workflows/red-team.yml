@@ -34,7 +34,7 @@ jobs:
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       QA_REDTEAM_EMAIL: ${{ secrets.QA_REDTEAM_EMAIL }}
       QA_REDTEAM_PASSWORD: ${{ secrets.QA_REDTEAM_PASSWORD }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -72,7 +72,7 @@ jobs:
       - name: Guard — required config present
         run: |
           missing=""
-          for v in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY \
+          for v in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_SECRET_KEY \
                    QA_REDTEAM_EMAIL QA_REDTEAM_PASSWORD OPENAI_API_KEY; do
             [ -z "${!v}" ] && missing="$missing $v"
           done

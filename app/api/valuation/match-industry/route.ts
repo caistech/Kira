@@ -20,7 +20,7 @@
 
 import { NextResponse } from 'next/server';
 import { SECTOR_MULTIPLES } from '@/lib/valuation/sde-multiples';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
   const q = normalise(industry);
   if (!q || q.length < 3) return NextResponse.json({ matched: false });
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   // 1. Cache. Cheap, and it makes a wrong mapping fixable in one row rather than in a prompt.
   const { data: cached } = await supabase

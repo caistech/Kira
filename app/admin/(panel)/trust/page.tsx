@@ -29,7 +29,7 @@
 // reason). The refusal rows ARE an owner's, and an owner sees his own on his own surface — this
 // view is across all accounts, which is an operator's question, not his.
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 export const metadata = { title: 'Trust · Kira Admin' };
 export const dynamic = 'force-dynamic';
@@ -188,7 +188,7 @@ function Dots({ outcomes }: { outcomes: Result[] }) {
 }
 
 export default async function TrustPage() {
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
 
   const [{ data: resultRows }, { data: runRows }, { data: refusalRows }] = await Promise.all([
     svc

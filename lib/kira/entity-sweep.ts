@@ -15,7 +15,7 @@
 // (DATA_STANDARD R4). Nothing here throws, and the count is returned so the caller can log a partial
 // sweep rather than report a clean one.
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { mnemoForget } from '@/lib/kira/mnemo';
 
 /**
@@ -44,7 +44,7 @@ export async function forgetParkedEntityLeaks(
 ): Promise<number> {
   if (!organisationId) return 0;
   try {
-    const supabase = createServiceClient();
+    const supabase = createServiceClientV2();
     const { data } = await supabase
       .from(memoryTable)
       .select('content')

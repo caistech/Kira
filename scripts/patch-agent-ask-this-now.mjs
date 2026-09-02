@@ -77,7 +77,7 @@ const SECTION = promptsSrc
   .trim();
 if (!SECTION.includes(MARKER)) throw new Error(`the extracted text is missing its marker ${MARKER}`);
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 
 const { data: rows, error } = await supabase
   .from('kira_agents')

@@ -42,7 +42,7 @@ vi.mock('@/lib/kira/swarm', () => ({
 // Alerting and the read-model mirror are irrelevant to these rules and both reach the network.
 vi.mock('@/lib/email/unanswered-request', () => ({ sendUnansweredRequestAlert: () => undefined }));
 vi.mock('@/lib/supabase/server', () => ({
-  createServiceClient: () => ({
+  createServiceClientV2: () => ({
     from: (table: string) => {
       const chain: Record<string, unknown> = {
         upsert: async () => ({ error: null }),

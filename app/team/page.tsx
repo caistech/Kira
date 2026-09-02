@@ -1,5 +1,5 @@
 import { getCurrentOrganisationContext } from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { TeamSectionClient } from '@/components/TeamSectionClient';
 
 export const metadata = { title: 'Team · Kira' };
@@ -24,7 +24,7 @@ export default async function TeamPage() {
     );
   }
 
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
 
   const { data: memberships } = await svc
     .from('organisation_memberships')

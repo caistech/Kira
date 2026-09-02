@@ -2,7 +2,7 @@
 // Webhook handler for Setup Kira's save-framework-draft tool
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 interface SaveFrameworkDraftPayload {
   tool_name: string;
@@ -17,7 +17,7 @@ interface SaveFrameworkDraftPayload {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createServiceClient();  // ✅ Now inside the function
+  const supabase = createServiceClientV2();  // ✅ Now inside the function
 
   try {
     const payload: SaveFrameworkDraftPayload = await request.json();

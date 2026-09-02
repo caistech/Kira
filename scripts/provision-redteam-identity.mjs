@@ -45,7 +45,7 @@ const OVERRIDE_PROMPT = (() => {
   return val;
 })();
 
-const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ELEVENLABS_API_KEY } = process.env;
+const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY, ELEVENLABS_API_KEY } = process.env;
 
 // WHICH synthetic identity to provision. Defaults to the red team; `--qa-user` provisions the
 // ORDINARY tester identity instead, because that one had the same problem for the same reason:
@@ -57,7 +57,7 @@ const QA_REDTEAM_EMAIL = QA_USER_MODE ? process.env.QA_TEST_USER_EMAIL : process
 const QA_REDTEAM_PASSWORD = QA_USER_MODE ? process.env.QA_TEST_USER_PASSWORD : process.env.QA_REDTEAM_PASSWORD;
 const LABEL = QA_USER_MODE ? 'QaUser' : 'RedTeam';
 
-if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) throw new Error('Supabase env missing');
+if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SECRET_KEY) throw new Error('Supabase env missing');
 if (!ELEVENLABS_API_KEY) throw new Error('ELEVENLABS_API_KEY missing');
 if (!QA_REDTEAM_EMAIL || !QA_REDTEAM_PASSWORD) {
   throw new Error(
@@ -67,7 +67,7 @@ if (!QA_REDTEAM_EMAIL || !QA_REDTEAM_PASSWORD) {
   );
 }
 
-const db = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+const db = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 

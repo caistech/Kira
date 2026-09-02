@@ -26,7 +26,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createEmailSender, DEFAULT_FROM } from '@caistech/email-send';
 
 import { getAuthUser, resolveOrganisationForPerson } from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { renderSingleFile } from '@/lib/genome/render';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
   }
 
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
   const { data: appUser } = await svc
     .from('users')
     .select('id, first_name, email')

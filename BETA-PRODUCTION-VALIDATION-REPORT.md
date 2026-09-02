@@ -27,7 +27,7 @@ Production remains pinned to `kira-enurqnnvr` (`dpl_DrqrK4sPjiNSvzd7osD7mBFVNnFj
 | Server paths use `SUPABASE_SECRET_KEY` | Static audit of all critical-path files + factory definition (`createServiceClientV2`, lib/supabase/server.ts:19) | ✅ PASS |
 | Browser paths use `SUPABASE_PUBLISHABLE_KEY` | Static audit (`createClientV2`, lib/supabase/browser.ts:15) + live signup/sign-in via publishable key | ✅ PASS |
 | Session paths use V2 client | Static audit (`createSessionClientV2`, lib/supabase/server-session.ts:40) + live `/auth/callback` execution (307 designed redirect) | ✅ PASS |
-| No critical-path reads of legacy creds | Grep audit: `SUPABASE_SERVICE_ROLE_KEY` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` appear only in a comment (fixed), a `.example` file, and the Batch-2 legacy factories themselves | ✅ PASS |
+| No critical-path reads of legacy creds | Grep audit: `SUPABASE_SECRET_KEY` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` appear only in a comment (fixed), a `.example` file, and the Batch-2 legacy factories themselves | ✅ PASS |
 | V2 privileged ops retain RLS bypass | Live admin API calls via secret key (user list, email-confirm); live REST read of `kira_logs`; all service-role-equivalent operations succeeded | ✅ PASS |
 | Browser auth/session behaviour works | Live signup → email-confirm (admin) → password sign-in returned session; ssr cookie accepted by Preview server routes (authenticated journey ran) | ✅ PASS |
 

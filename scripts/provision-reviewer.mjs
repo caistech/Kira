@@ -30,9 +30,9 @@ import { randomBytes } from 'node:crypto';
 
 import { createClient } from '@supabase/supabase-js';
 
-const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
-if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('Need NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY');
+const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY } = process.env;
+if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SECRET_KEY) {
+  throw new Error('Need NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SECRET_KEY');
 }
 
 const arg = (name) => {
@@ -56,7 +56,7 @@ if (!email || !email.includes('@')) {
  */
 const password = arg('password') ?? `kira-${randomBytes(4).toString('hex')}-${randomBytes(3).toString('hex')}`;
 
-const supabase = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY);
 
 // email_confirm:true because mailer_autoconfirm is OFF — this is a real confirmed account, created
 // the way an admin creates one, not an account that skips confirmation at sign-in time.

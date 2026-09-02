@@ -76,7 +76,7 @@ service-role key for the migrated capabilities.
 
 **Supabase Authentication Model (API Key Model — Target Architecture):**
 As of 2026-08-25, Kira is migrating from the legacy JWT-based authentication
-(`SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) to Supabase's **API Key Model**
+(`SUPABASE_SECRET_KEY`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) to Supabase's **API Key Model**
 (`SUPABASE_SECRET_KEY` / `sb_secret_...` for service-role equivalence,
 `SUPABASE_PUBLISHABLE_KEY` / `sb_publishable_...` for anon/browser equivalence).
 Phase 0 validation (representative slice: one server route + one browser page) is complete and

@@ -5,7 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { getCurrentOrganisationContext } from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,7 +17,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
   if (!organisationContext) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const userId = organisationContext.personId;
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   // Ownership check + fetch the vendor id before we delete.
   // Knowledge is organisation-scoped; ownership is verified via organisation membership, not user_id.

@@ -5,7 +5,7 @@
 // agents (search_knowledge resolves by user, not agent).
 
 import { getCurrentOrganisationContext } from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { KiraShapeSection } from '@/components/KiraShapeSection';
 import { KnowledgeManager, type KnowledgeItem } from './KnowledgeManager';
 
@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function KnowledgePage() {
   const ctx = await getCurrentOrganisationContext();
-  const svc = createServiceClient();
+  const svc = createServiceClientV2();
 
   const { data: docs } = ctx
     ? await svc

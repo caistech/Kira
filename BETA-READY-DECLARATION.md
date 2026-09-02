@@ -31,7 +31,7 @@
 - Server paths use `SUPABASE_SECRET_KEY` (`createServiceClientV2`)
 - Browser paths use `SUPABASE_PUBLISHABLE_KEY` (`createClientV2`)
 - Session paths use `createSessionClientV2`
-- No critical-path reads of `SUPABASE_SERVICE_ROLE_KEY` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- No critical-path reads of `SUPABASE_SECRET_KEY` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
 ---
 
@@ -51,7 +51,7 @@ All other ~60 legacy consumers **unchanged and still on the legacy JWT** (Batch 
 
 | Item | Status | Runbook |
 |---|---|---|
-| Exposed legacy HS256 JWT (`SUPABASE_SERVICE_ROLE_KEY`) | Still active in Production/Preview/local | `docs/security/LEGACY_JWT_ROTATION_RUNBOOK.md` |
+| Exposed legacy HS256 JWT (`SUPABASE_SECRET_KEY`) | Still active in Production/Preview/local | `docs/security/LEGACY_JWT_ROTATION_RUNBOOK.md` |
 | ~60 Batch 2 legacy consumers | Still reading legacy JWT | Migrate after beta observation window |
 | Mixed V1/V2 architecture | In production | Temporary; rotation after Batch 2 complete |
 

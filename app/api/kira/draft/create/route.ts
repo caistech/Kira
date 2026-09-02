@@ -9,7 +9,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { getCurrentOrganisationContext } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
   const { data: draft, error } = await supabase
     .from('kira_drafts')
     .insert({

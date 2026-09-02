@@ -17,7 +17,7 @@
 // recomputed composite does not match the stored one, the model has changed under the snapshot and
 // the honest thing is to refuse rather than blend a new model's sub-scores into an old baseline.
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 import { computeValuation, MODEL_VERSION, type ValuationInputs } from './model';
 import { computeEvidencedReadiness } from './evidenced-readiness';
@@ -39,7 +39,7 @@ export interface RecomputeResult {
  * degrade to "the number did not move" rather than losing the assessment that did succeed.
  */
 export async function recomputeEvidencedReadiness(organisationId: string): Promise<RecomputeResult> {
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   const { data: valuation, error: valError } = await supabase
     .from('business_valuations')

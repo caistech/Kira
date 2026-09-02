@@ -8,7 +8,7 @@
 import { normaliseFact } from '@caistech/mnemo';
 import { isNearDuplicate } from '@/lib/genome/similar';
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { resolveOrganisationForPerson } from '@/lib/auth';
 import { mnemoAdd } from '@/lib/kira/mnemo';
 import { readTaskLedger } from '@/lib/kira/swarm/open-tasks';
@@ -83,7 +83,7 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
     return json(200, { success: false, error: 'No organisational context for user' });
   }
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   // Provenance: which conversation did he say this in.
   //
@@ -435,7 +435,7 @@ export async function handleKiraContext(req: Request): Promise<Response> {
     outstanding: ledger.spoken,
   };
 
-  const supabase = createServiceClient();
+  const supabase = createServiceClientV2();
 
   // Find the user's genuinely most-recent conversation ACROSS all their agents (a user can have more
   // than one), and take context from that conversation's agent — otherwise "newest agent" ≠ "agent
