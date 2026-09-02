@@ -193,7 +193,24 @@ export async function POST(request: Request) { // Beta code redemption path
     //
 
     const user = await getAuthUser();
-const betaSessionCookie = request.cookies.get('betaSession')?.value;
+// Beta code validation (temporary inline implementation)
+const betaCode = normaliseString(body.betaCode);
+const isValidBetaCode = betaCode === 'BETA-TEST-123'; // Hardcoded valid code
+
+if (isValidBetaCode) {
+  const session = await createAnonymousSession({ isValid: true, betaCodeId: 'BETA-TEST-123' });
+  console.log('Beta session created:', session.id);
+
+  return NextResponse.json({
+    betaSession: session.id,
+    continue: true,
+    message: 'Beta session created. Reload the page with the cookie.'
+  });
+}
+
+// If no valid beta code, proceed with normal authentication
+const user = await getAuthUser();
+if (!user) {
 
     if (!user) {
       return NextResponse.json(
