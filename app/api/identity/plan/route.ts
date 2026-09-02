@@ -712,13 +712,22 @@ export async function POST(request: Request) {
       ) {
         console.error(
           '[identity/plan][POST] organisation creation failed:',
-          createOrganisationError,
+            {
+              message: createOrganisationError?.message,
+              details: createOrganisationError?.details,
+              hint: createOrganisationError?.hint,
+              code: createOrganisationError?.code,
+            },
         );
 
         return NextResponse.json(
           {
             error: 'Unable to create organisation',
             code: 'ORGANISATION_CREATE_FAILED',
+            detail:
+              process.env.NODE_ENV === 'development'
+                ? createOrganisationError?.message
+                : undefined,
           },
           { status: 500 },
         );
