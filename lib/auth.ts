@@ -11,7 +11,7 @@
 
 import 'server-only';
 import { createSessionClient } from '@/lib/supabase/server-session';
-import { createServiceClientV2 } from '@/lib/supabase/server';
+import { createSessionClientV2 } from '@/lib/supabase/server-session';
 
 export function adminEmails(): string[] {
   return (process.env.ADMIN_EMAILS || '')
@@ -25,14 +25,22 @@ export function isAdminEmail(email?: string | null): boolean {
   return adminEmails().includes(email.toLowerCase());
 }
 
-/** The authenticated Supabase auth.users identity for this request, or null. */
 export async function getAuthUser() {
-  const supabase = await createSessionClient();
+  const supabase = await createSessionClientV2();
+
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser();
+
+  if (error) {
+    console.error('[auth] getAuthUser failed:', error.message);
+    return null;
+  }
+
   return user;
 }
+
 
 /**
  * @deprecated Use getCurrentOrganisationContext() or getCurrentOrganisationId() instead.
