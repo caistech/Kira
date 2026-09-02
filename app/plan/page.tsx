@@ -563,8 +563,12 @@ async function saveIdentity() {
      * the canonical organisation context, retain that organisation ID
      * for subsequent checkout.
      */
-    if (result?.organisationId) {
-      setOrganisationId(result.organisationId);
+
+    const canonicalOrganisationId =
+      result?.identity?.organisationId;
+
+    if (canonicalOrganisationId) {
+      setOrganisationId(canonicalOrganisationId);
     }
 
     return result;

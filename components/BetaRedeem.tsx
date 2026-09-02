@@ -126,11 +126,26 @@ export function BetaRedeem({
         return;
       }
 
+
       const supabase = createClient();
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email: data.email, password });
+
+      const { data: sessionData, error: signInError } =
+        await supabase.auth.signInWithPassword({
+          email: data.email,
+          password,
+        });
+
       if (signInError) throw signInError;
 
+      if (!sessionData.session) {
+        throw new Error(
+          'Your account was created, but we could not establish your login session.',
+        );
+      }
+
       setStage('done');
+
+
       // ⚠️ /dashboard, NOT /start. This used to send him into the brief directly, on the reasoning
       // that the dashboard had no Kira behind it yet — which was true, and the wrong fix. The
       // operator walked it and landed on a page he had not asked for, in a different palette, and

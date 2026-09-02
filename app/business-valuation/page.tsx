@@ -431,7 +431,7 @@ export default function BusinessValuationPage() {
       <style>{`
         /* SELF-HOSTED FONTS, PAGE-SCOPED TYPOGRAPHY — K5/P3.
            An @import of a Google Fonts stylesheet stood here: a render-blocking third-
-           party stylesheet inside a BODY <style>, invisible to the preload scanner, on five pages —
+           party stylesheet inside a BODY style, invisible to the preload scanner, on five pages —
            and on the pages a tester called slow. next/font (app/layout.tsx) self-hosts the two
            faces and exposes them as variables, so the external request is gone entirely.
            ⚠️ These two rules stay HERE rather than moving to globals.css. Tailwind maps

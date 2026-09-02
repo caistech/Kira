@@ -30,6 +30,7 @@ export function createServiceClientV2() {
 }
 
 // Types for our database
+
 export interface User {
   id: string;
   email: string;
@@ -42,7 +43,7 @@ export interface User {
 
 export interface KiraAgent {
   id: string;
-  user_id: string;
+  organisation_id: string;
   agent_name: string;
   journey_type: 'personal' | 'business';
   elevenlabs_agent_id: string;
@@ -56,7 +57,8 @@ export interface KiraAgent {
 
 export interface Conversation {
   id: string;
-  user_id: string;
+  organisation_id: string;
+  user_id: string | null;
   kira_agent_id: string;
   elevenlabs_conversation_id: string | null;
   title: string | null;
@@ -71,9 +73,17 @@ export interface Conversation {
 
 export interface KiraMemory {
   id: string;
-  user_id: string;
-  kira_agent_id: string;
-  memory_type: 'preference' | 'context' | 'goal' | 'decision' | 'followup' | 'correction' | 'insight';
+  organisation_id: string;
+  user_id: string | null;
+  kira_agent_id: string | null;
+  memory_type:
+    | 'preference'
+    | 'context'
+    | 'goal'
+    | 'decision'
+    | 'followup'
+    | 'correction'
+    | 'insight';
   content: string;
   source_conversation_id: string | null;
   importance: number;
