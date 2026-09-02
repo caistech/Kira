@@ -1,4 +1,4 @@
-```tsx
+
 'use client';
 
 // @public-route
@@ -1739,4 +1739,3 @@ function PageStyles() {
     `}</style>
   );
 }
-```

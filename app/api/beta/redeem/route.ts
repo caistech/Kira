@@ -1,4 +1,3 @@
-```ts
 // app/api/beta/redeem/route.ts
 //
 // BETA REDEMPTION
@@ -725,4 +724,3 @@ export async function POST(request: NextRequest) {
     organisationId: canonicalOrganisationId,
   });
 }
-```
