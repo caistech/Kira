@@ -4,39 +4,26 @@
 
 // app/plan/page.tsx
 //
-// /plan is the universal organisational identity + initial ownership-claim boundary.
+// /plan is the universal organisational identity + initial ownership boundary.
 //
-// Every acquisition path converges here:
-//   - organic signup
-//   - direct invitation
-//   - system invitation
-//   - distributor / consultant invitation
-//   - beta
-//   - paid
+// Canonical rule:
 //
-// The person's provenance tells us HOW they arrived.
-// It does NOT establish ownership.
+//   Authenticated Person
+//          ↓
+//      Organisation
+//          ↓
+//      Membership
+//          ↓
+//   optional ownership
 //
-// This page therefore establishes, before beta redemption or paid checkout:
-//   1. Person identity: first name + last name
-//   2. Organisation identity: organisation_id
-//   3. Initial ownership declaration, when explicitly checked
+// The browser never invents organisation identity.
+// The browser may submit an existing organisationId, but the API must prove
+// that the authenticated Person already belongs to that Organisation.
 //
-// An explicit "I am the Owner of this Business" declaration creates the initial
-// SELF_DECLARED ownership claim.
+// If organisationId is absent, the API establishes a new Organisation from the
+// explicit organisation name.
 //
-// The page deliberately does not infer ownership from:
-//   - invitation provenance
-//   - beta code
-//   - email address
-//   - being the first person in the system
-//   - user_id
-//   - subscription
-//   - consultant/distributor relationship
-//
-// Organisation remains the enduring canonical subject.
-//
-// Pricing and valuation remain downstream of this identity boundary.
+// Valuation, pricing, billing, Beta and Stripe remain downstream concerns.
 
 import React, { useEffect, useMemo, useState } from 'react';
 import {
@@ -49,11 +36,11 @@ import {
   Clock,
   HeartHandshake,
   Sparkles,
-  Check,
   Loader2,
   Building2,
   UserRound,
   CircleAlert,
+  Check,
 } from 'lucide-react';
 
 import { WHO_CAN_SEE_IT } from '@/lib/privacy';
@@ -86,44 +73,55 @@ import {
   type ValuationPayload,
 } from '@/lib/valuation/share';
 
-type IdentityState = {
-  firstName: string;
-  lastName: string;
-  organisationId: string;
-  organisationName: string;
-  isOwner: boolean;
-};
-
 type IdentityResponse = {
   ok?: boolean;
   signedIn?: boolean;
+
   firstName?: string | null;
   lastName?: string | null;
+
   organisationId?: string | null;
   organisationName?: string | null;
+
   isOwner?: boolean;
+
   personId?: string | null;
   membershipId?: string | null;
   role?: string | null;
 };
 
+type IdentitySaveResponse = {
+  ok?: boolean;
+
+  identity?: {
+    organisationId?: string | null;
+    organisationName?: string | null;
+    personId?: string | null;
+    membershipId?: string | null;
+    role?: string | null;
+  };
+
+  firstName?: string | null;
+  lastName?: string | null;
+
+  isOwner?: boolean;
+
+  betaCode?: string;
+};
+
 export default function PlanPage() {
-  /*
-   * ---------------------------------------------------------------------------
-   * VALUATION
-   * ---------------------------------------------------------------------------
-   */
+  // ---------------------------------------------------------------------------
+  // VALUATION
+  // ---------------------------------------------------------------------------
 
   const [payload, setPayload] =
     useState<ValuationPayload | null>(null);
 
   const [ready, setReady] = useState(false);
 
-  /*
-   * ---------------------------------------------------------------------------
-   * SESSION / IDENTITY
-   * ---------------------------------------------------------------------------
-   */
+  // ---------------------------------------------------------------------------
+  // IDENTITY
+  // ---------------------------------------------------------------------------
 
   const [signedIn, setSignedIn] = useState(false);
 
@@ -140,14 +138,15 @@ export default function PlanPage() {
   const [lastName, setLastName] = useState('');
 
   /*
-   * organisationId is NEVER invented here.
+   * IMPORTANT:
    *
-   * It may be supplied by the canonical identity endpoint when the person is
-   * already associated with an Organisation.
+   * Empty organisationId means:
    *
-   * For a new person, the identity endpoint is responsible for resolving or
-   * creating the Organisation from the explicit Organisation information
-   * supplied by the person.
+   *   "This Person has not yet established an Organisation."
+   *
+   * It does NOT mean invalid identity.
+   *
+   * The POST route will create the Organisation when the name is supplied.
    */
 
   const [organisationId, setOrganisationId] =
@@ -157,49 +156,27 @@ export default function PlanPage() {
     useState('');
 
   /*
-   * Ownership is an explicit declaration.
+   * Explicit ownership declaration.
    *
-   * It is NOT inferred from:
-   *   - first arrival
-   *   - beta invitation
-   *   - distributor invitation
-   *   - consultant invitation
-   *   - email address
-   *   - being the only member
+   * Never inferred from:
+   * - beta
+   * - invitation
+   * - email
+   * - first arrival
+   * - membership alone
    */
 
-  const [isOwner, setIsOwner] = useState(false);
-
-  /*
-   * Existing membership/ownership state.
-   *
-   * This allows an already-established owner to see the page without being
-   * treated as though they need to make a second ownership declaration.
-   */
+  const [isOwner, setIsOwner] =
+    useState(false);
 
   const [
     ownershipAlreadyEstablished,
     setOwnershipAlreadyEstablished,
   ] = useState(false);
 
-  /*
-   * This is deliberately separate from the raw identity fields.
-   *
-   * Once the canonical identity has actually been persisted successfully,
-   * this becomes the gate that reveals the commercial access choices.
-   *
-   * We do NOT reveal beta or paid access merely because the form appears
-   * complete in the browser.
-   */
-
-  const [identityConfirmed, setIdentityConfirmed] =
-    useState(false);
-
-  /*
-   * ---------------------------------------------------------------------------
-   * BILLING
-   * ---------------------------------------------------------------------------
-   */
+  // ---------------------------------------------------------------------------
+  // BILLING
+  // ---------------------------------------------------------------------------
 
   const [billingLive, setBillingLive] =
     useState(false);
@@ -219,7 +196,9 @@ export default function PlanPage() {
         }
       })
       .catch(() => {
-        // Safe default: billing remains non-live.
+        if (!cancelled) {
+          setBillingLive(false);
+        }
       });
 
     return () => {
@@ -227,25 +206,9 @@ export default function PlanPage() {
     };
   }, []);
 
-  /*
-   * ---------------------------------------------------------------------------
-   * BETA
-   * ---------------------------------------------------------------------------
-   *
-   * Beta provenance survives the valuation round trip in sessionStorage.
-   *
-   * The existence of a beta code says:
-   *
-   *   "this person was invited to the beta"
-   *
-   * It does NOT say:
-   *
-   *   "this person owns the organisation"
-   *
-   * Ownership is established independently through the explicit checkbox.
-   */
-
-  const BETA_CODE_KEY = BETA_CODE_STORAGE_KEY;
+  // ---------------------------------------------------------------------------
+  // BETA
+  // ---------------------------------------------------------------------------
 
   const [betaCode, setBetaCode] =
     useState<string | null>(null);
@@ -255,17 +218,16 @@ export default function PlanPage() {
 
   useEffect(() => {
     const fromUrl =
-      new URLSearchParams(window.location.search).get(
-        'code',
-      );
+      new URLSearchParams(window.location.search)
+        .get('code');
 
     if (fromUrl) {
       setBetaCode(fromUrl);
-      setBetaOpen(false);
+      setBetaOpen(true);
 
       try {
         window.sessionStorage.setItem(
-          BETA_CODE_KEY,
+          BETA_CODE_STORAGE_KEY,
           fromUrl,
         );
       } catch {
@@ -276,31 +238,26 @@ export default function PlanPage() {
     }
 
     try {
-      const kept =
-        window.sessionStorage.getItem(BETA_CODE_KEY);
+      const stored =
+        window.sessionStorage.getItem(
+          BETA_CODE_STORAGE_KEY,
+        );
 
-      if (kept) {
-        setBetaCode(kept);
+      if (stored) {
+        setBetaCode(stored);
+        setBetaOpen(true);
       }
     } catch {
-      // Nothing to restore.
+      // Best effort only.
     }
   }, []);
 
-  /*
-   * ---------------------------------------------------------------------------
-   * TERMS
-   * ---------------------------------------------------------------------------
-   */
+  // ---------------------------------------------------------------------------
+  // TERMS / CHECKOUT
+  // ---------------------------------------------------------------------------
 
   const [termsAccepted, setTermsAccepted] =
     useState(false);
-
-  /*
-   * ---------------------------------------------------------------------------
-   * CHECKOUT / GENERAL UI
-   * ---------------------------------------------------------------------------
-   */
 
   const [loading, setLoading] =
     useState(false);
@@ -311,24 +268,16 @@ export default function PlanPage() {
   const [error, setError] =
     useState<string | null>(null);
 
-  /*
-   * ---------------------------------------------------------------------------
-   * VALUATION LOAD
-   * ---------------------------------------------------------------------------
-   *
-   * Account valuation is authoritative where available.
-   * Device valuation is fallback only.
-   *
-   * account → device → nothing
-   */
+  // ---------------------------------------------------------------------------
+  // VALUATION LOAD
+  // ---------------------------------------------------------------------------
 
   useEffect(() => {
     const stored = readStoredValuation();
 
     const legacy = decodeValuationParam(
-      new URLSearchParams(window.location.search).get(
-        'v',
-      ),
+      new URLSearchParams(window.location.search)
+        .get('v'),
     );
 
     if (legacy) {
@@ -371,11 +320,7 @@ export default function PlanPage() {
       })
       .catch(() => {
         if (!cancelled) {
-          setPayload(
-            stored ??
-              null,
-          );
-
+          setPayload(stored ?? null);
           setReady(true);
         }
       });
@@ -385,102 +330,71 @@ export default function PlanPage() {
     };
   }, []);
 
-  /*
-   * ---------------------------------------------------------------------------
-   * CANONICAL IDENTITY LOAD
-   * ---------------------------------------------------------------------------
-   *
-   * This endpoint is intentionally separate from valuation.
-   *
-   * Valuation answers:
-   *   "What is the person's value-gap calculation?"
-   *
-   * Identity answers:
-   *   "Who is this Person and which Organisation are they acting for?"
-   */
+  // ---------------------------------------------------------------------------
+  // CANONICAL IDENTITY LOAD
+  // ---------------------------------------------------------------------------
 
   useEffect(() => {
     let cancelled = false;
 
     setIdentityLoading(true);
 
-    fetch('/api/identity/plan')
-      .then((response) =>
-        response.ok
-          ? response.json()
-          : null,
-      )
-      .then(
-        (
-          body: IdentityResponse | null,
-        ) => {
-          if (cancelled) return;
+    fetch('/api/identity/plan', {
+      method: 'GET',
+      credentials: 'include',
+      cache: 'no-store',
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          return null;
+        }
 
-          if (body) {
-            setSignedIn(
-              Boolean(body.signedIn),
-            );
+        return (await response.json()) as IdentityResponse;
+      })
+      .then((body) => {
+        if (cancelled || !body) {
+          return;
+        }
 
-            setFirstName(
-              body.firstName ?? '',
-            );
+        setSignedIn(
+          Boolean(body.signedIn),
+        );
 
-            setLastName(
-              body.lastName ?? '',
-            );
+        setFirstName(
+          body.firstName ?? '',
+        );
 
-            setOrganisationId(
-              body.organisationId ?? '',
-            );
+        setLastName(
+          body.lastName ?? '',
+        );
 
-            setOrganisationName(
-              body.organisationName ?? '',
-            );
+        setOrganisationId(
+          body.organisationId ?? '',
+        );
 
-            const established =
-              body.isOwner === true;
+        setOrganisationName(
+          body.organisationName ?? '',
+        );
 
-            setOwnershipAlreadyEstablished(
-              established,
-            );
+        const established =
+          body.isOwner === true;
 
-            if (established) {
-              setIsOwner(true);
-            }
+        setOwnershipAlreadyEstablished(
+          established,
+        );
 
-            /*
-             * Important:
-             *
-             * An existing canonical identity is already persisted.
-             * Therefore an already-established identity may pass directly
-             * through the gate.
-             *
-             * If the person has an existing organisation/person identity but
-             * no ownership relationship, they still need the explicit owner
-             * declaration before access is revealed.
-             */
-
-            const hasExistingIdentity =
-              Boolean(
-                body.firstName &&
-                  body.lastName &&
-                  body.organisationId &&
-                  body.organisationName &&
-                  established,
-              );
-
-            if (hasExistingIdentity) {
-              setIdentityConfirmed(true);
-            }
-          }
-        },
-      )
+        if (established) {
+          setIsOwner(true);
+        }
+      })
       .catch(() => {
         /*
-         * Anonymous visitors are expected to arrive here.
+         * GET is intentionally tolerant.
          *
-         * Failure to resolve an existing identity is NOT permission to invent
-         * an organisation or ownership relationship.
+         * Anonymous/public visitors can reach /plan.
+         *
+         * POST will explicitly report NO_AUTHENTICATED_USER if an unauthenticated
+         * browser attempts to establish identity.
          */
       })
       .finally(() => {
@@ -494,14 +408,14 @@ export default function PlanPage() {
     };
   }, []);
 
-  /*
-   * ---------------------------------------------------------------------------
-   * VALUATION MODEL
-   * ---------------------------------------------------------------------------
-   */
+  // ---------------------------------------------------------------------------
+  // VALUATION MODEL
+  // ---------------------------------------------------------------------------
 
   const model = useMemo(() => {
-    if (!payload) return null;
+    if (!payload) {
+      return null;
+    }
 
     const result = computeValuation(
       payload.inputs,
@@ -540,11 +454,9 @@ export default function PlanPage() {
   const copy =
     billingCopy(billingLive);
 
-  /*
-   * ---------------------------------------------------------------------------
-   * IDENTITY VALIDATION
-   * ---------------------------------------------------------------------------
-   */
+  // ---------------------------------------------------------------------------
+  // IDENTITY VALIDATION
+  // ---------------------------------------------------------------------------
 
   const normalisedFirstName =
     firstName.trim();
@@ -559,14 +471,21 @@ export default function PlanPage() {
     normalisedFirstName.length > 0 &&
     normalisedLastName.length > 0;
 
-  const hasOrganisation =
-    organisationId.trim().length > 0 &&
-    normalisedOrganisationName.length > 0;
-
   /*
-   * Ownership must either already exist canonically or be explicitly declared
-   * by the person.
+   * Organisation identity is complete when:
+   *
+   *   existing canonical organisation ID exists
+   *
+   * OR
+   *
+   *   new organisation has an explicit name.
+   *
+   * We deliberately do NOT require organisationId for a new Organisation.
    */
+
+  const hasOrganisation =
+    organisationId.trim().length > 0 ||
+    normalisedOrganisationName.length > 0;
 
   const ownershipBoundaryComplete =
     ownershipAlreadyEstablished ||
@@ -577,87 +496,78 @@ export default function PlanPage() {
     hasOrganisation &&
     ownershipBoundaryComplete;
 
-  /*
-   * ---------------------------------------------------------------------------
-   * SAVE CANONICAL IDENTITY
-   * ---------------------------------------------------------------------------
-   *
-   * The frontend supplies identity facts and the user's explicit ownership
-   * declaration.
-   *
-   * The backend is authoritative for:
-   *
-   *   Person
-   *   Organisation
-   *   Organisation Membership
-   *   Ownership Period
-   *
-   * The frontend never manufactures UUIDs and never interprets user_id as
-   * organisation_id.
-   */
+  // ---------------------------------------------------------------------------
+  // SAVE CANONICAL IDENTITY
+  // ---------------------------------------------------------------------------
 
-  async function saveIdentity() {
+  async function saveIdentity(): Promise<IdentitySaveResponse> {
     setIdentitySaving(true);
-    setError(null);
     setIdentityError(null);
+    setError(null);
 
     try {
-      const currentFirstName =
-        firstName.trim();
-
-      const currentLastName =
-        lastName.trim();
-
-      const currentOrganisationName =
-        organisationName.trim();
-
-      if (!currentFirstName) {
+      if (!normalisedFirstName) {
         throw new Error(
           'Please enter your first name.',
         );
       }
 
-      if (!currentLastName) {
+      if (!normalisedLastName) {
         throw new Error(
           'Please enter your last name.',
         );
       }
 
-      if (!currentOrganisationName) {
+      if (!normalisedOrganisationName) {
         throw new Error(
-          'Please enter your organisation name.',
+          'Please enter your business name.',
+        );
+      }
+
+      if (!isOwner && !ownershipAlreadyEstablished) {
+        throw new Error(
+          'Please confirm your relationship to the business.',
         );
       }
 
       /*
-       * The Plan route is the universal identity / initial ownership boundary.
+       * The browser submits facts/assertions.
        *
-       * organisationId is deliberately passed explicitly to the identity API.
-       * The API is responsible for resolving/validating the canonical
-       * organisation context.
+       * The API determines the canonical Organisation.
        *
-       * We never derive organisation identity from auth user_id.
+       * In particular:
+       *
+       *   organisationId === ''
+       *
+       * is a valid request for creating a new Organisation.
        */
 
       const response = await fetch(
         '/api/identity/plan',
         {
           method: 'POST',
+          credentials: 'include',
+          cache: 'no-store',
           headers: {
             'Content-Type':
               'application/json',
           },
           body: JSON.stringify({
             firstName:
-              currentFirstName,
+              normalisedFirstName,
+
             lastName:
-              currentLastName,
+              normalisedLastName,
+
             organisationId:
               organisationId.trim() ||
-              null,
+              undefined,
+
             organisationName:
-              currentOrganisationName,
+              normalisedOrganisationName,
+
             isOwner,
+
             betaCode:
               betaCode ||
               undefined,
@@ -666,69 +576,88 @@ export default function PlanPage() {
       );
 
       const result =
-        await response
-          .json()
-          .catch(() => null);
+        (await response.json().catch(
+          () => null,
+        )) as
+          | IdentitySaveResponse
+          | {
+              error?: string;
+              message?: string;
+              code?: string;
+            }
+          | null;
 
       if (!response.ok) {
+        const message =
+          result &&
+          'error' in result
+            ? result.error
+            : null;
+
+        /*
+         * Give the authentication failure a useful UI message.
+         *
+         * This is the expected result if someone reaches /plan without an
+         * authenticated Supabase session.
+         */
+        if (
+          response.status === 401
+        ) {
+          throw new Error(
+            'Your session has expired. Please sign in and return here to continue.',
+          );
+        }
+
         throw new Error(
-          result?.error ||
-            result?.message ||
+          message ||
+            (
+              result &&
+              'message' in result
+                ? result.message
+                : null
+            ) ||
             'Unable to save your identity. Please try again.',
         );
       }
 
-      /*
-       * The API response is authoritative.
-       *
-       * Retain the canonical Organisation ID returned by the backend.
-       */
+      if (
+        !result ||
+        !('identity' in result) ||
+        !result.identity
+      ) {
+        throw new Error(
+          'Identity was saved but no canonical organisation was returned.',
+        );
+      }
 
       const canonicalOrganisationId =
-        result?.identity
-          ?.organisationId;
+        result.identity.organisationId;
 
-      const canonicalOrganisationName =
-        result?.identity
-          ?.organisationName;
-
-      if (canonicalOrganisationId) {
-        setOrganisationId(
-          canonicalOrganisationId,
-        );
-      }
-
-      if (
-        canonicalOrganisationName
-      ) {
-        setOrganisationName(
-          canonicalOrganisationName,
+      if (!canonicalOrganisationId) {
+        throw new Error(
+          'Identity was saved but no canonical organisation was returned.',
         );
       }
 
       /*
-       * The identity gate only opens after the canonical endpoint has
-       * successfully accepted the identity boundary.
-       */
-
-      setIdentityConfirmed(true);
-
-      /*
-       * The commercial decision is now the next logical step.
+       * Server response is authoritative.
        *
-       * Scroll it into view so the user does not have to hunt for it.
+       * Do not manufacture or derive the Organisation ID locally.
        */
 
-      window.setTimeout(() => {
-        document
-          .getElementById(
-            'access-choice',
-          )
-          ?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start',
-          });
-      }, 50);
+      setOrganisationId(
+        canonicalOrganisationId,
+      );
+
+      setOrganisationName(
+        result.identity
+          .organisationName ??
+          normalisedOrganisationName,
+      );
+
+      setSignedIn(true);
+
+      setIdentityError(null);
 
       return result;
     } catch (err) {
@@ -746,64 +675,78 @@ export default function PlanPage() {
     }
   }
 
-  /*
-   * ---------------------------------------------------------------------------
-   * START STRIPE CHECKOUT
-   * ---------------------------------------------------------------------------
-   */
+  // ---------------------------------------------------------------------------
+  // START CHECKOUT
+  // ---------------------------------------------------------------------------
 
   async function startCheckout() {
+    if (!identityBoundaryComplete) {
+      document
+        .getElementById(
+          'organisation',
+        )
+        ?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
       /*
-       * Identity must be persisted before checkout.
+       * Identity is always persisted immediately before checkout.
        *
-       * This ensures the checkout flow is attached to the canonical
-       * Organisation rather than implicitly to auth user identity.
+       * This guarantees that the commercial flow has a canonical Organisation
+       * before it leaves this page.
        */
 
       const identity =
         await saveIdentity();
 
       const canonicalOrganisationId =
-        identity?.identity
+        identity.identity
           ?.organisationId ||
-        identity?.organisationId ||
         organisationId.trim();
 
       if (!canonicalOrganisationId) {
         throw new Error(
-          'No organisation context is available for checkout.',
+          'No canonical organisation context is available for checkout.',
         );
       }
 
-      const response =
-        await fetch(
-          '/api/checkout',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type':
-                'application/json',
-            },
-            body: JSON.stringify({
-              inputs:
-                payload!.inputs,
-              currency:
-                payload?.currency,
-              firstName:
-                normalisedFirstName,
-              termsAccepted,
-            }),
+      const response = await fetch(
+        '/api/checkout',
+        {
+          method: 'POST',
+          credentials: 'include',
+          cache: 'no-store',
+          headers: {
+            'Content-Type':
+              'application/json',
           },
-        );
+          body: JSON.stringify({
+            inputs:
+              payload!.inputs,
+
+            currency:
+              payload?.currency,
+
+            firstName:
+              normalisedFirstName,
+
+            termsAccepted,
+          }),
+        },
+      );
 
       const result =
-        await response
-          .json()
-          .catch(() => null);
+        await response.json().catch(
+          () => null,
+        );
 
       if (!response.ok) {
         throw new Error(
@@ -833,11 +776,9 @@ export default function PlanPage() {
     }
   }
 
-  /*
-   * ---------------------------------------------------------------------------
-   * FIRST PAINT
-   * ---------------------------------------------------------------------------
-   */
+  // ---------------------------------------------------------------------------
+  // FIRST PAINT
+  // ---------------------------------------------------------------------------
 
   if (!ready) {
     return (
@@ -856,58 +797,27 @@ export default function PlanPage() {
         </header>
 
         <main className="max-w-2xl mx-auto px-5 py-24 text-center">
+          <div className="grad-genome w-14 h-14 rounded-2xl flex items-center justify-center text-white mx-auto mb-6">
+            <Brain className="h-7 w-7" />
+          </div>
+
           <h1 className="font-display text-3xl font-bold text-stone-800 mb-4">
-            Set free what&apos;s locked in your head
+            Set free what&apos;s in your head.
           </h1>
 
-          <p className="font-body text-lg text-stone-600 leading-relaxed">
-            Kira is the part-time general manager you
-            could never justify hiring. You talk, a few
-            minutes at a time; she listens, works out what
-            you need, and quietly builds the systems that
-            make your business worth more.
+          <p className="text-stone-600">
+            Loading your plan…
           </p>
-
-          <div className="mt-8 rounded-2xl border border-amber-200 bg-white/70 px-5 py-5 text-left">
-            <p className="font-body text-stone-700 leading-relaxed">
-              <strong className="font-semibold text-stone-900">
-                From{' '}
-                {formatPrice(
-                  PRICE_TIERS[0].monthly,
-                  DEFAULT_CURRENCY,
-                )}{' '}
-                a month
-              </strong>
-              , priced on the size of your business.
-              You are billed{' '}
-              <strong className="font-semibold text-stone-900">
-                after each month has finished
-              </strong>
-              , never in advance — cancel before then
-              and that month is on us. After{' '}
-              {FULL_RATE_PERIOD_CAP} months you move to a
-              third of the rate whether or not the work is
-              done.
-            </p>
-
-            <p className="mt-3 text-sm text-stone-500">
-              Your own figure is taken from your account —
-              or from this device if you have not signed
-              in — and appears in a moment.
-            </p>
-          </div>
         </main>
       </div>
     );
   }
 
-  /*
-   * ---------------------------------------------------------------------------
-   * NO VALUATION
-   * ---------------------------------------------------------------------------
-   */
+  // ---------------------------------------------------------------------------
+  // NO VALUATION
+  // ---------------------------------------------------------------------------
 
-  if (ready && !model) {
+  if (!model) {
     return (
       <div className="min-h-screen bg-amber-50 text-stone-800 font-body">
         <PageStyles />
@@ -947,8 +857,8 @@ export default function PlanPage() {
                   {betaCode}
                 </span>{' '}
                 for this visit. First, we need a few
-                minutes on your business numbers so Kira can
-                build everything around them.
+                minutes on your business numbers so Kira
+                can build everything around them.
               </p>
             </div>
           )}
@@ -981,18 +891,17 @@ export default function PlanPage() {
     );
   }
 
-  /*
-   * ---------------------------------------------------------------------------
-   * MAIN PAGE
-   * ---------------------------------------------------------------------------
-   */
+  // ---------------------------------------------------------------------------
+  // MAIN PAGE
+  // ---------------------------------------------------------------------------
 
   const figures = displayedFigures(
     {
       worthToday:
-        model!.result.today,
+        model.result.today,
+
       worthPotential:
-        model!.result.potential,
+        model.result.potential,
     },
     currency,
   );
@@ -1020,6 +929,7 @@ export default function PlanPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-5">
+
         {/* ------------------------------------------------------------------ */}
         {/* HERO                                                               */}
         {/* ------------------------------------------------------------------ */}
@@ -1036,25 +946,46 @@ export default function PlanPage() {
               {figures.gapText}
             </span>{' '}
             locked in your head.
-            <br className="hidden sm:block" /> Kira helps
-            you set it free.
           </h1>
 
-          <p className="font-body text-lg text-stone-600 max-w-2xl mx-auto mt-5 leading-relaxed">
-            You don&apos;t do it with spreadsheets and
-            consultants. You do it by{' '}
-            <span className="font-semibold text-stone-800">
-              talking to Kira
-            </span>{' '}
-            — a few minutes at a time, over the next 4
-            weeks and beyond. She listens, works out what
-            you need, and quietly builds the systems that
-            make your business worth more.
+          <p className="text-stone-600 max-w-2xl mx-auto mt-6 text-base sm:text-lg leading-relaxed">
+            Kira turns the knowledge that currently lives
+            in your head into the systems, processes and
+            operating knowledge your business can rely on.
           </p>
+
+          <div className="grid sm:grid-cols-3 gap-4 max-w-3xl mx-auto mt-10">
+            <div className="bg-white/80 rounded-2xl p-5 border border-amber-100">
+              <p className="text-xs font-bold text-stone-400 uppercase tracking-wide">
+                Worth today
+              </p>
+              <p className="font-display text-2xl font-bold mt-1">
+                {figures.worthTodayText}
+              </p>
+            </div>
+
+            <div className="bg-white/80 rounded-2xl p-5 border border-amber-100">
+              <p className="text-xs font-bold text-stone-400 uppercase tracking-wide">
+                Potential
+              </p>
+              <p className="font-display text-2xl font-bold mt-1">
+                {figures.worthPotentialText}
+              </p>
+            </div>
+
+            <div className="bg-white/80 rounded-2xl p-5 border border-amber-100">
+              <p className="text-xs font-bold text-stone-400 uppercase tracking-wide">
+                Value gap
+              </p>
+              <p className="font-display text-2xl font-bold mt-1 text-violet-600">
+                {figures.gapText}
+              </p>
+            </div>
+          </div>
         </section>
 
         {/* ------------------------------------------------------------------ */}
-        {/* ORGANISATIONAL IDENTITY BOUNDARY                                   */}
+        {/* IDENTITY                                                           */}
         {/* ------------------------------------------------------------------ */}
 
         <section
@@ -1062,33 +993,41 @@ export default function PlanPage() {
           className="py-16"
         >
           <div className="max-w-2xl mx-auto">
-            <div className="text-center mb-10">
-              <div className="inline-flex items-center gap-2 text-violet-600 text-sm font-semibold mb-3">
-                <Building2 className="h-4 w-4" />
-                First, tell Kira who this is for
+
+            <div className="text-center mb-8">
+              <div className="grad-genome w-12 h-12 rounded-2xl flex items-center justify-center text-white mx-auto mb-4">
+                <Building2 className="h-6 w-6" />
               </div>
 
               <h2 className="font-display text-2xl sm:text-3xl font-bold">
-                Let&apos;s put your business on the map.
+                First, let&apos;s put Kira in the right business.
               </h2>
 
               <p className="text-stone-600 mt-3 leading-relaxed">
-                Kira builds a lasting organisational memory,
-                so she needs to know the person she is
-                speaking with and the Organisation that
-                memory belongs to.
+                Kira belongs to the Organisation she serves.
+                Your name identifies you as a Person; it does
+                not become the identity of the business.
               </p>
             </div>
 
-            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-amber-100 shadow-sm">
-              <div className="grid sm:grid-cols-2 gap-5">
-                <label className="block">
-                  <span className="block text-sm font-semibold text-stone-700 mb-2">
-                    First name
-                  </span>
+            <div className="bg-white rounded-3xl border border-amber-100 shadow-sm p-6 sm:p-8 space-y-6">
 
-                  <div className="relative">
-                    <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
+              {/* PERSON */}
+
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <UserRound className="h-5 w-5 text-violet-500" />
+
+                  <h3 className="font-display font-bold">
+                    Your name
+                  </h3>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <label className="block">
+                    <span className="block text-sm font-semibold text-stone-700 mb-1.5">
+                      First name
+                    </span>
 
                     <input
                       value={firstName}
@@ -1098,171 +1037,151 @@ export default function PlanPage() {
                         )
                       }
                       autoComplete="given-name"
-                      placeholder="First name"
-                      className="w-full rounded-xl border border-stone-300 bg-white pl-11 pr-4 py-3.5 text-stone-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                      className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3.5 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
                     />
-                  </div>
-                </label>
+                  </label>
 
-                <label className="block">
-                  <span className="block text-sm font-semibold text-stone-700 mb-2">
-                    Last name
-                  </span>
+                  <label className="block">
+                    <span className="block text-sm font-semibold text-stone-700 mb-1.5">
+                      Last name
+                    </span>
 
-                  <input
-                    value={lastName}
-                    onChange={(event) =>
-                      setLastName(
-                        event.target.value,
-                      )
-                    }
-                    autoComplete="family-name"
-                    placeholder="Last name"
-                    className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3.5 text-stone-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
-                  />
-                </label>
+                    <input
+                      value={lastName}
+                      onChange={(event) =>
+                        setLastName(
+                          event.target.value,
+                        )
+                      }
+                      autoComplete="family-name"
+                      className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3.5 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                    />
+                  </label>
+                </div>
               </div>
 
-              <label className="block mt-5">
-                <span className="block text-sm font-semibold text-stone-700 mb-2">
-                  Business / Organisation
-                </span>
+              {/* ORGANISATION */}
 
-                <div className="relative">
-                  <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Building2 className="h-5 w-5 text-pink-500" />
+
+                  <h3 className="font-display font-bold">
+                    Your business
+                  </h3>
+                </div>
+
+                <label className="block">
+                  <span className="block text-sm font-semibold text-stone-700 mb-1.5">
+                    Business name
+                  </span>
 
                   <input
                     value={organisationName}
-                    onChange={(event) => {
+                    onChange={(event) =>
                       setOrganisationName(
                         event.target.value,
-                      );
-
-                      /*
-                       * If the person changes the organisation name after an
-                       * existing canonical ID was resolved, the old ID must
-                       * not silently remain attached to the new name.
-                       *
-                       * Clearing it forces the backend to resolve the new
-                       * organisation explicitly.
-                       */
-
-                      if (
-                        organisationId &&
-                        event.target.value.trim() !==
-                          organisationName.trim()
-                      ) {
-                        setOrganisationId('');
-                        setIdentityConfirmed(false);
-                      }
-                    }}
-                    autoComplete="organization"
-                    placeholder="Your business name"
-                    className="w-full rounded-xl border border-stone-300 bg-white pl-11 pr-4 py-3.5 text-stone-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
-                  />
-                </div>
-
-                <p className="mt-2 text-xs text-stone-500">
-                  If your business already exists in Kira,
-                  we&apos;ll connect you to the existing
-                  Organisation rather than create another one.
-                </p>
-              </label>
-
-              <div className="mt-6 rounded-2xl border border-violet-200 bg-violet-50 p-5">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={
-                      ownershipAlreadyEstablished ||
-                      isOwner
+                      )
                     }
+                    disabled={
+                      Boolean(
+                        organisationId,
+                      )
+                    }
+                    autoComplete="organization"
+                    className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3.5 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 disabled:bg-stone-50 disabled:text-stone-500"
+                  />
+                </label>
+
+                {organisationId && (
+                  <div className="mt-3 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3">
+                    <div className="flex items-start gap-2">
+                      <Check className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+
+                      <div>
+                        <p className="font-semibold text-emerald-800">
+                          Organisation confirmed
+                        </p>
+
+                        <p className="text-sm text-emerald-700 mt-0.5">
+                          {organisationName}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* OWNERSHIP */}
+
+              <div>
+                <div className="flex items-start gap-3 rounded-2xl border border-violet-200 bg-violet-50 p-4">
+                  <input
+                    id="owner-declaration"
+                    type="checkbox"
+                    checked={isOwner}
                     disabled={
                       ownershipAlreadyEstablished
                     }
-                    onChange={(event) => {
+                    onChange={(event) =>
                       setIsOwner(
                         event.target.checked,
-                      );
-
-                      /*
-                       * If the ownership assertion changes, the identity
-                       * boundary needs to be reconfirmed.
-                       */
-
-                      setIdentityConfirmed(false);
-                    }}
+                      )
+                    }
                     className="mt-1 h-5 w-5 rounded border-stone-300 text-violet-600 focus:ring-violet-500"
                   />
 
-                  <span>
-                    <span className="block font-semibold text-stone-900">
+                  <label
+                    htmlFor="owner-declaration"
+                    className="cursor-pointer"
+                  >
+                    <span className="font-semibold text-stone-900">
                       I am the Owner of this Business
                     </span>
 
-                    <span className="block mt-1 text-sm text-stone-600 leading-relaxed">
-                      Check this if you are declaring that
-                      you own this Organisation. This creates
-                      your initial{' '}
-                      <strong>
-                        SELF_DECLARED
-                      </strong>{' '}
-                      ownership claim. An invitation or beta
-                      code does not establish ownership for you.
+                    <span className="block text-sm text-stone-600 mt-1 leading-relaxed">
+                      This is an explicit declaration about
+                      your relationship with the Organisation.
+                      Kira does not infer ownership from an
+                      invitation, beta code, email address or
+                      simply being the first person here.
                     </span>
-                  </span>
-                </label>
+                  </label>
+                </div>
 
                 {ownershipAlreadyEstablished && (
-                  <p className="mt-3 text-xs font-medium text-violet-700">
-                    Your ownership relationship is already
-                    established for this Organisation.
+                  <p className="mt-2 text-sm text-emerald-700">
+                    Your existing ownership relationship is
+                    already recorded.
                   </p>
                 )}
               </div>
 
-              {identityError && (
-                <div className="mt-5 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-800">
-                  <CircleAlert className="h-5 w-5 mt-0.5 flex-shrink-0" />
-
-                  <p className="text-sm leading-relaxed">
-                    {identityError}
-                  </p>
-                </div>
-              )}
-
-              {!identityBoundaryComplete && (
-                <div className="mt-5 rounded-2xl bg-stone-50 border border-stone-200 p-4">
-                  <p className="text-sm text-stone-600 leading-relaxed">
-                    Before you can start Kira, we need your
-                    name, your Organisation and your
-                    declaration of whether you are its owner.
-                  </p>
-                </div>
-              )}
+              {/* SAVE */}
 
               <button
                 type="button"
-                onClick={saveIdentity}
+                onClick={async () => {
+                  try {
+                    await saveIdentity();
+                  } catch {
+                    // Error already displayed.
+                  }
+                }}
                 disabled={
                   identitySaving ||
                   identityLoading ||
                   !hasPersonIdentity ||
-                  !normalisedOrganisationName ||
-                  (!ownershipAlreadyEstablished &&
-                    !isOwner)
+                  !hasOrganisation ||
+                  (!isOwner &&
+                    !ownershipAlreadyEstablished)
                 }
-                className="mt-6 grad-genome text-white font-display font-bold px-7 py-3.5 rounded-full inline-flex items-center justify-center gap-2 min-h-[52px] w-full disabled:opacity-50"
+                className="grad-coral text-white font-display font-bold px-7 py-4 rounded-full text-base inline-flex items-center justify-center gap-2 min-h-[52px] w-full disabled:opacity-50"
               >
                 {identitySaving ? (
                   <>
                     <Loader2 className="h-5 w-5 animate-spin" />
-                    Saving your details…
-                  </>
-                ) : identityConfirmed ? (
-                  <>
-                    Identity confirmed
-                    <Check className="h-5 w-5" />
+                    Saving…
                   </>
                 ) : (
                   <>
@@ -1271,424 +1190,37 @@ export default function PlanPage() {
                   </>
                 )}
               </button>
-            </div>
-          </div>
-        </section>
 
-        {/* ------------------------------------------------------------------ */}
-        {/* ACCESS CHOICE — THE NEXT STEP AFTER IDENTITY                      */}
-        {/* ------------------------------------------------------------------ */}
+              {identityError && (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
+                  <div className="flex gap-2">
+                    <CircleAlert className="h-5 w-5 text-rose-500 flex-shrink-0" />
 
-        {identityConfirmed && (
-          <section
-            id="access-choice"
-            className="py-4 pb-16 scroll-mt-20"
-          >
-            <div className="max-w-3xl mx-auto">
-              <div className="text-center mb-8">
-                <div className="inline-flex items-center gap-2 text-emerald-600 text-sm font-semibold mb-3">
-                  <Check className="h-4 w-4" />
-                  Identity confirmed
+                    <p className="text-sm text-rose-700 leading-relaxed">
+                      {identityError}
+                    </p>
+                  </div>
                 </div>
+              )}
 
-                <h2 className="font-display text-2xl sm:text-3xl font-bold text-stone-900">
-                  You&apos;re all set. How would you like to start?
-                </h2>
-
-                <p className="text-stone-600 mt-3 leading-relaxed max-w-xl mx-auto">
-                  Your Organisation is now established in Kira.
-                  Choose the way you&apos;d like to begin.
-                </p>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-5">
-                {/* ---------------------------------------------------------- */}
-                {/* PAID                                                         */}
-                {/* ---------------------------------------------------------- */}
-
-                <div className="bg-white rounded-3xl p-6 sm:p-7 border-2 border-pink-200 shadow-sm">
-                  <div className="text-center">
-                    <span className="text-xs font-body uppercase tracking-wider text-pink-500 font-semibold">
-                      {model!.quote.label} plan
-                    </span>
-
-                    <p className="font-display text-3xl sm:text-4xl font-bold text-stone-800 mt-2">
-                      {money(
-                        model!.quote.monthly,
-                      )}
-                      <span className="text-lg text-stone-400 font-body">
-                        /month {tax}
-                      </span>
-                    </p>
-
-                    {model!.quote.fractionWorthQuoting && (
-                      <p className="mt-1 text-sm text-stone-700">
-                        <span className="font-semibold text-stone-900">
-                          Set by your profit band
-                        </span>{' '}
-                        — and about{' '}
-                        <span className="font-semibold text-violet-700">
-                          {
-                            model!.quote
-                              .fractionOfGapPct
-                          }
-                        </span>{' '}
-                        a year of what you stand to unlock.
-                      </p>
-                    )}
-
-                    <p className="text-sm text-stone-500 mt-2 leading-relaxed">
-                      {billingLive ? (
-                        <>
-                          Billed at the end of each month,
-                          for the month just gone. Cancel any
-                          time and the month you are in is on us.
-                        </>
-                      ) : (
-                        <>
-                          Free while we are in beta.{' '}
-                          {price(
-                            model!.quote.monthly,
-                          )}
-                          /month once billing goes live —
-                          we will tell you first.
-                        </>
-                      )}
-                    </p>
-
-                    {!billingLive && (
-                      <p className="mt-3 inline-block rounded-full bg-amber-100 text-amber-900 text-xs font-semibold px-3 py-1.5">
-                        Free while we are in beta — no card charged
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="mt-6">
-                    <ul className="text-left space-y-2.5 text-stone-700">
-                      {[
-                        copy.bullets[0],
-                        'Always-on Kira — talk anytime, she remembers everything',
-                        'Kira quietly captures your know-how into an Operating Manual',
-                        'Your knowledge stays private and yours to keep',
-                        copy.bullets[1],
-                        copy.bullets[2],
-                      ].map((benefit) => (
-                        <li
-                          key={benefit}
-                          className="flex items-start gap-2.5 text-sm"
-                        >
-                          <Check className="h-4 w-4 text-violet-500 mt-0.5 flex-shrink-0" />
-                          {benefit}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {!confirming && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setConfirming(true)
-                      }
-                      disabled={loading}
-                      className="mt-7 grad-coral text-white font-display font-bold px-7 py-4 rounded-full text-base inline-flex items-center gap-2 min-h-[52px] shadow-lg shadow-pink-200 w-full justify-center disabled:opacity-60"
-                    >
-                      {copy.cta}
-                      <ArrowRight className="h-5 w-5" />
-                    </button>
-                  )}
-
-                  {confirming && (
-                    <div className="mt-7 rounded-2xl border-2 border-stone-300 bg-stone-50 p-5 text-left">
-                      <p className="font-display font-bold text-stone-900">
-                        {copy.confirmTitle}
-                      </p>
-
-                      <p className="mt-1 text-sm text-stone-600 leading-relaxed">
-                        {copy.confirmBody(
-                          `${money(
-                            model!.quote.monthly,
-                          )} ${tax}`,
-                        )}
-                      </p>
-
-                      <TermsAgreement
-                        checked={
-                          termsAccepted
-                        }
-                        onChange={
-                          setTermsAccepted
-                        }
-                        id="terms-paid"
-                      />
-
-                      <div className="mt-4 flex flex-col gap-2">
-                        <button
-                          type="button"
-                          onClick={
-                            startCheckout
-                          }
-                          disabled={
-                            loading ||
-                            !termsAccepted ||
-                            !identityBoundaryComplete
-                          }
-                          className="grad-coral text-white font-display font-bold px-6 py-3 rounded-full inline-flex items-center justify-center gap-2 min-h-[48px] disabled:opacity-60"
-                        >
-                          {loading ? (
-                            <>
-                              <Loader2 className="h-5 w-5 animate-spin" />
-                              Starting…
-                            </>
-                          ) : (
-                            <>
-                              Continue to Stripe
-                              <ArrowRight className="h-5 w-5" />
-                            </>
-                          )}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setConfirming(false)
-                          }
-                          className="rounded-full border border-stone-300 bg-white px-6 py-3 font-semibold text-stone-700 min-h-[48px]"
-                        >
-                          Not yet
-                        </button>
-                      </div>
-
-                      {!termsAccepted && (
-                        <p className="mt-2 text-sm text-stone-500">
-                          Tick the box above to continue.
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  {error && (
-                    <p className="text-rose-600 text-sm mt-3">
-                      {error}
-                    </p>
-                  )}
-
-                  <p className="text-xs text-stone-400 mt-4 text-center">
-                    {copy.finePrint(
-                      `${money(
-                        model!.quote.monthly,
-                      )} ${tax}`,
-                    )}{' '}
-                    You set your password and meet Kira right
-                    after.
+              {!signedIn && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-stone-600">
+                  <p>
+                    You need to be signed in before Kira
+                    can establish your business identity.
                   </p>
+
+                  <a
+                    href="/login"
+                    className="inline-flex items-center gap-1 mt-2 font-semibold text-violet-600 underline underline-offset-4"
+                  >
+                    Sign in
+                    <ArrowRight className="h-4 w-4" />
+                  </a>
                 </div>
+              )}
 
-                {/* ---------------------------------------------------------- */}
-                {/* BETA                                                         */}
-                {/* ---------------------------------------------------------- */}
-
-                <div className="rounded-3xl border-2 border-violet-300 bg-violet-50 p-6 sm:p-7">
-                  <div className="text-center">
-                    <span className="text-xs font-body uppercase tracking-wider text-violet-600 font-semibold">
-                      Beta access
-                    </span>
-
-                    <h3 className="font-display text-2xl font-bold text-stone-900 mt-2">
-                      Have an invitation?
-                    </h3>
-
-                    <p className="mt-2 text-base text-stone-700 leading-relaxed">
-                      Enter your beta code and start with Kira.
-                    </p>
-
-                    <p className="mt-2 text-sm font-semibold text-violet-700">
-                      No card. Nothing charged.
-                    </p>
-                  </div>
-
-                  {!betaOpen ? (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setBetaOpen(true)
-                      }
-                      className="mt-7 inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-violet-600 px-6 py-3.5 text-base font-bold text-white hover:bg-violet-700 transition-colors"
-                    >
-                      {betaCode
-                        ? 'Enter my beta code'
-                        : 'I have an invitation'}
-                      <ArrowRight className="h-5 w-5" />
-                    </button>
-                  ) : (
-                    <div className="mt-7">
-                      <BetaRedeem
-                        initialCode={
-                          betaCode ?? ''
-                        }
-                        firstName={
-                          normalisedFirstName
-                        }
-                        organisationId={organisationId.trim()}
-                        isOwner={isOwner}
-                      />
-                    </div>
-                  )}
-
-                  {!betaCode && (
-                    <p className="mt-4 text-xs text-stone-500 text-center leading-relaxed">
-                      If you already have a beta invitation,
-                      enter its code here.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* -------------------------------------------------------------- */}
-              {/* REQUEST BETA                                                    */}
-              {/* -------------------------------------------------------------- */}
-
-              <p className="mt-5 text-sm text-stone-600 text-center">
-                No beta tester code but want to try it
-                out?{' '}
-                <a
-                  href="mailto:dennis@corporateaisolutions.com"
-                  className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500"
-                >
-                  Email Dennis
-                </a>{' '}
-                requesting a code, or{' '}
-                <a
-                  href="https://www.linkedin.com/in/denniskl/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500"
-                >
-                  connect on LinkedIn
-                </a>{' '}
-                and request one there.
-              </p>
             </div>
-          </section>
-        )}
-
-        {/* ------------------------------------------------------------------ */}
-        {/* VALUE                                                               */}
-        {/* ------------------------------------------------------------------ */}
-
-        <section className="py-16">
-          <div className="grad-genome rounded-3xl p-8 sm:p-10 text-white text-center shadow-lg">
-            <p className="text-white/80 font-medium">
-              You could unlock
-            </p>
-
-            <p className="font-display text-4xl sm:text-5xl font-bold mt-1">
-              {figures.gapText}
-            </p>
-
-            <p className="text-white/90 max-w-lg mx-auto mt-4 leading-relaxed">
-              Kira is{' '}
-              <span className="font-bold">
-                {money(
-                  model!.quote.monthly,
-                )}
-                /month {tax}
-              </span>
-              {copy.priceQualifier}
-
-              {model!.quote.fractionWorthQuoting ? (
-                <>
-                  {' '}
-                  — about{' '}
-                  <span className="font-bold">
-                    {
-                      model!.quote
-                        .fractionOfGapPct
-                    }
-                  </span>{' '}
-                  a year of what you stand to unlock
-                </>
-              ) : null}
-              . It&apos;s the part-time general manager you
-              could never justify hiring, at a fraction of
-              the cost — plus the time, the calm and the
-              handover you can&apos;t put a number on.
-            </p>
-          </div>
-        </section>
-
-        {/* ------------------------------------------------------------------ */}
-        {/* PROMISE                                                              */}
-        {/* ------------------------------------------------------------------ */}
-
-        <section className="py-16">
-          <h2 className="font-display text-2xl sm:text-3xl font-bold text-center mb-3">
-            Just talk. Kira does the building.
-          </h2>
-
-          <p className="text-center text-stone-600 max-w-2xl mx-auto mb-12">
-            The knowledge that makes your business run is
-            already in your head. Kira&apos;s job is to get it
-            out — into documented, transferable systems —
-            without you stopping to write any of it down.
-          </p>
-
-          <div className="grid sm:grid-cols-2 gap-5">
-            {[
-              {
-                icon: (
-                  <Clock className="h-6 w-6" />
-                ),
-                title:
-                  'Time back, from week one',
-                body:
-                  'The jobs that only you can do start becoming jobs your systems can do. You get hours back before the month is out.',
-              },
-              {
-                icon: (
-                  <HeartHandshake className="h-6 w-6" />
-                ),
-                title:
-                  'Less carried in your head',
-                body:
-                  'The mental load of being the only one who knows how it all works starts to lift. Less stress, fewer 2am worries.',
-              },
-              {
-                icon: (
-                  <Users className="h-6 w-6" />
-                ),
-                title:
-                  'A business, not a job',
-                body:
-                  'As the systems build, the business leans on you less — better handovers, a calmer team, and a real asset forming.',
-              },
-              {
-                icon: (
-                  <Brain className="h-6 w-6" />
-                ),
-                title:
-                  'A living Operating Manual',
-                body:
-                  'Everything Kira captures becomes your Operating Manual: how the business actually runs, yours to keep and hand over.',
-              },
-            ].map((card) => (
-              <div
-                key={card.title}
-                className="bg-white rounded-3xl p-6 border border-amber-100 shadow-sm"
-              >
-                <div className="grad-genome w-11 h-11 rounded-xl flex items-center justify-center text-white mb-4">
-                  {card.icon}
-                </div>
-
-                <h3 className="font-display font-bold text-lg mb-1.5">
-                  {card.title}
-                </h3>
-
-                <p className="text-stone-600 text-sm leading-relaxed">
-                  {card.body}
-                </p>
-              </div>
-            ))}
           </div>
         </section>
 
@@ -1720,109 +1252,422 @@ export default function PlanPage() {
           <div className="space-y-4">
             {[
               {
-                icon: (
-                  <Mic className="h-5 w-5" />
-                ),
-                title:
-                  'Kira listens & clarifies',
-                body:
-                  'You talk about a job, a headache, a process. Kira asks the questions a good operator would until she knows exactly what you need.',
+                icon: <Mic className="h-5 w-5" />,
+                title: 'Kira listens & clarifies',
+                body: 'You talk about a job, a headache, a process. Kira asks the questions a good operator would until she knows exactly what you need.',
               },
               {
-                icon: (
-                  <Network className="h-5 w-5" />
-                ),
-                title:
-                  'She lines up the work',
-                body:
-                  'Kira turns what you said into a clear set of tasks — exactly the pieces of work that actually need doing.',
+                icon: <Network className="h-5 w-5" />,
+                title: 'She lines up the work',
+                body: 'Kira turns what you said into a clear set of tasks — exactly the pieces of work that actually need doing.',
               },
               {
-                icon: (
-                  <Users className="h-5 w-5" />
-                ),
-                title:
-                  'The work gets done — and written down',
-                body:
-                  'The tasks get completed and recorded, so what you know about your business stops living only in your head.',
+                icon: <Users className="h-5 w-5" />,
+                title: 'The work gets done — and written down',
+                body: 'The tasks get completed and recorded, so what you know about your business stops living only in your head.',
               },
               {
-                icon: (
-                  <Brain className="h-5 w-5" />
-                ),
-                title:
-                  'Kira remembers it — instantly',
-                body:
-                  'Everything you tell Kira is remembered, so next time she already knows and picks up right where you left off.',
+                icon: <Brain className="h-5 w-5" />,
+                title: 'Kira remembers it — instantly',
+                body: 'Everything you tell Kira is remembered, so next time she already knows and picks up right where you left off.',
               },
               {
-                icon: (
-                  <ShieldCheck className="h-5 w-5" />
-                ),
-                title:
-                  'Your knowledge stays yours',
-                body:
-                  'It is never shown to a buyer and never shared with anyone who referred you. The handover document leaves out your own position — your plans, your circumstances, what you would accept.',
+                icon: <ShieldCheck className="h-5 w-5" />,
+                title: 'Your knowledge stays yours',
+                body: 'It is never shown to a buyer and never shared with anyone who referred you. The handover document leaves out your own position — your plans, your circumstances, what you would accept.',
               },
-            ].map(
-              (step, index) => (
-                <div
-                  key={step.title}
-                  className="flex gap-4 items-start bg-white rounded-2xl p-5 border border-amber-100"
-                >
-                  <div className="grad-coral text-white w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0">
-                    {step.icon}
-                  </div>
-
-                  <div>
-                    <span className="text-xs font-bold text-stone-400">
-                      STEP {index + 1}
-                    </span>
-
-                    <h3 className="font-display font-bold text-lg">
-                      {step.title}
-                    </h3>
-
-                    <p className="text-stone-600 text-sm leading-relaxed mt-1">
-                      {step.body}
-                    </p>
-                  </div>
+            ].map((step, index) => (
+              <div
+                key={step.title}
+                className="flex gap-4 items-start bg-white rounded-2xl p-5 border border-amber-100"
+              >
+                <div className="grad-coral text-white w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0">
+                  {step.icon}
                 </div>
-              ),
-            )}
+
+                <div>
+                  <span className="text-xs font-bold text-stone-400">
+                    STEP {index + 1}
+                  </span>
+
+                  <h3 className="font-display font-bold text-lg">
+                    {step.title}
+                  </h3>
+
+                  <p className="text-stone-600 text-sm leading-relaxed mt-1">
+                    {step.body}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 
         {/* ------------------------------------------------------------------ */}
-        {/* BEFORE YOU DECIDE                                                   */}
+        {/* PROMISE                                                            */}
         {/* ------------------------------------------------------------------ */}
 
-        <section className="py-12 text-center">
-          <p className="text-sm text-stone-500">
-            Before you decide:{' '}
-            <a
-              href="/what-she-does"
-              className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500"
-            >
-              what she does, and what she doesn&apos;t
-            </a>
-            .
+        <section className="py-16">
+          <h2 className="font-display text-2xl sm:text-3xl font-bold text-center mb-3">
+            Just talk. Kira does the building.
+          </h2>
+
+          <p className="text-center text-stone-600 max-w-2xl mx-auto mb-12">
+            The knowledge that makes your business run is
+            already in your head. Kira&apos;s job is to get it
+            out — into documented, transferable systems —
+            without you stopping to write any of it down.
           </p>
 
-          <p className="mt-3 text-sm text-stone-500">
-            Already have an account?{' '}
-            <a
-              href="/login"
-              className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500"
-            >
-              Sign in
-            </a>
-            .
-          </p>
+          <div className="grid sm:grid-cols-2 gap-5">
+            {[
+              {
+                icon: <Clock className="h-6 w-6" />,
+                title: 'Time back, from week one',
+                body: 'The jobs that only you can do start becoming jobs your systems can do. You get hours back before the month is out.',
+              },
+              {
+                icon: <HeartHandshake className="h-6 w-6" />,
+                title: 'Less carried in your head',
+                body: 'The mental load of being the only one who knows how it all works starts to lift. Less stress, fewer 2am worries.',
+              },
+              {
+                icon: <Users className="h-6 w-6" />,
+                title: 'A business, not a job',
+                body: 'As the systems build, the business leans on you less — better handovers, a calmer team, and a real asset forming.',
+              },
+              {
+                icon: <Brain className="h-6 w-6" />,
+                title: 'A living Operating Manual',
+                body: 'Everything Kira captures becomes your Operating Manual: how the business actually runs, yours to keep and hand over.',
+              },
+            ].map((card) => (
+              <div
+                key={card.title}
+                className="bg-white rounded-3xl p-6 border border-amber-100 shadow-sm"
+              >
+                <div className="grad-genome w-11 h-11 rounded-xl flex items-center justify-center text-white mb-4">
+                  {card.icon}
+                </div>
+
+                <h3 className="font-display font-bold text-lg mb-1.5">
+                  {card.title}
+                </h3>
+
+                <p className="text-stone-600 text-sm leading-relaxed">
+                  {card.body}
+                </p>
+              </div>
+            ))}
+          </div>
         </section>
 
         {/* ------------------------------------------------------------------ */}
-        {/* PAGE FOOT                                                          */}
+        {/* ACCESS                                                             */}
+        {/* ------------------------------------------------------------------ */}
+
+        <section className="py-16">
+          <div className="max-w-2xl mx-auto">
+
+            <div className="rounded-3xl bg-white border border-amber-100 shadow-sm p-6 sm:p-8">
+
+              <div className="flex items-start gap-4 mb-6">
+                <div className="grad-genome w-11 h-11 rounded-xl flex items-center justify-center text-white flex-shrink-0">
+                  <Brain className="h-6 w-6" />
+                </div>
+
+                <div>
+                  <h2 className="font-display text-xl sm:text-2xl font-bold">
+                    Your Kira plan
+                  </h2>
+
+                  <p className="text-sm text-stone-600 mt-1">
+                    {model.quote.periodLabel ??
+                      'Your plan'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-amber-50 border border-amber-100 p-5 mb-5">
+                <div className="flex items-end justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-bold text-stone-400 uppercase tracking-wide">
+                      Monthly
+                    </p>
+
+                    <p className="font-display text-3xl font-bold">
+                      {money(
+                        model.quote.monthly,
+                      )}
+                    </p>
+
+                    <p className="text-xs text-stone-500 mt-1">
+                      {tax}
+                    </p>
+                  </div>
+
+                  <div className="text-right text-sm text-stone-500">
+                    <p>
+                      Based on your valuation
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* ------------------------------------------------------------ */}
+              {/* IDENTITY GATE                                                */}
+              {/* ------------------------------------------------------------ */}
+
+              {!identityBoundaryComplete && (
+                <div className="mb-5 rounded-2xl border border-violet-200 bg-violet-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <CircleAlert className="h-5 w-5 text-violet-600 flex-shrink-0 mt-0.5" />
+
+                    <div>
+                      <p className="font-display font-bold text-stone-900">
+                        One last thing before you start
+                      </p>
+
+                      <p className="mt-1 text-sm text-stone-600 leading-relaxed">
+                        Confirm your name, business and
+                        ownership above first. Kira needs to
+                        know which Organisation she belongs to
+                        before beta or paid access begins.
+                      </p>
+
+                      <a
+                        href="#organisation"
+                        className="mt-3 inline-flex items-center gap-2 font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4"
+                      >
+                        Confirm my organisation
+                        <ArrowRight className="h-4 w-4" />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ------------------------------------------------------------ */}
+              {/* PAID CONFIRMATION                                            */}
+              {/* ------------------------------------------------------------ */}
+
+              {confirming && (
+                <div className="mb-3 rounded-2xl border-2 border-stone-300 bg-white p-4 text-left">
+                  <p className="font-display font-bold text-stone-900">
+                    {copy.confirmTitle}
+                  </p>
+
+                  <p className="mt-1 text-sm text-stone-600 leading-relaxed">
+                    {copy.confirmBody(
+                      `${money(
+                        model.quote.monthly,
+                      )} ${tax}`,
+                    )}
+                  </p>
+
+                  <TermsAgreement
+                    checked={termsAccepted}
+                    onChange={setTermsAccepted}
+                    id="terms-paid"
+                  />
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+
+                    <button
+                      type="button"
+                      onClick={startCheckout}
+                      disabled={
+                        loading ||
+                        !termsAccepted ||
+                        !identityBoundaryComplete
+                      }
+                      className="grad-coral text-white font-display font-bold px-6 py-3 rounded-full inline-flex items-center gap-2 min-h-[48px] disabled:opacity-60"
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          Starting…
+                        </>
+                      ) : (
+                        <>
+                          Continue to Stripe
+                          <ArrowRight className="h-5 w-5" />
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setConfirming(false)
+                      }
+                      className="rounded-full border border-stone-300 bg-white px-6 py-3 font-semibold text-stone-700 min-h-[48px]"
+                    >
+                      Not yet
+                    </button>
+
+                  </div>
+
+                  {!termsAccepted && (
+                    <p className="mt-2 text-sm text-stone-500">
+                      Tick the box above to continue.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* ------------------------------------------------------------ */}
+              {/* PAID CTA                                                     */}
+              {/* ------------------------------------------------------------ */}
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (!identityBoundaryComplete) {
+                    document
+                      .getElementById(
+                        'organisation',
+                      )
+                      ?.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start',
+                      });
+
+                    return;
+                  }
+
+                  setConfirming(true);
+                }}
+                disabled={loading}
+                className="grad-coral text-white font-display font-bold px-8 py-4 rounded-full text-lg inline-flex items-center gap-2 min-h-[52px] shadow-lg shadow-pink-200 w-full justify-center disabled:opacity-60"
+              >
+                {copy.cta}
+                <ArrowRight className="h-5 w-5" />
+              </button>
+
+              {error && (
+                <p className="text-rose-600 text-sm mt-3">
+                  {error}
+                </p>
+              )}
+
+              {/* ------------------------------------------------------------ */}
+              {/* BETA                                                         */}
+              {/* ------------------------------------------------------------ */}
+
+              {betaOpen ? (
+                <div className="mt-6">
+
+                  <BetaRedeem
+                    initialCode={
+                      betaCode ?? ''
+                    }
+                    onRedeemed={() => {
+                      /*
+                       * Beta redemption owns the beta transaction.
+                       *
+                       * Identity has already been established above.
+                       */
+                      setBetaOpen(false);
+                    }}
+                  />
+
+                </div>
+              ) : (
+                <div className="mt-6 text-center">
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (
+                        !identityBoundaryComplete
+                      ) {
+                        document
+                          .getElementById(
+                            'organisation',
+                          )
+                          ?.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start',
+                          });
+
+                        return;
+                      }
+
+                      setBetaOpen(true);
+                    }}
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-violet-300 bg-white px-6 py-3 font-display font-bold text-violet-700 min-h-[48px] hover:bg-violet-50"
+                  >
+                    I have an invitation code
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+
+                </div>
+              )}
+
+              {/* ------------------------------------------------------------ */}
+              {/* REQUEST BETA                                                 */}
+              {/* ------------------------------------------------------------ */}
+
+              <p className="mt-3 text-sm text-stone-600 text-center">
+                No beta tester code but want to try it
+                out?{' '}
+                <a
+                  href="mailto:dennis@corporateaisolutions.com"
+                  className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500"
+                >
+                  Email Dennis
+                </a>{' '}
+                requesting a code, or{' '}
+                <a
+                  href="https://www.linkedin.com/in/denniskl/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500"
+                >
+                  connect on LinkedIn
+                </a>{' '}
+                and request one there.
+              </p>
+
+              <p className="mt-3 text-sm text-stone-500 text-center">
+                Before you decide:{' '}
+                <a
+                  href="/what-she-does"
+                  className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4"
+                >
+                  what she does, and what she doesn&apos;t
+                </a>
+                .
+              </p>
+
+              <p className="mt-3 text-sm text-stone-500 text-center">
+                Already have an account?{' '}
+                <a
+                  href="/login"
+                  className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4"
+                >
+                  Sign in
+                </a>
+                .
+              </p>
+
+              <p className="text-xs text-stone-400 mt-3 text-center">
+                {copy.finePrint(
+                  `${money(
+                    model.quote.monthly,
+                  )} ${tax}`,
+                )}{' '}
+                You set your password and meet Kira right
+                after.
+              </p>
+
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------------------------ */}
+        {/* FOOT                                                               */}
         {/* ------------------------------------------------------------------ */}
 
         <div className="py-10 text-center text-sm text-stone-400 border-t border-amber-100">
@@ -1833,15 +1678,16 @@ export default function PlanPage() {
             Redo my valuation
           </a>
         </div>
+
       </main>
     </div>
   );
 }
 
 /*
- * -----------------------------------------------------------------------------
+ * ---------------------------------------------------------------------------
  * PAGE-SCOPED STYLES
- * -----------------------------------------------------------------------------
+ * ---------------------------------------------------------------------------
  */
 
 function PageStyles() {
