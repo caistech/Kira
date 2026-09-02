@@ -1,7 +1,9 @@
 // lib/supabase/server.ts
+// lib/supabase/server.ts
+
 import { createClient } from '@supabase/supabase-js';
 
-// Service role client for API routes (bypasses RLS) — NEW API KEY MODEL
+// Service role client for API routes (bypasses RLS) — V2 API KEY MODEL
 export function createServiceClientV2() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

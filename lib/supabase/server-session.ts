@@ -1,9 +1,44 @@
+// lib/supabase/server-session.ts
+// SSR user-SESSION Supabase client (anon key + cookies), for auth in server components,
+// route handlers, and server actions. Distinct from server.ts's createServiceClient (service
+// role, no session) which stays the client for privileged data access.
+
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
+// LEGACY JWT — session client
+export async function createSessionClient() {
+  const cookieStore = await cookies();
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: Record<string, unknown>) {
+          try {
+            cookieStore.set({ name, value, ...options });
+          } catch {
+            /* called from a Server Component — ignore */
+          }
+        },
+        remove(name: string, options: Record<string, unknown>) {
+          try {
+            cookieStore.set({ name, value: '', ...options });
+          } catch {
+            /* called from a Server Component — ignore */
+          }
+        },
+      },
+    }
+  );
+}
+
+// NEW API KEY MODEL — session client with publishable key
 export async function createSessionClientV2() {
   const cookieStore = await cookies();
-
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_PUBLISHABLE_KEY!,
@@ -16,24 +51,17 @@ export async function createSessionClientV2() {
           try {
             cookieStore.set({ name, value, ...options });
           } catch {
-            // Server Component: cookie mutation may be unavailable.
+            /* called from a Server Component — ignore */
           }
         },
         remove(name: string, options: Record<string, unknown>) {
           try {
             cookieStore.set({ name, value: '', ...options });
           } catch {
-            // Server Component: cookie mutation may be unavailable.
+            /* called from a Server Component — ignore */
           }
         },
       },
-    },
+    }
   );
 }
-
-/**
- * Compatibility alias during migration.
- *
- * New code should use createSessionClientV2().
- */
-export const createSessionClient = createSessionClientV2;

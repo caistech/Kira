@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
-import {
-  getCurrentOrganisationContext,
-  getAuthUser,
-} from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase/server';
+import { getCurrentOrganisationContext, getAuthUser,} from '@/lib/auth';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,31 +22,42 @@ function normaliseName(value: unknown): string {
 }
 
 /**
+ * Canonical identity projection for the Plan / onboarding flow.
+ *
+ * Authority chain:
+ *
+ *   authenticated session
+ *          ↓
+ *   getCurrentOrganisationContext()
+ *          ↓
+ *   Person
+ *          ↓
+ *   Organisation Membership
+ *          ↓
+ *   Organisation
+ *
+ * The client may provide identity/onboarding values, but it does NOT
+ * establish organisational authority.
+ *
+ * Canonical rule:
+ *
+ *   organisation_id = resolved server-side organisation context
+ *
+ * Never:
+ *
+ *   organisation_id = client supplied organisationId
+ *
+ * A client-supplied organisationId may only be accepted when it matches
+ * the authenticated organisation context.
+ */
+
+/**
  * GET /api/identity/plan
  *
- * API contract is deliberately shaped to match the existing /plan page.
+ * Returns the canonical organisational identity for the authenticated
+ * caller.
  *
- * The page expects:
- *
- * {
- *   signedIn,
- *   firstName,
- *   lastName,
- *   organisationId,
- *   organisationName,
- *   isOwner
- * }
- *
- * Canonical authority remains:
- *
- *   auth
- *     → auth_credentials
- *     → persons
- *     → organisation_memberships
- *     → organisations
- *
- * The response shape is only a projection.
- * It does not change the canonical ownership model.
+ * This endpoint is intentionally read-only.
  */
 export async function GET() {
   try {
@@ -58,53 +66,39 @@ export async function GET() {
     if (!ctx) {
       return NextResponse.json(
         {
-          signedIn: false,
-          firstName: null,
-          lastName: null,
-          organisationId: null,
-          organisationName: null,
-          isOwner: false,
+          error: 'Unauthorised',
+          code: 'NO_ORGANISATION_CONTEXT',
         },
         { status: 401 },
       );
     }
 
-    const supabase = createServiceClient();
+    const organisationId = ctx.organisationId;
 
-    // -----------------------------------------------------------------------
-    // Resolve Person
-    // -----------------------------------------------------------------------
-
-    const { data: person, error: personError } = await supabase
-      .from('persons')
-      .select('person_id, first_name, last_name')
-      .eq('person_id', ctx.personId)
-      .maybeSingle();
-
-    if (personError) {
-      console.error(
-        '[identity/plan][GET] person lookup failed:',
-        personError,
-      );
-
+    if (!organisationId) {
       return NextResponse.json(
         {
-          error: 'Unable to resolve person identity',
-          code: 'PERSON_LOOKUP_FAILED',
+          error: 'No active organisation membership',
+          code: 'NO_ACTIVE_ORGANISATION',
         },
-        { status: 500 },
+        { status: 403 },
       );
     }
 
-    // -----------------------------------------------------------------------
-    // Resolve Organisation
-    // -----------------------------------------------------------------------
+    const supabase = createServiceClientV2();
 
+    /*
+     * Read the canonical Organisation record.
+     *
+     * IMPORTANT:
+     * organisationId comes from getCurrentOrganisationContext(),
+     * never from the request.
+     */
     const { data: organisation, error: organisationError } =
       await supabase
         .from('organisations')
         .select('organisation_id, name')
-        .eq('organisation_id', ctx.organisationId)
+        .eq('organisation_id', organisationId)
         .maybeSingle();
 
     if (organisationError) {
@@ -132,60 +126,22 @@ export async function GET() {
       );
     }
 
-    // -----------------------------------------------------------------------
-    // Resolve ownership separately from membership.
-    //
-    // Ownership is NOT inferred merely from role.
-    // The canonical ownership_periods table is authoritative.
-    // -----------------------------------------------------------------------
-
-    const { data: ownership, error: ownershipError } =
-      await supabase
-        .from('ownership_periods')
-        .select('ownership_period_id')
-        .eq('organisation_id', ctx.organisationId)
-        .eq('person_id', ctx.personId)
-        .eq('status', 'current')
-        .or('valid_to.is.null,valid_to.gt.now()')
-        .limit(1)
-        .maybeSingle();
-
-    if (ownershipError) {
-      console.error(
-        '[identity/plan][GET] ownership lookup failed:',
-        ownershipError,
-      );
-
-      return NextResponse.json(
-        {
-          error: 'Unable to resolve ownership',
-          code: 'OWNERSHIP_LOOKUP_FAILED',
-        },
-        { status: 500 },
-      );
-    }
-
-    // -----------------------------------------------------------------------
-    // IMPORTANT:
-    //
-    // Return the shape the page already expects.
-    //
-    // Do NOT nest these under `identity`.
-    // -----------------------------------------------------------------------
-
     return NextResponse.json({
-      signedIn: true,
-      firstName: person?.first_name ?? null,
-      lastName: person?.last_name ?? null,
-      organisationId: organisation.organisation_id,
-      organisationName: organisation.name ?? null,
-      isOwner: Boolean(ownership),
+      ok: true,
+      identity: {
+        organisationId: organisation.organisation_id,
+        organisationName: organisation.name ?? null,
+
+        /*
+         * These are contextual identity values.
+         * They are NOT organisational ownership identifiers.
+         */
+        personId: ctx.personId ?? null,
+        role: ctx.role ?? null,
+      },
     });
   } catch (error) {
-    console.error(
-      '[identity/plan][GET] unexpected error:',
-      error,
-    );
+    console.error('[identity/plan][GET] unexpected error:', error);
 
     return NextResponse.json(
       {
@@ -200,23 +156,41 @@ export async function GET() {
 /**
  * POST /api/identity/plan
  *
- * Establishes:
+ * /plan is the identity-establishment boundary.
  *
+ * IMPORTANT:
+ * This route MUST NOT require getCurrentOrganisationContext(),
+ * because a new user may not have an organisation yet.
+ *
+ * Authority:
+ *
+ *   authenticated session
+ *        ↓
  *   Person
+ *        ↓
  *   Organisation
+ *        ↓
  *   Membership
- *   optional Ownership Period
+ *        ↓
+ *   optional SELF_DECLARED ownership
  *
- * The response is also projected into the exact shape expected by
- * the existing /plan page.
+ * organisationId supplied by the client is only accepted when it
+ * already exists and belongs to the authenticated Person.
+ *
+ * If no organisationId is supplied, a new Organisation is created.
  */
 export async function POST(request: Request) {
   try {
-    const supabase = createServiceClient();
+    const supabase = createServiceClientV2();
 
-    // -----------------------------------------------------------------------
-    // 1. AUTHENTICATE
-    // -----------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // 1. AUTHENTICATE THE CALLER
+    // -------------------------------------------------------------------------
+    //
+    // Use the cookie-aware session client via getAuthUser().
+    // The service-role client above is deliberately retained for canonical
+    // database writes/lookups after authentication.
+    //
 
     const user = await getAuthUser();
 
@@ -230,16 +204,20 @@ export async function POST(request: Request) {
       );
     }
 
-    // -----------------------------------------------------------------------
-    // 2. RESOLVE / CREATE PERSON
-    // -----------------------------------------------------------------------
 
-    const { data: personByAuth, error: personLookupError } =
-      await supabase
-        .from('persons')
-        .select('person_id, first_name, last_name, email')
-        .eq('auth_user_id', user.id)
-        .maybeSingle();
+
+    // -------------------------------------------------------------------------
+    // 2. RESOLVE / CREATE PERSON
+    // -------------------------------------------------------------------------
+    //
+    // Person is the human identity.
+    // users.id is NOT the organisation identity.
+    //
+    const { data: personByAuth, error: personLookupError } = await supabase
+      .from('persons')
+      .select('person_id, first_name, last_name')
+      .eq('auth_user_id', user.id)
+      .maybeSingle();
 
     if (personLookupError) {
       console.error(
@@ -261,14 +239,11 @@ export async function POST(request: Request) {
     if (personByAuth) {
       personId = personByAuth.person_id;
     } else {
-      const email = normaliseString(user.email);
-
-      const { data: personByEmail, error: personEmailError } =
-        await supabase
-          .from('persons')
-          .select('person_id')
-          .eq('email', email)
-          .maybeSingle();
+      const { data: personByEmail, error: personEmailError } = await supabase
+        .from('persons')
+        .select('person_id')
+        .eq('email', user.email ?? '')
+        .maybeSingle();
 
       if (personEmailError) {
         console.error(
@@ -288,11 +263,10 @@ export async function POST(request: Request) {
       if (personByEmail) {
         personId = personByEmail.person_id;
 
+        // Repair the Auth → Person bridge if necessary.
         const { error: bridgeError } = await supabase
           .from('persons')
-          .update({
-            auth_user_id: user.id,
-          })
+          .update({ auth_user_id: user.id })
           .eq('person_id', personId)
           .is('auth_user_id', null);
 
@@ -340,9 +314,9 @@ export async function POST(request: Request) {
       }
     }
 
-    // -----------------------------------------------------------------------
+    // -------------------------------------------------------------------------
     // 3. READ REQUEST
-    // -----------------------------------------------------------------------
+    // -------------------------------------------------------------------------
 
     let body: PlanRequestBody;
 
@@ -360,22 +334,16 @@ export async function POST(request: Request) {
 
     const firstName = normaliseName(body.firstName);
     const lastName = normaliseName(body.lastName);
-    const submittedOrganisationId = normaliseString(
-      body.organisationId,
-    );
-    const organisationName = normaliseName(
-      body.organisationName,
-    );
+    const submittedOrganisationId = normaliseString(body.organisationId);
+    const organisationName = normaliseName(body.organisationName);
     const betaCode = normaliseString(body.betaCode);
 
     const isOwner =
-      typeof body.isOwner === 'boolean'
-        ? body.isOwner
-        : false;
+      typeof body.isOwner === 'boolean' ? body.isOwner : false;
 
-    // -----------------------------------------------------------------------
-    // 4. UPDATE PERSON
-    // -----------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // 4. UPDATE PERSON IDENTITY
+    // -------------------------------------------------------------------------
 
     const personUpdate: Record<string, string> = {};
 
@@ -409,9 +377,19 @@ export async function POST(request: Request) {
       }
     }
 
-    // -----------------------------------------------------------------------
+    // -------------------------------------------------------------------------
     // 5. RESOLVE OR CREATE ORGANISATION
-    // -----------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    //
+    // organisation_id is the canonical organisational anchor.
+    //
+    // Client-supplied organisationId NEVER creates authority.
+    //
+    // If supplied, it must already exist and the Person must already have
+    // membership in it.
+    //
+    // If not supplied, /plan creates the initial Organisation.
+    //
 
     let canonicalOrganisationId: string;
     let canonicalOrganisationName: string | null = null;
@@ -452,8 +430,8 @@ export async function POST(request: Request) {
       canonicalOrganisationId = organisation.organisation_id;
       canonicalOrganisationName = organisation.name ?? null;
 
-      // Existing organisation requires existing membership.
-      const { data: existingMembership, error: membershipLookupError } =
+      // Existing organisation: verify this Person is actually a member.
+      const { data: membership, error: membershipLookupError } =
         await supabase
           .from('organisation_memberships')
           .select('membership_id, role, status')
@@ -477,7 +455,7 @@ export async function POST(request: Request) {
         );
       }
 
-      if (!existingMembership) {
+      if (!membership) {
         return NextResponse.json(
           {
             error: 'You are not a member of that organisation',
@@ -487,6 +465,10 @@ export async function POST(request: Request) {
         );
       }
     } else {
+      // -----------------------------------------------------------------------
+      // NEW ORGANISATION
+      // -----------------------------------------------------------------------
+
       if (!organisationName) {
         return NextResponse.json(
           {
@@ -521,34 +503,34 @@ export async function POST(request: Request) {
         );
       }
 
-      canonicalOrganisationId =
-        createdOrganisation.organisation_id;
-
-      canonicalOrganisationName =
-        createdOrganisation.name ?? null;
+      canonicalOrganisationId = createdOrganisation.organisation_id;
+      canonicalOrganisationName = createdOrganisation.name ?? null;
     }
 
-    // -----------------------------------------------------------------------
+    // -------------------------------------------------------------------------
     // 6. ESTABLISH MEMBERSHIP
-    // -----------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    //
+    // This is the actual point at which the Person enters the Organisation
+    // context.
+    //
 
-    const { data: membership, error: membershipError } =
-      await supabase
-        .from('organisation_memberships')
-        .upsert(
-          {
-            organisation_id: canonicalOrganisationId,
-            person_id: personId,
-            role: isOwner ? 'owner' : 'member',
-            status: 'active',
-            valid_from: new Date().toISOString(),
-          },
-          {
-            onConflict: 'organisation_id,person_id,role',
-          },
-        )
-        .select('membership_id, role')
-        .single();
+    const { data: membership, error: membershipError } = await supabase
+      .from('organisation_memberships')
+      .upsert(
+        {
+          organisation_id: canonicalOrganisationId,
+          person_id: personId,
+          role: isOwner ? 'owner' : 'member',
+          status: 'active',
+          valid_from: new Date().toISOString(),
+        },
+        {
+          onConflict: 'organisation_id,person_id,role',
+        },
+      )
+      .select('membership_id, role')
+      .single();
 
     if (membershipError || !membership) {
       console.error(
@@ -565,82 +547,60 @@ export async function POST(request: Request) {
       );
     }
 
-    // -----------------------------------------------------------------------
-    // 7. OWNERSHIP
-    // -----------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // 7. INITIAL SELF-DECLARED OWNERSHIP
+    // -------------------------------------------------------------------------
+    //
+    // Ownership is separate from membership.
+    //
+    // It exists only when the Person explicitly checked "I am the Owner".
+    //
 
     if (isOwner) {
-      const { data: existingOwnership, error: ownershipLookupError } =
-        await supabase
-          .from('ownership_periods')
-          .select('ownership_period_id')
-          .eq('organisation_id', canonicalOrganisationId)
-          .eq('person_id', personId)
-          .eq('status', 'current')
-          .or('valid_to.is.null,valid_to.gt.now()')
-          .limit(1)
-          .maybeSingle();
+      const { error: ownershipError } = await supabase
+        .from('ownership_periods')
+        .insert({
+          organisation_id: canonicalOrganisationId,
+          person_id: personId,
+          status: 'current',
+          valid_from: new Date().toISOString(),
+        });
 
-      if (ownershipLookupError) {
+      if (ownershipError) {
         console.error(
-          '[identity/plan][POST] ownership lookup failed:',
-          ownershipLookupError,
+          '[identity/plan][POST] ownership claim failed:',
+          ownershipError,
         );
 
         return NextResponse.json(
           {
-            error: 'Unable to resolve ownership',
-            code: 'OWNERSHIP_LOOKUP_FAILED',
+            error: 'Unable to save ownership declaration',
+            code: 'OWNERSHIP_CLAIM_FAILED',
           },
           { status: 500 },
         );
       }
-
-      if (!existingOwnership) {
-        const { error: ownershipError } = await supabase
-          .from('ownership_periods')
-          .insert({
-            organisation_id: canonicalOrganisationId,
-            person_id: personId,
-            status: 'current',
-            valid_from: new Date().toISOString(),
-          });
-
-        if (ownershipError) {
-          console.error(
-            '[identity/plan][POST] ownership claim failed:',
-            ownershipError,
-          );
-
-          return NextResponse.json(
-            {
-              error: 'Unable to save ownership declaration',
-              code: 'OWNERSHIP_CLAIM_FAILED',
-            },
-            { status: 500 },
-          );
-        }
-      }
     }
 
-    // -----------------------------------------------------------------------
-    // 8. RETURN THE PAGE'S EXISTING RESPONSE SHAPE
-    // -----------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // 8. RETURN CANONICAL IDENTITY
+    // -------------------------------------------------------------------------
 
     return NextResponse.json({
-      signedIn: true,
-      firstName: firstName || null,
-      lastName: lastName || null,
-      organisationId: canonicalOrganisationId,
-      organisationName: canonicalOrganisationName,
-      isOwner,
+      ok: true,
+
+      identity: {
+        organisationId: canonicalOrganisationId,
+        organisationName: canonicalOrganisationName,
+        personId,
+        membershipId: membership.membership_id,
+        role: membership.role,
+      },
+
       betaCode: betaCode || undefined,
     });
   } catch (error) {
-    console.error(
-      '[identity/plan][POST] unexpected error:',
-      error,
-    );
+    console.error('[identity/plan][POST] unexpected error:', error);
 
     return NextResponse.json(
       {
