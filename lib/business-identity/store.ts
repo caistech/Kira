@@ -12,11 +12,11 @@
 // rather than an error, which is the correct behaviour for a mismatched ownership check.
 
 import 'server-only';
-import { createSessionClient } from '@/lib/supabase/server-session';
+import { createSessionClientV2 } from '@/lib/supabase/server-session';
 import type { BusinessIdentity } from './index';
 
 export async function getBusinessIdentity(userId: string): Promise<BusinessIdentity | null> {
-  const svc = await createSessionClient();
+  const svc = await createSessionClientV2();
   const { data, error } = await svc.from('business_identity').select('*').eq('user_id', userId).maybeSingle();
   if (error) {
     // Read failures must not be mistaken for "no identity" — that would bounce a configured owner
@@ -57,7 +57,7 @@ export interface UpsertIdentity {
  * sender that never received the identity.
  */
 export async function upsertBusinessIdentity(userId: string, values: UpsertIdentity): Promise<BusinessIdentity> {
-  const svc = await createSessionClient();
+  const svc = await createSessionClientV2();
   const { data, error } = await svc
     .from('business_identity')
     .upsert({ user_id: userId, ...values, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
@@ -72,7 +72,7 @@ export async function upsertBusinessIdentity(userId: string, values: UpsertIdent
 
 /** Stamp the sync. Called only after the orchestrator confirms it holds the identity. */
 export async function markSynced(userId: string): Promise<void> {
-  const svc = await createSessionClient();
+  const svc = await createSessionClientV2();
   const { error } = await svc
     .from('business_identity')
     .update({ synced_to_orchestrator_at: new Date().toISOString() })
@@ -85,7 +85,7 @@ export async function markSynced(userId: string): Promise<void> {
  * then holding the previous entity, so "synced" would be true of data nobody meant to send under.
  */
 export async function clearSynced(userId: string): Promise<void> {
-  const svc = await createSessionClient();
+  const svc = await createSessionClientV2();
   const { error } = await svc
     .from('business_identity')
     .update({ synced_to_orchestrator_at: null })
