@@ -3,7 +3,7 @@
 // route handlers, and server actions. Distinct from server.ts's createServiceClient (service
 // role, no session) which stays the client for privileged data access.
 
-import { createServerClientv2 } from '@supabase/ssr';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
 // NEW API KEY MODEL — session client with publishable key
