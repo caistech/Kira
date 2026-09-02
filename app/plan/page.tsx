@@ -481,246 +481,167 @@ export default function PlanPage() {
     hasOrganisation &&
     ownershipBoundaryComplete;
 
-  /*
-   * ---------------------------------------------------------------------------
-   * SAVE CANONICAL IDENTITY
-   * ---------------------------------------------------------------------------
-   *
-   * The endpoint is the authority for:
-   *
-   *   Person
-   *   Organisation
-   *   Organisation Membership
-   *   Ownership Period
-   *
-   * The frontend never manufactures UUIDs and never assumes that user_id is
-   * organisation_id.
-   *
-   * The backend must record an initial ownership declaration as:
-   *
-   *   source = SELF_DECLARED
-   *
-   * where isOwner === true.
-   */
+/*
+ * ---------------------------------------------------------------------------
+ * SAVE CANONICAL IDENTITY
+ * ---------------------------------------------------------------------------
+ *
+ * The frontend supplies identity facts and the user's explicit ownership
+ * declaration.
+ *
+ * The backend is authoritative for:
+ *
+ *   Person
+ *   Organisation
+ *   Organisation Membership
+ *   Ownership Period
+ *
+ * The frontend never manufactures UUIDs and never interprets user_id as
+ * organisation_id.
+ *
+ * An ownership declaration is supplied as a user assertion. The backend
+ * determines whether that assertion establishes or changes an Ownership
+ * Period and records the appropriate provenance.
+ */
 
-  async function saveIdentity(): Promise<boolean> {
-    setIdentityError(null);
+async function saveIdentity() {
+  setIdentitySaving(true);
+  setError(null);
 
-    if (!hasPersonIdentity) {
-      setIdentityError(
-        'Please enter your first name and last name.',
-      );
-      return false;
+  try {
+    const normalisedFirstName = firstName.trim();
+    const normalisedLastName = lastName.trim();
+    const normalisedOrganisationName = organisationName.trim();
+
+    if (!normalisedFirstName) {
+      throw new Error('Please enter your first name.');
+    }
+
+    if (!normalisedLastName) {
+      throw new Error('Please enter your last name.');
     }
 
     if (!normalisedOrganisationName) {
-      setIdentityError(
-        'Please enter the name of your business.',
-      );
-      return false;
+      throw new Error('Please enter your organisation name.');
     }
 
     /*
-     * Existing canonical organisation:
+     * The Plan route is the universal identity / initial ownership boundary.
      *
-     * We send its ID unchanged.
-     *
-     * New organisation:
-     *
-     * organisationId remains empty and the backend must resolve/create the
-     * canonical Organisation from the supplied organisation name.
-     *
-     * The frontend must never invent an ID.
+     * organisationId is deliberately passed explicitly to the identity API.
+     * The API is responsible for resolving/validating the canonical
+     * organisation context. We never derive organisation identity from
+     * auth user_id.
      */
-    setIdentitySaving(true);
+    const response = await fetch('/api/identity/plan', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        firstName: normalisedFirstName,
+        lastName: normalisedLastName,
+        organisationId: organisationId.trim() || null,
+        organisationName: normalisedOrganisationName,
+        isOwner,
+        betaCode: betaCode || undefined,
+      }),
+    });
 
-    try {
-      const response = await fetch('/api/identity/plan', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          firstName: normalisedFirstName,
-          lastName: normalisedLastName,
+    const result = await response.json().catch(() => null);
 
-          /*
-           * Empty means "resolve/create according to canonical identity rules".
-           * It does NOT mean "use user_id".
-           */
-          organisationId:
-            organisationId.trim() || null,
-
-          organisationName:
-            normalisedOrganisationName,
-
-          /*
-           * Explicit declaration only.
-           *
-           * Backend records SELF_DECLARED when true.
-           */
-          isOwner:
-            ownershipAlreadyEstablished
-              ? true
-              : isOwner,
-
-          ownershipSource:
-            ownershipAlreadyEstablished
-              ? undefined
-              : isOwner
-                ? 'SELF_DECLARED'
-                : undefined,
-
-          /*
-           * Preserve acquisition provenance without allowing it to establish
-           * ownership.
-           */
-          betaCode: betaCode || undefined,
-        }),
-      });
-
-      const body = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          body?.error ||
-            'We could not establish your organisation identity.',
-        );
-      }
-
-      /*
-       * The backend returns the canonical IDs it actually resolved.
-       *
-       * We trust the returned canonical values rather than retaining our
-       * pre-save guesses.
-       */
-      if (body.organisationId) {
-        setOrganisationId(body.organisationId);
-      }
-
-      if (body.organisationName) {
-        setOrganisationName(body.organisationName);
-      }
-
-      if (body.firstName) {
-        setFirstName(body.firstName);
-      }
-
-      if (body.lastName) {
-        setLastName(body.lastName);
-      }
-
-      if (body.isOwner === true) {
-        setOwnershipAlreadyEstablished(true);
-        setIsOwner(true);
-      }
-
-      if (body.signedIn !== undefined) {
-        setSignedIn(Boolean(body.signedIn));
-      }
-
-      return true;
-    } catch (cause) {
-      setIdentityError(
-        cause instanceof Error
-          ? cause.message
-          : 'We could not save your organisation details.',
+    if (!response.ok) {
+      throw new Error(
+        result?.error ||
+          result?.message ||
+          'Unable to save your identity. Please try again.',
       );
-
-      return false;
-    } finally {
-      setIdentitySaving(false);
     }
-  }
-
-  /*
-   * ---------------------------------------------------------------------------
-   * COMMERCIAL PATHS
-   * ---------------------------------------------------------------------------
-   */
-
-  async function startCheckout() {
-    if (!payload || !model) return;
-
-    setLoading(true);
-    setError(null);
 
     /*
-     * This is a hard architectural boundary.
-     *
-     * Payment cannot begin until the Person + Organisation + ownership
-     * declaration has been established.
+     * The API response is authoritative. If it establishes or confirms
+     * the canonical organisation context, retain that organisation ID
+     * for subsequent checkout.
      */
-    if (!identityBoundaryComplete) {
-      const saved = await saveIdentity();
-
-      if (!saved) {
-        setLoading(false);
-        return;
-      }
+    if (result?.organisationId) {
+      setOrganisationId(result.organisationId);
     }
 
-    try {
-      const response = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          inputs: payload.inputs,
-          currency: payload.currency,
+    return result;
+  } catch (err) {
+    const message =
+      err instanceof Error
+        ? err.message
+        : 'Unable to save your identity. Please try again.';
 
-          firstName: normalisedFirstName,
-          lastName: normalisedLastName,
-
-          /*
-           * Canonical organisational identity.
-           *
-           * This is the value the checkout/onboarding backend must carry
-           * forward. It is NOT derived from user_id.
-           */
-          organisationId:
-            organisationId.trim() || undefined,
-
-          organisationName:
-            normalisedOrganisationName,
-
-          /*
-           * Explicit ownership declaration.
-           *
-           * The backend is responsible for persisting the ownership claim as
-           * SELF_DECLARED where this is the initial claim.
-           */
-          isOwner: true,
-          ownershipSource: 'SELF_DECLARED',
-
-          /*
-           * Terms are captured before money changes hands.
-           */
-          termsAccepted: true,
-          termsVersion: TERMS_VERSION,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.url) {
-        throw new Error(
-          data.error || 'Checkout failed',
-        );
-      }
-
-      window.location.assign(data.url);
-    } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : 'Could not start checkout',
-      );
-
-      setLoading(false);
-    }
+    setError(message);
+    throw err;
+  } finally {
+    setIdentitySaving(false);
   }
+}
+
+async function startCheckout() {
+  setLoading(true);
+  setError(null);
+
+  try {
+    /*
+     * Identity must be persisted before checkout.
+     *
+     * This ensures the checkout flow is attached to the canonical
+     * Organisation rather than implicitly to auth user identity.
+     */
+    const identity = await saveIdentity();
+
+    const canonicalOrganisationId =
+      identity?.organisationId || organisationId.trim();
+
+    if (!canonicalOrganisationId) {
+      throw new Error(
+        'No organisation context is available for checkout.',
+      );
+    }
+
+    const response = await fetch('/api/billing/create-checkout-session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        organisationId: canonicalOrganisationId,
+        betaCode: betaCode || undefined,
+      }),
+    });
+
+    const result = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(
+        result?.error ||
+          result?.message ||
+          'Unable to start checkout. Please try again.',
+      );
+    }
+
+    if (!result?.url) {
+      throw new Error(
+        'Checkout could not be started because no checkout URL was returned.',
+      );
+    }
+
+    window.location.href = result.url;
+  } catch (err) {
+    const message =
+      err instanceof Error
+        ? err.message
+        : 'Unable to start checkout. Please try again.';
+
+    setError(message);
+  } finally {
+    setLoading(false);
+  }
+}
 
   /*
    * ---------------------------------------------------------------------------

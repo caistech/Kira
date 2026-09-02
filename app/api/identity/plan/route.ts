@@ -4,6 +4,23 @@ import { createServiceClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
+type PlanRequestBody = {
+  firstName?: unknown;
+  lastName?: unknown;
+  organisationId?: unknown;
+  organisationName?: unknown;
+  isOwner?: unknown;
+  betaCode?: unknown;
+};
+
+function normaliseString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function normaliseName(value: unknown): string {
+  return normaliseString(value).replace(/\s+/g, ' ');
+}
+
 /**
  * Canonical identity projection for the Plan / onboarding flow.
  *
@@ -19,43 +36,51 @@ export const dynamic = 'force-dynamic';
  *          ↓
  *   Organisation
  *
- * Ownership is queried separately because ownership is temporal:
+ * The client may provide identity/onboarding values, but it does NOT
+ * establish organisational authority.
  *
- *   Person → Ownership Period → Organisation
+ * Canonical rule:
  *
- * IMPORTANT:
- * - organisation_id is the organisational anchor.
- * - person_id identifies the human actor.
- * - membership_id identifies the person's organisational relationship.
- * - ownership_periods identifies ownership history/current ownership.
- * - users.id is NOT used as the organisation identity.
+ *   organisation_id = resolved server-side organisation context
+ *
+ * Never:
+ *
+ *   organisation_id = client supplied organisationId
+ *
+ * A client-supplied organisationId may only be accepted when it matches
+ * the authenticated organisation context.
+ */
+
+/**
+ * GET /api/identity/plan
+ *
+ * Returns the canonical organisational identity for the authenticated
+ * caller.
+ *
+ * This endpoint is intentionally read-only.
  */
 export async function GET() {
   try {
-    const context = await getCurrentOrganisationContext();
+    const ctx = await getCurrentOrganisationContext();
 
-    if (!context) {
+    if (!ctx) {
       return NextResponse.json(
-        { error: 'Unauthenticated' },
+        {
+          error: 'Unauthorised',
+          code: 'NO_ORGANISATION_CONTEXT',
+        },
         { status: 401 },
       );
     }
 
-    const {
-      organisationId,
-      personId,
-      membershipId,
-    } = context;
+    const organisationId = ctx.organisationId;
 
-    if (!organisationId || !personId || !membershipId) {
-      console.error('[identity/plan] incomplete canonical identity context', {
-        organisationId,
-        personId,
-        membershipId,
-      });
-
+    if (!organisationId) {
       return NextResponse.json(
-        { error: 'Incomplete organisation identity context' },
+        {
+          error: 'No active organisation membership',
+          code: 'NO_ACTIVE_ORGANISATION',
+        },
         { status: 403 },
       );
     }
@@ -63,225 +88,356 @@ export async function GET() {
     const supabase = createServiceClient();
 
     /*
-     * Load the four canonical dimensions independently.
+     * Read the canonical Organisation record.
      *
-     * Do not collapse these into a users lookup.
+     * IMPORTANT:
+     * organisationId comes from getCurrentOrganisationContext(),
+     * never from the request.
      */
-    const [
-      organisationResult,
-      personResult,
-      membershipResult,
-      ownershipResult,
-    ] = await Promise.all([
-      supabase
+    const { data: organisation, error: organisationError } =
+      await supabase
         .from('organisations')
-        .select(
-          [
-            'organisation_id',
-            'legal_name',
-            'trading_name',
-            'status',
-            'created_at',
-            'updated_at',
-          ].join(', '),
-        )
+        .select('organisation_id, name')
         .eq('organisation_id', organisationId)
-        .maybeSingle(),
+        .maybeSingle();
 
-      supabase
-        .from('persons')
-        .select(
-          [
-            'person_id',
-            'first_name',
-            'last_name',
-            'email',
-            'created_at',
-            'updated_at',
-          ].join(', '),
-        )
-        .eq('person_id', personId)
-        .maybeSingle(),
-
-      supabase
-        .from('organisation_memberships')
-        .select(
-          [
-            'membership_id',
-            'organisation_id',
-            'person_id',
-            'role',
-            'status',
-            'valid_from',
-            'valid_to',
-            'created_at',
-            'updated_at',
-          ].join(', '),
-        )
-        .eq('membership_id', membershipId)
-        .eq('organisation_id', organisationId)
-        .eq('person_id', personId)
-        .maybeSingle(),
-
-      supabase
-        .from('ownership_periods')
-        .select(
-          [
-            'ownership_period_id',
-            'organisation_id',
-            'person_id',
-            'status',
-            'valid_from',
-            'valid_to',
-            'created_at',
-            'updated_at',
-          ].join(', '),
-        )
-        .eq('organisation_id', organisationId)
-        .eq('person_id', personId)
-        .order('valid_from', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-    ]);
-
-    if (organisationResult.error) {
+    if (organisationError) {
       console.error(
-        '[identity/plan] organisation lookup failed',
-        organisationResult.error,
+        '[identity/plan][GET] organisation lookup failed:',
+        organisationError,
       );
 
       return NextResponse.json(
-        { error: 'Unable to load organisation identity' },
+        {
+          error: 'Unable to resolve organisation',
+          code: 'ORGANISATION_LOOKUP_FAILED',
+        },
         { status: 500 },
       );
     }
 
-    if (personResult.error) {
-      console.error(
-        '[identity/plan] person lookup failed',
-        personResult.error,
-      );
-
-      return NextResponse.json(
-        { error: 'Unable to load person identity' },
-        { status: 500 },
-      );
-    }
-
-    if (membershipResult.error) {
-      console.error(
-        '[identity/plan] membership lookup failed',
-        membershipResult.error,
-      );
-
-      return NextResponse.json(
-        { error: 'Unable to load organisation membership' },
-        { status: 500 },
-      );
-    }
-
-    if (ownershipResult.error) {
-      console.error(
-        '[identity/plan] ownership lookup failed',
-        ownershipResult.error,
-      );
-
-      return NextResponse.json(
-        { error: 'Unable to load ownership history' },
-        { status: 500 },
-      );
-    }
-
-    const organisation = organisationResult.data;
-    const person = personResult.data;
-    const membership = membershipResult.data;
-    const ownershipPeriod = ownershipResult.data;
-
-    /*
-     * The context resolver has already established the canonical
-     * organisation/person/membership relationship.
-     *
-     * We still fail closed if the canonical rows cannot be found.
-     */
     if (!organisation) {
       return NextResponse.json(
-        { error: 'Canonical organisation not found' },
+        {
+          error: 'Organisation not found',
+          code: 'ORGANISATION_NOT_FOUND',
+        },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json({
+      ok: true,
+      identity: {
+        organisationId: organisation.organisation_id,
+        organisationName: organisation.name ?? null,
+
+        /*
+         * These are contextual identity values.
+         * They are NOT organisational ownership identifiers.
+         */
+        personId: ctx.personId ?? null,
+        role: ctx.role ?? null,
+      },
+    });
+  } catch (error) {
+    console.error('[identity/plan][GET] unexpected error:', error);
+
+    return NextResponse.json(
+      {
+        error: 'Unable to resolve organisational identity',
+        code: 'IDENTITY_RESOLUTION_FAILED',
+      },
+      { status: 500 },
+    );
+  }
+}
+
+/**
+ * POST /api/identity/plan
+ *
+ * Persists the person's Plan/onboarding identity information against
+ * the canonical Person + Organisation context.
+ *
+ * The authenticated organisation context is authoritative.
+ *
+ * Client supplied:
+ *   organisationId
+ *
+ * is NEVER allowed to select another organisation.
+ */
+export async function POST(request: Request) {
+  try {
+    /*
+     * Resolve the caller from the authenticated session first.
+     *
+     * This is the canonical authority boundary.
+     */
+    const ctx = await getCurrentOrganisationContext();
+
+    if (!ctx) {
+      return NextResponse.json(
+        {
+          error: 'Unauthorised',
+          code: 'NO_ORGANISATION_CONTEXT',
+        },
+        { status: 401 },
+      );
+    }
+
+    const canonicalOrganisationId = normaliseString(ctx.organisationId);
+    const personId = normaliseString(ctx.personId);
+
+    if (!canonicalOrganisationId) {
+      return NextResponse.json(
+        {
+          error: 'No active organisation membership',
+          code: 'NO_ACTIVE_ORGANISATION',
+        },
         { status: 403 },
       );
     }
 
-    if (!person) {
+    if (!personId) {
       return NextResponse.json(
-        { error: 'Canonical person not found' },
-        { status: 403 },
+        {
+          error: 'Unable to resolve person identity',
+          code: 'NO_PERSON_CONTEXT',
+        },
+        { status: 401 },
       );
     }
 
-    if (!membership) {
+    let body: PlanRequestBody;
+
+    try {
+      body = (await request.json()) as PlanRequestBody;
+    } catch {
       return NextResponse.json(
-        { error: 'Canonical organisation membership not found' },
+        {
+          error: 'Invalid JSON body',
+          code: 'INVALID_JSON',
+        },
+        { status: 400 },
+      );
+    }
+
+    const firstName = normaliseName(body.firstName);
+    const lastName = normaliseName(body.lastName);
+    const submittedOrganisationId = normaliseString(body.organisationId);
+    const organisationName = normaliseName(body.organisationName);
+    const betaCode = normaliseString(body.betaCode);
+
+    /*
+     * If the client sends an organisationId, it is merely a claim about
+     * the current context.
+     *
+     * It must match the server-resolved organisation.
+     *
+     * We NEVER switch context to the submitted value.
+     */
+    if (
+      submittedOrganisationId &&
+      submittedOrganisationId !== canonicalOrganisationId
+    ) {
+      return NextResponse.json(
+        {
+          error: 'Organisation context mismatch',
+          code: 'ORGANISATION_CONTEXT_MISMATCH',
+        },
         { status: 403 },
       );
     }
 
     /*
-     * Ownership is intentionally nullable.
+     * isOwner is a relationship/role assertion.
      *
-     * A Person can be a legitimate member without being an owner.
-     * The absence of an ownership period must therefore NOT be treated
-     * as an identity failure.
+     * Do not use it to create organisational identity.
+     */
+    const isOwner =
+      typeof body.isOwner === 'boolean' ? body.isOwner : undefined;
+
+    const supabase = createServiceClient();
+
+    /*
+     * Verify that the canonical Organisation exists.
+     */
+    const { data: organisation, error: organisationError } =
+      await supabase
+        .from('organisations')
+        .select('organisation_id, name')
+        .eq('organisation_id', canonicalOrganisationId)
+        .maybeSingle();
+
+    if (organisationError) {
+      console.error(
+        '[identity/plan][POST] organisation lookup failed:',
+        organisationError,
+      );
+
+      return NextResponse.json(
+        {
+          error: 'Unable to resolve organisation',
+          code: 'ORGANISATION_LOOKUP_FAILED',
+        },
+        { status: 500 },
+      );
+    }
+
+    if (!organisation) {
+      return NextResponse.json(
+        {
+          error: 'Organisation not found',
+          code: 'ORGANISATION_NOT_FOUND',
+        },
+        { status: 404 },
+      );
+    }
+
+    /*
+     * Update canonical Person identity.
+     *
+     * Person remains separate from Organisation.
+     */
+    const personUpdate: Record<string, string> = {};
+
+    if (firstName) {
+      personUpdate.first_name = firstName;
+    }
+
+    if (lastName) {
+      personUpdate.last_name = lastName;
+    }
+
+    if (Object.keys(personUpdate).length > 0) {
+      const { error: personError } = await supabase
+        .from('persons')
+        .update(personUpdate)
+        .eq('person_id', personId);
+
+      if (personError) {
+        console.error(
+          '[identity/plan][POST] person update failed:',
+          personError,
+        );
+
+        return NextResponse.json(
+          {
+            error: 'Unable to save person identity',
+            code: 'PERSON_UPDATE_FAILED',
+          },
+          { status: 500 },
+        );
+      }
+    }
+
+    /*
+     * If the Plan flow explicitly identifies the caller as an owner,
+     * update the canonical membership relationship.
+     *
+     * The organisation is STILL the server-resolved organisation.
+     */
+    if (isOwner === true) {
+      const { error: membershipError } = await supabase
+        .from('organisation_memberships')
+        .upsert(
+          {
+            organisation_id: canonicalOrganisationId,
+            person_id: personId,
+            role: 'owner',
+            status: 'active',
+            valid_from: new Date().toISOString(),
+          },
+          {
+            onConflict: 'organisation_id,person_id,role',
+          },
+        );
+
+      if (membershipError) {
+        console.error(
+          '[identity/plan][POST] owner membership update failed:',
+          membershipError,
+        );
+
+        return NextResponse.json(
+          {
+            error: 'Unable to save organisation relationship',
+            code: 'MEMBERSHIP_UPDATE_FAILED',
+          },
+          { status: 500 },
+        );
+      }
+    }
+
+    /*
+     * Do not allow organisationName from the client to overwrite the
+     * canonical Organisation name merely because it was submitted here.
+     *
+     * If an organisation name was supplied, it is only used when the
+     * canonical Organisation currently has no name.
+     *
+     * This avoids turning a Plan form into an authority boundary for
+     * changing organisational identity.
+     */
+    if (!organisation.name && organisationName) {
+      const { error: organisationUpdateError } = await supabase
+        .from('organisations')
+        .update({
+          name: organisationName,
+        })
+        .eq('organisation_id', canonicalOrganisationId);
+
+      if (organisationUpdateError) {
+        console.error(
+          '[identity/plan][POST] organisation name update failed:',
+          organisationUpdateError,
+        );
+
+        return NextResponse.json(
+          {
+            error: 'Unable to save organisation identity',
+            code: 'ORGANISATION_UPDATE_FAILED',
+          },
+          { status: 500 },
+        );
+      }
+    }
+
+    /*
+     * betaCode is intentionally NOT used to establish identity or
+     * organisational ownership.
+     *
+     * Beta redemption remains a separate commercial/acquisition concern.
+     *
+     * If the Plan page needs to pass the code onward, return it as
+     * contextual state rather than allowing it to alter organisation
+     * resolution here.
      */
     return NextResponse.json({
+      ok: true,
+
       identity: {
-        organisation: {
-          id: organisation.organisation_id,
-          legalName: organisation.legal_name ?? null,
-          tradingName: organisation.trading_name ?? null,
-          status: organisation.status ?? null,
-        },
-
-        person: {
-          id: person.person_id,
-          firstName: person.first_name ?? null,
-          lastName: person.last_name ?? null,
-          email: person.email ?? null,
-        },
-
-        membership: {
-          id: membership.membership_id,
-          organisationId: membership.organisation_id,
-          personId: membership.person_id,
-          role: membership.role ?? null,
-          status: membership.status ?? null,
-          validFrom: membership.valid_from ?? null,
-          validTo: membership.valid_to ?? null,
-        },
-
-        ownershipPeriod: ownershipPeriod
-          ? {
-              id: ownershipPeriod.ownership_period_id,
-              organisationId: ownershipPeriod.organisation_id,
-              personId: ownershipPeriod.person_id,
-              status: ownershipPeriod.status ?? null,
-              validFrom: ownershipPeriod.valid_from ?? null,
-              validTo: ownershipPeriod.valid_to ?? null,
-            }
-          : null,
+        organisationId: canonicalOrganisationId,
+        organisationName:
+          organisation.name ?? (organisationName || null),
+        personId,
+        role: isOwner === true ? 'owner' : ctx.role ?? null,
       },
 
       /*
-       * Keep the canonical IDs available to the Plan flow.
-       * These are explicit projections, not replacement semantics.
+       * Preserve the beta code for the next stage of the Plan flow,
+       * without making it an identity authority.
        */
-      organisationId,
-      personId,
-      membershipId,
+      betaCode: betaCode || undefined,
     });
   } catch (error) {
-    console.error('[identity/plan] unexpected error', error);
+    console.error('[identity/plan][POST] unexpected error:', error);
 
     return NextResponse.json(
-      { error: 'Unable to resolve canonical identity' },
+      {
+        error: 'Unable to save organisational identity',
+        code: 'IDENTITY_SAVE_FAILED',
+      },
       { status: 500 },
     );
   }
