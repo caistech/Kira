@@ -1,20 +1,6 @@
 // lib/supabase/server.ts
 import { createClient } from '@supabase/supabase-js';
 
-// Service role client for API routes (bypasses RLS) — LEGACY JWT
-export function createServiceClientV2() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
-}
-
 // Service role client for API routes (bypasses RLS) — NEW API KEY MODEL
 export function createServiceClientV2() {
   return createClient(

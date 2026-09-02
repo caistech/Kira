@@ -1,14 +1,7 @@
-// lib/supabase/server-session.ts
-// SSR user-session Supabase client using the publishable API key + cookies.
-// Used by server components, route handlers, and server actions.
-//
-// Privileged/server-side database access remains in server.ts via
-// createServiceClientV2().
-
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
-export async function createSessionClient() {
+export async function createSessionClientV2() {
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -19,38 +12,28 @@ export async function createSessionClient() {
         get(name: string) {
           return cookieStore.get(name)?.value;
         },
-
-        set(
-          name: string,
-          value: string,
-          options: Record<string, unknown>,
-        ) {
+        set(name: string, value: string, options: Record<string, unknown>) {
           try {
-            cookieStore.set({
-              name,
-              value,
-              ...options,
-            });
+            cookieStore.set({ name, value, ...options });
           } catch {
-            // Called from a Server Component where cookies are read-only.
+            // Server Component: cookie mutation may be unavailable.
           }
         },
-
-        remove(
-          name: string,
-          options: Record<string, unknown>,
-        ) {
+        remove(name: string, options: Record<string, unknown>) {
           try {
-            cookieStore.set({
-              name,
-              value: '',
-              ...options,
-            });
+            cookieStore.set({ name, value: '', ...options });
           } catch {
-            // Called from a Server Component where cookies are read-only.
+            // Server Component: cookie mutation may be unavailable.
           }
         },
       },
     },
   );
 }
+
+/**
+ * Compatibility alias during migration.
+ *
+ * New code should use createSessionClientV2().
+ */
+export const createSessionClient = createSessionClientV2;
