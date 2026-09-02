@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getCurrentOrganisationContext, getAuthUser,} from '@/lib/auth';
+import {
+  getCurrentOrganisationContext,
+  getAuthUser,
+} from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -28,27 +31,25 @@ function normaliseName(value: unknown): string {
  *
  *   authenticated session
  *          ↓
- *   getCurrentOrganisationContext()
- *          ↓
  *   Person
+ *          ↓
+ *   Organisation
  *          ↓
  *   Organisation Membership
  *          ↓
- *   Organisation
+ *   optional SELF_DECLARED ownership
  *
- * The client may provide identity/onboarding values, but it does NOT
+ * The client may provide onboarding information, but it does not
  * establish organisational authority.
  *
- * Canonical rule:
+ * organisationId supplied by the client is therefore never trusted
+ * as authority. If supplied, it must already exist and the Person
+ * must already be an active member of that Organisation.
  *
- *   organisation_id = resolved server-side organisation context
+ * If no organisationId is supplied, a new Organisation is created
+ * for the authenticated Person.
  *
- * Never:
- *
- *   organisation_id = client supplied organisationId
- *
- * A client-supplied organisationId may only be accepted when it matches
- * the authenticated organisation context.
+ * Beta provenance is independent of ownership.
  */
 
 /**
@@ -88,11 +89,8 @@ export async function GET() {
     const supabase = createServiceClient();
 
     /*
-     * Read the canonical Organisation record.
-     *
-     * IMPORTANT:
-     * organisationId comes from getCurrentOrganisationContext(),
-     * never from the request.
+     * organisationId comes exclusively from the canonical
+     * organisational context resolver.
      */
     const { data: organisation, error: organisationError } =
       await supabase
@@ -128,20 +126,20 @@ export async function GET() {
 
     return NextResponse.json({
       ok: true,
+      signedIn: true,
+
       identity: {
         organisationId: organisation.organisation_id,
         organisationName: organisation.name ?? null,
-
-        /*
-         * These are contextual identity values.
-         * They are NOT organisational ownership identifiers.
-         */
         personId: ctx.personId ?? null,
         role: ctx.role ?? null,
       },
     });
   } catch (error) {
-    console.error('[identity/plan][GET] unexpected error:', error);
+    console.error(
+      '[identity/plan][GET] unexpected error:',
+      error,
+    );
 
     return NextResponse.json(
       {
@@ -159,8 +157,10 @@ export async function GET() {
  * /plan is the identity-establishment boundary.
  *
  * IMPORTANT:
- * This route MUST NOT require getCurrentOrganisationContext(),
- * because a new user may not have an organisation yet.
+ *
+ * This route intentionally does NOT require
+ * getCurrentOrganisationContext(), because a newly authenticated
+ * Person may not yet have an Organisation or Membership.
  *
  * Authority:
  *
@@ -174,68 +174,118 @@ export async function GET() {
  *        ↓
  *   optional SELF_DECLARED ownership
  *
- * organisationId supplied by the client is only accepted when it
- * already exists and belongs to the authenticated Person.
+ * Beta code:
  *
- * If no organisationId is supplied, a new Organisation is created.
+ *   Beta code establishes beta provenance/access only.
+ *
+ * It does NOT:
+ *
+ *   - establish Person identity
+ *   - establish Organisation ownership
+ *   - create organisational authority
+ *   - replace authentication
+ *   - replace membership
+ *
+ * The authenticated Supabase user remains the identity authority.
  */
-export async function POST(request: Request) { // Beta code redemption path
+export async function POST(request: Request) {
   try {
-    const supabase = createServiceClient();
-
     // -------------------------------------------------------------------------
     // 1. AUTHENTICATE THE CALLER
     // -------------------------------------------------------------------------
     //
-    // Use the cookie-aware session client via getAuthUser().
-    // The service-role client above is deliberately retained for canonical
-    // database writes/lookups after authentication.
+    // getAuthUser() uses the cookie-aware Supabase session client.
+    // See lib/auth.ts.
+    //
+    // There is deliberately ONE declaration of `user` in this route.
     //
 
     const user = await getAuthUser();
-// Beta code validation (temporary inline implementation)
-const betaCode = normaliseString(body.betaCode);
-const isValidBetaCode = betaCode === 'BETA-TEST-123'; // Hardcoded valid code
-
-if (isValidBetaCode) {
-  const session = await createAnonymousSession({ isValid: true, betaCodeId: 'BETA-TEST-123' });
-  console.log('Beta session created:', session.id);
-
-  return NextResponse.json({
-    betaSession: session.id,
-    continue: true,
-    message: 'Beta session created. Reload the page with the cookie.'
-  });
-}
-
-// If no valid beta code, proceed with normal authentication
-const user = await getAuthUser();
-if (!user) {
 
     if (!user) {
       return NextResponse.json(
         {
           error: 'Unauthorised',
-          code: 'NO_AUTHENTICATED_USER_AND_NO_BETA_ACCESS',
+          code: 'NO_AUTHENTICATED_USER',
         },
         { status: 401 },
       );
     }
 
+    // -------------------------------------------------------------------------
+    // 2. READ REQUEST
+    // -------------------------------------------------------------------------
 
+    let body: PlanRequestBody;
+
+    try {
+      body = (await request.json()) as PlanRequestBody;
+    } catch {
+      return NextResponse.json(
+        {
+          error: 'Invalid JSON body',
+          code: 'INVALID_JSON',
+        },
+        { status: 400 },
+      );
+    }
+
+    const firstName = normaliseName(body.firstName);
+    const lastName = normaliseName(body.lastName);
+    const submittedOrganisationId = normaliseString(
+      body.organisationId,
+    );
+    const organisationName = normaliseName(
+      body.organisationName,
+    );
+    const betaCode = normaliseString(body.betaCode);
+
+    const isOwner =
+      typeof body.isOwner === 'boolean'
+        ? body.isOwner
+        : false;
+
+    /*
+     * Beta code is provenance/access information.
+     *
+     * It is deliberately NOT converted into ownership.
+     *
+     * The actual beta entitlement/redeem flow remains responsible for
+     * validating the beta code itself.
+     *
+     * We therefore retain the supplied code for the downstream response
+     * without treating its presence as organisational authority.
+     */
 
     // -------------------------------------------------------------------------
-    // 2. RESOLVE / CREATE PERSON
+    // 3. SERVICE CLIENT
+    // -------------------------------------------------------------------------
+    //
+    // Authentication has already been established through getAuthUser().
+    //
+    // The service-role client is used for the canonical Person,
+    // Organisation, Membership and Ownership writes below.
+    //
+
+    const supabase = createServiceClient();
+
+    // -------------------------------------------------------------------------
+    // 4. RESOLVE / CREATE PERSON
     // -------------------------------------------------------------------------
     //
     // Person is the human identity.
-    // users.id is NOT the organisation identity.
     //
-    const { data: personByAuth, error: personLookupError } = await supabase
-      .from('persons')
-      .select('person_id, first_name, last_name')
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
+    // users.id is NOT used as organisation identity.
+    //
+
+    const { data: personByAuth, error: personLookupError } =
+      await supabase
+        .from('persons')
+        .select(
+          'person_id, first_name, last_name, email, auth_user_id',
+        )
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
 
     if (personLookupError) {
       console.error(
@@ -257,11 +307,32 @@ if (!user) {
     if (personByAuth) {
       personId = personByAuth.person_id;
     } else {
-      const { data: personByEmail, error: personEmailError } = await supabase
-        .from('persons')
-        .select('person_id')
-        .eq('email', user.email ?? '')
-        .maybeSingle();
+      // -----------------------------------------------------------------------
+      // 4A. AUTH → PERSON BRIDGE BY EMAIL
+      // -----------------------------------------------------------------------
+      //
+      // Email is used only to locate an existing Person record when the
+      // canonical auth_user_id bridge is not yet present.
+      //
+      // Email itself does NOT establish organisation authority.
+      //
+
+      if (!user.email) {
+        return NextResponse.json(
+          {
+            error: 'Authenticated account has no email address',
+            code: 'AUTH_EMAIL_REQUIRED',
+          },
+          { status: 400 },
+        );
+      }
+
+      const { data: personByEmail, error: personEmailError } =
+        await supabase
+          .from('persons')
+          .select('person_id, auth_user_id')
+          .ilike('email', user.email)
+          .maybeSingle();
 
       if (personEmailError) {
         console.error(
@@ -281,34 +352,61 @@ if (!user) {
       if (personByEmail) {
         personId = personByEmail.person_id;
 
-        // Repair the Auth → Person bridge if necessary.
-        const { error: bridgeError } = await supabase
-          .from('persons')
-          .update({ auth_user_id: user.id })
-          .eq('person_id', personId)
-          .is('auth_user_id', null);
+        /*
+         * Only repair an unclaimed Person bridge.
+         *
+         * Never overwrite an existing auth_user_id belonging to another
+         * authenticated identity.
+         */
+        if (!personByEmail.auth_user_id) {
+          const { error: bridgeError } = await supabase
+            .from('persons')
+            .update({
+              auth_user_id: user.id,
+            })
+            .eq('person_id', personId)
+            .is('auth_user_id', null);
 
-        if (bridgeError) {
-          console.error(
-            '[identity/plan][POST] person auth bridge update failed:',
-            bridgeError,
-          );
+          if (bridgeError) {
+            console.error(
+              '[identity/plan][POST] person auth bridge update failed:',
+              bridgeError,
+            );
 
+            return NextResponse.json(
+              {
+                error: 'Unable to establish person identity',
+                code: 'PERSON_BRIDGE_FAILED',
+              },
+              { status: 500 },
+            );
+          }
+        } else if (personByEmail.auth_user_id !== user.id) {
+          /*
+           * An existing Person already belongs to another auth identity.
+           *
+           * Do not silently reassign it merely because the email matched.
+           */
           return NextResponse.json(
             {
-              error: 'Unable to establish person identity',
-              code: 'PERSON_BRIDGE_FAILED',
+              error:
+                'A different authenticated identity is already linked to this person record',
+              code: 'PERSON_AUTH_CONFLICT',
             },
-            { status: 500 },
+            { status: 409 },
           );
         }
       } else {
+        // ---------------------------------------------------------------------
+        // 4B. CREATE PERSON
+        // ---------------------------------------------------------------------
+
         const { data: createdPerson, error: createPersonError } =
           await supabase
             .from('persons')
             .insert({
               auth_user_id: user.id,
-              email: user.email ?? null,
+              email: user.email,
             })
             .select('person_id')
             .single();
@@ -333,34 +431,7 @@ if (!user) {
     }
 
     // -------------------------------------------------------------------------
-    // 3. READ REQUEST
-    // -------------------------------------------------------------------------
-
-    let body: PlanRequestBody;
-
-    try {
-      body = (await request.json()) as PlanRequestBody;
-    } catch {
-      return NextResponse.json(
-        {
-          error: 'Invalid JSON body',
-          code: 'INVALID_JSON',
-        },
-        { status: 400 },
-      );
-    }
-
-    const firstName = normaliseName(body.firstName);
-    const lastName = normaliseName(body.lastName);
-    const submittedOrganisationId = normaliseString(body.organisationId);
-    const organisationName = normaliseName(body.organisationName);
-    const betaCode = normaliseString(body.betaCode);
-
-    const isOwner =
-      typeof body.isOwner === 'boolean' ? body.isOwner : false;
-
-    // -------------------------------------------------------------------------
-    // 4. UPDATE PERSON IDENTITY
+    // 5. UPDATE PERSON IDENTITY
     // -------------------------------------------------------------------------
 
     const personUpdate: Record<string, string> = {};
@@ -396,28 +467,41 @@ if (!user) {
     }
 
     // -------------------------------------------------------------------------
-    // 5. RESOLVE OR CREATE ORGANISATION
+    // 6. RESOLVE OR CREATE ORGANISATION
     // -------------------------------------------------------------------------
     //
     // organisation_id is the canonical organisational anchor.
     //
-    // Client-supplied organisationId NEVER creates authority.
+    // A client-supplied organisationId NEVER creates authority.
     //
-    // If supplied, it must already exist and the Person must already have
-    // membership in it.
+    // If supplied:
     //
-    // If not supplied, /plan creates the initial Organisation.
+    //   1. Organisation must exist.
+    //   2. Person must already be an active member.
+    //
+    // If not supplied:
+    //
+    //   A new Organisation is created.
+    //
+    // The Person is then attached through organisation_memberships.
     //
 
     let canonicalOrganisationId: string;
     let canonicalOrganisationName: string | null = null;
 
     if (submittedOrganisationId) {
+      // -----------------------------------------------------------------------
+      // 6A. EXISTING ORGANISATION
+      // -----------------------------------------------------------------------
+
       const { data: organisation, error: organisationError } =
         await supabase
           .from('organisations')
           .select('organisation_id, name')
-          .eq('organisation_id', submittedOrganisationId)
+          .eq(
+            'organisation_id',
+            submittedOrganisationId,
+          )
           .maybeSingle();
 
       if (organisationError) {
@@ -445,18 +529,36 @@ if (!user) {
         );
       }
 
-      canonicalOrganisationId = organisation.organisation_id;
-      canonicalOrganisationName = organisation.name ?? null;
+      canonicalOrganisationId =
+        organisation.organisation_id;
 
-      // Existing organisation: verify this Person is actually a member.
-      const { data: membership, error: membershipLookupError } =
-        await supabase
-          .from('organisation_memberships')
-          .select('membership_id, role, status')
-          .eq('organisation_id', canonicalOrganisationId)
-          .eq('person_id', personId)
-          .eq('status', 'active')
-          .maybeSingle();
+      canonicalOrganisationName =
+        organisation.name ?? null;
+
+      // -----------------------------------------------------------------------
+      // 6B. VERIFY EXISTING MEMBERSHIP
+      // -----------------------------------------------------------------------
+      //
+      // An existing organisation cannot simply be claimed by presenting its
+      // UUID. The Person must already have an active membership.
+      //
+
+      const {
+        data: existingMembership,
+        error: membershipLookupError,
+      } = await supabase
+        .from('organisation_memberships')
+        .select(
+          'membership_id, role, status, valid_from, valid_to',
+        )
+        .eq(
+          'organisation_id',
+          canonicalOrganisationId,
+        )
+        .eq('person_id', personId)
+        .eq('status', 'active')
+        .or('valid_to.is.null,valid_to.gt.now()')
+        .maybeSingle();
 
       if (membershipLookupError) {
         console.error(
@@ -466,17 +568,19 @@ if (!user) {
 
         return NextResponse.json(
           {
-            error: 'Unable to verify organisation membership',
+            error:
+              'Unable to verify organisation membership',
             code: 'MEMBERSHIP_LOOKUP_FAILED',
           },
           { status: 500 },
         );
       }
 
-      if (!membership) {
+      if (!existingMembership) {
         return NextResponse.json(
           {
-            error: 'You are not a member of that organisation',
+            error:
+              'You are not a member of that organisation',
             code: 'NOT_ORGANISATION_MEMBER',
           },
           { status: 403 },
@@ -484,7 +588,7 @@ if (!user) {
       }
     } else {
       // -----------------------------------------------------------------------
-      // NEW ORGANISATION
+      // 6C. CREATE NEW ORGANISATION
       // -----------------------------------------------------------------------
 
       if (!organisationName) {
@@ -497,16 +601,21 @@ if (!user) {
         );
       }
 
-      const { data: createdOrganisation, error: createOrganisationError } =
-        await supabase
-          .from('organisations')
-          .insert({
-            name: organisationName,
-          })
-          .select('organisation_id, name')
-          .single();
+      const {
+        data: createdOrganisation,
+        error: createOrganisationError,
+      } = await supabase
+        .from('organisations')
+        .insert({
+          name: organisationName,
+        })
+        .select('organisation_id, name')
+        .single();
 
-      if (createOrganisationError || !createdOrganisation) {
+      if (
+        createOrganisationError ||
+        !createdOrganisation
+      ) {
         console.error(
           '[identity/plan][POST] organisation creation failed:',
           createOrganisationError,
@@ -521,33 +630,50 @@ if (!user) {
         );
       }
 
-      canonicalOrganisationId = createdOrganisation.organisation_id;
-      canonicalOrganisationName = createdOrganisation.name ?? null;
+      canonicalOrganisationId =
+        createdOrganisation.organisation_id;
+
+      canonicalOrganisationName =
+        createdOrganisation.name ?? null;
     }
 
     // -------------------------------------------------------------------------
-    // 6. ESTABLISH MEMBERSHIP
+    // 7. ESTABLISH MEMBERSHIP
     // -------------------------------------------------------------------------
     //
-    // This is the actual point at which the Person enters the Organisation
-    // context.
+    // Membership establishes the Person's organisational context.
+    //
+    // Ownership remains separate.
     //
 
-    const { data: membership, error: membershipError } = await supabase
+    const membershipRole = isOwner
+      ? 'owner'
+      : 'member';
+
+    const validFrom = new Date().toISOString();
+
+    const {
+      data: membership,
+      error: membershipError,
+    } = await supabase
       .from('organisation_memberships')
       .upsert(
         {
-          organisation_id: canonicalOrganisationId,
+          organisation_id:
+            canonicalOrganisationId,
           person_id: personId,
-          role: isOwner ? 'owner' : 'member',
+          role: membershipRole,
           status: 'active',
-          valid_from: new Date().toISOString(),
+          valid_from: validFrom,
         },
         {
-          onConflict: 'organisation_id,person_id,role',
+          onConflict:
+            'organisation_id,person_id,role',
         },
       )
-      .select('membership_id, role')
+      .select(
+        'membership_id, role, status, valid_from, valid_to',
+      )
       .single();
 
     if (membershipError || !membership) {
@@ -558,7 +684,8 @@ if (!user) {
 
       return NextResponse.json(
         {
-          error: 'Unable to establish organisation membership',
+          error:
+            'Unable to establish organisation membership',
           code: 'MEMBERSHIP_UPDATE_FAILED',
         },
         { status: 500 },
@@ -566,63 +693,125 @@ if (!user) {
     }
 
     // -------------------------------------------------------------------------
-    // 7. INITIAL SELF-DECLARED OWNERSHIP
+    // 8. INITIAL SELF-DECLARED OWNERSHIP
     // -------------------------------------------------------------------------
     //
-    // Ownership is separate from membership.
+    // Ownership is deliberately separate from membership.
     //
-    // It exists only when the Person explicitly checked "I am the Owner".
+    // The ownership record is created ONLY because the Person explicitly
+    // declared:
+    //
+    //   "I am the Owner of this Business"
+    //
+    // Beta status, invitation provenance, email and first arrival do not
+    // establish ownership.
     //
 
     if (isOwner) {
-      const { error: ownershipError } = await supabase
+      /*
+       * Prevent repeated visits to /plan from creating multiple current
+       * ownership records for the same Person/Organisation relationship.
+       *
+       * We first check for an existing current ownership period.
+       */
+      const {
+        data: existingOwnership,
+        error: ownershipLookupError,
+      } = await supabase
         .from('ownership_periods')
-        .insert({
-          organisation_id: canonicalOrganisationId,
-          person_id: personId,
-          status: 'current',
-          valid_from: new Date().toISOString(),
-        });
+        .select(
+          'ownership_period_id, status, valid_from, valid_to',
+        )
+        .eq(
+          'organisation_id',
+          canonicalOrganisationId,
+        )
+        .eq('person_id', personId)
+        .eq('status', 'current')
+        .maybeSingle();
 
-      if (ownershipError) {
+      if (ownershipLookupError) {
         console.error(
-          '[identity/plan][POST] ownership claim failed:',
-          ownershipError,
+          '[identity/plan][POST] ownership lookup failed:',
+          ownershipLookupError,
         );
 
         return NextResponse.json(
           {
-            error: 'Unable to save ownership declaration',
-            code: 'OWNERSHIP_CLAIM_FAILED',
+            error:
+              'Unable to verify ownership declaration',
+            code: 'OWNERSHIP_LOOKUP_FAILED',
           },
           { status: 500 },
         );
       }
+
+      if (!existingOwnership) {
+        const {
+          error: ownershipError,
+        } = await supabase
+          .from('ownership_periods')
+          .insert({
+            organisation_id:
+              canonicalOrganisationId,
+            person_id: personId,
+            status: 'current',
+            valid_from: validFrom,
+          });
+
+        if (ownershipError) {
+          console.error(
+            '[identity/plan][POST] ownership claim failed:',
+            ownershipError,
+          );
+
+          return NextResponse.json(
+            {
+              error:
+                'Unable to save ownership declaration',
+              code: 'OWNERSHIP_CLAIM_FAILED',
+            },
+            { status: 500 },
+          );
+        }
+      }
     }
 
     // -------------------------------------------------------------------------
-    // 8. RETURN CANONICAL IDENTITY
+    // 9. RETURN CANONICAL IDENTITY
     // -------------------------------------------------------------------------
 
     return NextResponse.json({
       ok: true,
 
       identity: {
-        organisationId: canonicalOrganisationId,
-        organisationName: canonicalOrganisationName,
+        organisationId:
+          canonicalOrganisationId,
+        organisationName:
+          canonicalOrganisationName,
         personId,
-        membershipId: membership.membership_id,
+        membershipId:
+          membership.membership_id,
         role: membership.role,
       },
 
+      /*
+       * Beta code is returned as provenance/access information only.
+       *
+       * Its presence does not mean ownership.
+       */
       betaCode: betaCode || undefined,
     });
   } catch (error) {
-    console.error('[identity/plan][POST] unexpected error:', error);
+    console.error(
+      '[identity/plan][POST] unexpected error:',
+      error,
+    );
 
     return NextResponse.json(
       {
-        error: 'Unable to save organisational identity',
+        error:
+          'Unable to save organisational identity',
         code: 'IDENTITY_SAVE_FAILED',
       },
       { status: 500 },
