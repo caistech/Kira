@@ -1,4 +1,3 @@
-
 'use client';
 
 // @public-route
@@ -65,9 +64,7 @@ import {
   taxSuffix,
   DEFAULT_CURRENCY,
 } from '@/lib/valuation/currency';
-import {
-  displayedFigures,
-} from '@/lib/valuation/displayed';
+import { displayedFigures } from '@/lib/valuation/displayed';
 import {
   priceForProfit,
   PRICE_TIERS,
@@ -76,7 +73,10 @@ import {
 
 import { BetaRedeem } from '@/components/BetaRedeem';
 import { BETA_CODE_STORAGE_KEY } from '@/components/BetaCodeCarrier';
-import { TermsAgreement, TERMS_VERSION } from '@/components/TermsAgreement';
+import {
+  TermsAgreement,
+  TERMS_VERSION,
+} from '@/components/TermsAgreement';
 import { billingCopy } from '@/lib/billing/copy';
 
 import {
@@ -85,12 +85,6 @@ import {
   storeValuation,
   type ValuationPayload,
 } from '@/lib/valuation/share';
-
-type OrganisationCandidate = {
-  organisationId: string;
-  name: string;
-  tradingName?: string | null;
-};
 
 type IdentityState = {
   firstName: string;
@@ -101,12 +95,16 @@ type IdentityState = {
 };
 
 type IdentityResponse = {
+  ok?: boolean;
   signedIn?: boolean;
   firstName?: string | null;
   lastName?: string | null;
   organisationId?: string | null;
   organisationName?: string | null;
   isOwner?: boolean;
+  personId?: string | null;
+  membershipId?: string | null;
+  role?: string | null;
 };
 
 export default function PlanPage() {
@@ -116,26 +114,27 @@ export default function PlanPage() {
    * ---------------------------------------------------------------------------
    */
 
-  const [payload, setPayload] = useState<ValuationPayload | null>(null);
+  const [payload, setPayload] =
+    useState<ValuationPayload | null>(null);
+
   const [ready, setReady] = useState(false);
 
   /*
    * ---------------------------------------------------------------------------
    * SESSION / IDENTITY
    * ---------------------------------------------------------------------------
-   *
-   * /plan must work for both anonymous visitors and already-authenticated
-   * visitors.
-   *
-   * The authenticated account, where available, is authoritative for existing
-   * identity. The browser valuation remains useful for an anonymous visitor.
    */
 
   const [signedIn, setSignedIn] = useState(false);
 
-  const [identityLoading, setIdentityLoading] = useState(true);
-  const [identitySaving, setIdentitySaving] = useState(false);
-  const [identityError, setIdentityError] = useState<string | null>(null);
+  const [identityLoading, setIdentityLoading] =
+    useState(true);
+
+  const [identitySaving, setIdentitySaving] =
+    useState(false);
+
+  const [identityError, setIdentityError] =
+    useState<string | null>(null);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -149,12 +148,13 @@ export default function PlanPage() {
    * For a new person, the identity endpoint is responsible for resolving or
    * creating the Organisation from the explicit Organisation information
    * supplied by the person.
-   *
-   * This page does not use user_id as organisation identity.
    */
 
-  const [organisationId, setOrganisationId] = useState('');
-  const [organisationName, setOrganisationName] = useState('');
+  const [organisationId, setOrganisationId] =
+    useState('');
+
+  const [organisationName, setOrganisationName] =
+    useState('');
 
   /*
    * Ownership is an explicit declaration.
@@ -166,8 +166,6 @@ export default function PlanPage() {
    *   - consultant invitation
    *   - email address
    *   - being the only member
-   *
-   * When persisted, the backend records this as SELF_DECLARED.
    */
 
   const [isOwner, setIsOwner] = useState(false);
@@ -179,7 +177,22 @@ export default function PlanPage() {
    * treated as though they need to make a second ownership declaration.
    */
 
-  const [ownershipAlreadyEstablished, setOwnershipAlreadyEstablished] =
+  const [
+    ownershipAlreadyEstablished,
+    setOwnershipAlreadyEstablished,
+  ] = useState(false);
+
+  /*
+   * This is deliberately separate from the raw identity fields.
+   *
+   * Once the canonical identity has actually been persisted successfully,
+   * this becomes the gate that reveals the commercial access choices.
+   *
+   * We do NOT reveal beta or paid access merely because the form appears
+   * complete in the browser.
+   */
+
+  const [identityConfirmed, setIdentityConfirmed] =
     useState(false);
 
   /*
@@ -188,14 +201,17 @@ export default function PlanPage() {
    * ---------------------------------------------------------------------------
    */
 
-  const [billingLive, setBillingLive] = useState(false);
+  const [billingLive, setBillingLive] =
+    useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
     fetch('/api/billing/mode')
       .then((response) =>
-        response.ok ? response.json() : { live: false },
+        response.ok
+          ? response.json()
+          : { live: false },
       )
       .then((data) => {
         if (!cancelled) {
@@ -231,18 +247,27 @@ export default function PlanPage() {
 
   const BETA_CODE_KEY = BETA_CODE_STORAGE_KEY;
 
-  const [betaCode, setBetaCode] = useState<string | null>(null);
-  const [betaOpen, setBetaOpen] = useState(false);
+  const [betaCode, setBetaCode] =
+    useState<string | null>(null);
+
+  const [betaOpen, setBetaOpen] =
+    useState(false);
 
   useEffect(() => {
-    const fromUrl = new URLSearchParams(window.location.search).get('code');
+    const fromUrl =
+      new URLSearchParams(window.location.search).get(
+        'code',
+      );
 
     if (fromUrl) {
       setBetaCode(fromUrl);
-      setBetaOpen(true);
+      setBetaOpen(false);
 
       try {
-        window.sessionStorage.setItem(BETA_CODE_KEY, fromUrl);
+        window.sessionStorage.setItem(
+          BETA_CODE_KEY,
+          fromUrl,
+        );
       } catch {
         // Best effort only.
       }
@@ -251,11 +276,11 @@ export default function PlanPage() {
     }
 
     try {
-      const kept = window.sessionStorage.getItem(BETA_CODE_KEY);
+      const kept =
+        window.sessionStorage.getItem(BETA_CODE_KEY);
 
       if (kept) {
         setBetaCode(kept);
-        setBetaOpen(true);
       }
     } catch {
       // Nothing to restore.
@@ -268,7 +293,8 @@ export default function PlanPage() {
    * ---------------------------------------------------------------------------
    */
 
-  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsAccepted, setTermsAccepted] =
+    useState(false);
 
   /*
    * ---------------------------------------------------------------------------
@@ -276,9 +302,14 @@ export default function PlanPage() {
    * ---------------------------------------------------------------------------
    */
 
-  const [loading, setLoading] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] =
+    useState(false);
+
+  const [confirming, setConfirming] =
+    useState(false);
+
+  const [error, setError] =
+    useState<string | null>(null);
 
   /*
    * ---------------------------------------------------------------------------
@@ -288,16 +319,16 @@ export default function PlanPage() {
    * Account valuation is authoritative where available.
    * Device valuation is fallback only.
    *
-   * This follows the existing frozen-baseline behaviour:
-   *
-   *   account → device → nothing
+   * account → device → nothing
    */
 
   useEffect(() => {
     const stored = readStoredValuation();
 
     const legacy = decodeValuationParam(
-      new URLSearchParams(window.location.search).get('v'),
+      new URLSearchParams(window.location.search).get(
+        'v',
+      ),
     );
 
     if (legacy) {
@@ -319,18 +350,32 @@ export default function PlanPage() {
 
     fetch('/api/valuation/mine')
       .then((response) =>
-        response.ok ? response.json() : null,
+        response.ok
+          ? response.json()
+          : null,
       )
       .then((body) => {
         if (cancelled) return;
 
-        setPayload(body?.valuation ?? stored ?? null);
-        setSignedIn(Boolean(body?.signedIn));
+        setPayload(
+          body?.valuation ??
+            stored ??
+            null,
+        );
+
+        setSignedIn(
+          Boolean(body?.signedIn),
+        );
+
         setReady(true);
       })
       .catch(() => {
         if (!cancelled) {
-          setPayload(stored ?? null);
+          setPayload(
+            stored ??
+              null,
+          );
+
           setReady(true);
         }
       });
@@ -352,8 +397,6 @@ export default function PlanPage() {
    *
    * Identity answers:
    *   "Who is this Person and which Organisation are they acting for?"
-   *
-   * These are separate concerns.
    */
 
   useEffect(() => {
@@ -363,34 +406,75 @@ export default function PlanPage() {
 
     fetch('/api/identity/plan')
       .then((response) =>
-        response.ok ? response.json() : null,
+        response.ok
+          ? response.json()
+          : null,
       )
-      .then((body: IdentityResponse | null) => {
-        if (cancelled) return;
+      .then(
+        (
+          body: IdentityResponse | null,
+        ) => {
+          if (cancelled) return;
 
-        if (body) {
-          setSignedIn(Boolean(body.signedIn));
+          if (body) {
+            setSignedIn(
+              Boolean(body.signedIn),
+            );
 
-          setFirstName(body.firstName ?? '');
-          setLastName(body.lastName ?? '');
+            setFirstName(
+              body.firstName ?? '',
+            );
 
-          setOrganisationId(body.organisationId ?? '');
-          setOrganisationName(body.organisationName ?? '');
+            setLastName(
+              body.lastName ?? '',
+            );
 
-          /*
-           * Existing ownership is historical/canonical state.
-           *
-           * It is not recreated merely because this page is visited again.
-           */
-          const established = body.isOwner === true;
+            setOrganisationId(
+              body.organisationId ?? '',
+            );
 
-          setOwnershipAlreadyEstablished(established);
+            setOrganisationName(
+              body.organisationName ?? '',
+            );
 
-          if (established) {
-            setIsOwner(true);
+            const established =
+              body.isOwner === true;
+
+            setOwnershipAlreadyEstablished(
+              established,
+            );
+
+            if (established) {
+              setIsOwner(true);
+            }
+
+            /*
+             * Important:
+             *
+             * An existing canonical identity is already persisted.
+             * Therefore an already-established identity may pass directly
+             * through the gate.
+             *
+             * If the person has an existing organisation/person identity but
+             * no ownership relationship, they still need the explicit owner
+             * declaration before access is revealed.
+             */
+
+            const hasExistingIdentity =
+              Boolean(
+                body.firstName &&
+                  body.lastName &&
+                  body.organisationId &&
+                  body.organisationName &&
+                  established,
+              );
+
+            if (hasExistingIdentity) {
+              setIdentityConfirmed(true);
+            }
           }
-        }
-      })
+        },
+      )
       .catch(() => {
         /*
          * Anonymous visitors are expected to arrive here.
@@ -419,7 +503,9 @@ export default function PlanPage() {
   const model = useMemo(() => {
     if (!payload) return null;
 
-    const result = computeValuation(payload.inputs);
+    const result = computeValuation(
+      payload.inputs,
+    );
 
     const quote = priceForProfit(
       payload.inputs.annualProfit,
@@ -433,17 +519,26 @@ export default function PlanPage() {
   }, [payload]);
 
   const currency =
-    payload?.currency || DEFAULT_CURRENCY;
+    payload?.currency ||
+    DEFAULT_CURRENCY;
 
   const money = (value: number) =>
-    formatMoneyApprox(value, currency);
+    formatMoneyApprox(
+      value,
+      currency,
+    );
 
   const price = (value: number) =>
-    formatPrice(value, currency);
+    formatPrice(
+      value,
+      currency,
+    );
 
-  const tax = taxSuffix(currency);
+  const tax =
+    taxSuffix(currency);
 
-  const copy = billingCopy(billingLive);
+  const copy =
+    billingCopy(billingLive);
 
   /*
    * ---------------------------------------------------------------------------
@@ -451,8 +546,12 @@ export default function PlanPage() {
    * ---------------------------------------------------------------------------
    */
 
-  const normalisedFirstName = firstName.trim();
-  const normalisedLastName = lastName.trim();
+  const normalisedFirstName =
+    firstName.trim();
+
+  const normalisedLastName =
+    lastName.trim();
+
   const normalisedOrganisationName =
     organisationName.trim();
 
@@ -465,191 +564,274 @@ export default function PlanPage() {
     normalisedOrganisationName.length > 0;
 
   /*
-   * Ownership is not mandatory merely to view the plan.
-   *
-   * But before either commercial path proceeds, the person must explicitly
-   * declare their relationship to the Organisation.
-   *
-   * For an already established owner, the declaration is already known.
+   * Ownership must either already exist canonically or be explicitly declared
+   * by the person.
    */
 
   const ownershipBoundaryComplete =
-    ownershipAlreadyEstablished || isOwner;
+    ownershipAlreadyEstablished ||
+    isOwner;
 
   const identityBoundaryComplete =
     hasPersonIdentity &&
     hasOrganisation &&
     ownershipBoundaryComplete;
 
-/*
- * ---------------------------------------------------------------------------
- * SAVE CANONICAL IDENTITY
- * ---------------------------------------------------------------------------
- *
- * The frontend supplies identity facts and the user's explicit ownership
- * declaration.
- *
- * The backend is authoritative for:
- *
- *   Person
- *   Organisation
- *   Organisation Membership
- *   Ownership Period
- *
- * The frontend never manufactures UUIDs and never interprets user_id as
- * organisation_id.
- *
- * An ownership declaration is supplied as a user assertion. The backend
- * determines whether that assertion establishes or changes an Ownership
- * Period and records the appropriate provenance.
- */
+  /*
+   * ---------------------------------------------------------------------------
+   * SAVE CANONICAL IDENTITY
+   * ---------------------------------------------------------------------------
+   *
+   * The frontend supplies identity facts and the user's explicit ownership
+   * declaration.
+   *
+   * The backend is authoritative for:
+   *
+   *   Person
+   *   Organisation
+   *   Organisation Membership
+   *   Ownership Period
+   *
+   * The frontend never manufactures UUIDs and never interprets user_id as
+   * organisation_id.
+   */
 
-async function saveIdentity() {
-  setIdentitySaving(true);
-  setError(null);
-  setIdentityError(null);
+  async function saveIdentity() {
+    setIdentitySaving(true);
+    setError(null);
+    setIdentityError(null);
 
-  try {
-    const normalisedFirstName = firstName.trim();
-    const normalisedLastName = lastName.trim();
-    const normalisedOrganisationName = organisationName.trim();
+    try {
+      const currentFirstName =
+        firstName.trim();
 
-    if (!normalisedFirstName) {
-      throw new Error('Please enter your first name.');
-    }
+      const currentLastName =
+        lastName.trim();
 
-    if (!normalisedLastName) {
-      throw new Error('Please enter your last name.');
-    }
+      const currentOrganisationName =
+        organisationName.trim();
 
-    if (!normalisedOrganisationName) {
-      throw new Error('Please enter your organisation name.');
-    }
+      if (!currentFirstName) {
+        throw new Error(
+          'Please enter your first name.',
+        );
+      }
 
-    /*
-     * The Plan route is the universal identity / initial ownership boundary.
-     *
-     * organisationId is deliberately passed explicitly to the identity API.
-     * The API is responsible for resolving/validating the canonical
-     * organisation context. We never derive organisation identity from
-     * auth user_id.
-     */
-    const response = await fetch('/api/identity/plan', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        firstName: normalisedFirstName,
-        lastName: normalisedLastName,
-        organisationId: organisationId.trim() || null,
-        organisationName: normalisedOrganisationName,
-        isOwner,
-        betaCode: betaCode || undefined,
-      }),
-    });
+      if (!currentLastName) {
+        throw new Error(
+          'Please enter your last name.',
+        );
+      }
 
-    const result = await response.json().catch(() => null);
+      if (!currentOrganisationName) {
+        throw new Error(
+          'Please enter your organisation name.',
+        );
+      }
 
-    if (!response.ok) {
-      throw new Error(
-        result?.error ||
-          result?.message ||
-          'Unable to save your identity. Please try again.',
+      /*
+       * The Plan route is the universal identity / initial ownership boundary.
+       *
+       * organisationId is deliberately passed explicitly to the identity API.
+       * The API is responsible for resolving/validating the canonical
+       * organisation context.
+       *
+       * We never derive organisation identity from auth user_id.
+       */
+
+      const response = await fetch(
+        '/api/identity/plan',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type':
+              'application/json',
+          },
+          body: JSON.stringify({
+            firstName:
+              currentFirstName,
+            lastName:
+              currentLastName,
+            organisationId:
+              organisationId.trim() ||
+              null,
+            organisationName:
+              currentOrganisationName,
+            isOwner,
+            betaCode:
+              betaCode ||
+              undefined,
+          }),
+        },
       );
+
+      const result =
+        await response
+          .json()
+          .catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          result?.error ||
+            result?.message ||
+            'Unable to save your identity. Please try again.',
+        );
+      }
+
+      /*
+       * The API response is authoritative.
+       *
+       * Retain the canonical Organisation ID returned by the backend.
+       */
+
+      const canonicalOrganisationId =
+        result?.identity
+          ?.organisationId;
+
+      const canonicalOrganisationName =
+        result?.identity
+          ?.organisationName;
+
+      if (canonicalOrganisationId) {
+        setOrganisationId(
+          canonicalOrganisationId,
+        );
+      }
+
+      if (
+        canonicalOrganisationName
+      ) {
+        setOrganisationName(
+          canonicalOrganisationName,
+        );
+      }
+
+      /*
+       * The identity gate only opens after the canonical endpoint has
+       * successfully accepted the identity boundary.
+       */
+
+      setIdentityConfirmed(true);
+
+      /*
+       * The commercial decision is now the next logical step.
+       *
+       * Scroll it into view so the user does not have to hunt for it.
+       */
+
+      window.setTimeout(() => {
+        document
+          .getElementById(
+            'access-choice',
+          )
+          ?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+          });
+      }, 50);
+
+      return result;
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Unable to save your identity. Please try again.';
+
+      setIdentityError(message);
+      setError(message);
+
+      throw err;
+    } finally {
+      setIdentitySaving(false);
     }
-
-    /*
-     * The API response is authoritative. If it establishes or confirms
-     * the canonical organisation context, retain that organisation ID
-     * for subsequent checkout.
-     */
-
-    const canonicalOrganisationId =
-      result?.identity?.organisationId;
-
-    if (canonicalOrganisationId) {
-      setOrganisationId(canonicalOrganisationId);
-    }
-
-    return result;
-  } catch (err) {
-    const message =
-      err instanceof Error
-        ? err.message
-        : 'Unable to save your identity. Please try again.';
-
-    setIdentityError(message);
-    setError(message);
-    throw err;
-  } finally {
-    setIdentitySaving(false);
   }
-}
 
-async function startCheckout() {
-  setLoading(true);
-  setError(null);
+  /*
+   * ---------------------------------------------------------------------------
+   * START STRIPE CHECKOUT
+   * ---------------------------------------------------------------------------
+   */
 
-  try {
-    /*
-     * Identity must be persisted before checkout.
-     *
-     * This ensures the checkout flow is attached to the canonical
-     * Organisation rather than implicitly to auth user identity.
-     */
-    const identity = await saveIdentity();
+  async function startCheckout() {
+    setLoading(true);
+    setError(null);
 
-    const canonicalOrganisationId =
-      identity?.organisationId || organisationId.trim();
+    try {
+      /*
+       * Identity must be persisted before checkout.
+       *
+       * This ensures the checkout flow is attached to the canonical
+       * Organisation rather than implicitly to auth user identity.
+       */
 
-    if (!canonicalOrganisationId) {
-      throw new Error(
-        'No organisation context is available for checkout.',
-      );
+      const identity =
+        await saveIdentity();
+
+      const canonicalOrganisationId =
+        identity?.identity
+          ?.organisationId ||
+        identity?.organisationId ||
+        organisationId.trim();
+
+      if (!canonicalOrganisationId) {
+        throw new Error(
+          'No organisation context is available for checkout.',
+        );
+      }
+
+      const response =
+        await fetch(
+          '/api/checkout',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type':
+                'application/json',
+            },
+            body: JSON.stringify({
+              inputs:
+                payload!.inputs,
+              currency:
+                payload?.currency,
+              firstName:
+                normalisedFirstName,
+              termsAccepted,
+            }),
+          },
+        );
+
+      const result =
+        await response
+          .json()
+          .catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          result?.error ||
+            result?.message ||
+            'Unable to start checkout. Please try again.',
+        );
+      }
+
+      if (!result?.url) {
+        throw new Error(
+          'Checkout could not be started because no checkout URL was returned.',
+        );
+      }
+
+      window.location.href =
+        result.url;
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Unable to start checkout. Please try again.';
+
+      setError(message);
+    } finally {
+      setLoading(false);
     }
-
-    const response = await fetch('/api/checkout', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        inputs: payload!.inputs,
-        currency: payload?.currency,
-        firstName: normalisedFirstName,
-        termsAccepted,
-      }),
-    });
-
-    const result = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      throw new Error(
-        result?.error ||
-          result?.message ||
-          'Unable to start checkout. Please try again.',
-      );
-    }
-
-    if (!result?.url) {
-      throw new Error(
-        'Checkout could not be started because no checkout URL was returned.',
-      );
-    }
-
-    window.location.href = result.url;
-  } catch (err) {
-    const message =
-      err instanceof Error
-        ? err.message
-        : 'Unable to start checkout. Please try again.';
-
-    setError(message);
-  } finally {
-    setLoading(false);
   }
-}
 
   /*
    * ---------------------------------------------------------------------------
@@ -807,8 +989,10 @@ async function startCheckout() {
 
   const figures = displayedFigures(
     {
-      worthToday: model!.result.today,
-      worthPotential: model!.result.potential,
+      worthToday:
+        model!.result.today,
+      worthPotential:
+        model!.result.potential,
     },
     currency,
   );
@@ -909,7 +1093,9 @@ async function startCheckout() {
                     <input
                       value={firstName}
                       onChange={(event) =>
-                        setFirstName(event.target.value)
+                        setFirstName(
+                          event.target.value,
+                        )
                       }
                       autoComplete="given-name"
                       placeholder="First name"
@@ -926,7 +1112,9 @@ async function startCheckout() {
                   <input
                     value={lastName}
                     onChange={(event) =>
-                      setLastName(event.target.value)
+                      setLastName(
+                        event.target.value,
+                      )
                     }
                     autoComplete="family-name"
                     placeholder="Last name"
@@ -946,7 +1134,9 @@ async function startCheckout() {
                   <input
                     value={organisationName}
                     onChange={(event) => {
-                      setOrganisationName(event.target.value);
+                      setOrganisationName(
+                        event.target.value,
+                      );
 
                       /*
                        * If the person changes the organisation name after an
@@ -956,12 +1146,14 @@ async function startCheckout() {
                        * Clearing it forces the backend to resolve the new
                        * organisation explicitly.
                        */
+
                       if (
                         organisationId &&
                         event.target.value.trim() !==
                           organisationName.trim()
                       ) {
                         setOrganisationId('');
+                        setIdentityConfirmed(false);
                       }
                     }}
                     autoComplete="organization"
@@ -985,10 +1177,21 @@ async function startCheckout() {
                       ownershipAlreadyEstablished ||
                       isOwner
                     }
-                    disabled={ownershipAlreadyEstablished}
-                    onChange={(event) =>
-                      setIsOwner(event.target.checked)
+                    disabled={
+                      ownershipAlreadyEstablished
                     }
+                    onChange={(event) => {
+                      setIsOwner(
+                        event.target.checked,
+                      );
+
+                      /*
+                       * If the ownership assertion changes, the identity
+                       * boundary needs to be reconfirmed.
+                       */
+
+                      setIdentityConfirmed(false);
+                    }}
                     className="mt-1 h-5 w-5 rounded border-stone-300 text-violet-600 focus:ring-violet-500"
                   />
 
@@ -1001,9 +1204,11 @@ async function startCheckout() {
                       Check this if you are declaring that
                       you own this Organisation. This creates
                       your initial{' '}
-                      <strong>SELF_DECLARED</strong> ownership
-                      claim. An invitation or beta code does
-                      not establish ownership for you.
+                      <strong>
+                        SELF_DECLARED
+                      </strong>{' '}
+                      ownership claim. An invitation or beta
+                      code does not establish ownership for you.
                     </span>
                   </span>
                 </label>
@@ -1054,7 +1259,7 @@ async function startCheckout() {
                     <Loader2 className="h-5 w-5 animate-spin" />
                     Saving your details…
                   </>
-                ) : identityBoundaryComplete ? (
+                ) : identityConfirmed ? (
                   <>
                     Identity confirmed
                     <Check className="h-5 w-5" />
@@ -1071,7 +1276,349 @@ async function startCheckout() {
         </section>
 
         {/* ------------------------------------------------------------------ */}
-        {/* PROMISE                                                           */}
+        {/* ACCESS CHOICE — THE NEXT STEP AFTER IDENTITY                      */}
+        {/* ------------------------------------------------------------------ */}
+
+        {identityConfirmed && (
+          <section
+            id="access-choice"
+            className="py-4 pb-16 scroll-mt-20"
+          >
+            <div className="max-w-3xl mx-auto">
+              <div className="text-center mb-8">
+                <div className="inline-flex items-center gap-2 text-emerald-600 text-sm font-semibold mb-3">
+                  <Check className="h-4 w-4" />
+                  Identity confirmed
+                </div>
+
+                <h2 className="font-display text-2xl sm:text-3xl font-bold text-stone-900">
+                  You&apos;re all set. How would you like to start?
+                </h2>
+
+                <p className="text-stone-600 mt-3 leading-relaxed max-w-xl mx-auto">
+                  Your Organisation is now established in Kira.
+                  Choose the way you&apos;d like to begin.
+                </p>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-5">
+                {/* ---------------------------------------------------------- */}
+                {/* PAID                                                         */}
+                {/* ---------------------------------------------------------- */}
+
+                <div className="bg-white rounded-3xl p-6 sm:p-7 border-2 border-pink-200 shadow-sm">
+                  <div className="text-center">
+                    <span className="text-xs font-body uppercase tracking-wider text-pink-500 font-semibold">
+                      {model!.quote.label} plan
+                    </span>
+
+                    <p className="font-display text-3xl sm:text-4xl font-bold text-stone-800 mt-2">
+                      {money(
+                        model!.quote.monthly,
+                      )}
+                      <span className="text-lg text-stone-400 font-body">
+                        /month {tax}
+                      </span>
+                    </p>
+
+                    {model!.quote.fractionWorthQuoting && (
+                      <p className="mt-1 text-sm text-stone-700">
+                        <span className="font-semibold text-stone-900">
+                          Set by your profit band
+                        </span>{' '}
+                        — and about{' '}
+                        <span className="font-semibold text-violet-700">
+                          {
+                            model!.quote
+                              .fractionOfGapPct
+                          }
+                        </span>{' '}
+                        a year of what you stand to unlock.
+                      </p>
+                    )}
+
+                    <p className="text-sm text-stone-500 mt-2 leading-relaxed">
+                      {billingLive ? (
+                        <>
+                          Billed at the end of each month,
+                          for the month just gone. Cancel any
+                          time and the month you are in is on us.
+                        </>
+                      ) : (
+                        <>
+                          Free while we are in beta.{' '}
+                          {price(
+                            model!.quote.monthly,
+                          )}
+                          /month once billing goes live —
+                          we will tell you first.
+                        </>
+                      )}
+                    </p>
+
+                    {!billingLive && (
+                      <p className="mt-3 inline-block rounded-full bg-amber-100 text-amber-900 text-xs font-semibold px-3 py-1.5">
+                        Free while we are in beta — no card charged
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="mt-6">
+                    <ul className="text-left space-y-2.5 text-stone-700">
+                      {[
+                        copy.bullets[0],
+                        'Always-on Kira — talk anytime, she remembers everything',
+                        'Kira quietly captures your know-how into an Operating Manual',
+                        'Your knowledge stays private and yours to keep',
+                        copy.bullets[1],
+                        copy.bullets[2],
+                      ].map((benefit) => (
+                        <li
+                          key={benefit}
+                          className="flex items-start gap-2.5 text-sm"
+                        >
+                          <Check className="h-4 w-4 text-violet-500 mt-0.5 flex-shrink-0" />
+                          {benefit}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {!confirming && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setConfirming(true)
+                      }
+                      disabled={loading}
+                      className="mt-7 grad-coral text-white font-display font-bold px-7 py-4 rounded-full text-base inline-flex items-center gap-2 min-h-[52px] shadow-lg shadow-pink-200 w-full justify-center disabled:opacity-60"
+                    >
+                      {copy.cta}
+                      <ArrowRight className="h-5 w-5" />
+                    </button>
+                  )}
+
+                  {confirming && (
+                    <div className="mt-7 rounded-2xl border-2 border-stone-300 bg-stone-50 p-5 text-left">
+                      <p className="font-display font-bold text-stone-900">
+                        {copy.confirmTitle}
+                      </p>
+
+                      <p className="mt-1 text-sm text-stone-600 leading-relaxed">
+                        {copy.confirmBody(
+                          `${money(
+                            model!.quote.monthly,
+                          )} ${tax}`,
+                        )}
+                      </p>
+
+                      <TermsAgreement
+                        checked={
+                          termsAccepted
+                        }
+                        onChange={
+                          setTermsAccepted
+                        }
+                        id="terms-paid"
+                      />
+
+                      <div className="mt-4 flex flex-col gap-2">
+                        <button
+                          type="button"
+                          onClick={
+                            startCheckout
+                          }
+                          disabled={
+                            loading ||
+                            !termsAccepted ||
+                            !identityBoundaryComplete
+                          }
+                          className="grad-coral text-white font-display font-bold px-6 py-3 rounded-full inline-flex items-center justify-center gap-2 min-h-[48px] disabled:opacity-60"
+                        >
+                          {loading ? (
+                            <>
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                              Starting…
+                            </>
+                          ) : (
+                            <>
+                              Continue to Stripe
+                              <ArrowRight className="h-5 w-5" />
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setConfirming(false)
+                          }
+                          className="rounded-full border border-stone-300 bg-white px-6 py-3 font-semibold text-stone-700 min-h-[48px]"
+                        >
+                          Not yet
+                        </button>
+                      </div>
+
+                      {!termsAccepted && (
+                        <p className="mt-2 text-sm text-stone-500">
+                          Tick the box above to continue.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {error && (
+                    <p className="text-rose-600 text-sm mt-3">
+                      {error}
+                    </p>
+                  )}
+
+                  <p className="text-xs text-stone-400 mt-4 text-center">
+                    {copy.finePrint(
+                      `${money(
+                        model!.quote.monthly,
+                      )} ${tax}`,
+                    )}{' '}
+                    You set your password and meet Kira right
+                    after.
+                  </p>
+                </div>
+
+                {/* ---------------------------------------------------------- */}
+                {/* BETA                                                         */}
+                {/* ---------------------------------------------------------- */}
+
+                <div className="rounded-3xl border-2 border-violet-300 bg-violet-50 p-6 sm:p-7">
+                  <div className="text-center">
+                    <span className="text-xs font-body uppercase tracking-wider text-violet-600 font-semibold">
+                      Beta access
+                    </span>
+
+                    <h3 className="font-display text-2xl font-bold text-stone-900 mt-2">
+                      Have an invitation?
+                    </h3>
+
+                    <p className="mt-2 text-base text-stone-700 leading-relaxed">
+                      Enter your beta code and start with Kira.
+                    </p>
+
+                    <p className="mt-2 text-sm font-semibold text-violet-700">
+                      No card. Nothing charged.
+                    </p>
+                  </div>
+
+                  {!betaOpen ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setBetaOpen(true)
+                      }
+                      className="mt-7 inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-violet-600 px-6 py-3.5 text-base font-bold text-white hover:bg-violet-700 transition-colors"
+                    >
+                      {betaCode
+                        ? 'Enter my beta code'
+                        : 'I have an invitation'}
+                      <ArrowRight className="h-5 w-5" />
+                    </button>
+                  ) : (
+                    <div className="mt-7">
+                      <BetaRedeem
+                        initialCode={
+                          betaCode ?? ''
+                        }
+                        firstName={
+                          normalisedFirstName
+                        }
+                        organisationId={organisationId.trim()}
+                        isOwner={isOwner}
+                      />
+                    </div>
+                  )}
+
+                  {!betaCode && (
+                    <p className="mt-4 text-xs text-stone-500 text-center leading-relaxed">
+                      If you already have a beta invitation,
+                      enter its code here.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* -------------------------------------------------------------- */}
+              {/* REQUEST BETA                                                    */}
+              {/* -------------------------------------------------------------- */}
+
+              <p className="mt-5 text-sm text-stone-600 text-center">
+                No beta tester code but want to try it
+                out?{' '}
+                <a
+                  href="mailto:dennis@corporateaisolutions.com"
+                  className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500"
+                >
+                  Email Dennis
+                </a>{' '}
+                requesting a code, or{' '}
+                <a
+                  href="https://www.linkedin.com/in/denniskl/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500"
+                >
+                  connect on LinkedIn
+                </a>{' '}
+                and request one there.
+              </p>
+            </div>
+          </section>
+        )}
+
+        {/* ------------------------------------------------------------------ */}
+        {/* VALUE                                                               */}
+        {/* ------------------------------------------------------------------ */}
+
+        <section className="py-16">
+          <div className="grad-genome rounded-3xl p-8 sm:p-10 text-white text-center shadow-lg">
+            <p className="text-white/80 font-medium">
+              You could unlock
+            </p>
+
+            <p className="font-display text-4xl sm:text-5xl font-bold mt-1">
+              {figures.gapText}
+            </p>
+
+            <p className="text-white/90 max-w-lg mx-auto mt-4 leading-relaxed">
+              Kira is{' '}
+              <span className="font-bold">
+                {money(
+                  model!.quote.monthly,
+                )}
+                /month {tax}
+              </span>
+              {copy.priceQualifier}
+
+              {model!.quote.fractionWorthQuoting ? (
+                <>
+                  {' '}
+                  — about{' '}
+                  <span className="font-bold">
+                    {
+                      model!.quote
+                        .fractionOfGapPct
+                    }
+                  </span>{' '}
+                  a year of what you stand to unlock
+                </>
+              ) : null}
+              . It&apos;s the part-time general manager you
+              could never justify hiring, at a fraction of
+              the cost — plus the time, the calm and the
+              handover you can&apos;t put a number on.
+            </p>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------------------------ */}
+        {/* PROMISE                                                              */}
         {/* ------------------------------------------------------------------ */}
 
         <section className="py-16">
@@ -1089,24 +1636,40 @@ async function startCheckout() {
           <div className="grid sm:grid-cols-2 gap-5">
             {[
               {
-                icon: <Clock className="h-6 w-6" />,
-                title: 'Time back, from week one',
-                body: 'The jobs that only you can do start becoming jobs your systems can do. You get hours back before the month is out.',
+                icon: (
+                  <Clock className="h-6 w-6" />
+                ),
+                title:
+                  'Time back, from week one',
+                body:
+                  'The jobs that only you can do start becoming jobs your systems can do. You get hours back before the month is out.',
               },
               {
-                icon: <HeartHandshake className="h-6 w-6" />,
-                title: 'Less carried in your head',
-                body: 'The mental load of being the only one who knows how it all works starts to lift. Less stress, fewer 2am worries.',
+                icon: (
+                  <HeartHandshake className="h-6 w-6" />
+                ),
+                title:
+                  'Less carried in your head',
+                body:
+                  'The mental load of being the only one who knows how it all works starts to lift. Less stress, fewer 2am worries.',
               },
               {
-                icon: <Users className="h-6 w-6" />,
-                title: 'A business, not a job',
-                body: 'As the systems build, the business leans on you less — better handovers, a calmer team, and a real asset forming.',
+                icon: (
+                  <Users className="h-6 w-6" />
+                ),
+                title:
+                  'A business, not a job',
+                body:
+                  'As the systems build, the business leans on you less — better handovers, a calmer team, and a real asset forming.',
               },
               {
-                icon: <Brain className="h-6 w-6" />,
-                title: 'A living Operating Manual',
-                body: 'Everything Kira captures becomes your Operating Manual: how the business actually runs, yours to keep and hand over.',
+                icon: (
+                  <Brain className="h-6 w-6" />
+                ),
+                title:
+                  'A living Operating Manual',
+                body:
+                  'Everything Kira captures becomes your Operating Manual: how the business actually runs, yours to keep and hand over.',
               },
             ].map((card) => (
               <div
@@ -1157,434 +1720,105 @@ async function startCheckout() {
           <div className="space-y-4">
             {[
               {
-                icon: <Mic className="h-5 w-5" />,
-                title: 'Kira listens & clarifies',
-                body: 'You talk about a job, a headache, a process. Kira asks the questions a good operator would until she knows exactly what you need.',
+                icon: (
+                  <Mic className="h-5 w-5" />
+                ),
+                title:
+                  'Kira listens & clarifies',
+                body:
+                  'You talk about a job, a headache, a process. Kira asks the questions a good operator would until she knows exactly what you need.',
               },
               {
-                icon: <Network className="h-5 w-5" />,
-                title: 'She lines up the work',
-                body: 'Kira turns what you said into a clear set of tasks — exactly the pieces of work that actually need doing.',
+                icon: (
+                  <Network className="h-5 w-5" />
+                ),
+                title:
+                  'She lines up the work',
+                body:
+                  'Kira turns what you said into a clear set of tasks — exactly the pieces of work that actually need doing.',
               },
               {
-                icon: <Users className="h-5 w-5" />,
-                title: 'The work gets done — and written down',
-                body: 'The tasks get completed and recorded, so what you know about your business stops living only in your head.',
+                icon: (
+                  <Users className="h-5 w-5" />
+                ),
+                title:
+                  'The work gets done — and written down',
+                body:
+                  'The tasks get completed and recorded, so what you know about your business stops living only in your head.',
               },
               {
-                icon: <Brain className="h-5 w-5" />,
-                title: 'Kira remembers it — instantly',
-                body: 'Everything you tell Kira is remembered, so next time she already knows and picks up right where you left off.',
+                icon: (
+                  <Brain className="h-5 w-5" />
+                ),
+                title:
+                  'Kira remembers it — instantly',
+                body:
+                  'Everything you tell Kira is remembered, so next time she already knows and picks up right where you left off.',
               },
               {
-                icon: <ShieldCheck className="h-5 w-5" />,
-                title: 'Your knowledge stays yours',
-                body: 'It is never shown to a buyer and never shared with anyone who referred you. The handover document leaves out your own position — your plans, your circumstances, what you would accept.',
+                icon: (
+                  <ShieldCheck className="h-5 w-5" />
+                ),
+                title:
+                  'Your knowledge stays yours',
+                body:
+                  'It is never shown to a buyer and never shared with anyone who referred you. The handover document leaves out your own position — your plans, your circumstances, what you would accept.',
               },
-            ].map((step, index) => (
-              <div
-                key={step.title}
-                className="flex gap-4 items-start bg-white rounded-2xl p-5 border border-amber-100"
-              >
-                <div className="grad-coral text-white w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0">
-                  {step.icon}
+            ].map(
+              (step, index) => (
+                <div
+                  key={step.title}
+                  className="flex gap-4 items-start bg-white rounded-2xl p-5 border border-amber-100"
+                >
+                  <div className="grad-coral text-white w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0">
+                    {step.icon}
+                  </div>
+
+                  <div>
+                    <span className="text-xs font-bold text-stone-400">
+                      STEP {index + 1}
+                    </span>
+
+                    <h3 className="font-display font-bold text-lg">
+                      {step.title}
+                    </h3>
+
+                    <p className="text-stone-600 text-sm leading-relaxed mt-1">
+                      {step.body}
+                    </p>
+                  </div>
                 </div>
-
-                <div>
-                  <span className="text-xs font-bold text-stone-400">
-                    STEP {index + 1}
-                  </span>
-
-                  <h3 className="font-display font-bold text-lg">
-                    {step.title}
-                  </h3>
-
-                  <p className="text-stone-600 text-sm leading-relaxed mt-1">
-                    {step.body}
-                  </p>
-                </div>
-              </div>
-            ))}
+              ),
+            )}
           </div>
         </section>
 
         {/* ------------------------------------------------------------------ */}
-        {/* VALUE + PRICE                                                      */}
+        {/* BEFORE YOU DECIDE                                                   */}
         {/* ------------------------------------------------------------------ */}
 
-        <section className="py-16">
-          <div className="grad-genome rounded-3xl p-8 sm:p-10 text-white text-center shadow-lg">
-            <p className="text-white/80 font-medium">
-              You could unlock
-            </p>
-
-            <p className="font-display text-4xl sm:text-5xl font-bold mt-1">
-              {figures.gapText}
-            </p>
-
-            <p className="text-white/90 max-w-lg mx-auto mt-4 leading-relaxed">
-              Kira is{' '}
-              <span className="font-bold">
-                {money(model!.quote.monthly)}
-                /month {tax}
-              </span>
-              {copy.priceQualifier}
-
-              {model!.quote.fractionWorthQuoting ? (
-                <>
-                  {' '}
-                  — about{' '}
-                  <span className="font-bold">
-                    {model!.quote.fractionOfGapPct}
-                  </span>{' '}
-                  a year of what you stand to unlock
-                </>
-              ) : null}
-              . It&apos;s the part-time general manager you
-              could never justify hiring, at a fraction of
-              the cost — plus the time, the calm and the
-              handover you can&apos;t put a number on.
-            </p>
-          </div>
-
-          {/* ---------------------------------------------------------------- */}
-          {/* COMMERCIAL ACCESS CARD                                           */}
-          {/* ---------------------------------------------------------------- */}
-
-          <div className="mt-8 bg-white rounded-3xl p-8 border-2 border-violet-200 shadow-sm max-w-lg mx-auto text-center">
-            <span className="text-xs font-body uppercase tracking-wider text-violet-500 font-semibold">
-              {model!.quote.label} plan
-            </span>
-
-            <p className="font-display text-4xl font-bold text-stone-800 mt-2">
-              {money(model!.quote.monthly)}
-              <span className="text-lg text-stone-400 font-body">
-                /month {tax}
-              </span>
-            </p>
-
-            {model!.quote.fractionWorthQuoting && (
-              <p className="mt-1 text-base text-stone-700">
-                <span className="font-semibold text-stone-900">
-                  Set by your profit band
-                </span>{' '}
-                — and about{' '}
-                <span className="font-semibold text-violet-700">
-                  {model!.quote.fractionOfGapPct}
-                </span>{' '}
-                a year of what you stand to unlock.
-              </p>
-            )}
-
-            <p className="text-sm text-stone-500 mt-1">
-              {billingLive ? (
-                <>
-                  Billed at the end of each month, for the
-                  month just gone. Cancel any time and the
-                  month you are in is on us.
-                </>
-              ) : (
-                <>
-                  Free while we are in beta.{' '}
-                  {price(model!.quote.monthly)}/month once
-                  billing goes live — we will tell you
-                  first.
-                </>
-              )}
-            </p>
-
-            {!billingLive && (
-              <p className="mt-3 inline-block rounded-full bg-amber-100 text-amber-900 text-xs font-semibold px-3 py-1.5">
-                Free while we are in beta — no card charged
-              </p>
-            )}
-
-            {/* -------------------------------------------------------------- */}
-            {/* BENEFITS                                                        */}
-            {/* -------------------------------------------------------------- */}
-
-            <ul className="text-left space-y-2.5 my-6 text-stone-700">
-              {[
-                copy.bullets[0],
-                'Always-on Kira — talk anytime, she remembers everything',
-                'Kira quietly captures your know-how into an Operating Manual',
-                'Your knowledge stays private and yours to keep',
-                copy.bullets[1],
-                copy.bullets[2],
-              ].map((benefit) => (
-                <li
-                  key={benefit}
-                  className="flex items-start gap-2.5 text-sm"
-                >
-                  <Check className="h-4 w-4 text-violet-500 mt-0.5 flex-shrink-0" />
-                  {benefit}
-                </li>
-              ))}
-            </ul>
-
-            {/* -------------------------------------------------------------- */}
-            {/* IDENTITY GATE                                                   */}
-            {/* -------------------------------------------------------------- */}
-
-            {!identityBoundaryComplete && (
-              <div className="mb-5 rounded-2xl border-2 border-amber-300 bg-amber-50 p-5 text-left">
-                <div className="flex items-start gap-3">
-                  <Building2 className="h-5 w-5 text-amber-700 mt-0.5 flex-shrink-0" />
-
-                  <div>
-                    <p className="font-display font-bold text-stone-900">
-                      One last thing before you start
-                    </p>
-
-                    <p className="mt-1 text-sm text-stone-600 leading-relaxed">
-                      Kira belongs to the Organisation she
-                      serves, not to the invitation, email
-                      address or person who happened to
-                      arrive first. Confirm your name,
-                      business and ownership above before
-                      choosing beta or paid access.
-                    </p>
-
-                    <a
-                      href="#organisation"
-                      className="mt-3 inline-flex items-center gap-2 font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4"
-                    >
-                      Confirm my organisation
-                      <ArrowRight className="h-4 w-4" />
-                    </a>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* -------------------------------------------------------------- */}
-            {/* PAID CONFIRMATION                                               */}
-            {/* -------------------------------------------------------------- */}
-
-            {confirming && (
-              <div className="mb-3 rounded-2xl border-2 border-stone-300 bg-white p-4 text-left">
-                <p className="font-display font-bold text-stone-900">
-                  {copy.confirmTitle}
-                </p>
-
-                <p className="mt-1 text-sm text-stone-600 leading-relaxed">
-                  {copy.confirmBody(
-                    `${money(model!.quote.monthly)} ${tax}`,
-                  )}
-                </p>
-
-                <TermsAgreement
-                  checked={termsAccepted}
-                  onChange={setTermsAccepted}
-                  id="terms-paid"
-                />
-
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={startCheckout}
-                    disabled={
-                      loading ||
-                      !termsAccepted ||
-                      !identityBoundaryComplete
-                    }
-                    className="grad-coral text-white font-display font-bold px-6 py-3 rounded-full inline-flex items-center gap-2 min-h-[48px] disabled:opacity-60"
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                        Starting…
-                      </>
-                    ) : (
-                      <>
-                        Continue to Stripe
-                        <ArrowRight className="h-5 w-5" />
-                      </>
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setConfirming(false)}
-                    className="rounded-full border border-stone-300 bg-white px-6 py-3 font-semibold text-stone-700 min-h-[48px]"
-                  >
-                    Not yet
-                  </button>
-                </div>
-
-                {!termsAccepted && (
-                  <p className="mt-2 text-sm text-stone-500">
-                    Tick the box above to continue.
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* -------------------------------------------------------------- */}
-            {/* PAID CTA                                                        */}
-            {/* -------------------------------------------------------------- */}
-
-            <button
-              type="button"
-              onClick={() => {
-                if (!identityBoundaryComplete) {
-                  document
-                    .getElementById('organisation')
-                    ?.scrollIntoView({
-                      behavior: 'smooth',
-                      block: 'start',
-                    });
-
-                  return;
-                }
-
-                setConfirming(true);
-              }}
-              disabled={loading}
-              className="grad-coral text-white font-display font-bold px-8 py-4 rounded-full text-lg inline-flex items-center gap-2 min-h-[52px] shadow-lg shadow-pink-200 w-full justify-center disabled:opacity-60"
+        <section className="py-12 text-center">
+          <p className="text-sm text-stone-500">
+            Before you decide:{' '}
+            <a
+              href="/what-she-does"
+              className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500"
             >
-              {copy.cta}
-              <ArrowRight className="h-5 w-5" />
-            </button>
+              what she does, and what she doesn&apos;t
+            </a>
+            .
+          </p>
 
-            {error && (
-              <p className="text-rose-600 text-sm mt-3">
-                {error}
-              </p>
-            )}
-
-            {/* -------------------------------------------------------------- */}
-            {/* BETA PATH                                                       */}
-            {/* -------------------------------------------------------------- */}
-
-            {betaOpen ? (
-              <div className="mt-6">
-                <BetaRedeem
-                  initialCode={betaCode ?? ''}
-                  firstName={normalisedFirstName}
-                  organisationId={organisationId.trim()}
-                  isOwner={isOwner}
-                />
-              </div>
-            ) : (
-              <div className="mt-6 rounded-2xl border-2 border-violet-400 bg-violet-50 p-5 sm:p-6">
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 mt-0.5">
-                    <svg
-                      className="h-6 w-6 text-violet-600"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
-                      />
-                    </svg>
-                  </div>
-
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-stone-900">
-                      Been invited to the beta?
-                    </h3>
-
-                    <p className="mt-1.5 text-base leading-relaxed text-stone-700">
-                      Enter your invitation code below —
-                      no card needed, nothing charged.
-                    </p>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!identityBoundaryComplete) {
-                          document
-                            .getElementById('organisation')
-                            ?.scrollIntoView({
-                              behavior: 'smooth',
-                              block: 'start',
-                            });
-
-                          return;
-                        }
-
-                        setBetaOpen(true);
-                      }}
-                      className="mt-4 inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-violet-600 px-6 py-3.5 text-base font-bold text-white hover:bg-violet-700 transition-colors sm:w-auto sm:min-w-[240px]"
-                    >
-                      {identityBoundaryComplete
-                        ? 'Enter my invitation code'
-                        : 'Confirm my organisation first'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* -------------------------------------------------------------- */}
-            {/* REQUEST BETA                                                    */}
-            {/* -------------------------------------------------------------- */}
-
-            <p className="mt-3 text-sm text-stone-600">
-              No beta tester code but want to try it
-              out?{' '}
-              <a
-                href="mailto:dennis@corporateaisolutions.com"
-                className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500"
-              >
-                Email Dennis
-              </a>{' '}
-              requesting a code, or{' '}
-              <a
-                href="https://www.linkedin.com/in/denniskl/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500"
-              >
-                connect on LinkedIn
-              </a>{' '}
-              and request one there.
-            </p>
-
-            {/* -------------------------------------------------------------- */}
-            {/* WHAT SHE DOES                                                   */}
-            {/* -------------------------------------------------------------- */}
-
-            <p className="mt-3 text-sm text-stone-500">
-              Before you decide:{' '}
-              <a
-                href="/what-she-does"
-                className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500"
-              >
-                what she does, and what she doesn&apos;t
-              </a>
-              .
-            </p>
-
-            {/* -------------------------------------------------------------- */}
-            {/* LOGIN                                                           */}
-            {/* -------------------------------------------------------------- */}
-
-            <p className="mt-3 text-sm text-stone-500">
-              Already have an account?{' '}
-              <a
-                href="/login"
-                className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500"
-              >
-                Sign in
-              </a>
-              .
-            </p>
-
-            <p className="text-xs text-stone-400 mt-3">
-              {copy.finePrint(
-                `${money(model!.quote.monthly)} ${tax}`,
-              )}{' '}
-              You set your password and meet Kira right
-              after.
-            </p>
-          </div>
+          <p className="mt-3 text-sm text-stone-500">
+            Already have an account?{' '}
+            <a
+              href="/login"
+              className="font-semibold text-violet-600 underline decoration-violet-300 underline-offset-4 hover:decoration-violet-500"
+            >
+              Sign in
+            </a>
+            .
+          </p>
         </section>
 
         {/* ------------------------------------------------------------------ */}
