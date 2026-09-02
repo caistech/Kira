@@ -27,13 +27,13 @@ import { stripComments } from '@/lib/source-scan';
 const SRC = stripComments(readFileSync(join(__dirname, 'page.tsx'), 'utf8'));
 
 /** The pre-hydration branch — literally what the server sends. */
-const FIRST_PAINT = SRC.slice(SRC.indexOf('{!ready &&'), SRC.indexOf('{ready && !model &&'));
+const FIRST_PAINT = SRC.slice(SRC.indexOf('if (!ready)'), SRC.indexOf('if (ready && !model)'));
 
 describe('/plan answers the money question before the browser catches up', () => {
   it('finds the pre-hydration branch at all', () => {
     // If the page is restructured so `!ready` no longer exists, this must fail loudly rather than
     // scan an empty string and report green.
-    expect(SRC).toContain('{!ready &&');
+    expect(SRC).toContain('if (!ready)');
     expect(FIRST_PAINT.length).toBeGreaterThan(400);
   });
 

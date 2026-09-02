@@ -59,7 +59,10 @@ describe('the code arrives at the landing page and is carried as context', () =>
     // not a link back to a form he has to fill again.
     expect(planStripped).toMatch(/BETA_CODE_KEY/);
     expect(planStripped).toMatch(/setBetaOpen\(true\)/);
-    expect(planStripped).toMatch(/BetaRedeem initialCode=\{betaCode/);
+    expect(planStripped).toMatch(/BetaRedeem/);
+    expect(planStripped).toMatch(/initialCode=\{betaCode/);
+    expect(planStripped).toMatch(/organisationId=\{organisationId\.trim\(\)\}/);
+    expect(planStripped).toMatch(/isOwner=\{isOwner\}/);
   });
 
   it('the code survives the trip to the valuator and back', () => {

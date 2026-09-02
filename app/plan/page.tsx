@@ -603,14 +603,16 @@ async function startCheckout() {
       );
     }
 
-    const response = await fetch('/api/billing/create-checkout-session', {
+    const response = await fetch('/api/checkout', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        organisationId: canonicalOrganisationId,
-        betaCode: betaCode || undefined,
+        inputs: payload!.inputs,
+        currency: payload?.currency,
+        firstName: normalisedFirstName,
+        termsAccepted,
       }),
     });
 
@@ -1454,6 +1456,8 @@ async function startCheckout() {
                 <BetaRedeem
                   initialCode={betaCode ?? ''}
                   firstName={normalisedFirstName}
+                  organisationId={organisationId.trim()}
+                  isOwner={isOwner}
                 />
               </div>
             ) : (

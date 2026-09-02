@@ -25,7 +25,13 @@
  */
 export function stripComments(src: string): string {
   return src
-    .replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, ' ') // JSX comment blocks
+    // JSX comment blocks `{/* ... */}` (and `{ /* ... */ }`). The whitespace between `{` and `/*`
+    // is restricted to spaces/tabs (NOT newlines) so that an arrow-function body `{\n  /* ...code...*/ }`
+    // is not mistaken for a JSX comment — previously the `\s*` let a code-block open `{` followed by a
+    // later `*/ }` on a distant line swallow the code in between (see beta-code-journey.test.ts, where
+    // the `const BETA_CODE_KEY = ...` line was consumed). A genuine multi-line JSX comment still matches
+    // because its `/*` sits on the same line as the opening `{`.
+    .replace(/\{[ \t]*\/\*[\s\S]*?\*\/[ \t]*\}/g, ' ') // JSX comment blocks
     .replace(/\/\*[\s\S]*?\*\//g, ' ') // block comments
     .replace(/^\s*\/\/.*$/gm, ' '); // line comments
 }

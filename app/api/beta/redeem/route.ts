@@ -457,18 +457,24 @@ export async function POST(request: NextRequest) {
   const svc = createServiceClient();
 
   // ---------------------------------------------------------------------------
-  // 2. VALIDATE ORGANISATION CONTEXT
+  // 2. VALIDATE / ANCHOR ORGANISATION CONTEXT
   // ---------------------------------------------------------------------------
   //
-  // The beta code may carry an Organisation context, but that does not itself
+  // A beta code may carry an Organisation context, but that does not itself
   // constitute ownership.
   //
-  // The Organisation must match the Organisation established by /plan.
+  // When the code IS bound to an Organisation, that Organisation must match the
+  // one established by /plan — this prevents an invitation from silently moving
+  // a Person into a different Organisation.
   //
-  // This prevents an invitation from silently moving a Person into a different
-  // Organisation.
+  // When the code is NOT yet bound (organisation_id NULL at mint — the P2.4
+  // backfill pattern, see 20260901090000_beta_codes_org_nullable.sql), the
+  // Organisation does not exist until redemption. /plan has just established it,
+  // so we backfill the code with that Organisation here. The canonical identity
+  // bootstrap below then verifies the Organisation exists and ties the Person to
+  // it. The code is bound at redemption, matching the documented model.
 
-  if (claim.organisation_id !== organisationId) {
+  if (claim.organisation_id && claim.organisation_id !== organisationId) {
     await releaseBetaCode(rawCode);
 
     console.warn(
@@ -484,6 +490,15 @@ export async function POST(request: NextRequest) {
       },
       { status: 400 },
     );
+  }
+
+  // Bind a previously-unbound code to the Organisation established by /plan.
+  // Harmless for an already-bound code (same organisation) and idempotent.
+  if (claim.organisation_id !== organisationId) {
+    await svc
+      .from('beta_codes')
+      .update({ organisation_id: organisationId })
+      .eq('code', rawCode);
   }
 
   const askedFirstName =

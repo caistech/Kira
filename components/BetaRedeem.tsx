@@ -35,9 +35,15 @@ export function BetaRedeem({
   initialCode = '',
   /** His answer to "what should I call you", carried from the valuation. */
   firstName,
+  /** Canonical Organisation context established by the /plan identity boundary. */
+  organisationId,
+  /** His explicit ownership declaration from /plan (SELF_DECLARED when checked). */
+  isOwner = false,
 }: {
   initialCode?: string;
   firstName?: string;
+  organisationId?: string;
+  isOwner?: boolean;
 }) {
   const [code, setCode] = useState(initialCode);
   const [stage, setStage] = useState<Stage>('code');
@@ -94,7 +100,15 @@ export function BetaRedeem({
       const res = await fetch('/api/beta/redeem', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, password, firstName, termsAccepted, termsVersion: TERMS_VERSION }),
+        body: JSON.stringify({
+          code,
+          password,
+          firstName,
+          organisationId,
+          isOwner,
+          termsAccepted,
+          termsVersion: TERMS_VERSION,
+        }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || 'Could not redeem that code.');
