@@ -6,11 +6,11 @@
 //
 // Universal organisational identity boundary.
 //
-// Beta is an ACCESS GATE, not an identity or ownership mechanism.
-//
 // Flow:
 //
-//   Beta code
+//   Not signed in
+//       ↓
+//   BetaRedeem (peek → password → redeem → Auth session)
 //       ↓
 //   Authenticated Person
 //       ↓
@@ -22,29 +22,30 @@
 //       ↓
 //   Portal
 //
-// The beta code establishes only:
-//   "this person is permitted to enter the beta onboarding path"
+// Beta is an ACCESS GATE, not an identity or ownership mechanism.
 //
-// It does NOT establish:
-//   - Person identity
-//   - Organisation identity
-//   - Ownership
-//   - Membership
+// BetaRedeem handles the complete redemption flow:
+//   1. Validate invitation code (peek — read-only)
+//   2. Create password
+//   3. Redeem invitation (creates Auth account)
+//   4. Establish Auth session
+//   5. Redirect to /plan (this page)
 //
-// The canonical identity API remains the authority for those concerns.
+// This page then handles canonical identity establishment via
+// /api/identity/plan — the ONLY authority for Person, Organisation,
+// Membership, and Ownership.
 
 import React, { FormEvent, useEffect, useState } from 'react';
 import {
   ArrowRight,
-  Brain,
   Building2,
   Check,
   CircleAlert,
   Loader2,
-  ShieldCheck,
   UserRound,
 } from 'lucide-react';
 
+import { BetaRedeem } from '@/components/BetaRedeem';
 import { BETA_CODE_STORAGE_KEY } from '@/components/BetaCodeCarrier';
 
 type IdentityResponse = {
@@ -75,30 +76,13 @@ type IdentityResponse = {
   code?: string;
 };
 
-type BetaCheckResponse = {
-  ok?: boolean;
-  valid?: boolean;
-  redeemed?: boolean;
-  error?: string;
-  code?: string;
-};
-
 function normaliseString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
 export default function PlanPage() {
   // ---------------------------------------------------------------------------
-  // BETA ACCESS
-  // ---------------------------------------------------------------------------
-
-  const [betaCode, setBetaCode] = useState('');
-  const [betaAccepted, setBetaAccepted] = useState(false);
-  const [betaChecking, setBetaChecking] = useState(false);
-  const [betaError, setBetaError] = useState<string | null>(null);
-
-  // ---------------------------------------------------------------------------
-  // IDENTITY
+  // IDENTITY STATE
   // ---------------------------------------------------------------------------
 
   const [identityLoading, setIdentityLoading] = useState(true);
@@ -118,6 +102,12 @@ export default function PlanPage() {
     useState(false);
 
   // ---------------------------------------------------------------------------
+  // BETA CODE (for passing to BetaRedeem as initialCode)
+  // ---------------------------------------------------------------------------
+
+  const [initialBetaCode, setInitialBetaCode] = useState('');
+
+  // ---------------------------------------------------------------------------
   // LOAD BETA CODE FROM URL / SESSION
   // ---------------------------------------------------------------------------
 
@@ -135,7 +125,7 @@ export default function PlanPage() {
       const existing = fromUrl || fromSession;
 
       if (existing && !cancelled) {
-        setBetaCode(existing);
+        setInitialBetaCode(existing);
       }
     } catch {
       // Browser storage is best-effort only.
@@ -148,15 +138,6 @@ export default function PlanPage() {
 
   // ---------------------------------------------------------------------------
   // CANONICAL IDENTITY LOAD
-  // ---------------------------------------------------------------------------
-  //
-  // This is deliberately independent of beta validation.
-  //
-  // Beta establishes access.
-  // /api/identity/plan establishes canonical identity.
-  //
-  // The backend, not this page, decides whether the authenticated user is
-  // associated with an Organisation.
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
@@ -222,91 +203,7 @@ export default function PlanPage() {
   }, []);
 
   // ---------------------------------------------------------------------------
-  // BETA VALIDATION
-  // ---------------------------------------------------------------------------
-  //
-  // IMPORTANT:
-  //
-  // Do not manufacture beta validity locally.
-  //
-  // The page asks the server to validate the supplied code.
-  //
-  // The endpoint is expected to be the existing beta-code validation boundary.
-  // If the application uses a different route name, change ONLY this constant.
-  // ---------------------------------------------------------------------------
-
-  async function validateBetaCode(event?: FormEvent) {
-    event?.preventDefault();
-
-    const code = normaliseString(betaCode);
-
-    if (!code) {
-      setBetaError('Please enter your beta access code.');
-      return;
-    }
-
-    setBetaChecking(true);
-    setBetaError(null);
-
-    try {
-      const response = await fetch('/api/beta/peek', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          code,
-        }),
-      });
-
-      const body = (await response.json()) as BetaCheckResponse;
-
-      if (!response.ok || body.valid !== true) {
-        throw new Error(
-          body.error || 'That beta access code could not be accepted.',
-        );
-      }
-
-      try {
-        window.sessionStorage.setItem(
-          BETA_CODE_STORAGE_KEY,
-          code,
-        );
-      } catch {
-        // Best effort only.
-      }
-
-      setBetaCode(code);
-      setBetaAccepted(true);
-      setBetaError(null);
-    } catch (error: unknown) {
-      setBetaAccepted(false);
-
-      setBetaError(
-        error instanceof Error
-          ? error.message
-          : 'That beta access code could not be accepted.',
-      );
-    } finally {
-      setBetaChecking(false);
-    }
-  }
-
-  // ---------------------------------------------------------------------------
   // IDENTITY BOUNDARY
-  // ---------------------------------------------------------------------------
-  //
-  // The page submits ONLY explicit identity information.
-  //
-  // organisationId:
-  //   - existing canonical ID when already associated;
-  //   - otherwise omitted, allowing the backend to create the Organisation.
-  //
-  // Never derive organisationId from:
-  //   - user.id
-  //   - beta code
-  //   - email
-  //   - browser state
   // ---------------------------------------------------------------------------
 
   async function saveIdentity(event: FormEvent) {
@@ -318,7 +215,7 @@ export default function PlanPage() {
     const cleanLastName = normaliseString(lastName);
     const cleanOrganisationName = normaliseString(organisationName);
     const cleanOrganisationId = normaliseString(organisationId);
-    const cleanBetaCode = normaliseString(betaCode);
+    const cleanBetaCode = normaliseString(initialBetaCode);
 
     if (!cleanFirstName) {
       setIdentityError('Please enter your first name.');
@@ -354,17 +251,9 @@ export default function PlanPage() {
           firstName: cleanFirstName,
           lastName: cleanLastName,
 
-          // Existing canonical organisation only.
-          // Empty means "create the organisation from the explicit name".
           organisationId: cleanOrganisationId || undefined,
-
-          // Used only when creating a new organisation.
           organisationName: cleanOrganisationName || undefined,
-
-          // Explicit declaration only.
           isOwner: isOwner === true,
-
-          // Provenance/access context only.
           betaCode: cleanBetaCode || undefined,
         }),
       });
@@ -386,13 +275,6 @@ export default function PlanPage() {
           'Identity was saved, but no canonical organisation was returned.',
         );
       }
-
-      /*
-       * The identity API is authoritative.
-       *
-       * Do not redirect merely because the POST returned 200.
-       * Require the canonical organisation identity to be present.
-       */
 
       window.location.assign('/portal');
     } catch (error: unknown) {
@@ -422,10 +304,16 @@ export default function PlanPage() {
   }
 
   // ---------------------------------------------------------------------------
-  // BETA GATE
+  // NOT SIGNED IN — SHOW BETA REDEMPTION
+  // ---------------------------------------------------------------------------
+  //
+  // BetaRedeem handles the complete redemption flow:
+  //   peek → password → redeem → Auth session → redirect to /plan
+  //
+  // After redirect, this page re-loads and shows the identity form below.
   // ---------------------------------------------------------------------------
 
-  if (!betaAccepted) {
+  if (!signedIn) {
     return (
       <main className="min-h-screen bg-stone-50">
         <header className="border-b border-stone-200 bg-white/80 backdrop-blur">
@@ -447,85 +335,50 @@ export default function PlanPage() {
         </header>
 
         <main className="max-w-lg mx-auto px-5 py-20">
-          <div className="text-center">
-            <div className="grad-genome w-14 h-14 rounded-2xl flex items-center justify-center text-white mx-auto mb-6">
-              <ShieldCheck className="h-7 w-7" />
-            </div>
-
+          <div className="text-center mb-8">
             <h1 className="font-display text-3xl font-bold text-stone-900">
               Beta access
             </h1>
 
             <p className="mt-3 text-stone-600 leading-relaxed">
-              Enter your beta access code to continue.
+              Enter your invitation code to set up your account.
             </p>
           </div>
 
-          <form
-            onSubmit={validateBetaCode}
-            className="mt-8 rounded-3xl border border-stone-200 bg-white p-6 shadow-sm"
-          >
-            <label
-              htmlFor="beta-code"
-              className="block text-sm font-semibold text-stone-800"
-            >
-              Beta access code
-            </label>
-
-            <input
-              id="beta-code"
-              name="betaCode"
-              type="text"
-              autoComplete="off"
-              autoCapitalize="characters"
-              spellCheck={false}
-              value={betaCode}
-              onChange={(event) => {
-                setBetaCode(event.target.value);
-                setBetaError(null);
-              }}
-              placeholder="KIRA-XXXX-XXXX"
-              className="mt-2 w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-lg font-mono tracking-wide text-stone-900 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
-              disabled={betaChecking}
-            />
-
-            {betaError && (
-              <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex gap-3">
-                <CircleAlert className="h-5 w-5 shrink-0" />
-                <span>{betaError}</span>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={betaChecking || !normaliseString(betaCode)}
-              className="mt-5 w-full grad-coral text-white font-display font-bold px-6 py-3 rounded-full inline-flex items-center justify-center gap-2 min-h-[50px] disabled:opacity-60"
-            >
-              {betaChecking ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Checking code…
-                </>
-              ) : (
-                <>
-                  Continue
-                  <ArrowRight className="h-5 w-5" />
-                </>
-              )}
-            </button>
-          </form>
+          <BetaRedeem initialCode={initialBetaCode} />
         </main>
       </main>
     );
   }
 
   // ---------------------------------------------------------------------------
-  // IDENTITY / ORGANISATION FORM
+  // SIGNED IN BUT ORGANISATION ALREADY ESTABLISHED — REDIRECT
   // ---------------------------------------------------------------------------
 
   const hasCanonicalOrganisation = Boolean(
     normaliseString(organisationId),
   );
+
+  if (hasCanonicalOrganisation) {
+    // Already fully onboarded — redirect to portal.
+    // Use effect won't re-fire, so redirect directly.
+    if (typeof window !== 'undefined') {
+      window.location.assign('/portal');
+    }
+
+    return (
+      <main className="min-h-screen bg-stone-50 flex items-center justify-center px-5">
+        <div className="flex items-center gap-3 text-stone-600">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Redirecting to your portal…</span>
+        </div>
+      </main>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // SIGNED IN, NO ORGANISATION — IDENTITY / ORGANISATION FORM
+  // ---------------------------------------------------------------------------
 
   return (
     <main className="min-h-screen bg-stone-50">
@@ -540,7 +393,7 @@ export default function PlanPage() {
 
           <div className="flex items-center gap-3 text-sm text-stone-500">
             <span className="hidden sm:inline">
-              Beta access confirmed
+              Account created
             </span>
 
             <Check className="h-4 w-4 text-emerald-600" />
@@ -658,50 +511,32 @@ export default function PlanPage() {
               </div>
             </div>
 
-            {hasCanonicalOrganisation ? (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                <div className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-emerald-700 mt-0.5 shrink-0" />
+            <div>
+              <label
+                htmlFor="organisation-name"
+                className="block text-sm font-semibold text-stone-800"
+              >
+                Business name
+              </label>
 
-                  <div>
-                    <p className="font-semibold text-emerald-900">
-                      You are already associated with this business
-                    </p>
+              <input
+                id="organisation-name"
+                name="organisationName"
+                value={organisationName}
+                onChange={(event) =>
+                  setOrganisationName(event.target.value)
+                }
+                autoComplete="organization"
+                placeholder="Your business name"
+                className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
+                required
+              />
 
-                    <p className="mt-1 text-sm text-emerald-800">
-                      {organisationName || 'Your existing organisation'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <label
-                  htmlFor="organisation-name"
-                  className="block text-sm font-semibold text-stone-800"
-                >
-                  Business name
-                </label>
-
-                <input
-                  id="organisation-name"
-                  name="organisationName"
-                  value={organisationName}
-                  onChange={(event) =>
-                    setOrganisationName(event.target.value)
-                  }
-                  autoComplete="organization"
-                  placeholder="Your business name"
-                  className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
-                  required
-                />
-
-                <p className="mt-2 text-xs text-stone-500 leading-relaxed">
-                  This creates the canonical Organisation. The beta code
-                  itself is never used as the organisation identity.
-                </p>
-              </div>
-            )}
+              <p className="mt-2 text-xs text-stone-500 leading-relaxed">
+                This creates the canonical Organisation. The beta code
+                itself is never used as the organisation identity.
+              </p>
+            </div>
           </section>
 
           {/* OWNERSHIP */}
@@ -745,8 +580,8 @@ export default function PlanPage() {
               identitySaving ||
               !firstName.trim() ||
               !lastName.trim() ||
-              (!organisationId && !organisationName.trim()) ||
-              (!organisationId && !isOwner)
+              !organisationName.trim() ||
+              !isOwner
             }
             className="w-full grad-coral text-white font-display font-bold px-6 py-4 rounded-full inline-flex items-center justify-center gap-2 min-h-[54px] disabled:opacity-60"
           >
