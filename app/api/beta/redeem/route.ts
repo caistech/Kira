@@ -324,534 +324,527 @@ error,
   // Beta code redemption endpoint
   request: NextRequest,
   ) {
-  let body: RedeemRequestBody;
-
-try {
-body =
-(await request.json()) as RedeemRequestBody;
-} catch {
-return NextResponse.json(
-{
-ok: false,
-error: 'Invalid body',
-code: 'INVALID_BODY',
-},
-{ status: 400 },
-);
-}
-
-const rawCode =
-normaliseString(body.code);
-
-const password =
-typeof body.password === 'string'
-? body.password
-: '';
-
-const termsAccepted =
-body.termsAccepted === true;
-
-const submittedTermsVersion =
-normaliseString(
-body.termsVersion,
-);
-
-/*
-
-* ---
-* 1. BASIC REQUEST VALIDATION
-* ---
-
-*/
-if (!rawCode) {
-return NextResponse.json(
-{
-ok: false,
-error: 'Enter your invitation code.',
-code: 'CODE_REQUIRED',
-},
-{ status: 400 },
-);
-}
-
-if (password.length < 8) {
-return NextResponse.json(
-{
-ok: false,
-error:
-'Password must be at least 8 characters',
-code: 'PASSWORD_TOO_SHORT',
-},
-{ status: 400 },
-);
-}
-
-if (!termsAccepted) {
-return NextResponse.json(
-{
-ok: false,
-error:
-'Please agree to the Terms and Privacy Policy to continue.',
-code: 'TERMS_REQUIRED',
-},
-{ status: 400 },
-);
-}
-
-/*
-
-* The client may submit the current Terms version.
-*
-* Empty is accepted for backwards compatibility.
-  */
-  if (
-  submittedTermsVersion &&
-  submittedTermsVersion !==
-  TERMS_VERSION
-  ) {
-  return NextResponse.json(
-  {
-  ok: false,
-  error:
-  'The Terms have changed. Please review and accept the current Terms and Privacy Policy.',
-  code:
-  'TERMS_VERSION_MISMATCH',
-  },
-  { status: 400 },
-  );
-  }
-
-const svc =
-createServiceClientV2();
-
-/*
-
-* ---
-* 2. READ-ONLY INVITATION VALIDATION
-* ---
-*
-* No consumption yet.
-  */
-  let invitationEmail: string;
-
-try {
-const peek =
-await peekBetaCode(rawCode);
-
-
-if (!peek.ok) {
-  console.warn(
-    '[api/beta/redeem] rejected beta code: reason=${peek.reason}',
-  );
-
-  return NextResponse.json(
-    {
-      ok: false,
-      error: REJECTION_MESSAGE,
-      code: 'BETA_CODE_REJECTED',
-    },
-    { status: 400 },
-  );
-}
-
-invitationEmail =
-  peek.email
-    .trim()
-    .toLowerCase();
-
-
-} catch (error) {
-console.error(
-'[api/beta/redeem] invitation validation failed:',
-error,
-);
-
-
-return NextResponse.json(
-  {
-    ok: false,
-    error: REJECTION_MESSAGE,
-    code: 'BETA_CODE_REJECTED',
-  },
-  { status: 400 },
-);
-
-
-}
-
-/*
-
-* ---
-* 3. CHECK EXISTING AUTH ACCOUNT BEFORE CLAIM
-* ---
-*
-* This is the critical ordering rule.
-  */
-  try {
-  const existingAuthUser =
-  await findExistingAuthUser(
-  svc,
-  invitationEmail,
-  );
-
-
-if (existingAuthUser) {
-
-
-
-  console.info(
-    '[api/beta/redeem] existing Auth account detected for invitation email=${invitationEmail}; invitation NOT consumed',
-  );
-
-  return NextResponse.json<
-    ExistingAccountSuccess
-  >({
-    ok: true,
-    existing: true,
-    email: invitationEmail,
-  });
-}
-
-
-} catch (error) {
-/*
-* Never continue to claim if we cannot establish whether an Auth account
-* already exists.
-*/
-console.error(
-'[api/beta/redeem] existing Auth account check failed:',
-error,
-);
-
-
-return NextResponse.json(
-  {
-    ok: false,
-    error:
-      'Could not verify your account. Please try again.',
-    code:
-      'AUTH_LOOKUP_FAILED',
-  },
-  { status: 500 },
-);
-
-
-}
-
-/*
-
-* ---
-* 4. CHECK CURRENT AUTH SESSION
-* ---
-*
-* If the browser is already authenticated as the invitation email, treat
-* this as an existing account.
-  */
-  const authenticatedUser =
-  await getAuthUser();
-
-if (
-authenticatedUser?.email &&
-authenticatedUser.email
-.toLowerCase() ===
-invitationEmail
-) {
-console.info(
-  '[api/beta/redeem] request already authenticated as invitation email=${invitationEmail}; invitation NOT consumed',
-);
-
-
-return NextResponse.json<
-  ExistingAccountSuccess
->({
-  ok: true,
-  existing: true,
-  email: invitationEmail,
-});
-
-
-}
-
-/*
-
-* ---
-* 5. ATOMIC INVITATION CLAIM
-* ---
-*
-* ONLY NOW is the invitation consumed.
-*
-* claimBetaCode() must perform its own guarded database update so that
-* simultaneous redemption attempts cannot both win.
-  */
-  const claim =
-  await claimBetaCode(rawCode);
-
-if (!claim.ok) {
-console.warn(
-  '[api/beta/redeem] atomic beta claim rejected: reason=${claim.reason}',
-);
-
-
-return NextResponse.json(
-  {
-    ok: false,
-    error: REJECTION_MESSAGE,
-    code:
-      'BETA_CODE_REJECTED',
-  },
-  { status: 400 },
-);
-
-
-}
-
-const email =
-claim.email
-.trim()
-.toLowerCase();
-
-/*
-
-* Defensive consistency check.
-*
-* The invitation email should not change between peek and claim.
-  */
-  if (
-  email !== invitationEmail
-  ) {
-  console.error(
-  '[api/beta/redeem] invitation email changed between peek and claim',
-  {
-  invitationEmail,
-  claimedEmail: email,
-  },
-  );
-
-
-await releaseBetaCode(
-
-
-
-  rawCode,
-);
-
-return NextResponse.json(
-  {
-    ok: false,
-    error: REJECTION_MESSAGE,
-    code:
-      'BETA_CODE_REJECTED',
-  },
-  { status: 400 },
-);
-
-
-}
-
-/*
-
-* ---
-* 6. CREATE SUPABASE AUTH ACCOUNT
-* ---
-*
-* The email comes exclusively from the invitation.
-*
-* The caller cannot substitute another email.
-  */
-  const {
-  data: createdAuth,
-  error: createError,
-  } =
-  await svc.auth.admin.createUser({
-  email,
-  password,
-  email_confirm: true,
-  user_metadata: {
-  terms_accepted: true,
-  terms_version:
-  submittedTermsVersion ||
-  TERMS_VERSION,
-  beta_invitation: true,
-  },
-  });
-
-if (
-createError ||
-!createdAuth.user
-) {
-const alreadyExists =
-/already|registered|exists/i.test(
-createError?.message ?? '',
-);
-
-
-if (alreadyExists) {
-  /*
-   * Another request may have created the Auth account between our
-   * pre-check and createUser().
-   *
-   * This request did NOT create that account.
-   *
-   * Release the invitation so the invitation is not incorrectly consumed.
-   */
-  console.warn(
-    '[api/beta/redeem] Auth account appeared during redemption for email=${email}; releasing invitation',
-  );
-
-  await releaseBetaCode(
-    rawCode,
-  );
-
-  return NextResponse.json<
-    ExistingAccountSuccess
-  >({
-    ok: true,
-    existing: true,
-    email,
-  });
-}
-
-/*
- * No Auth account was created.
- *
- * It is safe to release the invitation.
- */
-await releaseBetaCode(
-  rawCode,
-);
-
-console.error(
-  '[api/beta/redeem] Auth account creation failed; beta code released:',
-  createError,
-);
-
-return NextResponse.json(
-  {
-    ok: false,
-    error:
-      'Could not create your account. Please try again.',
-    code:
-      'AUTH_CREATE_FAILED',
-  },
-  { status: 500 },
-);
-
-
-}
-
-const authUserId =
-createdAuth.user.id;
-
-/*
-
-* ---
-* 7. LEGACY PROVENANCE BRIDGE
-* ---
-*
-* Compatibility only.
-*
-* This does NOT create canonical Person/Organisation identity.
-  */
-  const legacyUserId =
-  await linkLegacyApplicationUser(
-  svc,
-  authUserId,
-  email,
-  );
-
-/*
-
-* Preserve beta provenance against the Auth/legacy identity.
-*
-* The beta code remains acquisition/provisioning provenance.
-  */
-  try {
-  await linkBetaCodeToUser(
-  rawCode,
-  legacyUserId ??
-  authUserId,
-  );
-  } catch (error) {
-  /*
-
-  * The Auth account has already been created.
-  *
-  * Do not delete the Auth account here and do not manufacture canonical
-  * identity. Log the provenance failure and allow /plan to establish the
-  * canonical identity.
-    */
-    console.error(
-    '[api/beta/redeem] beta provenance link failed:',
-    error,
-    );
+    let body: RedeemRequestBody;
+
+    try {
+        body =
+            (await request.json()) as RedeemRequestBody;
+    } catch {
+        return NextResponse.json(
+            {
+                ok: false,
+                error: 'Invalid body',
+                code: 'INVALID_BODY',
+            },
+            {status: 400},
+        );
     }
 
-/*
+    const rawCode =
+        normaliseString(body.code);
 
-* Legacy journey metadata is non-authoritative.
-  */
-  if (legacyUserId) {
-  const {
-  error: userUpdateError,
-  } = await svc
-  .from('users')
-  .update({
-  journey_type: 'business',
-  updated_at:
-  new Date().toISOString(),
-  })
-  .eq(
-  'id',
-  legacyUserId,
-  );
+    const password =
+        typeof body.password === 'string'
+            ? body.password
+            : '';
+
+    const termsAccepted =
+        body.termsAccepted === true;
+
+    const submittedTermsVersion =
+        normaliseString(
+            body.termsVersion,
+        );
+
+    /*
+
+    * ---
+    * 1. BASIC REQUEST VALIDATION
+    * ---
+
+    */
+    if (!rawCode) {
+        return NextResponse.json(
+            {
+                ok: false,
+                error: 'Enter your invitation code.',
+                code: 'CODE_REQUIRED',
+            },
+            {status: 400},
+        );
+    }
+
+    if (password.length < 8) {
+        return NextResponse.json(
+            {
+                ok: false,
+                error:
+                    'Password must be at least 8 characters',
+                code: 'PASSWORD_TOO_SHORT',
+            },
+            {status: 400},
+        );
+    }
+
+    if (!termsAccepted) {
+        return NextResponse.json(
+            {
+                ok: false,
+                error:
+                    'Please agree to the Terms and Privacy Policy to continue.',
+                code: 'TERMS_REQUIRED',
+            },
+            {status: 400},
+        );
+    }
+
+    /*
+
+    * The client may submit the current Terms version.
+    *
+    * Empty is accepted for backwards compatibility.
+      */
+    if (
+        submittedTermsVersion &&
+        submittedTermsVersion !==
+        TERMS_VERSION
+    ) {
+        return NextResponse.json(
+            {
+                ok: false,
+                error:
+                    'The Terms have changed. Please review and accept the current Terms and Privacy Policy.',
+                code:
+                    'TERMS_VERSION_MISMATCH',
+            },
+            {status: 400},
+        );
+    }
+
+    const svc =
+        createServiceClientV2();
+
+    /*
+
+    * ---
+    * 2. READ-ONLY INVITATION VALIDATION
+    * ---
+    *
+    * No consumption yet.
+      */
+    let invitationEmail: string;
+
+    try {
+        const peek =
+            await peekBetaCode(rawCode);
 
 
-if (userUpdateError) {
+        if (!peek.ok) {
+            console.warn(
+                '[api/beta/redeem] rejected beta code: reason=${peek.reason}',
+            );
+
+            return NextResponse.json(
+                {
+                    ok: false,
+                    error: REJECTION_MESSAGE,
+                    code: 'BETA_CODE_REJECTED',
+                },
+                {status: 400},
+            );
+        }
+
+        invitationEmail =
+            peek.email
+                .trim()
+                .toLowerCase();
 
 
+    } catch (error) {
+        console.error(
+            '[api/beta/redeem] invitation validation failed:',
+            error,
+        );
 
-  console.warn(
-    '[api/beta/redeem] legacy journey metadata was not updated:',
-    userUpdateError.message,
-  );
-}
+
+        return NextResponse.json(
+            {
+                ok: false,
+                error: REJECTION_MESSAGE,
+                code: 'BETA_CODE_REJECTED',
+            },
+            {status: 400},
+        );
 
 
-}
+    }
 
-/*
+    /*
 
-* ---
-* 8. ACQUISITION ATTRIBUTION
-* ---
+    * ---
+    * 3. CHECK EXISTING AUTH ACCOUNT BEFORE CLAIM
+    * ---
+    *
+    * This is the critical ordering rule.
+      */
+    try {
+        const existingAuthUser =
+            await findExistingAuthUser(
+                svc,
+                invitationEmail,
+            );
 
-*/
-await recordAttribution(
-request,
-legacyUserId,
-email,
-);
 
-/*
+        if (existingAuthUser) {
 
-* ---
-* 9. RETURN
-* ---
-*
-* DO NOT create:
-*
-* * Person
-* * Organisation
-* * Membership
-* * Ownership
-*
-* /plan is the canonical convergence point.
-  */
-  return NextResponse.json<
-  RedeemSuccess
 
-{
- ok: true,
- email,
-}
-}
+            console.info(
+                '[api/beta/redeem] existing Auth account detected for invitation email=${invitationEmail}; invitation NOT consumed',
+            );
+
+            return NextResponse.json<
+                ExistingAccountSuccess
+            >({
+                ok: true,
+                existing: true,
+                email: invitationEmail,
+            });
+        }
+
+
+    } catch (error) {
+        /*
+        * Never continue to claim if we cannot establish whether an Auth account
+        * already exists.
+        */
+        console.error(
+            '[api/beta/redeem] existing Auth account check failed:',
+            error,
+        );
+
+
+        return NextResponse.json(
+            {
+                ok: false,
+                error:
+                    'Could not verify your account. Please try again.',
+                code:
+                    'AUTH_LOOKUP_FAILED',
+            },
+            {status: 500},
+        );
+
+
+    }
+
+    /*
+
+    * ---
+    * 4. CHECK CURRENT AUTH SESSION
+    * ---
+    *
+    * If the browser is already authenticated as the invitation email, treat
+    * this as an existing account.
+      */
+    const authenticatedUser =
+        await getAuthUser();
+
+    if (
+        authenticatedUser?.email &&
+        authenticatedUser.email
+            .toLowerCase() ===
+        invitationEmail
+    ) {
+        console.info(
+            '[api/beta/redeem] request already authenticated as invitation email=${invitationEmail}; invitation NOT consumed',
+        );
+
+
+        return NextResponse.json<
+            ExistingAccountSuccess
+        >({
+            ok: true,
+            existing: true,
+            email: invitationEmail,
+        });
+
+
+    }
+
+    /*
+
+    * ---
+    * 5. ATOMIC INVITATION CLAIM
+    * ---
+    *
+    * ONLY NOW is the invitation consumed.
+    *
+    * claimBetaCode() must perform its own guarded database update so that
+    * simultaneous redemption attempts cannot both win.
+      */
+    const claim =
+        await claimBetaCode(rawCode);
+
+    if (!claim.ok) {
+        console.warn(
+            '[api/beta/redeem] atomic beta claim rejected: reason=${claim.reason}',
+        );
+
+
+        return NextResponse.json(
+            {
+                ok: false,
+                error: REJECTION_MESSAGE,
+                code:
+                    'BETA_CODE_REJECTED',
+            },
+            {status: 400},
+        );
+
+
+    }
+
+    const email =
+        claim.email
+            .trim()
+            .toLowerCase();
+
+    /*
+
+    * Defensive consistency check.
+    *
+    * The invitation email should not change between peek and claim.
+      */
+    if (
+        email !== invitationEmail
+    ) {
+        console.error(
+            '[api/beta/redeem] invitation email changed between peek and claim',
+            {
+                invitationEmail,
+                claimedEmail: email,
+            },
+        );
+
+
+        await releaseBetaCode(
+            rawCode,
+        );
+
+        return NextResponse.json(
+            {
+                ok: false,
+                error: REJECTION_MESSAGE,
+                code:
+                    'BETA_CODE_REJECTED',
+            },
+            {status: 400},
+        );
+
+
+    }
+
+    /*
+
+    * ---
+    * 6. CREATE SUPABASE AUTH ACCOUNT
+    * ---
+    *
+    * The email comes exclusively from the invitation.
+    *
+    * The caller cannot substitute another email.
+      */
+    const {
+        data: createdAuth,
+        error: createError,
+    } =
+        await svc.auth.admin.createUser({
+            email,
+            password,
+            email_confirm: true,
+            user_metadata: {
+                terms_accepted: true,
+                terms_version:
+                    submittedTermsVersion ||
+                    TERMS_VERSION,
+                beta_invitation: true,
+            },
+        });
+
+    if (
+        createError ||
+        !createdAuth.user
+    ) {
+        const alreadyExists =
+            /already|registered|exists/i.test(
+                createError?.message ?? '',
+            );
+
+
+        if (alreadyExists) {
+            /*
+             * Another request may have created the Auth account between our
+             * pre-check and createUser().
+             *
+             * This request did NOT create that account.
+             *
+             * Release the invitation so the invitation is not incorrectly consumed.
+             */
+            console.warn(
+                '[api/beta/redeem] Auth account appeared during redemption for email=${email}; releasing invitation',
+            );
+
+            await releaseBetaCode(
+                rawCode,
+            );
+
+            return NextResponse.json<
+                ExistingAccountSuccess
+            >({
+                ok: true,
+                existing: true,
+                email: email,
+            });
+        }
+
+        /*
+         * No Auth account was created.
+         *
+         * It is safe to release the invitation.
+         */
+        await releaseBetaCode(
+            rawCode,
+        );
+
+        console.error(
+            '[api/beta/redeem] Auth account creation failed; beta code released:',
+            createError,
+        );
+
+        return NextResponse.json(
+            {
+                ok: false,
+                error:
+                    'Could not create your account. Please try again.',
+                code:
+                    'AUTH_CREATE_FAILED',
+            },
+            {status: 500},
+        );
+
+
+    }
+
+    const authUserId =
+        createdAuth.user.id;
+
+    /*
+
+    * ---
+    * 7. LEGACY PROVENANCE BRIDGE
+    * ---
+    *
+    * Compatibility only.
+    *
+    * This does NOT create canonical Person/Organisation identity.
+      */
+    const legacyUserId =
+        await linkLegacyApplicationUser(
+            svc,
+            authUserId,
+            email,
+        );
+
+    /*
+
+    * Preserve beta provenance against the Auth/legacy identity.
+    *
+    * The beta code remains acquisition/provisioning provenance.
+      */
+    try {
+        await linkBetaCodeToUser(
+            rawCode,
+            legacyUserId ??
+            authUserId,
+        );
+    } catch (error) {
+        /*
+
+        * The Auth account has already been created.
+        *
+        * Do not delete the Auth account here and do not manufacture canonical
+        * identity. Log the provenance failure and allow /plan to establish the
+        * canonical identity.
+          */
+        console.error(
+            '[api/beta/redeem] beta provenance link failed:',
+            error,
+        );
+    }
+
+    /*
+
+    * Legacy journey metadata is non-authoritative.
+      */
+    if (legacyUserId) {
+        const {
+            error: userUpdateError,
+        } = await svc
+            .from('users')
+            .update({
+                journey_type: 'business',
+                updated_at:
+                    new Date().toISOString(),
+            })
+            .eq(
+                'id',
+                legacyUserId,
+            );
+
+
+        if (userUpdateError) {
+
+
+            console.warn(
+                '[api/beta/redeem] legacy journey metadata was not updated:',
+                userUpdateError.message,
+            );
+        }
+
+
+    }
+
+    /*
+
+    * ---
+    * 8. ACQUISITION ATTRIBUTION
+    * ---
+
+    */
+    await recordAttribution(
+        request,
+        legacyUserId,
+        email,
+    );
+
+    /*
+
+    * ---
+    * 9. RETURN
+    * ---
+    *
+    * DO NOT create:
+    *
+    * * Person
+    * * Organisation
+    * * Membership
+    * * Ownership
+    *
+    * /plan is the canonical convergence point.
+      */
+
+    return NextResponse.json({
+        ok: true,
+        email,
+    });
+    }
