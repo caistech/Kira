@@ -95,14 +95,18 @@ export async function saveBusinessIdentity(
     };
   }
 
-  // Preserve the original authorisation moment across edits. Re-stamping it on every save would mean
-  // the record says he authorised this on the day he corrected a postcode, which is not what happened.
-  let authorisedAt = new Date().toISOString();
+  // Preserve the sending domain verification across edits. The form collects the domain
+  // but the verified_at timestamp is set by Resend — losing it on an unrelated identity
+  // edit would force the owner through the DNS dance again.
+  let sendingDomain = v.sendingDomain ?? null;
+  let sendingDomainVerifiedAt: string | null = null;
   try {
     const existing = await getBusinessIdentity(user.id);
-    if (existing?.authorised_at) authorisedAt = existing.authorised_at;
+    if (existing?.sending_domain === sendingDomain && existing?.sending_domain_verified_at) {
+      sendingDomainVerifiedAt = existing.sending_domain_verified_at;
+    }
   } catch {
-    // A read failure must not block the save; the worst case is a fresh timestamp on an edit.
+    // Non-fatal: we may lose the verified domain, but the save itself must not fail.
   }
 
   let saved;
@@ -115,16 +119,17 @@ export async function saveBusinessIdentity(
       locality: v.locality,
       state: v.state,
       postcode: v.postcode,
+      country: 'AU',
       reply_email: v.replyEmail,
       sign_off_name: v.signOffName ?? null,
-      sending_domain: v.sendingDomain ?? null,
+      sending_domain: sendingDomain,
       // NEVER set here. It is set only when Resend reports the domain verified, because an
       // unverified domain is rejected at send time — the precondition orchestrator/src/contract.ts
       // states and that was broken by hand on updates.factory2key.com.au, where DNS was published,
       // the domain was never added to Resend, from_email was set anyway, and every send 403'd after
       // the agent had already told the owner it was sent.
-      sending_domain_verified_at: null,
-      authorised_at: authorisedAt,
+      sending_domain_verified_at: sendingDomainVerifiedAt,
+      authorised: v.authorised,
     });
   } catch (error) {
     return { message: error instanceof Error ? error.message : 'Could not save your business details.' };

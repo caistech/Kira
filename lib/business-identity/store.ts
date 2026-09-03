@@ -1,30 +1,85 @@
 // Reading and writing the identity row.
 //
-// WHY THE CLIENT CHANGED. `business_identity` previously had RLS on with no policy, so every
-// operation went through the service-role client. RLS policies now enforce `user_id = auth.uid()`,
-// making the session client sufficient — and preferred, because the service-role key bypasses all
-// row-level security. The session client carries the authenticated user's JWT, so Supabase
-// enforces ownership at the database layer regardless of what the application code does.
+// The business identity now lives on `organisations` — the canonical identity table.
+// The old `business_identity` table was never created in production (migration 20260731090000
+// creates table `n` which was never applied), so this module was rewritten to read/write
+// `organisations` directly.
 //
-// `userId` is still accepted as a parameter (not derived from the session) because callers already
-// hold the authenticated user id and passing it avoids a redundant session lookup. The RLS policy
-// ensures the parameter can only be the caller's own id — a mismatch silently returns zero rows
-// rather than an error, which is the correct behaviour for a mismatched ownership check.
+// The `user_id` field from the old BusinessIdentity type is resolved via organisation_memberships:
+// userId → membership → organisation_id → organisations row. This keeps the API surface the same
+// (callers pass userId) while the underlying storage is org-scoped.
+//
+// RLS on `organisations` is not yet enforced (the table uses service-role access). When RLS is
+// added, the session client will be preferred — same reasoning as the old business_identity RLS.
 
 import 'server-only';
-import { createSessionClientV2 } from '@/lib/supabase/server-session';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import type { BusinessIdentity } from './index';
 
+/**
+ * Resolve an auth user ID to their organisation ID via organisation_memberships.
+ * Returns null if the user has no active membership.
+ */
+async function resolveOrgId(userId: string): Promise<string | null> {
+  const svc = await createServiceClientV2();
+  const { data, error } = await svc
+    .from('organisation_memberships')
+    .select('organisation_id')
+    .eq('auth_user_id', userId)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return data.organisation_id as string;
+}
+
+/**
+ * Map an organisations row to the BusinessIdentity shape.
+ * The `user_id` field is not stored on organisations — it's the caller's auth user ID,
+ * which we don't have here. Callers who need it already have it (they passed it in).
+ * We set it to the empty string as a placeholder; consumers who need the actual userId
+ * should use the one they already hold.
+ */
+function rowToIdentity(row: Record<string, unknown>): BusinessIdentity {
+  return {
+    user_id: '', // Derived from caller, not stored on organisations
+    legal_name: (row.legal_name as string) || '',
+    abn: (row.abn as string) || '',
+    trading_name: (row.trading_name as string) || null,
+    street: (row.street as string) || '',
+    locality: (row.locality as string) || '',
+    state: (row.state as string) || '',
+    postcode: (row.postcode as string) || '',
+    country: (row.country as string) || 'AU',
+    reply_email: (row.reply_email as string) || '',
+    sign_off_name: (row.sign_off_name as string) || null,
+    sending_domain: (row.sending_domain as string) || null,
+    sending_domain_verified_at: (row.sending_domain_verified_at as string) || null,
+    authorised_at: (row.authorised_at as string) || '',
+    synced_to_orchestrator_at: (row.synced_to_orchestrator_at as string) || null,
+    created_at: (row.created_at as string) || '',
+    updated_at: (row.updated_at as string) || '',
+  };
+}
+
 export async function getBusinessIdentity(userId: string): Promise<BusinessIdentity | null> {
-  const svc = await createSessionClientV2();
-  const { data, error } = await svc.from('business_identity').select('*').eq('user_id', userId).maybeSingle();
+  const orgId = await resolveOrgId(userId);
+  if (!orgId) return null;
+
+  const svc = await createServiceClientV2();
+  const { data, error } = await svc
+    .from('organisations')
+    .select('*')
+    .eq('organisation_id', orgId)
+    .maybeSingle();
+
   if (error) {
     // Read failures must not be mistaken for "no identity" — that would bounce a configured owner
     // back through the setup step every time the database hiccuped.
     console.error('[business-identity] read failed:', error);
     throw new Error('Could not read your business details.');
   }
-  return (data as BusinessIdentity | null) ?? null;
+  return data ? rowToIdentity(data) : null;
 }
 
 export interface UpsertIdentity {
@@ -35,60 +90,82 @@ export interface UpsertIdentity {
   locality: string;
   state: string;
   postcode: string;
+  country: string;
   reply_email: string;
   sign_off_name: string | null;
-  /** His own website domain, or null when he has none — both are valid states. */
-  sending_domain: string | null;
-  /**
-   * Only ever written by the Resend verification path, never by the form.
-   *
-   * The orchestrator's from_email must key off this: an unverified domain is REJECTED at send time,
-   * so setting it early does not fail loudly, it fails at the moment an owner is told his mail went.
-   */
-  sending_domain_verified_at: string | null;
-  authorised_at: string;
+  authorised: boolean;
+  sending_domain?: string | null;
+  sending_domain_verified_at?: string | null;
 }
 
-/**
- * Write the identity, leaving `synced_to_orchestrator_at` alone.
- *
- * The sync stamp is set separately, and only by a confirmed 200 from the orchestrator. Writing it
- * here — optimistically, alongside the row — is how a screen ends up showing a green tick over a
- * sender that never received the identity.
- */
-export async function upsertBusinessIdentity(userId: string, values: UpsertIdentity): Promise<BusinessIdentity> {
-  const svc = await createSessionClientV2();
+export async function upsertBusinessIdentity(
+  userId: string,
+  input: UpsertIdentity,
+): Promise<BusinessIdentity> {
+  const orgId = await resolveOrgId(userId);
+  if (!orgId) throw new Error('No organisation found for this user.');
+
+  const now = new Date().toISOString();
+  const svc = await createServiceClientV2();
   const { data, error } = await svc
-    .from('business_identity')
-    .upsert({ user_id: userId, ...values, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
-    .select('*')
-    .single();
+    .from('organisations')
+    .upsert(
+      {
+        organisation_id: orgId,
+        legal_name: input.legal_name,
+        abn: input.abn,
+        trading_name: input.trading_name || null,
+        street: input.street,
+        locality: input.locality,
+        state: input.state,
+        postcode: input.postcode,
+        country: input.country,
+        reply_email: input.reply_email,
+        sign_off_name: input.sign_off_name || null,
+        sending_domain: input.sending_domain ?? null,
+        sending_domain_verified_at: input.sending_domain_verified_at ?? null,
+        authorised_at: input.authorised ? now : null,
+        updated_at: now,
+      },
+      { onConflict: 'organisation_id' },
+    )
+    .select()
+    .maybeSingle();
+
   if (error) {
-    console.error('[business-identity] write failed:', error);
+    console.error('[business-identity] upsert failed:', error);
     throw new Error('Could not save your business details.');
   }
-  return data as BusinessIdentity;
+
+  return rowToIdentity(data!);
 }
 
-/** Stamp the sync. Called only after the orchestrator confirms it holds the identity. */
 export async function markSynced(userId: string): Promise<void> {
-  const svc = await createSessionClientV2();
+  const orgId = await resolveOrgId(userId);
+  if (!orgId) return;
+
+  const svc = await createServiceClientV2();
   const { error } = await svc
-    .from('business_identity')
+    .from('organisations')
     .update({ synced_to_orchestrator_at: new Date().toISOString() })
-    .eq('user_id', userId);
-  if (error) console.error('[business-identity] could not stamp sync:', error);
+    .eq('organisation_id', orgId);
+
+  if (error) {
+    console.error('[business-identity] markSynced failed:', error);
+  }
 }
 
-/**
- * Clear the sync stamp. Called when the identity CHANGES and the push fails: the orchestrator is
- * then holding the previous entity, so "synced" would be true of data nobody meant to send under.
- */
 export async function clearSynced(userId: string): Promise<void> {
-  const svc = await createSessionClientV2();
+  const orgId = await resolveOrgId(userId);
+  if (!orgId) return;
+
+  const svc = await createServiceClientV2();
   const { error } = await svc
-    .from('business_identity')
+    .from('organisations')
     .update({ synced_to_orchestrator_at: null })
-    .eq('user_id', userId);
-  if (error) console.error('[business-identity] could not clear sync stamp:', error);
+    .eq('organisation_id', orgId);
+
+  if (error) {
+    console.error('[business-identity] clearSynced failed:', error);
+  }
 }
