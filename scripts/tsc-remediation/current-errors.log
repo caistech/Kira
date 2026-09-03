@@ -1,0 +1,47 @@
+app/api/cron/reconcile-tasks/route.ts(156,34): error TS2304: Cannot find name 'resolveOrganisationForPerson'.
+app/api/genome/export/route.ts(239,39): error TS2304: Cannot find name 'docExportDate'.
+app/api/genome/manual/route.ts(78,42): error TS2304: Cannot find name 'appUser'.
+app/api/genome/manual/route.ts(113,36): error TS2304: Cannot find name 'svc'.
+app/api/genome/manual/route.ts(120,42): error TS7006: Parameter 'a' implicitly has an 'any' type.
+app/api/genome/manual/route.ts(122,37): error TS2304: Cannot find name 'svc'.
+app/api/identity/plan/route.ts(969,7): error TS2322: Type 'GenericStringError' is not assignable to type 'MembershipRecord | null'.
+app/api/identity/plan/route.ts(1103,7): error TS2322: Type 'GenericStringError' is not assignable to type 'MembershipRecord | null'.
+app/api/identity/plan/route.ts(1261,11): error TS18047: 'membership' is possibly 'null'.
+app/api/identity/plan/route.ts(1264,11): error TS18047: 'membership' is possibly 'null'.
+app/api/kira/chat/text/route.ts(271,27): error TS2304: Cannot find name 'getCurrentAppUser'.
+app/api/kira/discovery/ingest/route.ts(143,5): error TS2345: Argument of type 'string' is not assignable to parameter of type 'OrganisationContext'.
+app/api/kira/email/send-kira-ready/route.ts(107,7): error TS2322: Type 'string' is not assignable to type '"personal" | "business"'.
+app/api/pubguard/v2/scan/route.ts(95,7): error TS2339: Property 'organisationId' does not exist on type 'ScanRequest & { userType?: string | undefined; userId?: string | undefined; sessionId?: string | undefined; agentId?: string | undefined; conversationId?: string | undefined; }'.
+app/plan/page.tsx(963,26): error TS2339: Property 'worthTodayText' does not exist on type 'DisplayedFigures'.
+app/plan/page.tsx(1385,34): error TS2339: Property 'periodLabel' does not exist on type 'PriceQuote'.
+app/plan/page.tsx(1565,21): error TS2322: Type '{ initialCode: string; onRedeemed: () => void; }' is not assignable to type 'IntrinsicAttributes & { initialCode?: string | undefined; firstName?: string | undefined; organisationId?: string | undefined; isOwner?: boolean | undefined; }'.
+  Property 'onRedeemed' does not exist on type 'IntrinsicAttributes & { initialCode?: string | undefined; firstName?: string | undefined; organisationId?: string | undefined; isOwner?: boolean | undefined; }'.
+lib/admin/exec-reprovision.ts(119,12): error TS2339: Property 'framework' does not exist on type '{ id: any; elevenlabs_agent_id: any; agent_name: any; status: any; journey_type: any; user_id: any; }'.
+lib/admin/exec-reprovision.ts(119,56): error TS2339: Property 'framework' does not exist on type '{ id: any; elevenlabs_agent_id: any; agent_name: any; status: any; journey_type: any; user_id: any; }'.
+lib/admin/exec-reprovision.ts(128,42): error TS2339: Property 'framework' does not exist on type '{ id: any; elevenlabs_agent_id: any; agent_name: any; status: any; journey_type: any; user_id: any; }'.
+lib/billing/beta-codes.test.ts(24,64): error TS2322: Type '{ code: string; email: string; organisation_id?: string | undefined; expires_at: string; redeemed_at: string | null; revoked_at: string | null; }' is not assignable to type 'BetaCodeRow'.
+  Types of property 'organisation_id' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+lib/genome/dedupe-sweep-apply.ts(74,81): error TS2304: Cannot find name 'userId'.
+lib/kira/area-agenda.test.ts(62,7): error TS1117: An object literal cannot have multiple properties with the same name.
+lib/kira/area-agenda.test.ts(165,7): error TS1117: An object literal cannot have multiple properties with the same name.
+lib/kira/memory-entity.test.ts(105,3): error TS1117: An object literal cannot have multiple properties with the same name.
+lib/kira/save-memory-dedupe.test.ts(43,3): error TS1117: An object literal cannot have multiple properties with the same name.
+lib/kira/swarm/stub.ts(144,7): error TS2741: Property 'taskGroupId' is missing in type '{ status: "failed"; message: string; }' but required in type 'DispatchResult'.
+lib/kira/uid-tools.ts(549,43): error TS2345: Argument of type 'string' is not assignable to parameter of type 'OrganisationContext'.
+lib/voice-agent-checks.ts(17,5): error TS7034: Variable 'supabase' implicitly has type 'any' in some locations where its type cannot be determined.
+lib/voice-agent-checks.ts(30,35): error TS7005: Variable 'supabase' implicitly has an 'any' type.
+lib/voice-agent-checks.ts(57,56): error TS7005: Variable 'supabase' implicitly has an 'any' type.
+lib/voice-agent-checks.ts(69,35): error TS7005: Variable 'supabase' implicitly has an 'any' type.
+lib/voice-agent-checks.ts(90,56): error TS7005: Variable 'supabase' implicitly has an 'any' type.
+lib/voice-agent-checks.ts(102,35): error TS7005: Variable 'supabase' implicitly has an 'any' type.
+lib/voice-agent-checks.ts(122,56): error TS7005: Variable 'supabase' implicitly has an 'any' type.
+lib/voice-agent-checks.ts(134,35): error TS7005: Variable 'supabase' implicitly has an 'any' type.
+lib/voice-agent-checks.ts(156,35): error TS7005: Variable 'supabase' implicitly has an 'any' type.
+lib/voice-agent-checks.ts(175,35): error TS7005: Variable 'supabase' implicitly has an 'any' type.
+npm notice
+npm notice New patch version of npm available! 11.19.0 -> 11.19.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.19.1
+npm notice To update run: npm install -g npm@11.19.1
+npm notice

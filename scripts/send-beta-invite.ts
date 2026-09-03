@@ -83,7 +83,7 @@ async function sendEmail(to: string, subject: string, body: string, dryRun: bool
     } catch (error) {
       lastError = error;
       attempt++;
-      console.warn(`Attempt ${attempt} failed for ${to}:`, error.message);
+      console.warn(`Attempt ${attempt} failed for ${to}:`, error instanceof Error ? error.message : String(error));
 
       if (attempt < maxRetries) {
         // Exponential backoff
@@ -94,7 +94,7 @@ async function sendEmail(to: string, subject: string, body: string, dryRun: bool
     }
   }
 
-  console.error(`Failed to send email to ${to} after ${maxRetries} attempts. Last error:`, lastError.message);
+  console.error(`Failed to send email to ${to} after ${maxRetries} attempts. Last error:`, lastError instanceof Error ? lastError.message : String(lastError));
   return false;
 }
 

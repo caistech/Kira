@@ -1,0 +1,14 @@
+KIRA TypeScript Batch Remediation
+=================================
+
+Date: Thu Sep  3 07:24:10 WAST 2026
+
+Final TypeScript status:
+FAIL
+
+Legacy getCurrentAppUser references:
+PRESENT — manual canonical migration required
+
+Remaining error report:
+scripts/tsc-remediation/remaining-errors.txt
+

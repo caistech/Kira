@@ -1,0 +1,78 @@
+=== 1. FILE EXISTENCE CHECK ===
+PASS  components/UserShell.tsx
+PASS  components/KiraShapeSection.tsx
+PASS  app/setup/drive/page.tsx
+PASS  components/BackToAccount.tsx
+PASS  app/setup/drive/actions.ts
+PASS  app/setup/business/page.tsx
+PASS  app/setup/business/actions.ts
+PASS  app/settings/page.tsx
+PASS  lib/auth.ts
+PASS  app/api/loi/route.ts
+PASS  app/api/voice/telemetry/route.ts
+PASS  app/api/genome/redact/route.ts
+PASS  app/api/kira/create/route.ts
+PASS  app/api/kira/chat/text/route.ts
+
+=== 2. GIT WORKTREE ===
+ M app/api/identity/plan/route.ts
+D  lib/lib-auth.ts
+?? scripts/canonical-identity-sweep-20260903-071240.report.txt
+?? scripts/canonical-identity-sweep.sh
+
+=== 3. BACKUP ===
+Backup created: scripts/canonical-identity-backup-20260903-071240
+
+=== 4. SEMANTIC IDENTITY INVENTORY ===
+
+----- PATTERN: getCurrentAppUser -----
+
+----- PATTERN: getUser -----
+
+----- PATTERN: auth\.user -----
+
+----- PATTERN: user\.id -----
+
+----- PATTERN: user\.email -----
+
+----- PATTERN: user_metadata -----
+(none)
+
+----- PATTERN: from\(['"]users['"] -----
+
+----- PATTERN: \busers\b -----
+
+----- PATTERN: \buser_id\b -----
+
+----- PATTERN: \bfirst_name\b -----
+
+----- PATTERN: \blast_name\b -----
+
+----- PATTERN: \brole\b -----
+
+----- PATTERN: membership -----
+
+----- PATTERN: membership_id -----
+
+----- PATTERN: organisation -----
+
+----- PATTERN: organisation_id -----
+
+=== 5. LEGACY AUTHORITY CHECK ===
+--- getCurrentAppUser ---
+--- direct users table ---
+--- user.id ---
+--- user.email ---
+--- user_metadata ---
+--- user_id ---
+
+=== 6. CANONICAL AUTHORITY CHECK ===
+--- getAuthUser ---
+--- getCurrentOrganisationContext ---
+--- ctx.personId ---
+--- ctx.organisationId ---
+--- ctx.membershipId ---
+--- ctx.role ---
+
+=== 7. TYPESCRIPT ===
+TYPESCRIPT: FAIL

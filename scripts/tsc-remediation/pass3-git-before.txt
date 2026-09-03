@@ -1,0 +1,14 @@
+ M app/api/identity/plan/route.ts
+ M app/plan/page.tsx
+D  lib/lib-auth.ts
+ M package-lock.json
+ M package.json
+ M scripts/send-beta-invite.ts
+ M tsconfig.json
+?? scripts/canonical-identity-backup-20260903-071240/
+?? scripts/canonical-identity-sweep-20260903-071240.report.txt
+?? scripts/canonical-identity-sweep.sh
+?? scripts/tsc-batch-remediate.sh
+?? scripts/tsc-remediate-pass2.sh
+?? scripts/tsc-remediate-pass3.sh
+?? scripts/tsc-remediation/

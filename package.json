@@ -11,7 +11,6 @@
     "check:tokens": "node scripts/check-design-tokens.mjs"
   },
   "dependencies": {
-    "@caistech/kira-testing-client": "file:../cais-shared-services/packages/kira-testing-client",
     "@caistech/abn-lookup": "^0.1.1",
     "@caistech/attribution": "^0.1.0",
     "@caistech/beta-gate": "^0.2.0",
@@ -23,6 +22,7 @@
     "@caistech/email-compliance": "^0.4.0",
     "@caistech/email-send": "^0.2.0",
     "@caistech/extractors": "^0.3.0",
+    "@caistech/kira-testing-client": "file:../cais-shared-services/packages/kira-testing-client",
     "@caistech/mapbox": "^0.2.1",
     "@caistech/mnemo": "^0.2.0",
     "@caistech/platform-trust-middleware": "^0.4.1",
@@ -51,6 +51,7 @@
   "devDependencies": {
     "@caistech/portfolio-gate": "^0.14.0",
     "@types/node": "^20",
+    "@types/nodemailer": "^8.0.1",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.0.1",

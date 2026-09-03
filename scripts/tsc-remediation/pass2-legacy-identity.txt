@@ -1,0 +1,23 @@
+app/api/genome/redact/route.ts:45:  const user = await getCurrentAppUser();
+app/api/kira/chat/text/route.ts:271:    const appUser = await getCurrentAppUser();
+app/api/kira/create/route.ts:98:    const user = await getCurrentAppUser();
+app/api/loi/route.ts:42:  const appUser = await getCurrentAppUser().catch(() => null);
+app/settings/page.tsx:26:  const appUser = await getCurrentAppUser();
+app/setup/business/actions.ts:30:  const user = await getCurrentAppUser();
+app/setup/business/actions.ts:171:  const user = await getCurrentAppUser();
+app/setup/business/page.tsx:33:  const user = await getCurrentAppUser();
+app/setup/drive/actions.ts:30:  const user = await getCurrentAppUser();
+app/setup/drive/page.tsx:25:  const user = await getCurrentAppUser();
+lib/auth-bridge.test.ts:67:    expect(await getCurrentAppUser()).toMatchObject({ id: 'app-1' });
+lib/auth-bridge.test.ts:74:    expect(await getCurrentAppUser()).toBeNull();
+lib/auth-bridge.test.ts:85:    const user = await getCurrentAppUser();
+lib/auth-bridge.test.ts:101:    expect(await getCurrentAppUser()).toBeNull();
+lib/auth-bridge.test.ts:109:    expect(await getCurrentAppUser()).toBeNull();
+lib/auth-bridge.test.ts:120:    expect(await getCurrentAppUser()).toBeNull();
+lib/auth.ts:9://   - getCurrentAppUser() is DEPRECATED - use canonical functions instead
+lib/auth.ts:49:export async function getCurrentAppUser() {
+lib/auth.ts:97:// They should be preferred over getCurrentAppUser() for new code.
+lib/auth.ts:98:// getCurrentAppUser() is retained for backward compatibility during transition.
+components/BackToAccount.tsx:26:  const user = await getCurrentAppUser();
+components/KiraShapeSection.tsx:42:  const user = await getCurrentAppUser();
+components/UserShell.tsx:108:  const appUser = await getCurrentAppUser(); // ensures the bridged users row is resolvable
