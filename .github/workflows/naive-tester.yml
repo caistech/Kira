@@ -1,0 +1,73 @@
+# Naive tester — automated human walkthrough.
+#
+# Walks the live product as a first-time end-user: landing (desktop + mobile), form
+# login (exercises the auth path), and an authed surface. Records results via gate-check
+# (source=naive-tester). Anything the model can't decide → na (degrade-don-fake).
+#
+# This is the Playwright + Anthropic vision agent from cais-shared-services/scripts/agents/.
+# It screenshots desktop (1280px) + mobile (390px) viewports, then asks Claude to verdict
+# the naive-method rubric checks (#1–#41) from the screenshots.
+#
+# Triggered after every production deployment and weekly (catches model drift).
+# The weekly run is the same as the post-deploy run — identical coverage, different trigger.
+
+name: naive-tester
+
+on:
+  deployment_status:
+    types: [success]
+  schedule:
+    - cron: '0 7 * * 1' # Mondays 07:00 UTC, after red-team (06:00)
+  workflow_dispatch:
+
+jobs:
+  naive-tester:
+    if: >
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'deployment_status' &&
+       github.event.deployment_status.state == 'success' &&
+       github.event.deployment_status.environment == 'Production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      TEST_USER_EMAIL: ${{ secrets.QA_TEST_EMAIL }}
+      QA_USER_PASSWORD: ${{ secrets.QA_TEST_PASSWORD }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      REDIS_URL: ${{ secrets.REDIS_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          registry-url: 'https://npm.pkg.github.com'
+
+      - name: Install cais-shared-services
+        run: |
+          cd /tmp
+          git clone --depth 1 https://github.com/caistech/cais-shared-services.git
+          cd cais-shared-services
+          npm ci
+          cd scripts/agents && npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+        working-directory: /tmp/cais-shared-services/scripts/agents
+
+      - name: Run naive tester
+        working-directory: /tmp/cais-shared-services/scripts/agents
+        run: |
+          PROD_URL="${{ github.event.deployment_status.target_url || vars.PRODUCTION_URL || 'https://kiraexec.com' }}"
+          node naive-tester.mjs \
+            --slug kira \
+            --url "$PROD_URL" \
+            ${{ github.event_name == 'deployment_status' && format('--deployment {0}', github.event.deployment.id) || '' }}
