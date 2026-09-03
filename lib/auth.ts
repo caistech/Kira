@@ -135,10 +135,13 @@ export async function getCurrentOrganisationContext(): Promise<OrganisationConte
 
     const supabase = createServiceClientV2();
 
-    // Canonical path ONLY: auth_credentials → persons → organisation_memberships
+    // Canonical path ONLY: auth_credentials → persons → organisation_memberships.
+    // selected_org_id is the person's explicit "which org am I working in" choice
+    // (set by the org switcher). It is authoritative ONLY when they hold an active
+    // membership for it — otherwise we fall back to the most-recent active membership.
     const { data: credential, error: credError } = await supabase
       .from('auth_credentials')
-      .select('person_id')
+      .select('person_id, selected_org_id')
       .eq('auth_user_id', user.id)
       .eq('status', 'active')
       .limit(1)
@@ -147,16 +150,44 @@ export async function getCurrentOrganisationContext(): Promise<OrganisationConte
     if (credError || !credential) return null;
     const personId = credential.person_id;
 
-    // Get membership (role priority: owner > admin > consultant > employee > advisor > member)
-    const { data: membership } = await supabase
-      .from('organisation_memberships')
-      .select('membership_id, organisation_id, role, status, can_spend, valid_from, valid_to, portal_access')
-      .eq('person_id', personId)
-      .eq('status', 'active')
-      .or('valid_to.is.null,valid_to.gt.now()')
-      .order('valid_from', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    // Get membership (role priority: owner > admin > consultant > employee > advisor > member).
+    // Build the OrgContext-shaped row from either the selected org (if the person still has an
+    // active membership there) or the most-recent active membership.
+    const baseQuery = `
+      membership_id, organisation_id, role, status, can_spend, valid_from, valid_to, portal_access
+    `;
+    const activeFilter = { person_id: personId, status: 'active' };
+
+    let membership;
+    if (credential.selected_org_id) {
+      const { data: selected, error: selErr } = await supabase
+        .from('organisation_memberships')
+        .select(baseQuery)
+        .eq('person_id', personId)
+        .eq('organisation_id', credential.selected_org_id)
+        .eq('status', 'active')
+        .or('valid_to.is.null,valid_to.gt.now()')
+        .maybeSingle();
+
+      if (!selErr && selected) {
+        membership = selected;
+      }
+    }
+
+    // No valid selected org (or none stored) — fall back to most-recent active membership.
+    if (!membership) {
+      const { data: fallback } = await supabase
+        .from('organisation_memberships')
+        .select(baseQuery)
+        .eq('person_id', personId)
+        .eq('status', 'active')
+        .or('valid_to.is.null,valid_to.gt.now()')
+        .order('valid_from', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      membership = fallback;
+    }
 
     if (!membership) return null;
 
@@ -187,6 +218,66 @@ export async function getCurrentOrganisationId(): Promise<string | null> {
 export async function getCurrentPersonId(): Promise<string | null> {
   const ctx = await getCurrentOrganisationContext();
   return ctx?.personId ?? null;
+}
+
+/** A person's selectable organisation, for the org-switcher. */
+export interface UserOrganisationOption {
+  organisationId: string;
+  membershipId: string;
+  name: string;
+  role: string;
+  /** True when this is the person's currently-active selection. */
+  isCurrent: boolean;
+}
+
+/**
+ * List the organisations a person belongs to (active memberships), so the
+ * authenticated portal can render the org-switcher and highlight the current one.
+ * Returns [] on no memberships. P0.5 Step 6.
+ */
+export async function getUserOrganisations(
+  personId: string,
+  currentOrganisationId: string | null,
+): Promise<UserOrganisationOption[]> {
+  const supabase = createServiceClientV2();
+
+  const { data: memberships, error } = await supabase
+    .from('organisation_memberships')
+    .select('membership_id, organisation_id, role, portal_access')
+    .eq('person_id', personId)
+    .eq('status', 'active')
+    .or('valid_to.is.null,valid_to.gt.now()')
+    .order('valid_from', { ascending: false });
+
+  if (error) {
+    console.error('[lib/auth] getUserOrganisations failed:', error);
+    return [];
+  }
+
+  if (!memberships || memberships.length === 0) return [];
+
+  // Resolve each org's display name in one query.
+  const orgIds = memberships.map((m) => m.organisation_id as string);
+  const { data: orgRows } = await supabase
+    .from('organisations')
+    .select('organisation_id, legal_name')
+    .in('organisation_id', orgIds);
+
+  const nameByOrgId = new Map<string, string>();
+  for (const o of orgRows ?? []) {
+    nameByOrgId.set(o.organisation_id as string, (o.legal_name as string)?.trim() || 'Unnamed business');
+  }
+
+  return memberships.map((m) => {
+    const organisationId = m.organisation_id as string;
+    return {
+      organisationId,
+      membershipId: m.membership_id as string,
+      name: nameByOrgId.get(organisationId) || 'Unnamed business',
+      role: (m.role as string) || 'member',
+      isCurrent: organisationId === currentOrganisationId,
+    };
+  });
 }
 
 /** Check if the current session has a specific role in their organisation. P0.5 Step 6. */

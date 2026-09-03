@@ -57,6 +57,7 @@ import { redirect } from 'next/navigation';
 import {
   getAuthUser,
   getCurrentOrganisationContext,
+  getUserOrganisations,
   isCurrentUserAdmin,
 } from '@/lib/auth';
 
@@ -309,6 +310,11 @@ export async function UserShell({
     ? { name: organisationName }
     : null;
 
+  // Orgs this person can switch between (for the org-switcher in the shell chrome).
+  const orgOptions = await getUserOrganisations(
+    organisationContext.personId,
+    organisationContext.organisationId,
+  );
   // ===========================================================================
   // 4. OPTIONAL STORED-VALUATION CLAIM
   // ===========================================================================
@@ -353,6 +359,7 @@ export async function UserShell({
       homeHref="/dashboard"
       items={navigation}
       userEmail={authUser.email ?? ''}
+      orgOptions={orgOptions}
     >
       {claimValuation && (
         <ClaimStoredValuation

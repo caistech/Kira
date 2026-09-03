@@ -21,6 +21,7 @@ import { redirect } from 'next/navigation';
 import {
   getAuthUser,
   getSuperadminContext,
+  getUserOrganisations,
 } from '@/lib/auth';
 
 import { createServiceClientV2 } from '@/lib/supabase/server';
@@ -74,6 +75,12 @@ export async function ManageShell({ children }: { children: ReactNode }) {
 
   const orgName = await resolveOrganisationName(ctx.organisationId);
 
+  // Orgs this superadmin can switch between (the management portal is multi-org aware).
+  const orgOptions = await getUserOrganisations(
+    ctx.personId,
+    ctx.organisationId,
+  );
+
   return (
     <PortalShell
       title={`${orgName || 'Organisation'} · Manage`}
@@ -81,6 +88,7 @@ export async function ManageShell({ children }: { children: ReactNode }) {
       items={MANAGE_NAV}
       userEmail={authUser.email ?? ''}
       settingsHref="/manage/settings"
+      orgOptions={orgOptions}
     >
       {children}
     </PortalShell>

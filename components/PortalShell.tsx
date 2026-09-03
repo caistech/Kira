@@ -10,6 +10,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
 import { SignOutButton } from '@/components/SignOutButton';
+import { OrgSwitcher } from '@/components/OrgSwitcher';
+import type { UserOrganisationOption } from '@/lib/auth';
 
 export interface NavItem {
   href: string;
@@ -27,6 +29,11 @@ interface PortalShellProps {
    * and had no route back but the address bar.
    */
   settingsHref?: string;
+  /**
+   * When supplied (person belongs to >1 org), renders the OrgSwitcher at the top of the rail in
+   * place of the static brand title. When absent or length < 2, renders the plain title link.
+   */
+  orgOptions?: UserOrganisationOption[];
   children: React.ReactNode;
 }
 
@@ -36,6 +43,7 @@ export function PortalShell({
   items,
   userEmail,
   settingsHref = '/settings',
+  orgOptions,
   children,
 }: PortalShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -59,13 +67,17 @@ export function PortalShell({
           the other said: "the logo changes from the pink circle on the website to a green square in
           the app. I noticed and wondered if I was on the right site." For a buyer already deciding
           whether to trust the thing, that is a bad question to raise for free. */}
-      <Link
-        href={homeHref}
-        className="block px-4 py-5 text-lg font-bold bg-gradient-to-r from-amber-500 via-pink-500 to-violet-500 bg-clip-text text-transparent"
-        onClick={() => setDrawerOpen(false)}
-      >
-        {title}
-      </Link>
+      {orgOptions && orgOptions.length > 1 ? (
+        <OrgSwitcher options={orgOptions} currentTitle={title} />
+      ) : (
+        <Link
+          href={homeHref}
+          className="block px-4 py-5 text-lg font-bold bg-gradient-to-r from-amber-500 via-pink-500 to-violet-500 bg-clip-text text-transparent"
+          onClick={() => setDrawerOpen(false)}
+        >
+          {title}
+        </Link>
+      )}
       <div className="flex-1 space-y-1 px-2">
         {items.map((it) => (
           <Link
