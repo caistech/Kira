@@ -106,6 +106,8 @@ export interface OrganisationContext {
   canSpend: boolean;
   validFrom: string;
   validTo: string | null;
+  /** Which portal(s) this membership grants: 'admin' | 'user' | 'both'. */
+  portalAccess: 'admin' | 'user' | 'both' | null;
 }
 
 /**
@@ -148,7 +150,7 @@ export async function getCurrentOrganisationContext(): Promise<OrganisationConte
     // Get membership (role priority: owner > admin > consultant > employee > advisor > member)
     const { data: membership } = await supabase
       .from('organisation_memberships')
-      .select('membership_id, organisation_id, role, status, can_spend, valid_from, valid_to')
+      .select('membership_id, organisation_id, role, status, can_spend, valid_from, valid_to, portal_access')
       .eq('person_id', personId)
       .eq('status', 'active')
       .or('valid_to.is.null,valid_to.gt.now()')
@@ -167,6 +169,7 @@ export async function getCurrentOrganisationContext(): Promise<OrganisationConte
       canSpend: membership.can_spend ?? true,
       validFrom: membership.valid_from,
       validTo: membership.valid_to,
+      portalAccess: membership.portal_access ?? null,
     };
   } catch (e) {
     console.error('[lib/auth] Error resolving organisational context:', e);
@@ -229,7 +232,7 @@ export async function resolveOrganisationFromUser(userId: string): Promise<Organ
 
     const { data: membership } = await supabase
       .from('organisation_memberships')
-      .select('membership_id, organisation_id, role, status, can_spend, valid_from, valid_to')
+      .select('membership_id, organisation_id, role, status, can_spend, valid_from, valid_to, portal_access')
       .eq('person_id', personId)
       .eq('status', 'active')
       .or('valid_to.is.null,valid_to.gt.now()')
@@ -248,6 +251,7 @@ export async function resolveOrganisationFromUser(userId: string): Promise<Organ
       canSpend: membership.can_spend ?? true,
       validFrom: membership.valid_from,
       validTo: membership.valid_to,
+      portalAccess: membership.portal_access ?? null,
     };
   } catch (e) {
     console.error('[lib/auth] Error resolving org from user:', e);
@@ -272,7 +276,7 @@ export async function resolveOrganisationForPerson(personId: string): Promise<Or
 
     const { data: membership, error: memError } = await supabase
       .from('organisation_memberships')
-      .select('membership_id, organisation_id, role, status, can_spend, valid_from, valid_to')
+      .select('membership_id, organisation_id, role, status, can_spend, valid_from, valid_to, portal_access')
       .eq('person_id', personId)
       .eq('status', 'active')
       .or('valid_to.is.null,valid_to.gt.now()')
@@ -291,9 +295,143 @@ export async function resolveOrganisationForPerson(personId: string): Promise<Or
       canSpend: membership.can_spend ?? true,
       validFrom: membership.valid_from,
       validTo: membership.valid_to,
+      portalAccess: membership.portal_access ?? null,
     };
   } catch (e) {
     console.error('[lib/auth] Error resolving org from person:', e);
     return null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// MULTI-KIRA SUPERADMIN FUNCTIONS
+// ---------------------------------------------------------------------------
+//
+// The superadmin is a FUNCTION (a role held in organisation_memberships with
+// role = 'superadmin'), distinct from 'owner'. The superadmin governs the org,
+// its Kira agent(s), and appoints users. Ownership is a separate relationship
+// tracked in ownership_periods; a superadmin may or may not also own the org.
+
+/**
+ * Resolve the current session's SUPERADMIN context, if any.
+ *
+ * Mirrors getCurrentOrganisationContext() but scopes to a membership whose
+ * portal_access grants the admin portal ('admin' or 'both'). This is the
+ * authoritative check for /admin/* surfaces.
+ *
+ * Returns null when the user is not a superadmin of any org, is unauthenticated,
+ * or has no matching membership.
+ */
+export async function getSuperadminContext(): Promise<OrganisationContext | null> {
+  try {
+    const session = await createSessionClientV2();
+    const { data: { user }, error: authError } = await session.auth.getUser();
+    if (authError || !user) return null;
+
+    const supabase = createServiceClientV2();
+
+    const { data: credential, error: credError } = await supabase
+      .from('auth_credentials')
+      .select('person_id')
+      .eq('auth_user_id', user.id)
+      .eq('status', 'active')
+      .limit(1)
+      .maybeSingle();
+
+    if (credError || !credential) return null;
+    const personId = credential.person_id;
+
+    const { data: membership } = await supabase
+      .from('organisation_memberships')
+      .select('membership_id, organisation_id, role, status, can_spend, valid_from, valid_to, portal_access')
+      .eq('person_id', personId)
+      .eq('role', 'superadmin')
+      .eq('status', 'active')
+      .in('portal_access', ['admin', 'both'])
+      .or('valid_to.is.null,valid_to.gt.now()')
+      .order('valid_from', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!membership) return null;
+
+    return {
+      personId,
+      organisationId: membership.organisation_id,
+      membershipId: membership.membership_id,
+      role: membership.role,
+      membershipStatus: membership.status,
+      canSpend: membership.can_spend ?? true,
+      validFrom: membership.valid_from,
+      validTo: membership.valid_to,
+      portalAccess: membership.portal_access ?? null,
+    };
+  } catch (e) {
+    console.error('[lib/auth] Error resolving superadmin context:', e);
+    return null;
+  }
+}
+
+/** Resolve someone's superadmin context from a trusted user_id (webhook / server context). */
+export async function resolveSuperadminFromUser(userId: string): Promise<OrganisationContext | null> {
+  if (!userId) return null;
+  try {
+    const supabase = await createServiceClientV2();
+
+    const { data: credential, error: credError } = await supabase
+      .from('auth_credentials')
+      .select('person_id')
+      .eq('auth_user_id', userId)
+      .eq('status', 'active')
+      .limit(1)
+      .maybeSingle();
+
+    if (credError || !credential) return null;
+
+    const { data: membership } = await supabase
+      .from('organisation_memberships')
+      .select('membership_id, organisation_id, role, status, can_spend, valid_from, valid_to, portal_access')
+      .eq('person_id', credential.person_id)
+      .eq('role', 'superadmin')
+      .eq('status', 'active')
+      .in('portal_access', ['admin', 'both'])
+      .or('valid_to.is.null,valid_to.gt.now()')
+      .order('valid_from', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!membership) return null;
+
+    return {
+      personId: credential.person_id,
+      organisationId: membership.organisation_id,
+      membershipId: membership.membership_id,
+      role: membership.role,
+      membershipStatus: membership.status,
+      canSpend: membership.can_spend ?? true,
+      validFrom: membership.valid_from,
+      validTo: membership.valid_to,
+      portalAccess: membership.portal_access ?? null,
+    };
+  } catch (e) {
+    console.error('[lib/auth] Error resolving superadmin from user:', e);
+    return null;
+  }
+}
+
+/** True when the current session holds the superadmin function for their org. */
+export async function currentUserIsSuperadmin(): Promise<boolean> {
+  return (await getSuperadminContext()) !== null;
+}
+
+/** Which portal(s) the current session can access: 'admin' | 'user' | 'both' | null. */
+export async function currentUserPortalAccess(): Promise<'admin' | 'user' | 'both' | null> {
+  const ctx = await getCurrentOrganisationContext();
+  return ctx?.portalAccess ?? null;
+}
+
+/** True when the current session has any active product (user-portal) membership. */
+export async function currentUserHasPortalAccess(): Promise<boolean> {
+  const ctx = await getCurrentOrganisationContext();
+  return !!ctx?.portalAccess && ctx.portalAccess !== null;
 }

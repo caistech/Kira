@@ -16,6 +16,7 @@ interface BetaTester {
   name: string;
   code: string;
   group: 'A' | 'B' | 'C';
+  beta_type?: 'superadmin' | 'user';
   trial_started_at?: string | null;
   usage_count?: number;
   last_email_sent?: string | null;
@@ -65,12 +66,16 @@ function betaDatabase() {
  * Returns the stored code (reused if an open one already exists, otherwise a
  * freshly minted row). Never returns a placeholder from the JSON file.
  */
-async function ensureMintedBetaCode(email: string, label: string): Promise<{ code: string; reused: boolean }> {
+async function ensureMintedBetaCode(
+  email: string,
+  label: string,
+  betaType: 'superadmin' | 'user' = 'user',
+): Promise<{ code: string; reused: boolean }> {
   const db = betaDatabase();
 
   const { data: existing, error: findError } = await db
     .from('beta_codes')
-    .select('code, expires_at, redeemed_at, revoked_at')
+    .select('code, expires_at, redeemed_at, revoked_at, beta_type')
     .eq('email', email)
     .order('created_at', { ascending: false })
     .limit(1);
@@ -97,6 +102,7 @@ async function ensureMintedBetaCode(email: string, label: string): Promise<{ cod
     code,
     email,
     label: label || null,
+    beta_type: betaType || 'user',
     expires_at: expires.toISOString(),
     created_by: process.env.USERNAME || 'send-beta-invite.ts',
   });
@@ -343,6 +349,7 @@ async function sendBetaInvites(dryRun: boolean = true) {
         const { code: realCode, reused } = await ensureMintedBetaCode(
           tester.email,
           `${tester.name || ''} — via send-beta-invite`,
+          tester.beta_type ?? 'user',
         );
         tester.code = realCode;
         if (!reused) {
@@ -377,6 +384,7 @@ async function sendBetaInvites(dryRun: boolean = true) {
         const { code: realCode, reused } = await ensureMintedBetaCode(
           tester.email,
           `${tester.name || ''} — via send-beta-invite`,
+          tester.beta_type ?? 'user',
         );
         tester.code = realCode;
         if (!reused) {
@@ -475,3 +483,4 @@ program
   });
 
 program.parse(process.argv);
+

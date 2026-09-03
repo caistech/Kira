@@ -52,7 +52,7 @@ const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app';
 async function list() {
   const { data, error } = await db
     .from('beta_codes')
-    .select('code, email, label, expires_at, redeemed_at, revoked_at')
+    .select('code, email, label, beta_type, expires_at, redeemed_at, revoked_at')
     .order('created_at', { ascending: false });
   if (error) throw error;
 
@@ -65,7 +65,8 @@ async function list() {
         : new Date(row.expires_at) <= new Date()
           ? 'EXPIRED'
           : `open until ${row.expires_at.slice(0, 10)}`;
-    console.log(`${group(row.code).padEnd(16)} ${String(row.email).padEnd(34)} ${state}${row.label ? `  — ${row.label}` : ''}`);
+    const tier = row.beta_type === 'superadmin' ? ' [SA]' : '';
+    console.log(`${group(row.code).padEnd(16)} ${String(row.email).padEnd(34)} ${state}${tier}${row.label ? `  — ${row.label}` : ''}`);
   }
 }
 
@@ -89,11 +90,16 @@ async function revoke(raw) {
 async function mint() {
   const email = String(arg('email') ?? '').trim().toLowerCase();
   if (!email || !email.includes('@')) {
-    console.error('Usage: --email someone@example.com [--label "who they are"] [--days 45]');
+    console.error('Usage: --email someone@example.com [--label "who they are"] [--days 45] [--type superadmin|user]');
     process.exit(1);
   }
   const days = Number(arg('days') ?? DEFAULT_DAYS);
   const label = arg('label') ?? null;
+  const type = arg('type') ?? 'user';
+  if (!['superadmin', 'user'].includes(type)) {
+    console.error(`--type must be 'superadmin' or 'user' (got '${type}').`);
+    process.exit(1);
+  }
   const code = generate();
   const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
@@ -101,15 +107,22 @@ async function mint() {
     code,
     email,
     label,
+    beta_type: type,
     expires_at: expires.toISOString(),
     created_by: process.env.USER || process.env.USERNAME || 'operator',
   });
   if (error) throw error;
 
   const pretty = group(code);
+  const tier =
+    type === 'superadmin'
+      ? 'Superadmin tester — on redemption they become the org superadmin.'
+      : 'User tester — on redemption they join the org as a member.';
   console.log(`\n  Code:    ${pretty}`);
   console.log(`  For:     ${email}`);
+  console.log(`  Type:    ${type}`);
   console.log(`  Expires: ${expires.toISOString().slice(0, 10)} (${days} days)\n`);
+  console.log(`  ${tier}\n`);
   console.log('  ── Send them this ─────────────────────────────────────────────\n');
   console.log(`  Go to ${appUrl}/?code=${code} — it lands on our main page with your`);
   console.log('  code in your pocket. From there it is the same visit any owner makes:');

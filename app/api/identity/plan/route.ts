@@ -301,6 +301,38 @@ async function ensureBetaEntitlement(
 }
 
 /**
+ * Resolve the beta tier of a redeemed code.
+ *
+ * Returns 'superadmin' | 'user' | null. Defaults to 'user' for any redeemed
+ * code without an explicit tier (backward compatibility with codes minted
+ * before the two-tier scheme existed).
+ */
+async function resolveBetaType(
+  supabase: ReturnType<typeof createServiceClientV2>,
+  betaCode: string | null | undefined,
+): Promise<'superadmin' | 'user' | null> {
+  if (!betaCode) return null;
+
+  const code = normaliseBetaCodeForLookup(
+    betaCode,
+  );
+
+  if (!code) return null;
+
+  const { data, error } = await supabase
+    .from('beta_codes')
+    .select('code, beta_type')
+    .eq('code', code)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  return data.beta_type === 'superadmin'
+    ? 'superadmin'
+    : 'user';
+}
+
+/**
  * GET /api/identity/plan
  *
  * Resolve existing authenticated identity through the canonical chain.
@@ -548,6 +580,11 @@ export async function GET() {
       personId: ctx.personId,
       membershipId: ctx.membershipId,
       role: ctx.role,
+      portalAccess: ctx.portalAccess ?? 'user',
+      isSuperadmin:
+        ctx.role === 'superadmin' &&
+        (ctx.portalAccess === 'admin' ||
+          ctx.portalAccess === 'both'),
     });
   } catch (error) {
     console.error(
@@ -1162,6 +1199,34 @@ export async function POST(
     const now =
       new Date().toISOString();
 
+    /*
+     * The beta tier determines the membership role and portal access:
+     *
+     *   superadmin-tier beta -> role 'superadmin', portal_access 'both'
+     *     (governs the org AND uses the product)
+     *   user-tier beta / owner -> role 'owner', portal_access 'user'
+     *   user-tier beta / member -> role 'member', portal_access 'user'
+     *
+     * Ownership is tracked separately in ownership_periods below.
+     */
+    const betaType =
+      await resolveBetaType(
+        supabase,
+        betaCode,
+      );
+
+    const membershipRole =
+      betaType === 'superadmin'
+        ? 'superadmin'
+        : isOwner
+          ? 'owner'
+          : 'member';
+
+    const portalAccess =
+      betaType === 'superadmin'
+        ? 'both'
+        : 'user';
+
     const {
       data: membership,
       error: membershipError,
@@ -1174,9 +1239,8 @@ export async function POST(
           organisation_id:
             canonicalOrganisationId,
           person_id: personId,
-          role: isOwner
-            ? 'owner'
-            : 'member',
+          role: membershipRole,
+          portal_access: portalAccess,
           status: 'active',
           valid_from: now,
         },
@@ -1186,7 +1250,7 @@ export async function POST(
         },
       )
       .select(
-        'membership_id, organisation_id, person_id, role, status',
+        'membership_id, organisation_id, person_id, role, portal_access, status',
       )
       .single();
 
@@ -1332,6 +1396,12 @@ export async function POST(
         membershipId:
           membership.membership_id,
         role: membership.role,
+        portalAccess:
+          membership.portal_access ?? 'user',
+        isSuperadmin:
+          membership.role === 'superadmin' &&
+          (membership.portal_access === 'admin' ||
+            membership.portal_access === 'both'),
       },
 
       /*

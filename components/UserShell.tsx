@@ -144,7 +144,7 @@ async function resolveOrganisationName(
 
     const { data, error } = await supabase
       .from('organisations')
-      .select('organisation_id, name')
+      .select('organisation_id, legal_name')
       .eq('organisation_id', organisationId)
       .maybeSingle();
 
@@ -157,7 +157,7 @@ async function resolveOrganisationName(
       return null;
     }
 
-    return data?.name?.trim() || null;
+    return data?.legal_name?.trim() || null;
   } catch (error) {
     console.error(
       '[user-shell] unexpected organisation identity error:',

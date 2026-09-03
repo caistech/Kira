@@ -59,6 +59,7 @@ type IdentityResponse = {
   organisationName?: string | null;
 
   isOwner?: boolean;
+  isSuperadmin?: boolean;
 
   personId?: string | null;
   membershipId?: string | null;
@@ -70,6 +71,8 @@ type IdentityResponse = {
     personId?: string | null;
     membershipId?: string | null;
     role?: string | null;
+    portalAccess?: string | null;
+    isSuperadmin?: boolean;
   };
 
   error?: string;
@@ -98,6 +101,7 @@ export default function PlanPage() {
   const [organisationName, setOrganisationName] = useState('');
 
   const [isOwner, setIsOwner] = useState(false);
+  const [isSuperadmin, setIsSuperadmin] = useState(false);
   const [ownershipAlreadyEstablished, setOwnershipAlreadyEstablished] =
     useState(false);
 
@@ -172,6 +176,9 @@ export default function PlanPage() {
           normaliseString(body.identity?.organisationName);
 
         const existingOwner = body.isOwner === true;
+        const existingSuperadmin =
+          body.isSuperadmin === true ||
+          body.identity?.isSuperadmin === true;
 
         setSignedIn(body.signedIn === true);
 
@@ -183,6 +190,7 @@ export default function PlanPage() {
 
         setIsOwner(existingOwner);
         setOwnershipAlreadyEstablished(existingOwner);
+        setIsSuperadmin(existingSuperadmin);
 
         setIdentityLoading(false);
       })
@@ -276,7 +284,11 @@ export default function PlanPage() {
         );
       }
 
-      window.location.assign('/portal');
+      const becameSuperadmin =
+        body.identity?.isSuperadmin === true ||
+        body.isSuperadmin === true;
+
+      window.location.assign(becameSuperadmin ? '/manage' : '/dashboard');
     } catch (error: unknown) {
       setIdentityError(
         error instanceof Error
@@ -360,10 +372,10 @@ export default function PlanPage() {
   );
 
   if (hasCanonicalOrganisation) {
-    // Already fully onboarded — redirect to portal.
+    // Already fully onboarded — redirect to the right surface.
     // Use effect won't re-fire, so redirect directly.
     if (typeof window !== 'undefined') {
-      window.location.assign('/portal');
+      window.location.assign(isSuperadmin ? '/manage' : '/dashboard');
     }
 
     return (
