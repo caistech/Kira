@@ -80,13 +80,30 @@ vi.mock('@/lib/supabase/server', () => ({
           if (col === 'parked_reason') chain.__parkedQuery = true;
           return chain;
         },
+        neq: () => chain,
+        in: () => chain,
         not: (col: string) => {
           if (col === 'parked_entity') chain.__entityQuery = true;
           return chain;
         },
-        neq: () => chain,
+        or: () => chain,
         order: () => chain,
-        maybeSingle: async () => ({ data: table === 'kira_agents' ? { id: 'agent-1' } : null }),
+        maybeSingle: async () => {
+          if (table === 'kira_agents') return { data: { id: 'agent-1' }, error: null };
+          if (table === 'organisation_memberships')
+            return {
+              data: {
+                membership_id: 'm1',
+                organisation_id: 'test-org-id',
+                role: 'owner',
+                status: 'active',
+                valid_from: '2020-01-01',
+                valid_to: null,
+              },
+              error: null,
+            };
+          return { data: null, error: null };
+        },
         // Chainable AND awaitable: the agent lookup ends .limit(1).maybeSingle(), the fact lookups
         // await .limit(500) directly. A thenable chain serves both without encoding which is which.
         limit: () => chain,
@@ -98,33 +115,6 @@ vi.mock('@/lib/supabase/server', () => ({
           if (table === 'kira_memory') inserted.push(row);
           return { error: null };
         },
-      });
-      return chain;
-    },
-  }),
-  createServiceClientV2: () => ({
-    from: (table: string) => {
-      const chain: Record<string, unknown> = {};
-      Object.assign(chain, {
-        select: () => chain,
-        eq: () => chain,
-        or: () => chain,
-        order: () => chain,
-        limit: () => chain,
-        maybeSingle: async () =>
-          table === 'organisation_memberships'
-            ? {
-                data: {
-                  membership_id: 'm1',
-                  organisation_id: 'test-org-id',
-                  role: 'owner',
-                  status: 'active',
-                  valid_from: '2020-01-01',
-                  valid_to: null,
-                },
-                error: null,
-              }
-            : { data: null, error: null },
       });
       return chain;
     },

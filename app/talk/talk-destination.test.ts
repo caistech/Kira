@@ -173,8 +173,13 @@ describe('/talk when the owner has no Kira yet', () => {
       expect(onboarding).toMatch(/\/dashboard\?welcome=1/);
     });
 
-    it('the beta path lands in the same place as the paid path', () => {
-      expect(beta).toMatch(/\/dashboard\?welcome=1/);
+    it('the beta path converges through canonical identity establishment', () => {
+      // Since 2026-09 the beta path redeems into /plan, which owns identity (person →
+      // organisation → membership) before routing on: superadmins to /manage, everyone else to
+      // /dashboard. Both paid and beta end at the dashboard for a normal owner; beta just earns it
+      // through the canonical identity step first. The paid path lands on /dashboard?welcome=1
+      // because onboarding already established identity, so the two converge rather than diverge.
+      expect(beta).toMatch(/location\.assign\(['"`]\/plan['"`]\)/);
     });
 
     it('neither entry path routes around the dashboard into /start', () => {
