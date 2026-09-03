@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { confirm } from '@inquirer/prompts';
 import fs from 'fs';
 import path from 'path';
+import { createClient } from '@supabase/supabase-js';
 
 dotenv.config({ path: '.env.local' });
 
@@ -18,6 +19,90 @@ interface BetaTester {
   trial_started_at?: string | null;
   usage_count?: number;
   last_email_sent?: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// REAL BETA CODE MINTING
+//
+// A beta code only exists if it is a row in the `beta_codes` table, bound to a
+// specific email. A code that lives only in `data/beta-testers.json` is a
+// placeholder — it cannot be redeemed because redemption validates against the
+// database.
+//
+// Before sending an invitation, mint a real code for the recipient so the link
+// in the email actually works. Reuse an existing unredeemed, unrevoked,
+// unexpired code for the same email if one already exists (idempotency), so
+// re-running the script does not spam duplicate codes.
+// ---------------------------------------------------------------------------
+
+const BETA_ALPHABET = 'ABCDEFGHJKLMNPQRTUVWXYZ2346789'; // no O/0, I/1, S/5
+const BETA_DEFAULT_DAYS = 45;
+
+function generateBetaCode(length = 12): string {
+  const bytes = new Uint32Array(length);
+  crypto.getRandomValues(bytes);
+  let out = '';
+  for (let i = 0; i < length; i += 1) out += BETA_ALPHABET[bytes[i] % BETA_ALPHABET.length];
+  return out;
+}
+
+function groupBetaCode(code: string): string {
+  return (code.match(/.{1,4}/g) ?? []).join('-');
+}
+
+function betaDatabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SECRET_KEY;
+  if (!url || !key) {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY must be set (via .env.local).');
+  }
+  return createClient(url, key, { auth: { persistSession: false } });
+}
+
+/**
+ * Ensure a real, redeemable beta code exists for the given email.
+ *
+ * Returns the stored code (reused if an open one already exists, otherwise a
+ * freshly minted row). Never returns a placeholder from the JSON file.
+ */
+async function ensureMintedBetaCode(email: string, label: string): Promise<{ code: string; reused: boolean }> {
+  const db = betaDatabase();
+
+  const { data: existing, error: findError } = await db
+    .from('beta_codes')
+    .select('code, expires_at, redeemed_at, revoked_at')
+    .eq('email', email)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (findError) throw findError;
+
+  const open = existing?.[0];
+  const now = new Date();
+  if (
+    open &&
+    !open.redeemed_at &&
+    !open.revoked_at &&
+    new Date(open.expires_at) > now
+  ) {
+    return { code: open.code, reused: true };
+  }
+
+  // Reuse the JSON placeholder value if and only if it is already a genuine
+  // row in the table AND still open (handled above). Otherwise mint fresh.
+  const code = generateBetaCode();
+  const expires = new Date(now.getTime() + BETA_DEFAULT_DAYS * 24 * 60 * 60 * 1000);
+
+  const { error: insertError } = await db.from('beta_codes').insert({
+    code,
+    email,
+    label: label || null,
+    expires_at: expires.toISOString(),
+    created_by: process.env.USERNAME || 'send-beta-invite.ts',
+  });
+  if (insertError) throw insertError;
+
+  return { code, reused: false };
 }
 
 const transporter = nodemailer.createTransport({
@@ -254,6 +339,24 @@ async function sendBetaInvites(dryRun: boolean = true) {
 
     // Send emails to Group B
     for (const tester of groupB) {
+      try {
+        const { code: realCode, reused } = await ensureMintedBetaCode(
+          tester.email,
+          `${tester.name || ''} — via send-beta-invite`,
+        );
+        tester.code = realCode;
+        if (!reused) {
+          console.log(`  Minted real code ${groupBetaCode(realCode)} for ${tester.email}`);
+        }
+      } catch (error) {
+        console.error(
+          `Skipping ${tester.email}: could not mint beta code —`,
+          error instanceof Error ? error.message : String(error),
+        );
+        results.errors++;
+        continue;
+      }
+
       const { subject, body } = createEmailContent(tester);
       if (subject && body) {
         const success = await sendEmail(tester.email, subject, body, dryRun);
@@ -270,6 +373,24 @@ async function sendBetaInvites(dryRun: boolean = true) {
 
     // Send emails to Group C
     for (const tester of groupC) {
+      try {
+        const { code: realCode, reused } = await ensureMintedBetaCode(
+          tester.email,
+          `${tester.name || ''} — via send-beta-invite`,
+        );
+        tester.code = realCode;
+        if (!reused) {
+          console.log(`  Minted real code ${groupBetaCode(realCode)} for ${tester.email}`);
+        }
+      } catch (error) {
+        console.error(
+          `Skipping ${tester.email}: could not mint beta code —`,
+          error instanceof Error ? error.message : String(error),
+        );
+        results.errors++;
+        continue;
+      }
+
       const { subject, body } = createEmailContent(tester);
       if (subject && body) {
         const success = await sendEmail(tester.email, subject, body, dryRun);

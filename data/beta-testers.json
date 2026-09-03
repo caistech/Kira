@@ -163,7 +163,7 @@
     "jurisdiction_config": {
       "requires_consent": true,
       "requires_physical_address": true,
-      "supported": true  // US compliance not yet configured
+      "supported": true
     },
     "trial_started_at": null,
     "usage_count": 0,

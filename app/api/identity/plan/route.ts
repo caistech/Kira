@@ -333,21 +333,25 @@ export async function GET() {
       const supabase =
         createServiceClientV2();
 
+      /*
+       * Resolve Person through the canonical auth_credentials bridge.
+       *
+       * persons has no auth_user_id column; the Auth identity → Person
+       * mapping lives in auth_credentials (auth_user_id → person_id).
+       */
       const {
-        data: person,
-        error: personError,
+        data: credential,
+        error: credentialError,
       } = await supabase
-        .from('persons')
-        .select(
-          'person_id, first_name, last_name',
-        )
+        .from('auth_credentials')
+        .select('person_id')
         .eq('auth_user_id', user.id)
         .maybeSingle();
 
-      if (personError) {
+      if (credentialError) {
         console.error(
-          '[identity/plan][GET] person lookup failed:',
-          personError,
+          '[identity/plan][GET] auth_credentials lookup failed:',
+          credentialError,
         );
 
         return NextResponse.json(
@@ -360,18 +364,56 @@ export async function GET() {
         );
       }
 
+      const credentialPersonId =
+        credential?.person_id ?? null;
+
+      let firstName: string | null = null;
+      let lastName: string | null = null;
+      let personId: string | null =
+        credentialPersonId;
+
+      if (credentialPersonId) {
+        const {
+          data: person,
+          error: personError,
+        } = await supabase
+          .from('persons')
+          .select(
+            'person_id, first_name, last_name',
+          )
+          .eq('person_id', credentialPersonId)
+          .maybeSingle();
+
+        if (personError) {
+          console.error(
+            '[identity/plan][GET] person lookup failed:',
+            personError,
+          );
+
+          return NextResponse.json(
+            {
+              error:
+                'Unable to resolve person identity',
+              code: 'PERSON_LOOKUP_FAILED',
+            },
+            { status: 500 },
+          );
+        }
+
+        firstName = person?.first_name ?? null;
+        lastName = person?.last_name ?? null;
+        personId = person?.person_id ?? credentialPersonId;
+      }
+
       return NextResponse.json({
         ok: true,
         signedIn: true,
-        firstName:
-          person?.first_name ?? null,
-        lastName:
-          person?.last_name ?? null,
+        firstName,
+        lastName,
         organisationId: null,
         organisationName: null,
         isOwner: false,
-        personId:
-          person?.person_id ?? null,
+        personId,
       });
     }
 
@@ -384,7 +426,7 @@ export async function GET() {
     } = await supabase
       .from('organisations')
       .select(
-        'organisation_id, name',
+        'organisation_id, legal_name',
       )
       .eq(
         'organisation_id',
@@ -501,7 +543,7 @@ export async function GET() {
       organisationId:
         organisation.organisation_id,
       organisationName:
-        organisation.name ?? null,
+        organisation.legal_name ?? null,
       isOwner: Boolean(ownership),
       personId: ctx.personId,
       membershipId: ctx.membershipId,
@@ -667,24 +709,24 @@ export async function POST(
 
     if (credential?.person_id) {
       personId = credential.person_id;
-    } else {
+    } else if (user.email) {
       const {
-        data: personByAuth,
+        data: personByEmail,
         error:
-          personAuthLookupError,
+          personEmailLookupError,
       } = await supabase
         .from('persons')
         .select('person_id')
-        .eq(
-          'auth_user_id',
-          user.id,
+        .ilike(
+          'email',
+          user.email,
         )
         .maybeSingle();
 
-      if (personAuthLookupError) {
+      if (personEmailLookupError) {
         console.error(
-          '[identity/plan][POST] person auth lookup failed:',
-          personAuthLookupError,
+          '[identity/plan][POST] person email lookup failed:',
+          personEmailLookupError,
         );
 
         return NextResponse.json(
@@ -698,82 +740,9 @@ export async function POST(
         );
       }
 
-      if (personByAuth?.person_id) {
+      if (personByEmail?.person_id) {
         personId =
-          personByAuth.person_id;
-      } else if (user.email) {
-        const {
-          data: personByEmail,
-          error:
-            personEmailLookupError,
-        } = await supabase
-          .from('persons')
-          .select('person_id')
-          .ilike(
-            'email',
-            user.email,
-          )
-          .maybeSingle();
-
-        if (personEmailLookupError) {
-          console.error(
-            '[identity/plan][POST] person email lookup failed:',
-            personEmailLookupError,
-          );
-
-          return NextResponse.json(
-            {
-              error:
-                'Unable to resolve person identity',
-              code:
-                'PERSON_LOOKUP_FAILED',
-            },
-            { status: 500 },
-          );
-        }
-
-        if (personByEmail?.person_id) {
-          personId =
-            personByEmail.person_id;
-        } else {
-          const {
-            data: createdPerson,
-            error:
-              createPersonError,
-          } = await supabase
-            .from('persons')
-            .insert({
-              auth_user_id: user.id,
-              email: user.email,
-              first_name: firstName,
-              last_name: lastName,
-            })
-            .select('person_id')
-            .single();
-
-          if (
-            createPersonError ||
-            !createdPerson
-          ) {
-            console.error(
-              '[identity/plan][POST] person creation failed:',
-              createPersonError,
-            );
-
-            return NextResponse.json(
-              {
-                error:
-                  'Unable to create person identity',
-                code:
-                  'PERSON_CREATE_FAILED',
-              },
-              { status: 500 },
-            );
-          }
-
-          personId =
-            createdPerson.person_id;
-        }
+          personByEmail.person_id;
       } else {
         const {
           data: createdPerson,
@@ -782,8 +751,7 @@ export async function POST(
         } = await supabase
           .from('persons')
           .insert({
-            auth_user_id: user.id,
-            email: null,
+            email: user.email,
             first_name: firstName,
             last_name: lastName,
           })
@@ -813,9 +781,47 @@ export async function POST(
         personId =
           createdPerson.person_id;
       }
+    } else {
+      const {
+        data: createdPerson,
+        error:
+          createPersonError,
+      } = await supabase
+        .from('persons')
+        .insert({
+          email: null,
+          first_name: firstName,
+          last_name: lastName,
+        })
+        .select('person_id')
+        .single();
 
-      // ---------------------------------------------------------------------
-      // ESTABLISH AUTH → PERSON BRIDGE
+      if (
+        createPersonError ||
+        !createdPerson
+      ) {
+        console.error(
+          '[identity/plan][POST] person creation failed:',
+          createPersonError,
+        );
+
+        return NextResponse.json(
+          {
+            error:
+              'Unable to create person identity',
+            code:
+              'PERSON_CREATE_FAILED',
+          },
+          { status: 500 },
+        );
+      }
+
+      personId =
+        createdPerson.person_id;
+    }
+
+    // ---------------------------------------------------------------------    
+    // ESTABLISH AUTH → PERSON BRIDGE
       // ---------------------------------------------------------------------
 
       const {
@@ -920,9 +926,8 @@ export async function POST(
           );
         }
       }
-    }
 
-    // -----------------------------------------------------------------------
+    // -----------------------------------------------------------------------    
     // 4. UPDATE PERSON
     // -----------------------------------------------------------------------
 
@@ -982,7 +987,7 @@ export async function POST(
       } = await supabase
         .from('organisations')
         .select(
-          'organisation_id, name',
+          'organisation_id, legal_name',
         )
         .eq(
           'organisation_id',
@@ -1023,7 +1028,7 @@ export async function POST(
         organisation.organisation_id;
 
       canonicalOrganisationName =
-        organisation.name ?? null;
+        organisation.legal_name ?? null;
 
       /*
        * Client organisationId is accepted only because the Person already has
@@ -1116,10 +1121,10 @@ export async function POST(
       } = await supabase
         .from('organisations')
         .insert({
-          name: organisationName,
+          legal_name: organisationName,
         })
         .select(
-          'organisation_id, name',
+          'organisation_id, legal_name',
         )
         .single();
 
@@ -1147,7 +1152,7 @@ export async function POST(
         createdOrganisation.organisation_id;
 
       canonicalOrganisationName =
-        createdOrganisation.name ?? null;
+        createdOrganisation.legal_name ?? null;
     }
 
     // -----------------------------------------------------------------------
