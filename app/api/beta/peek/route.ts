@@ -1,4 +1,3 @@
-```ts
 // app/api/beta/peek/route.ts
 //
 // "Is this code good, and whose is it?" — asked before a password is chosen,
@@ -117,4 +116,3 @@ export async function GET(request: NextRequest) {
     });
   }
 }
-```
