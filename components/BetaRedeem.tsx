@@ -5,12 +5,13 @@
 // BETA REDEMPTION
 // ---------------
 //
-// Beta is an acquisition/provisioning path, not a second identity-definition
-// path.
+// Beta is an acquisition/provisioning path.
 //
-// The universal identity boundary remains:
+// It is NOT a second identity-definition path.
 //
-//   /plan
+// Canonical identity remains:
+//
+//   Auth
 //      ↓
 //   Person
 //      ↓
@@ -18,30 +19,49 @@
 //      ↓
 //   Membership
 //      ↓
-//   Ownership (when explicitly declared)
+//   Ownership
 //
-// This component therefore does NOT establish organisational identity.
+// This component therefore does ONLY:
 //
-// Its job is limited to:
-//   1. validate/display the invitation code;
-//   2. collect the password and Terms acceptance;
-//   3. call /api/beta/redeem;
-//   4. establish the Auth session for a newly provisioned account;
-//   5. converge back onto /plan.
+//   1. collect/validate the invitation code;
+//   2. display the invitation-bound email;
+//   3. collect the password;
+//   4. collect Terms acceptance;
+//   5. call /api/beta/redeem;
+//   6. establish the Auth session for a newly created account;
+//   7. converge back onto /plan.
 //
-// The beta code is provenance/access information.
-// It is never treated as ownership authority.
+// It does NOT send:
+//   - organisationId;
+//   - isOwner;
+//   - firstName;
+//   - lastName;
 //
-// IMPORTANT:
-//   - firstName / organisationId / isOwner are display/context props only;
-//   - they are NOT sent to /api/beta/redeem as organisational authority;
-//   - /plan remains responsible for Person → Organisation → Membership → Ownership.
+// to /api/beta/redeem.
+//
+// Those belong to /plan.
+//
+// The beta code is access/provenance information.
+// It is never treated as organisational authority.
 
-import { useCallback, useEffect, useState } from 'react';
-import { ArrowRight, Loader2, CheckCircle2 } from 'lucide-react';
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
+
+import {
+  ArrowRight,
+  CheckCircle2,
+  Loader2,
+} from 'lucide-react';
 
 import { PasswordInput } from '@/components/auth/PasswordInput';
-import { TermsAgreement, TERMS_VERSION } from '@/components/TermsAgreement';
+import {
+  TermsAgreement,
+  TERMS_VERSION,
+} from '@/components/TermsAgreement';
+
 import { createClient } from '@/lib/supabase/browser';
 
 type Stage = 'code' | 'password' | 'done';
@@ -63,21 +83,29 @@ type BetaRedeemResponse =
       code?: string;
     };
 
+type BetaPeekResponse = {
+  ok?: boolean;
+  email?: string;
+  error?: string;
+};
+
 export function BetaRedeem({
   initialCode = '',
-  firstName,
-  organisationId,
-  isOwner = false,
+  firstName: _firstName,
+  organisationId: _organisationId,
+  isOwner: _isOwner = false,
 }: {
-  /** From ?code=. The invitation email links directly here. */
+  /**
+   * Invitation code supplied by /plan?code=...
+   */
   initialCode?: string;
 
   /**
-   * Context already collected by /plan.
+   * Retained for compatibility with the existing /plan component contract.
    *
-   * These values are intentionally NOT sent to /api/beta/redeem.
-   * They are retained here only so the component contract remains compatible
-   * with the /plan page while the actual identity authority stays at /plan.
+   * These values are deliberately NOT used by the beta redemption API.
+   *
+   * Canonical identity belongs to /plan.
    */
   firstName?: string;
   organisationId?: string;
@@ -92,19 +120,22 @@ export function BetaRedeem({
   const [error, setError] = useState<string | null>(null);
 
   /*
-   * ---------------------------------------------------------------------------
-   * BETA CODE PEEK
-   * ---------------------------------------------------------------------------
+   * -------------------------------------------------------------------------
+   * PEEK
+   * -------------------------------------------------------------------------
    *
-   * /api/beta/peek is deliberately read-only.
+   * This is deliberately GET/read-only.
    *
-   * It tells the tester which email the invitation is bound to.
+   * /api/beta/peek:
    *
-   * It does NOT claim the code.
-   * It does NOT create an account.
-   * It does NOT establish organisational identity.
+   *   validates the code
+   *   ↓
+   *   returns bound email
+   *   ↓
+   *   does NOT consume code
+   *   ↓
+   *   does NOT create account
    */
-
   const check = useCallback(async (candidate: string) => {
     const normalisedCode = candidate.trim();
 
@@ -118,19 +149,24 @@ export function BetaRedeem({
 
     try {
       const response = await fetch(
-        `/api/beta/peek?code=${encodeURIComponent(normalisedCode)}`,
+        `/api/beta/peek?code=${encodeURIComponent(
+          normalisedCode,
+        )}`,
         {
           method: 'GET',
           cache: 'no-store',
         },
       );
 
-      const data = (await response.json().catch(() => null)) as
-        | { ok?: boolean; email?: string; error?: string }
-        | null;
+      const data =
+        (await response.json().catch(() => null)) as
+          | BetaPeekResponse
+          | null;
 
       if (!response.ok || !data?.ok || !data.email) {
-        setError(data?.error || 'That code did not work.');
+        setError(
+          data?.error || 'That code did not work.',
+        );
         return;
       }
 
@@ -139,7 +175,7 @@ export function BetaRedeem({
       setStage('password');
     } catch {
       setError(
-        'We could not reach us just then. Check your connection and try again.',
+        'We could not reach Kira just then. Check your connection and try again.',
       );
     } finally {
       setBusy(false);
@@ -148,32 +184,36 @@ export function BetaRedeem({
 
   /*
    * A code arriving in the URL is checked immediately.
+   *
+   * Checking does not consume the invitation.
    */
   useEffect(() => {
-    if (initialCode.trim()) {
-      void check(initialCode);
+    const candidate = initialCode.trim();
+
+    if (!candidate) {
+      return;
     }
+
+    void check(candidate);
   }, [initialCode, check]);
 
   /*
-   * ---------------------------------------------------------------------------
+   * -------------------------------------------------------------------------
    * REDEEM
-   * ---------------------------------------------------------------------------
+   * -------------------------------------------------------------------------
    *
-   * The only contract sent to /api/beta/redeem is the provisioning contract:
+   * The ONLY data sent to /api/beta/redeem is:
    *
    *   code
    *   password
    *   termsAccepted
    *   termsVersion
    *
-   * No organisation identity is supplied here.
-   *
-   * /api/beta/redeem creates/provisions the Auth account and beta entitlement.
-   * /plan subsequently establishes canonical application identity.
+   * No organisational identity is sent here.
    */
-
-  async function redeem(event: React.FormEvent<HTMLFormElement>) {
+  async function redeem(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
     event.preventDefault();
 
     if (!code.trim()) {
@@ -182,12 +222,16 @@ export function BetaRedeem({
     }
 
     if (password.length < 8) {
-      setError('Please choose a password of at least 8 characters.');
+      setError(
+        'Please choose a password of at least 8 characters.',
+      );
       return;
     }
 
     if (!termsAccepted) {
-      setError('Please agree to the Terms and Privacy Policy to continue.');
+      setError(
+        'Please agree to the Terms and Privacy Policy to continue.',
+      );
       return;
     }
 
@@ -200,6 +244,7 @@ export function BetaRedeem({
         headers: {
           'Content-Type': 'application/json',
         },
+        cache: 'no-store',
         body: JSON.stringify({
           code: code.trim(),
           password,
@@ -208,24 +253,32 @@ export function BetaRedeem({
         }),
       });
 
-      const data = (await response.json().catch(() => null)) as
-        | BetaRedeemResponse
-        | null;
+      const data =
+        (await response.json().catch(() => null)) as
+          | BetaRedeemResponse
+          | null;
 
       if (!response.ok || !data?.ok) {
         throw new Error(
-          data?.error || 'Could not redeem that invitation.',
+          data?.error ||
+            'Could not redeem that invitation.',
         );
       }
 
       /*
-       * Existing Auth account.
+       * -----------------------------------------------------------------------
+       * EXISTING ACCOUNT
+       * -----------------------------------------------------------------------
        *
-       * The beta route deliberately does not mutate an existing account.
-       * It also does not attempt to change its password.
+       * The server did NOT consume the invitation.
        *
-       * Send the person to login rather than attempting a password sign-in
-       * with the newly-entered password.
+       * The existing Auth account is deliberately untouched.
+       *
+       * We must NOT attempt:
+       *
+       *   signInWithPassword(email, newlyEnteredPassword)
+       *
+       * because that password was never applied to the existing account.
        */
       if (data.existing) {
         setBusy(false);
@@ -235,22 +288,33 @@ export function BetaRedeem({
         );
 
         window.setTimeout(() => {
-          window.location.assign('/login?next=/plan');
+          window.location.assign(
+            '/login?next=/plan',
+          );
         }, 2500);
 
         return;
       }
 
       /*
-       * Newly provisioned Auth account.
+       * -----------------------------------------------------------------------
+       * NEW ACCOUNT
+       * -----------------------------------------------------------------------
        *
-       * Sign in with the password just established by the tester so that the
-       * subsequent /plan POST can operate through the normal authenticated
-       * canonical identity boundary.
+       * /api/beta/redeem has now:
+       *
+       *   - atomically claimed the invitation;
+       *   - created the Auth account;
+       *   - preserved beta provenance.
+       *
+       * Sign in using the password established by this request.
        */
       const supabase = createClient();
 
-      const { data: sessionData, error: signInError } =
+      const {
+        data: sessionData,
+        error: signInError,
+      } =
         await supabase.auth.signInWithPassword({
           email: data.email,
           password,
@@ -269,13 +333,27 @@ export function BetaRedeem({
       setStage('done');
 
       /*
-       * /plan is the canonical convergence point.
+       * -----------------------------------------------------------------------
+       * CANONICAL CONVERGENCE
+       * -----------------------------------------------------------------------
        *
-       * The browser's existing /plan state may already contain the valuation,
-       * names and business information. The beta code is also retained by
-       * /plan in sessionStorage, so the person can continue the same funnel.
+       * /plan now owns:
        *
-       * We deliberately do NOT send the person to /dashboard or /start.
+       *   Auth
+       *     ↓
+       *   auth_credentials
+       *     ↓
+       *   Person
+       *     ↓
+       *   Organisation
+       *     ↓
+       *   Membership
+       *     ↓
+       *   Ownership
+       *     ↓
+       *   beta entitlement
+       *
+       * Do NOT redirect to /dashboard or /start.
        */
       window.setTimeout(() => {
         window.location.assign('/plan');
@@ -286,6 +364,7 @@ export function BetaRedeem({
           ? err.message
           : 'Something went wrong while redeeming your invitation.',
       );
+
       setBusy(false);
     }
   }
@@ -311,9 +390,10 @@ export function BetaRedeem({
       {stage === 'code' ? (
         <>
           <p className="mt-1 max-w-prose text-base leading-relaxed text-stone-700">
-            Free while we&apos;re in beta — no card, and we&apos;ll ask you
-            before we ever charge for anything. In exchange we want to hear
-            what doesn&apos;t work.
+            Free while we&apos;re in beta — no card, and
+            we&apos;ll ask you before we ever charge for
+            anything. In exchange we want to hear what
+            doesn&apos;t work.
           </p>
 
           <form
@@ -333,7 +413,9 @@ export function BetaRedeem({
             <input
               id="beta-code"
               value={code}
-              onChange={(event) => setCode(event.target.value)}
+              onChange={(event) =>
+                setCode(event.target.value)
+              }
               placeholder="KIRA-0000-0000"
               autoComplete="off"
               autoCapitalize="characters"
@@ -342,8 +424,8 @@ export function BetaRedeem({
             />
 
             <p className="mt-1.5 text-sm text-stone-500">
-              It&apos;s in the invitation we sent you. Capitals and dashes
-              don&apos;t matter.
+              It&apos;s in the invitation we sent you.
+              Capitals and dashes don&apos;t matter.
             </p>
 
             <button
@@ -363,11 +445,17 @@ export function BetaRedeem({
           </form>
         </>
       ) : (
-        <form onSubmit={redeem} className="mt-3">
+        <form
+          onSubmit={redeem}
+          className="mt-3"
+        >
           <p className="max-w-prose text-base leading-relaxed text-stone-700">
             Setting up your account for{' '}
-            <strong className="text-stone-900">{email}</strong>. Choose a
-            password and we&apos;ll take you back to your business setup.
+            <strong className="text-stone-900">
+              {email}
+            </strong>
+            . Choose a password and we&apos;ll take you
+            back to your business setup.
           </p>
 
           <div className="mt-4">
@@ -407,7 +495,10 @@ export function BetaRedeem({
       )}
 
       {error && (
-        <p className="mt-3 text-base text-rose-700" role="alert">
+        <p
+          className="mt-3 text-base text-rose-700"
+          role="alert"
+        >
           {error}
         </p>
       )}

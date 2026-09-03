@@ -1,16 +1,26 @@
 // app/api/beta/peek/route.ts
 //
-// "Is this code good, and whose is it?" — asked before a password is chosen,
-// so the tester sees the account he is about to create.
+// BETA INVITATION PEEK
+// --------------------
 //
-// ⚠️ THIS DOES NOT CONSUME THE CODE.
-// Checking and claiming are separate on purpose.
+// Read-only validation of a beta invitation.
 //
-// ⚠️ IT RETURNS AN EMAIL ADDRESS.
-// The caller must already hold a valid invitation code.
+// This route:
+//   - validates the invitation code;
+//   - returns the invitation-bound email;
+//   - NEVER consumes the code;
+//   - NEVER creates an Auth account;
+//   - NEVER establishes Person identity;
+//   - NEVER establishes Organisation identity.
 //
-// Every rejection answers the same sentence, so this cannot be used to learn
-// which codes exist. The real reason is logged for an operator.
+// The beta code is an access/provenance credential, not an identity authority.
+//
+// POST is the primary application contract.
+// GET is retained for direct browser testing and compatibility.
+//
+// Every invalid/rejected code receives the same external message so that the
+// endpoint cannot be used to distinguish unknown, expired, revoked or already
+// redeemed invitation codes.
 
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -25,42 +35,67 @@ export const dynamic = 'force-dynamic';
 const REJECTION_MESSAGE = BETA_CODE_REJECTION_MESSAGE;
 
 async function handlePeek(code: string) {
-  if (!code.trim()) {
+  const normalisedCode = code.trim();
+
+  if (!normalisedCode) {
     return NextResponse.json({
       ok: false,
       error: 'Enter your invitation code.',
     });
   }
 
-  const result = await peekBetaCode(code);
+  try {
+    const result = await peekBetaCode(normalisedCode);
 
-  if (!result.ok) {
-    console.warn(
-      `[api/beta/peek] rejected a code: reason=${result.reason}`,
-    );
+    if (!result.ok) {
+      console.warn(
+        `[api/beta/peek] rejected beta code: reason=${result.reason}`,
+      );
 
-    // Deliberately return 200.
-    // The `ok` flag is the application-level contract.
+      return NextResponse.json({
+        ok: false,
+        error: REJECTION_MESSAGE,
+      });
+    }
+
+    return NextResponse.json({
+      ok: true,
+      email: result.email,
+    });
+  } catch (error) {
+    /*
+     * Do not expose database/provider details to the visitor.
+     *
+     * The operator log contains the actual failure.
+     */
+    console.error('[api/beta/peek] unexpected validation error:', error);
+
     return NextResponse.json({
       ok: false,
       error: REJECTION_MESSAGE,
     });
   }
-
-  return NextResponse.json({
-    ok: true,
-    email: result.email,
-  });
 }
 
 /**
  * POST /api/beta/peek
  *
- * Primary API contract used by BetaRedeem.
- *
- * Expected body:
+ * Request:
  * {
- *   "code": "ABC123..."
+ *   "code": "KIRA-XXXX-XXXX"
+ * }
+ *
+ * Response:
+ * {
+ *   "ok": true,
+ *   "email": "tester@example.com"
+ * }
+ *
+ * or:
+ *
+ * {
+ *   "ok": false,
+ *   "error": "..."
  * }
  */
 export async function POST(request: NextRequest) {
@@ -98,9 +133,9 @@ export async function POST(request: NextRequest) {
 /**
  * GET /api/beta/peek?code=...
  *
- * Retained for compatibility / direct browser testing.
+ * Retained for compatibility and direct browser testing.
  *
- * POST is the preferred application contract.
+ * This is deliberately still read-only.
  */
 export async function GET(request: NextRequest) {
   try {

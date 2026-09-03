@@ -7,61 +7,33 @@
 //
 // It is NOT an alternative identity-definition path.
 //
-// The canonical identity boundary remains:
+// Canonical identity remains:
 //
-//   /plan
-//      ↓
+//   Supabase Auth
+//        ↓
+//   auth_credentials
+//        ↓
 //   Person
-//      ↓
+//        ↓
 //   Organisation
-//      ↓
+//        ↓
 //   Membership
-//      ↓
+//        ↓
 //   Ownership, when explicitly declared
 //
 // This route therefore does ONLY beta provisioning:
 //
-//   1. validate and atomically claim the beta code;
-//   2. obtain the invitation-bound email;
-//   3. create the Supabase Auth account;
-//   4. leave existing accounts untouched;
-//   5. record beta provenance;
-//   6. establish beta entitlement in the Organisation only when canonical
-//      organisation context already exists;
-//   7. return the email needed by the client to establish the session.
+//   1. validate the invitation;
+//   2. determine whether the bound Auth account already exists;
+//   3. leave an existing account untouched;
+//   4. atomically claim the invitation for a NEW account;
+//   5. create the Auth identity;
+//   6. preserve beta provenance;
+//   7. return the invitation-bound email.
 //
-// A newly-created Auth account is then signed in by BetaRedeem.tsx and sent
-// back to /plan.
+// It NEVER creates an Organisation.
 //
-// /plan subsequently performs:
-//
-//   Auth
-//      ↓
-//   auth_credentials
-//      ↓
-//   Person
-//      ↓
-//   Organisation
-//      ↓
-//   Membership
-//      ↓
-//   Ownership
-//
-// IMPORTANT:
-//
-// The beta route must NEVER establish Organisation identity from:
-//
-//   - auth.users.id;
-//   - public.users.id;
-//   - email;
-//   - beta code;
-//   - "first user";
-//   - invitation provenance;
-//
-// `users.id` is retained only as a legacy/provenance bridge where an existing
-// application-user row is available.
-//
-// The beta code itself is provenance/access information, not ownership authority.
+// /plan is the canonical identity convergence point.
 
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -75,15 +47,12 @@ import {
   BETA_CODE_REJECTION_MESSAGE,
   claimBetaCode,
   linkBetaCodeToUser,
+  peekBetaCode,
   releaseBetaCode,
 } from '@/lib/billing/beta-codes';
 
-import { getBetaGate } from '@/lib/billing';
 import { createServiceClientV2 } from '@/lib/supabase/server';
-import {
-  getCurrentOrganisationContext,
-  getAuthUser,
-} from '@/lib/auth';
+import { getAuthUser } from '@/lib/auth';
 import { TERMS_VERSION } from '@/lib/terms';
 
 export const runtime = 'nodejs';
@@ -115,32 +84,17 @@ function normaliseString(value: unknown): string {
 }
 
 /**
- * Determine whether the current request already has a canonical
- * organisational context.
+ * Locate a legacy users row associated with an Auth identity.
  *
- * This is intentionally optional.
+ * IMPORTANT:
  *
- * A newly-created beta account will not have one yet, because /plan is the
- * component that establishes the Person → Organisation relationship.
+ * This is a provenance/compatibility bridge only.
  *
- * An already-authenticated user may already have one.
- */
-async function getOptionalCanonicalOrganisationId(): Promise<string | null> {
-  try {
-    const context = await getCurrentOrganisationContext();
-
-    return context?.organisationId ?? null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Link beta provenance to an existing legacy application-user row when one
- * already exists.
- *
- * This is deliberately best-effort and never establishes organisational
- * authority.
+ * users.id is NOT used as:
+ *   - Organisation identity;
+ *   - tenancy authority;
+ *   - membership authority;
+ *   - ownership authority.
  */
 async function linkLegacyApplicationUser(
   svc: ReturnType<typeof createServiceClientV2>,
@@ -167,10 +121,9 @@ async function linkLegacyApplicationUser(
   }
 
   /*
-   * The legacy table is NOT canonical identity.
+   * A legacy row may exist before the Auth bridge has been attached.
    *
-   * If another part of the application has already created the bridge row,
-   * use it. Otherwise do not manufacture organisational authority here.
+   * Adoption is only permitted when the row has no Auth identity yet.
    */
   const { data: byEmail, error: emailError } = await svc
     .from('users')
@@ -191,11 +144,6 @@ async function linkLegacyApplicationUser(
     return null;
   }
 
-  /*
-   * Adoption is strictly a provenance bridge.
-   *
-   * It is guarded so an already-linked row cannot be repointed.
-   */
   const { data: adopted, error: adoptError } = await svc
     .from('users')
     .update({
@@ -219,30 +167,112 @@ async function linkLegacyApplicationUser(
 }
 
 /**
- * Start beta entitlement only when a canonical Organisation context already
- * exists.
+ * Check whether an Auth account already exists for the invitation-bound email.
  *
- * For a brand-new beta account this returns without doing anything.
+ * This check happens BEFORE claimBetaCode().
  *
- * The newly-created account will establish its Organisation through /plan,
- * after which the normal Organisation-scoped beta service can be invoked.
+ * That is essential:
+ *
+ *   existing account
+ *        ↓
+ *   do not consume invitation
+ *
+ * Supabase's admin listUsers API does not provide the same simple exact-email
+ * lookup contract as the application tables, so we paginate defensively.
+ *
+ * The invitation email is already known from peekBetaCode(), so no
+ * user-controlled email enters this operation.
  */
-async function ensureExistingOrganisationBetaEntitlement(): Promise<void> {
-  const organisationId = await getOptionalCanonicalOrganisationId();
+async function findExistingAuthUser(
+  svc: ReturnType<typeof createServiceClientV2>,
+  email: string,
+): Promise<{ id: string; email: string } | null> {
+  const targetEmail = email.toLowerCase();
 
-  if (!organisationId) {
+  /*
+   * Auth accounts are expected to be few enough for the first page during
+   * beta. We nevertheless use pagination and stop at the first match.
+   *
+   * If the project later has enough Auth users for this to become inefficient,
+   * replace this with an authoritative email lookup RPC/API rather than
+   * changing the redemption semantics.
+   */
+  const perPage = 1000;
+  let page = 1;
+
+  while (true) {
+    const { data, error } = await svc.auth.admin.listUsers({
+      page,
+      perPage,
+    });
+
+    if (error) {
+      throw new Error(
+        `Unable to check existing Auth account: ${error.message}`,
+      );
+    }
+
+    const users = data?.users ?? [];
+
+    const match = users.find(
+      (candidate) =>
+        typeof candidate.email === 'string' &&
+        candidate.email.toLowerCase() === targetEmail,
+    );
+
+    if (match?.id && match.email) {
+      return {
+        id: match.id,
+        email: match.email.toLowerCase(),
+      };
+    }
+
+    if (users.length < perPage) {
+      return null;
+    }
+
+    page += 1;
+  }
+}
+
+/**
+ * Attach attribution to an existing legacy application-user row.
+ *
+ * Attribution is acquisition provenance only.
+ *
+ * It does not establish:
+ *   - Person;
+ *   - Organisation;
+ *   - membership;
+ *   - ownership.
+ */
+async function recordAttribution(
+  request: NextRequest,
+  legacyUserId: string | null,
+  email: string,
+): Promise<void> {
+  if (!legacyUserId) {
     return;
   }
 
   try {
-    await getBetaGate().ensureTrial(organisationId);
+    const touch = attribution.parse(
+      request.cookies.get(ATTRIBUTION_COOKIE)?.value,
+    );
+
+    if (!touch) {
+      return;
+    }
+
+    await attachFirstTouch({
+      userId: legacyUserId,
+      userEmail: email,
+      introducerId: touch.referrerId,
+      firstTouchAt: touch.firstTouchAt,
+    });
   } catch (error) {
-    /*
-     * Entitlement failure must not mutate identity or cause a second Auth
-     * account to be created on retry.
-     */
     console.error(
-      '[api/beta/redeem] existing organisation beta entitlement failed:',
+      '[api/beta/redeem] attribution not recorded:',
       error,
     );
   }
@@ -251,33 +281,29 @@ async function ensureExistingOrganisationBetaEntitlement(): Promise<void> {
 /**
  * POST /api/beta/redeem
  *
- * Provision a beta invitation.
- *
- * Contract:
- *
  * Request:
- *   {
- *     code: string;
- *     password: string;
- *     termsAccepted: true;
- *     termsVersion?: string;
- *   }
  *
- * Success for a new account:
- *   {
- *     ok: true;
- *     email: string;
- *   }
+ * {
+ *   code: string;
+ *   password: string;
+ *   termsAccepted: true;
+ *   termsVersion?: string;
+ * }
  *
- * Success for an existing account:
- *   {
- *     ok: true;
- *     existing: true;
- *     email: string;
- *   }
+ * New-account response:
  *
- * No organisationId, isOwner, firstName or lastName is accepted as authority
- * here. Those belong to /plan.
+ * {
+ *   ok: true;
+ *   email: string;
+ * }
+ *
+ * Existing-account response:
+ *
+ * {
+ *   ok: true;
+ *   existing: true;
+ *   email: string;
+ * }
  */
 export async function POST(request: NextRequest) {
   let body: RedeemRequestBody;
@@ -287,6 +313,7 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json(
       {
+        ok: false,
         error: 'Invalid body',
         code: 'INVALID_BODY',
       },
@@ -306,6 +333,7 @@ export async function POST(request: NextRequest) {
   if (!rawCode) {
     return NextResponse.json(
       {
+        ok: false,
         error: 'Enter your invitation code.',
         code: 'CODE_REQUIRED',
       },
@@ -316,6 +344,7 @@ export async function POST(request: NextRequest) {
   if (password.length < 8) {
     return NextResponse.json(
       {
+        ok: false,
         error: 'Password must be at least 8 characters',
         code: 'PASSWORD_TOO_SHORT',
       },
@@ -326,6 +355,7 @@ export async function POST(request: NextRequest) {
   if (!termsAccepted) {
     return NextResponse.json(
       {
+        ok: false,
         error:
           'Please agree to the Terms and Privacy Policy to continue.',
         code: 'TERMS_REQUIRED',
@@ -340,6 +370,7 @@ export async function POST(request: NextRequest) {
   ) {
     return NextResponse.json(
       {
+        ok: false,
         error:
           'The Terms have changed. Please review and accept the current Terms and Privacy Policy.',
         code: 'TERMS_VERSION_MISMATCH',
@@ -348,45 +379,48 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  /*
-   * ---------------------------------------------------------------------------
-   * AUTHENTICATED EXISTING USER
-   * ---------------------------------------------------------------------------
-   *
-   * If a person is already authenticated, that Auth identity is relevant only
-   * to establishing whether the request is already associated with a canonical
-   * context.
-   *
-   * We NEVER use auth_user_id as organisation identity.
-   */
-  const authenticatedUser = await getAuthUser();
+  const svc = createServiceClientV2();
 
   /*
-   * ---------------------------------------------------------------------------
-   * 1. ATOMIC BETA CODE CLAIM
-   * ---------------------------------------------------------------------------
+   * -------------------------------------------------------------------------
+   * 1. READ-ONLY INVITATION VALIDATION
+   * -------------------------------------------------------------------------
    *
-   * This remains the critical concurrency boundary.
+   * This does not consume anything.
    *
-   * claimBetaCode performs the guarded UPDATE:
-   *
-   *   WHERE code = ?
-   *   AND redeemed_at IS NULL
-   *
-   * Only one simultaneous redemption can win.
-   *
-   * The claim happens before Auth creation so that a code cannot provision
-   * multiple accounts under concurrent requests.
+   * We need the invitation-bound email before deciding whether the Auth
+   * account already exists.
    */
-  const claim = await claimBetaCode(rawCode);
+  let invitationEmail: string;
 
-  if (!claim.ok) {
-    console.warn(
-      `[api/beta/redeem] rejected beta code: reason=${claim.reason}`,
+  try {
+    const peek = await peekBetaCode(rawCode);
+
+    if (!peek.ok) {
+      console.warn(
+        `[api/beta/redeem] rejected beta code: reason=${peek.reason}`,
+      );
+
+      return NextResponse.json(
+        {
+          ok: false,
+          error: REJECTION_MESSAGE,
+          code: 'BETA_CODE_REJECTED',
+        },
+        { status: 400 },
+      );
+    }
+
+    invitationEmail = peek.email.toLowerCase();
+  } catch (error) {
+    console.error(
+      '[api/beta/redeem] invitation validation failed:',
+      error,
     );
 
     return NextResponse.json(
       {
+        ok: false,
         error: REJECTION_MESSAGE,
         code: 'BETA_CODE_REJECTED',
       },
@@ -394,71 +428,158 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const email = claim.email;
-  const svc = createServiceClientV2();
+  /*
+   * -------------------------------------------------------------------------
+   * 2. EXISTING AUTH ACCOUNT CHECK — BEFORE CLAIM
+   * -------------------------------------------------------------------------
+   *
+   * This is the critical correction.
+   *
+   * If the invitation belongs to an Auth account that already exists:
+   *
+   *   - do NOT claim the beta code;
+   *   - do NOT change the password;
+   *   - do NOT create another account;
+   *   - do NOT mutate the Auth identity.
+   *
+   * The browser is sent to /login by BetaRedeem.
+   */
+  try {
+    const existingAuthUser = await findExistingAuthUser(
+      svc,
+      invitationEmail,
+    );
+
+    if (existingAuthUser) {
+      console.info(
+        `[api/beta/redeem] existing Auth account detected for invitation email=${invitationEmail}; invitation was NOT consumed`,
+      );
+
+      return NextResponse.json<ExistingAccountSuccess>({
+        ok: true,
+        existing: true,
+        email: invitationEmail,
+      });
+    }
+  } catch (error) {
+    /*
+     * Do not continue into claim/create if we cannot determine whether an
+     * existing account exists.
+     *
+     * Otherwise a temporary Auth lookup failure could turn into a second
+     * account attempt.
+     */
+    console.error(
+      '[api/beta/redeem] existing Auth account check failed:',
+      error,
+    );
+
+    return NextResponse.json(
+      {
+        ok: false,
+        error: 'Could not verify your account. Please try again.',
+        code: 'AUTH_LOOKUP_FAILED',
+      },
+      { status: 500 },
+    );
+  }
 
   /*
-   * ---------------------------------------------------------------------------
-   * 2. EXISTING AUTHENTICATED ACCOUNT
-   * ---------------------------------------------------------------------------
+   * -------------------------------------------------------------------------
+   * 3. AUTHENTICATED REQUEST CHECK
+   * -------------------------------------------------------------------------
    *
-   * If the browser is already authenticated as the same invitation email,
-   * do not create another Auth account.
+   * If the current browser is already authenticated as the invitation email,
+   * treat it exactly like an existing account.
    *
-   * The beta route still does not define Organisation identity.
+   * Crucially, the code is NOT consumed.
    */
+  const authenticatedUser = await getAuthUser();
+
   if (
     authenticatedUser?.email &&
-    authenticatedUser.email.toLowerCase() === email.toLowerCase()
+    authenticatedUser.email.toLowerCase() === invitationEmail
   ) {
-    const legacyUserId = await linkLegacyApplicationUser(
-      svc,
-      authenticatedUser.id,
-      email,
+    console.info(
+      `[api/beta/redeem] request already authenticated as invitation email=${invitationEmail}; invitation was NOT consumed`,
     );
-
-    await linkBetaCodeToUser(
-      rawCode,
-      legacyUserId ?? authenticatedUser.id,
-    );
-
-    await ensureExistingOrganisationBetaEntitlement();
-
-    try {
-      const touch = attribution.parse(
-        request.cookies.get(ATTRIBUTION_COOKIE)?.value,
-      );
-
-      if (touch && legacyUserId) {
-        await attachFirstTouch({
-          userId: legacyUserId,
-          userEmail: email,
-          introducerId: touch.referrerId,
-          firstTouchAt: touch.firstTouchAt,
-        });
-      }
-    } catch (error) {
-      console.error(
-        '[api/beta/redeem] attribution not recorded:',
-        error,
-      );
-    }
 
     return NextResponse.json<ExistingAccountSuccess>({
       ok: true,
       existing: true,
-      email,
+      email: invitationEmail,
     });
   }
 
   /*
-   * ---------------------------------------------------------------------------
-   * 3. CREATE AUTH ACCOUNT
-   * ---------------------------------------------------------------------------
+   * -------------------------------------------------------------------------
+   * 4. ATOMIC CLAIM
+   * -------------------------------------------------------------------------
+   *
+   * Only now do we consume the invitation.
+   *
+   * claimBetaCode() performs the guarded database update:
+   *
+   *   WHERE code = ?
+   *   AND redeemed_at IS NULL
+   *
+   * Therefore simultaneous new-account redemption attempts resolve to one
+   * winner.
+   */
+  const claim = await claimBetaCode(rawCode);
+
+  if (!claim.ok) {
+    console.warn(
+      `[api/beta/redeem] atomic beta claim rejected: reason=${claim.reason}`,
+    );
+
+    return NextResponse.json(
+      {
+        ok: false,
+        error: REJECTION_MESSAGE,
+        code: 'BETA_CODE_REJECTED',
+      },
+      { status: 400 },
+    );
+  }
+
+  const email = claim.email.toLowerCase();
+
+  /*
+   * Defensive consistency check.
+   *
+   * peekBetaCode() and claimBetaCode() both obtain the invitation-bound email.
+   * They should agree. If they do not, do not provision an account.
+   */
+  if (email !== invitationEmail) {
+    console.error(
+      '[api/beta/redeem] invitation email changed between peek and claim',
+      {
+        invitationEmail,
+        claimedEmail: email,
+      },
+    );
+
+    await releaseBetaCode(rawCode);
+
+    return NextResponse.json(
+      {
+        ok: false,
+        error: REJECTION_MESSAGE,
+        code: 'BETA_CODE_REJECTED',
+      },
+      { status: 400 },
+    );
+  }
+
+  /*
+   * -------------------------------------------------------------------------
+   * 5. CREATE AUTH ACCOUNT
+   * -------------------------------------------------------------------------
    *
    * The invitation-bound email is authoritative.
    *
-   * The request body cannot provide or override the email.
+   * The client cannot supply an alternative email.
    */
   const { data: createdAuth, error: createError } =
     await svc.auth.admin.createUser({
@@ -479,19 +600,17 @@ export async function POST(request: NextRequest) {
 
     if (alreadyExists) {
       /*
-       * Existing Auth accounts are never mutated.
+       * A race may have created the account after our pre-check.
        *
-       * Because the code has already been atomically claimed, we return the
-       * existing-account response rather than attempting password mutation or
-       * account takeover.
+       * This request did NOT create the account.
        *
-       * The code can remain claimed against the invitation; the user can sign
-       * in and contact support if necessary.
+       * Therefore the invitation must NOT remain consumed.
        */
       console.warn(
-        `[api/beta/redeem] invitation supplied for existing Auth account; ` +
-          `existing account was not mutated. email=${email}`,
+        `[api/beta/redeem] Auth account appeared during redemption for email=${email}; releasing invitation because this request did not create the account`,
       );
+
+      await releaseBetaCode(rawCode);
 
       return NextResponse.json<ExistingAccountSuccess>({
         ok: true,
@@ -501,9 +620,9 @@ export async function POST(request: NextRequest) {
     }
 
     /*
-     * No Auth account was created, so the narrow release exception applies.
+     * No Auth account was created.
      *
-     * This makes a transient Auth-provider failure retryable.
+     * This is exactly the narrow case where releasing the claim is safe.
      */
     await releaseBetaCode(rawCode);
 
@@ -514,6 +633,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       {
+        ok: false,
         error: 'Could not create your account. Please try again.',
         code: 'AUTH_CREATE_FAILED',
       },
@@ -524,13 +644,13 @@ export async function POST(request: NextRequest) {
   const authUserId = createdAuth.user.id;
 
   /*
-   * ---------------------------------------------------------------------------
-   * 4. LEGACY BETA PROVENANCE BRIDGE
-   * ---------------------------------------------------------------------------
+   * -------------------------------------------------------------------------
+   * 6. LEGACY PROVENANCE BRIDGE
+   * -------------------------------------------------------------------------
    *
-   * This is deliberately not canonical identity.
+   * This does not establish canonical identity.
    *
-   * users.id is retained only where required by legacy/provenance consumers.
+   * It simply preserves compatibility for existing consumers of users.id.
    */
   const legacyUserId = await linkLegacyApplicationUser(
     svc,
@@ -543,6 +663,9 @@ export async function POST(request: NextRequest) {
     legacyUserId ?? authUserId,
   );
 
+  /*
+   * Legacy journey metadata is non-authoritative.
+   */
   if (legacyUserId) {
     const { error: userUpdateError } = await svc
       .from('users')
@@ -553,12 +676,6 @@ export async function POST(request: NextRequest) {
       .eq('id', legacyUserId);
 
     if (userUpdateError) {
-      /*
-       * Legacy journey metadata is non-authoritative provenance.
-       *
-       * Failure here must not invalidate the newly-created canonical Auth
-       * account or attempt another redemption.
-       */
       console.warn(
         '[api/beta/redeem] legacy journey metadata was not updated:',
         userUpdateError.message,
@@ -567,74 +684,34 @@ export async function POST(request: NextRequest) {
   }
 
   /*
-   * ---------------------------------------------------------------------------
-   * 5. ATTRIBUTION
-   * ---------------------------------------------------------------------------
-   *
-   * Attribution describes acquisition provenance.
-   *
-   * It does not establish:
-   *   - Person identity;
-   *   - Organisation identity;
-   *   - membership;
-   *   - ownership.
+   * -------------------------------------------------------------------------
+   * 7. ATTRIBUTION
+   * -------------------------------------------------------------------------
    */
-  try {
-    const touch = attribution.parse(
-      request.cookies.get(ATTRIBUTION_COOKIE)?.value,
-    );
-
-    if (touch && legacyUserId) {
-      await attachFirstTouch({
-        userId: legacyUserId,
-        userEmail: email,
-        introducerId: touch.referrerId,
-        firstTouchAt: touch.firstTouchAt,
-      });
-    }
-  } catch (error) {
-    console.error(
-      '[api/beta/redeem] attribution not recorded:',
-      error,
-    );
-  }
+  await recordAttribution(
+    request,
+    legacyUserId,
+    email,
+  );
 
   /*
-   * ---------------------------------------------------------------------------
-   * 6. EXISTING ORGANISATION CONTEXT, IF ANY
-   * ---------------------------------------------------------------------------
+   * -------------------------------------------------------------------------
+   * 8. RETURN
+   * -------------------------------------------------------------------------
    *
-   * A newly-created account normally has no canonical Organisation context yet.
+   * We deliberately do NOT:
    *
-   * An already-authenticated canonical context is handled above.
+   *   - create Organisation;
+   *   - assign Organisation;
+   *   - create membership;
+   *   - create ownership;
+   *   - derive Organisation from email;
+   *   - derive Organisation from beta code;
+   *   - use users.id as Organisation identity.
    *
-   * We therefore do not manufacture an organisation here.
-   */
-  await ensureExistingOrganisationBetaEntitlement();
-
-  /*
-   * ---------------------------------------------------------------------------
-   * 7. RETURN PROVISIONING RESULT
-   * ---------------------------------------------------------------------------
+   * BetaRedeem signs the new Auth account in and redirects to /plan.
    *
-   * The client now signs in with the password it just established and returns
-   * to /plan.
-   *
-   * /plan owns the next operation:
-   *
-   *   Auth
-   *      ↓
-   *   auth_credentials
-   *      ↓
-   *   Person
-   *      ↓
-   *   Organisation
-   *      ↓
-   *   Membership
-   *      ↓
-   *   Ownership
-   *
-   * The beta route has finished its job.
+   * /plan then performs the canonical identity establishment.
    */
   return NextResponse.json<RedeemSuccess>({
     ok: true,
