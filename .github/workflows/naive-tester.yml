@@ -31,14 +31,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      TEST_USER_EMAIL: ${{ secrets.QA_TEST_EMAIL }}
-      QA_USER_PASSWORD: ${{ secrets.QA_TEST_PASSWORD }}
-      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      TEST_USER_EMAIL: ${{ secrets.QA_TEST_USER_EMAIL }}
+      QA_USER_PASSWORD: ${{ secrets.QA_TEST_USER_PASSWORD }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-      REDIS_URL: ${{ secrets.REDIS_URL }}
 
     steps:
       - name: Checkout
@@ -47,27 +44,41 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version: '24'
           cache: npm
-          registry-url: 'https://npm.pkg.github.com'
 
-      - name: Install cais-shared-services
-        run: |
-          cd /tmp
-          git clone --depth 1 https://github.com/caistech/cais-shared-services.git
-          cd cais-shared-services
-          npm ci
-          cd scripts/agents && npm ci
+      # Fetch the canonical naive-tester from cais-shared-services exactly like red-team does —
+      # zero-dep Playwright agent, gate-check recording, no forked copy.
+      - name: Fetch the canonical naive-tester
+        uses: actions/checkout@v4
+        with:
+          repository: caistech/cais-shared-services
+          path: shared
+          token: ${{ secrets.CAISTECH_PACKAGES_TOKEN }}
+          sparse-checkout: scripts/agents
+          sparse-checkout-cone-mode: false
+
+      - name: Install naive-tester dependencies
+        working-directory: shared/scripts/agents
+        run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.CAISTECH_PACKAGES_TOKEN }}
 
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
-        working-directory: /tmp/cais-shared-services/scripts/agents
+        working-directory: shared/scripts/agents
 
+      # ANTHROPIC_API_KEY is required for vision verdicts. This step fails loudly if it's absent,
+      # rather than silently degrading to na for every check — the same confusion red-team guards
+      # against (a run that quietly does nothing looks identical to one that passed).
       - name: Run naive tester
-        working-directory: /tmp/cais-shared-services/scripts/agents
+        working-directory: shared/scripts/agents
         run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then echo "::error::ANTHROPIC_API_KEY is required" && exit 1; fi
           PROD_URL="${{ github.event.deployment_status.target_url || vars.PRODUCTION_URL || 'https://kiraexec.com' }}"
           node naive-tester.mjs \
             --slug kira \
             --url "$PROD_URL" \
             ${{ github.event_name == 'deployment_status' && format('--deployment {0}', github.event.deployment.id) || '' }}
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
