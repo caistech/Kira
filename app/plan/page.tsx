@@ -583,7 +583,7 @@ export default function PlanPage() {
               !organisationName.trim() ||
               !isOwner
             }
-            className="w-full grad-coral text-white font-display font-bold px-6 py-4 rounded-full inline-flex items-center justify-center gap-2 min-h-[54px] disabled:opacity-60"
+              className="w-full bg-stone-900 text-white font-display font-bold px-6 py-4 rounded-full inline-flex items-center justify-center gap-2 min-h-[54px] disabled:opacity-60"
           >
             {identitySaving ? (
               <>
