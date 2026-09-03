@@ -1,153 +1,205 @@
-// app/api/beta/peek/route.ts
-//
-// BETA INVITATION PEEK
-// --------------------
-//
-// Read-only validation of a beta invitation.
-//
-// This route:
-//   - validates the invitation code;
-//   - returns the invitation-bound email;
-//   - NEVER consumes the code;
-//   - NEVER creates an Auth account;
-//   - NEVER establishes Person identity;
-//   - NEVER establishes Organisation identity.
-//
-// The beta code is an access/provenance credential, not an identity authority.
-//
-// POST is the primary application contract.
-// GET is retained for direct browser testing and compatibility.
-//
-// Every invalid/rejected code receives the same external message so that the
-// endpoint cannot be used to distinguish unknown, expired, revoked or already
-// redeemed invitation codes.
-
 import { NextRequest, NextResponse } from 'next/server';
 
 import {
-  BETA_CODE_REJECTION_MESSAGE,
-  peekBetaCode,
+BETA_CODE_REJECTION_MESSAGE,
+peekBetaCode,
 } from '@/lib/billing/beta-codes';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const REJECTION_MESSAGE = BETA_CODE_REJECTION_MESSAGE;
+const REJECTION_MESSAGE =
+BETA_CODE_REJECTION_MESSAGE;
 
-async function handlePeek(code: string) {
+type PeekRequestBody = {
+code?: unknown;
+};
+
+function normaliseCode(value: unknown): string {
+return typeof value === 'string'
+? value.trim()
+: '';
+}
+
+/**
+
+* Read-only beta invitation validation.
+*
+* This route NEVER:
+*
+* * consumes the invitation;
+* * creates Auth;
+* * creates Person;
+* * creates Organisation;
+* * creates Membership;
+* * creates Ownership.
+*
+* The beta invitation is access/provenance information only.
+*
+* POST is the canonical application contract.
+*
+* GET is retained for direct browser testing and compatibility.
+  */
+  async function handlePeek(code: string) {
   const normalisedCode = code.trim();
 
-  if (!normalisedCode) {
-    return NextResponse.json({
-      ok: false,
-      error: 'Enter your invitation code.',
-    });
-  }
+if (!normalisedCode) {
+return NextResponse.json(
+{
+ok: false,
+error: 'Enter your invitation code.',
+code: 'CODE_REQUIRED',
+},
+{ status: 400 },
+);
+}
 
-  try {
-    const result = await peekBetaCode(normalisedCode);
+try {
+const result =
+await peekBetaCode(normalisedCode);
 
-    if (!result.ok) {
-      console.warn(
-        `[api/beta/peek] rejected beta code: reason=${result.reason}`,
-      );
+```
+if (!result.ok) {
+  /*
+   * Do not expose whether a code is:
+   *
+   *   - unknown;
+   *   - expired;
+   *   - revoked;
+   *   - already redeemed.
+   *
+   * All rejected invitations receive the same external response.
+   */
+  console.warn(
+    [api/beta/peek] rejected beta code: reason=${result.reason},
+  );
 
-      return NextResponse.json({
-        ok: false,
-        error: REJECTION_MESSAGE,
-      });
-    }
-
-    return NextResponse.json({
-      ok: true,
-      email: result.email,
-    });
-  } catch (error) {
-    /*
-     * Do not expose database/provider details to the visitor.
-     *
-     * The operator log contains the actual failure.
-     */
-    console.error('[api/beta/peek] unexpected validation error:', error);
-
-    return NextResponse.json({
+  return NextResponse.json(
+    {
       ok: false,
       error: REJECTION_MESSAGE,
-    });
-  }
+      code: 'BETA_CODE_REJECTED',
+    },
+    { status: 400 },
+  );
+}
+
+return NextResponse.json({
+  ok: true,
+  email: result.email.toLowerCase(),
+});
+```
+
+} catch (error) {
+/*
+* Provider/database details stay server-side.
+*/
+console.error(
+'[api/beta/peek] unexpected validation error:',
+error,
+);
+
+```
+return NextResponse.json(
+  {
+    ok: false,
+    error: REJECTION_MESSAGE,
+    code: 'BETA_CODE_REJECTED',
+  },
+  { status: 400 },
+);
+```
+
+}
 }
 
 /**
- * POST /api/beta/peek
- *
- * Request:
- * {
- *   "code": "KIRA-XXXX-XXXX"
- * }
- *
- * Response:
- * {
- *   "ok": true,
- *   "email": "tester@example.com"
- * }
- *
- * or:
- *
- * {
- *   "ok": false,
- *   "error": "..."
- * }
- */
-export async function POST(request: NextRequest) {
+
+* POST /api/beta/peek
+*
+* Request:
+*
+* {
+* "code": "KIRA-XXXX-XXXX"
+* }
+*
+* Response:
+*
+* {
+* "ok": true,
+* "email": "[tester@example.com](mailto:tester@example.com)"
+* }
+  */
+  export async function POST(
+  request: NextRequest,
+  ) {
   try {
-    let body: unknown;
+  let body: PeekRequestBody;
 
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json({
-        ok: false,
-        error: 'Enter your invitation code.',
-      });
-    }
-
-    const code =
-      typeof body === 'object' &&
-      body !== null &&
-      'code' in body &&
-      typeof body.code === 'string'
-        ? body.code
-        : '';
-
-    return handlePeek(code);
-  } catch (error) {
-    console.error('[api/beta/peek][POST] unexpected error:', error);
-
-    return NextResponse.json({
-      ok: false,
-      error: REJECTION_MESSAGE,
-    });
+  try {
+  body =
+  (await request.json()) as PeekRequestBody;
+  } catch {
+  return NextResponse.json(
+  {
+  ok: false,
+  error: 'Enter your invitation code.',
+  code: 'CODE_REQUIRED',
+  },
+  { status: 400 },
+  );
   }
-}
+
+  const code = normaliseCode(body.code);
+
+  return handlePeek(code);
+  } catch (error) {
+  console.error(
+  '[api/beta/peek][POST] unexpected error:',
+  error,
+  );
+
+  return NextResponse.json(
+  {
+  ok: false,
+  error: REJECTION_MESSAGE,
+  code: 'BETA_CODE_REJECTED',
+  },
+  { status: 400 },
+  );
+  }
+  }
 
 /**
- * GET /api/beta/peek?code=...
- *
- * Retained for compatibility and direct browser testing.
- *
- * This is deliberately still read-only.
- */
-export async function GET(request: NextRequest) {
+
+* GET /api/beta/peek?code=...
+*
+* Compatibility/direct testing only.
+*
+* This remains strictly read-only.
+  */
+  export async function GET(
+  request: NextRequest,
+  ) {
   try {
-    const code = request.nextUrl.searchParams.get('code') ?? '';
+  const code =
+  request.nextUrl.searchParams.get('code') ??
+  '';
 
-    return handlePeek(code);
+  return handlePeek(code);
   } catch (error) {
-    console.error('[api/beta/peek][GET] unexpected error:', error);
+  console.error(
+  '[api/beta/peek][GET] unexpected error:',
+  error,
+  );
 
-    return NextResponse.json({
-      ok: false,
-      error: REJECTION_MESSAGE,
-    });
+  return NextResponse.json(
+  {
+  ok: false,
+  error: REJECTION_MESSAGE,
+  code: 'BETA_CODE_REJECTED',
+  },
+  { status: 400 },
+  );
   }
-}
+  }
