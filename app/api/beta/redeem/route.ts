@@ -321,6 +321,7 @@ error,
 * This route NEVER creates an Organisation.
   */
   export async function POST(
+  // Beta code redemption endpoint
   request: NextRequest,
   ) {
   let body: RedeemRequestBody;
@@ -849,8 +850,8 @@ email,
   return NextResponse.json<
   RedeemSuccess
 
-({
-ok: true,
-email,
-});
+{
+ ok: true,
+ email,
+}
 }
