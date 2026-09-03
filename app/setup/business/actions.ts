@@ -57,6 +57,11 @@ export async function saveBusinessIdentity(
 
   const v = result.value;
 
+  // `authorised` is intentionally stripped from result.value (ValidationResult.value is
+  // Omit<BusinessIdentityInput, 'authorised'>), so it is NOT reachable via `v`. Read it from
+  // the form directly — the checkbox is exactly what gates the consent stamp in upsert.
+  const authorised = formData.get('authorised') === 'on';
+
   // THE ABN IS CHECKED, NOT JUST COLLECTED.
   //
   // A tester's account was sitting on 99 999 999 999 — eleven digits, right shape, not a real ABN —
@@ -129,7 +134,7 @@ export async function saveBusinessIdentity(
       // the domain was never added to Resend, from_email was set anyway, and every send 403'd after
       // the agent had already told the owner it was sent.
       sending_domain_verified_at: sendingDomainVerifiedAt,
-      authorised: v.authorised,
+      authorised,
     });
   } catch (error) {
     return { message: error instanceof Error ? error.message : 'Could not save your business details.' };

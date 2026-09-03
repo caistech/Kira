@@ -17,20 +17,42 @@ import { createServiceClientV2 } from '@/lib/supabase/server';
 import type { BusinessIdentity } from './index';
 
 /**
- * Resolve an auth user ID to their organisation ID via organisation_memberships.
- * Returns null if the user has no active membership.
+ * Resolve an auth user ID to their organisation ID.
+ *
+ * Uses the SAME canonical path as getCurrentOrganisationContext (lib/auth.ts):
+ *   auth_credentials → persons → organisation_memberships
+ *
+ * NOTE: organisation_memberships has NO auth_user_id column — the auth_user_id → person_id
+ * bridge lives on auth_credentials. Querying the membership table for a non-existent
+ * auth_user_id column fails, and resolving straight from auth.users.id misses the
+ * person_id link every org-creation flow populates.
  */
 async function resolveOrgId(userId: string): Promise<string | null> {
   const svc = await createServiceClientV2();
-  const { data, error } = await svc
-    .from('organisation_memberships')
-    .select('organisation_id')
+
+  // auth_user_id → person_id via the canonical auth_credentials table.
+  const { data: credential, error: credError } = await svc
+    .from('auth_credentials')
+    .select('person_id')
     .eq('auth_user_id', userId)
     .eq('status', 'active')
+    .limit(1)
     .maybeSingle();
 
-  if (error || !data) return null;
-  return data.organisation_id as string;
+  if (credError || !credential) return null;
+
+  // person_id → organisation via membership.
+  const { data: membership, error: memError } = await svc
+    .from('organisation_memberships')
+    .select('organisation_id')
+    .eq('person_id', credential.person_id)
+    .eq('status', 'active')
+    .order('valid_from', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (memError || !membership) return null;
+  return membership.organisation_id as string;
 }
 
 /**
