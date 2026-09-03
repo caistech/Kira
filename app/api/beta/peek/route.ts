@@ -1,47 +1,120 @@
+```ts
 // app/api/beta/peek/route.ts
 //
-// "Is this code good, and whose is it?" — asked before a password is chosen, so the tester sees the
-// account he is about to create rather than typing an address and hoping.
+// "Is this code good, and whose is it?" — asked before a password is chosen,
+// so the tester sees the account he is about to create.
 //
-// ⚠️ THIS DOES NOT CONSUME THE CODE. Checking and claiming are separate on purpose: a tester who
-// opens his invitation link, reads the page and closes the tab must still have a usable code
-// tomorrow. Only POST /api/beta/redeem burns one.
+// ⚠️ THIS DOES NOT CONSUME THE CODE.
+// Checking and claiming are separate on purpose.
 //
-// ⚠️ IT RETURNS AN EMAIL ADDRESS, which is worth being deliberate about. The caller must already
-// hold a valid code to get one, codes carry ~58 bits of entropy from a confusable-free alphabet, and
-// the address returned is the one the code was emailed TO — so the only person who can reach it is,
-// in practice, the person who already received it. The alternative (masking to `s****@example.com`)
-// costs the recognition this screen exists to provide and buys almost nothing.
+// ⚠️ IT RETURNS AN EMAIL ADDRESS.
+// The caller must already hold a valid invitation code.
 //
-// Every rejection answers the same sentence, so this cannot be used to learn which codes exist. The
-// real reason is logged for an operator helping someone on the phone.
+// Every rejection answers the same sentence, so this cannot be used to learn
+// which codes exist. The real reason is logged for an operator.
 
 import { NextRequest, NextResponse } from 'next/server';
 
-import { BETA_CODE_REJECTION_MESSAGE, peekBetaCode } from '@/lib/billing/beta-codes';
+import {
+  BETA_CODE_REJECTION_MESSAGE,
+  peekBetaCode,
+} from '@/lib/billing/beta-codes';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// ⚠️ SHARED WITH /redeem, NOT COPIED. This route used to carry its own sentence — the pre-Ray one
-// telling a stuck tester to reply to an email he may never have had — while /redeem carried the
-// repaired one. Since BetaRedeem checks here first and only ever posts to /redeem after this has
-// passed, the broken message was the one real people saw. See the constant for the full history.
 const REJECTION_MESSAGE = BETA_CODE_REJECTION_MESSAGE;
 
-export async function GET(request: NextRequest) {
-  const code = request.nextUrl.searchParams.get('code') ?? '';
+async function handlePeek(code: string) {
   if (!code.trim()) {
-    return NextResponse.json({ ok: false, error: 'Enter your invitation code.' }, { status: 400 });
+    return NextResponse.json({
+      ok: false,
+      error: 'Enter your invitation code.',
+    });
   }
 
   const result = await peekBetaCode(code);
+
   if (!result.ok) {
-    console.warn(`[api/beta/peek] rejected a code: reason=${result.reason}`);
-    // 200, NOT 4xx. A status code is as much of an oracle as a message, and some clients surface a
-    // 400 as a scarier failure than the sentence we actually wrote. The `ok` flag is the contract.
-    return NextResponse.json({ ok: false, error: REJECTION_MESSAGE });
+    console.warn(
+      `[api/beta/peek] rejected a code: reason=${result.reason}`,
+    );
+
+    // Deliberately return 200.
+    // The `ok` flag is the application-level contract.
+    return NextResponse.json({
+      ok: false,
+      error: REJECTION_MESSAGE,
+    });
   }
 
-  return NextResponse.json({ ok: true, email: result.email });
+  return NextResponse.json({
+    ok: true,
+    email: result.email,
+  });
 }
+
+/**
+ * POST /api/beta/peek
+ *
+ * Primary API contract used by BetaRedeem.
+ *
+ * Expected body:
+ * {
+ *   "code": "ABC123..."
+ * }
+ */
+export async function POST(request: NextRequest) {
+  try {
+    let body: unknown;
+
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({
+        ok: false,
+        error: 'Enter your invitation code.',
+      });
+    }
+
+    const code =
+      typeof body === 'object' &&
+      body !== null &&
+      'code' in body &&
+      typeof body.code === 'string'
+        ? body.code
+        : '';
+
+    return handlePeek(code);
+  } catch (error) {
+    console.error('[api/beta/peek][POST] unexpected error:', error);
+
+    return NextResponse.json({
+      ok: false,
+      error: REJECTION_MESSAGE,
+    });
+  }
+}
+
+/**
+ * GET /api/beta/peek?code=...
+ *
+ * Retained for compatibility / direct browser testing.
+ *
+ * POST is the preferred application contract.
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const code = request.nextUrl.searchParams.get('code') ?? '';
+
+    return handlePeek(code);
+  } catch (error) {
+    console.error('[api/beta/peek][GET] unexpected error:', error);
+
+    return NextResponse.json({
+      ok: false,
+      error: REJECTION_MESSAGE,
+    });
+  }
+}
+```
