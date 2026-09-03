@@ -4,9 +4,10 @@
 # login (exercises the auth path), and an authed surface. Records results via gate-check
 # (source=naive-tester). Anything the model can't decide → na (degrade-don-fake).
 #
-# This is the Playwright + Anthropic vision agent from cais-shared-services/scripts/agents/.
-# It screenshots desktop (1280px) + mobile (390px) viewports, then asks Claude to verdict
-# the naive-method rubric checks (#1–#41) from the screenshots.
+# This is the Playwright agent from cais-shared-services/scripts/agents/. It screenshots
+# desktop (1280px) + mobile (390px) viewports, then asks the OmniRoute vision judge to
+# verdict the naive-method rubric checks (#1-#41). No paid Anthropic call — the verdicts
+# route through the same OmniRoute gateway the Kira Testing service uses.
 #
 # Triggered after every production deployment and weekly (catches model drift).
 # The weekly run is the same as the post-deploy run — identical coverage, different trigger.
@@ -68,17 +69,23 @@ jobs:
         run: npx playwright install chromium --with-deps
         working-directory: shared/scripts/agents
 
-      # ANTHROPIC_API_KEY is required for vision verdicts. This step fails loudly if it's absent,
-      # rather than silently degrading to na for every check — the same confusion red-team guards
-      # against (a run that quietly does nothing looks identical to one that passed).
+      # LOCAL_VISION_MODEL + LOCAL_VISION_API + LOCAL_VISION_API_KEY route verdicts to OmniRoute
+      # (OpenAI-compatible, Bearer-authed) — free mode, no Anthropic. The judge fails loudly if the
+      # endpoint is unreachable rather than silently degrading to na for every check — the same
+      # confusion red-team guards against (a run that quietly does nothing looks identical to one
+      # that passed).
       - name: Run naive tester
         working-directory: shared/scripts/agents
         run: |
-          if [ -z "$ANTHROPIC_API_KEY" ]; then echo "::error::ANTHROPIC_API_KEY is required" && exit 1; fi
+          if [ -z "$LOCAL_VISION_MODEL" ]; then echo "::error::LOCAL_VISION_MODEL (the OmniRoute vision combo) is required" && exit 1; fi
           PROD_URL="${{ github.event.deployment_status.target_url || vars.PRODUCTION_URL || 'https://kiraexec.com' }}"
           node naive-tester.mjs \
             --slug kira \
             --url "$PROD_URL" \
             ${{ github.event_name == 'deployment_status' && format('--deployment {0}', github.event.deployment.id) || '' }}
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # LOCAL_VISION_API must be the FULL endpoint (base + /v1/chat/completions) because the
+          # naive-tester calls it directly — unlike kira-testing which appends the path.
+          LOCAL_VISION_MODEL: ${{ vars.KIRA_TESTING_MODEL_COMBO || 'kira-testing' }}
+          LOCAL_VISION_API: ${{ format('{0}/v1/chat/completions', secrets.KIRA_TESTING_OMNIROUTE_BASE_URL || secrets.OMNIROUTE_BASE_URL) }}
+          LOCAL_VISION_API_KEY: ${{ secrets.KIRA_TESTING_OMNIROUTE_API_KEY || secrets.OMNIROUTE_API_KEY }}
