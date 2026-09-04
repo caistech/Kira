@@ -1,13 +1,13 @@
 // Reading and writing the identity row.
 //
-// The business identity now lives on `organisations` — the canonical identity table.
-// The old `business_identity` table was never created in production (migration 20260731090000
-// creates table `n` which was never applied), so this module was rewritten to read/write
-// `organisations` directly.
+// The business identity lives on `organisations` — the canonical identity table, keyed by
+// `organisation_id` (the ownership key). There is no user-centric resolution here: callers resolve
+// the organisation via the canonical context (lib/auth.ts getCurrentOrganisationContext /
+// getCurrentOrganisationId) and pass the organisation_id straight in. Users attach to an
+// organisation through organisation_memberships, never the other way around.
 //
-// The `user_id` field from the old BusinessIdentity type is resolved via organisation_memberships:
-// userId → membership → organisation_id → organisations row. This keeps the API surface the same
-// (callers pass userId) while the underlying storage is org-scoped.
+// The old `business_identity` table was never created in production (migration 20260731090000
+// creates table `n` which was never applied), so this module reads/writes `organisations` directly.
 //
 // RLS on `organisations` is not yet enforced (the table uses service-role access). When RLS is
 // added, the session client will be preferred — same reasoning as the old business_identity RLS.
@@ -17,50 +17,10 @@ import { createServiceClientV2 } from '@/lib/supabase/server';
 import type { BusinessIdentity } from './index';
 
 /**
- * Resolve an auth user ID to their organisation ID.
- *
- * Uses the SAME canonical path as getCurrentOrganisationContext (lib/auth.ts):
- *   auth_credentials → persons → organisation_memberships
- *
- * NOTE: organisation_memberships has NO auth_user_id column — the auth_user_id → person_id
- * bridge lives on auth_credentials. Querying the membership table for a non-existent
- * auth_user_id column fails, and resolving straight from auth.users.id misses the
- * person_id link every org-creation flow populates.
- */
-async function resolveOrgId(userId: string): Promise<string | null> {
-  const svc = await createServiceClientV2();
-
-  // auth_user_id → person_id via the canonical auth_credentials table.
-  const { data: credential, error: credError } = await svc
-    .from('auth_credentials')
-    .select('person_id')
-    .eq('auth_user_id', userId)
-    .eq('status', 'active')
-    .limit(1)
-    .maybeSingle();
-
-  if (credError || !credential) return null;
-
-  // person_id → organisation via membership.
-  const { data: membership, error: memError } = await svc
-    .from('organisation_memberships')
-    .select('organisation_id')
-    .eq('person_id', credential.person_id)
-    .eq('status', 'active')
-    .order('valid_from', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (memError || !membership) return null;
-  return membership.organisation_id as string;
-}
-
-/**
  * Map an organisations row to the BusinessIdentity shape.
- * The `user_id` field is not stored on organisations — it's the caller's auth user ID,
- * which we don't have here. Callers who need it already have it (they passed it in).
- * We set it to the empty string as a placeholder; consumers who need the actual userId
- * should use the one they already hold.
+ * The `user_id` field is not stored on organisations — it's provenance for the acting person,
+ * which the caller already holds in its organisation context. We set it to the empty string as a
+ * placeholder; consumers who need the actual person id use the one they already hold.
  */
 function rowToIdentity(row: Record<string, unknown>): BusinessIdentity {
   return {
@@ -84,15 +44,16 @@ function rowToIdentity(row: Record<string, unknown>): BusinessIdentity {
   };
 }
 
-export async function getBusinessIdentity(userId: string): Promise<BusinessIdentity | null> {
-  const orgId = await resolveOrgId(userId);
-  if (!orgId) return null;
+export async function getBusinessIdentity(
+  organisationId: string,
+): Promise<BusinessIdentity | null> {
+  if (!organisationId) return null;
 
   const svc = await createServiceClientV2();
   const { data, error } = await svc
     .from('organisations')
     .select('*')
-    .eq('organisation_id', orgId)
+    .eq('organisation_id', organisationId)
     .maybeSingle();
 
   if (error) {
@@ -121,11 +82,10 @@ export interface UpsertIdentity {
 }
 
 export async function upsertBusinessIdentity(
-  userId: string,
+  organisationId: string,
   input: UpsertIdentity,
 ): Promise<BusinessIdentity> {
-  const orgId = await resolveOrgId(userId);
-  if (!orgId) throw new Error('No organisation found for this user.');
+  if (!organisationId) throw new Error('No organisation found for this user.');
 
   const now = new Date().toISOString();
   const svc = await createServiceClientV2();
@@ -133,7 +93,7 @@ export async function upsertBusinessIdentity(
     .from('organisations')
     .upsert(
       {
-        organisation_id: orgId,
+        organisation_id: organisationId,
         legal_name: input.legal_name,
         abn: input.abn,
         trading_name: input.trading_name || null,
@@ -162,30 +122,28 @@ export async function upsertBusinessIdentity(
   return rowToIdentity(data!);
 }
 
-export async function markSynced(userId: string): Promise<void> {
-  const orgId = await resolveOrgId(userId);
-  if (!orgId) return;
+export async function markSynced(organisationId: string): Promise<void> {
+  if (!organisationId) return;
 
   const svc = await createServiceClientV2();
   const { error } = await svc
     .from('organisations')
     .update({ synced_to_orchestrator_at: new Date().toISOString() })
-    .eq('organisation_id', orgId);
+    .eq('organisation_id', organisationId);
 
   if (error) {
     console.error('[business-identity] markSynced failed:', error);
   }
 }
 
-export async function clearSynced(userId: string): Promise<void> {
-  const orgId = await resolveOrgId(userId);
-  if (!orgId) return;
+export async function clearSynced(organisationId: string): Promise<void> {
+  if (!organisationId) return;
 
   const svc = await createServiceClientV2();
   const { error } = await svc
     .from('organisations')
     .update({ synced_to_orchestrator_at: null })
-    .eq('organisation_id', orgId);
+    .eq('organisation_id', organisationId);
 
   if (error) {
     console.error('[business-identity] clearSynced failed:', error);

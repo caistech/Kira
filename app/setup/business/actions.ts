@@ -12,7 +12,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { validateAbn } from '@caistech/abn-lookup';
 
-import { getCurrentAppUser } from '@/lib/auth';
+import { getCurrentAppUser, getCurrentOrganisationId } from '@/lib/auth';
 import { validateBusinessIdentity, type IdentityErrors } from '@/lib/business-identity';
 import { getBusinessIdentity, upsertBusinessIdentity, markSynced, clearSynced } from '@/lib/business-identity/store';
 import { pushIdentityToOrchestrator } from '@/lib/business-identity/sync';
@@ -27,8 +27,14 @@ export async function saveBusinessIdentity(
   _prev: IdentityFormState | null,
   formData: FormData,
 ): Promise<IdentityFormState> {
-  const user = await getCurrentAppUser();
+  // The identity row is owned by the ORGANISATION. Resolve it once here and pass the
+  // organisation_id through to every store call; the user attaches to the org via membership.
+  const [user, organisationId] = await Promise.all([
+    getCurrentAppUser(),
+    getCurrentOrganisationId(),
+  ]);
   if (!user?.id) return { message: 'You are not signed in.' };
+  if (!organisationId) return { message: 'No organisation found for this user.' };
 
   const s = (key: string) => String(formData.get(key) || '');
 
@@ -106,7 +112,7 @@ export async function saveBusinessIdentity(
   let sendingDomain = v.sendingDomain ?? null;
   let sendingDomainVerifiedAt: string | null = null;
   try {
-    const existing = await getBusinessIdentity(user.id);
+    const existing = await getBusinessIdentity(organisationId);
     if (existing?.sending_domain === sendingDomain && existing?.sending_domain_verified_at) {
       sendingDomainVerifiedAt = existing.sending_domain_verified_at;
     }
@@ -116,7 +122,7 @@ export async function saveBusinessIdentity(
 
   let saved;
   try {
-    saved = await upsertBusinessIdentity(user.id, {
+    saved = await upsertBusinessIdentity(organisationId, {
       legal_name: v.legalName,
       abn: v.abn,
       trading_name: v.tradingName ?? null,
@@ -158,8 +164,8 @@ export async function saveBusinessIdentity(
 
   // Stamped only on a confirmed acceptance; cleared on failure, because after an EDIT the sender is
   // holding the previous entity and calling that "synced" would be true of the wrong business.
-  if (sync.ok) await markSynced(user.id);
-  else await clearSynced(user.id);
+  if (sync.ok) await markSynced(organisationId);
+  else await clearSynced(organisationId);
 
   revalidatePath('/dashboard');
   revalidatePath('/settings');
@@ -178,14 +184,17 @@ export async function saveBusinessIdentity(
  * absurd.
  */
 export async function retryIdentitySync(): Promise<void> {
-  const user = await getCurrentAppUser();
-  if (!user?.id) return;
+  const [user, organisationId] = await Promise.all([
+    getCurrentAppUser(),
+    getCurrentOrganisationId(),
+  ]);
+  if (!user?.id || !organisationId) return;
 
-  const identity = await getBusinessIdentity(user.id);
+  const identity = await getBusinessIdentity(organisationId);
   if (!identity) return;
 
   const sync = await pushIdentityToOrchestrator(user.id, identity);
-  if (sync.ok) await markSynced(user.id);
+  if (sync.ok) await markSynced(organisationId);
 
   revalidatePath('/dashboard');
   revalidatePath('/settings');

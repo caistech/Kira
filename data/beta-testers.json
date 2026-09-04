@@ -169,5 +169,24 @@
     "usage_count": 0,
     "last_email_sent": null,
     "comment": "Needs new email with code"
+  },
+  {
+    "email": "dennis+beta-test@corporateaisolutions.com",
+    "name": "Beta Tester",
+    "code": "LY6M-E4GU-7HFL",
+    "group": "C",
+    "country": "AU",
+    "consent": true,
+    "email_optout": false,
+    "physical_address": "Corporate AI Solutions, 76-84 Brunswick Street, Fortitude Valley QLD 4006",
+    "jurisdiction_config": {
+      "requires_consent": true,
+      "requires_physical_address": true,
+      "supported": true
+    },
+    "trial_started_at": null,
+    "usage_count": 0,
+    "last_email_sent": null,
+    "comment": "New Australian beta tester - auth flow testing"
   }
 ]

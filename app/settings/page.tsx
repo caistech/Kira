@@ -30,7 +30,7 @@ export default async function SettingsPage() {
   // reads as "you have no business details" and invites a pointless re-entry.
   let identity = null;
   try {
-    identity = appUser?.id ? await getBusinessIdentity(appUser.id) : null;
+    identity = org?.organisationId ? await getBusinessIdentity(org.organisationId) : null;
   } catch (error) {
     console.error('[settings] business identity unavailable:', error);
   }

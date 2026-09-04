@@ -12,7 +12,7 @@
 
 import { redirect } from 'next/navigation';
 
-import { getAuthUser, getCurrentAppUser } from '@/lib/auth';
+import { getAuthUser, getCurrentAppUser, getCurrentOrganisationId } from '@/lib/auth';
 import { realSignOffName } from '@/lib/user-name';
 import { canSend } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
@@ -33,7 +33,8 @@ export default async function BusinessSetupPage({
   const user = await getCurrentAppUser();
   if (!user?.id) redirect('/login');
 
-  const identity = await getBusinessIdentity(user.id);
+  const organisationId = await getCurrentOrganisationId();
+  const identity = organisationId ? await getBusinessIdentity(organisationId) : null;
   const editing = sp?.edit === '1';
 
   // Already done and not deliberately editing — don't make a configured owner walk through it again.

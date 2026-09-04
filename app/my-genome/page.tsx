@@ -121,7 +121,7 @@ export default async function MyGenome() {
     .limit(1)
     .maybeSingle();
   const justTalked = isStillFiling(lastConversation?.started_at as string | null);
-  const identity = await getBusinessIdentity(appUser.id);
+  const identity = await getBusinessIdentity(orgContext.organisationId);
   // The same zone the handover document formats in, so the two cannot print different days.
   const timeZone = timeZoneForState(identity?.state);
   // Scoped to HIS id from the session — this table names operators, so an id from anywhere else
