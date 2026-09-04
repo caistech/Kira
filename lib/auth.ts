@@ -160,13 +160,15 @@ export async function getCurrentOrganisationContext(): Promise<OrganisationConte
 
     let membership;
     if (credential.selected_org_id) {
+      const now = new Date().toISOString();
+
       const { data: selected, error: selErr } = await supabase
         .from('organisation_memberships')
         .select(baseQuery)
         .eq('person_id', personId)
         .eq('organisation_id', credential.selected_org_id)
         .eq('status', 'active')
-        .or('valid_to.is.null,valid_to.gt.now()')
+        .or(`valid_to.is.null,valid_to.gt.${now}`)
         .maybeSingle();
 
       if (!selErr && selected) {
@@ -181,7 +183,7 @@ export async function getCurrentOrganisationContext(): Promise<OrganisationConte
         .select(baseQuery)
         .eq('person_id', personId)
         .eq('status', 'active')
-        .or('valid_to.is.null,valid_to.gt.now()')
+        .or(`valid_to.is.null,valid_to.gt.${now}`)
         .order('valid_from', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -241,12 +243,15 @@ export async function getUserOrganisations(
 ): Promise<UserOrganisationOption[]> {
   const supabase = createServiceClientV2();
 
+  const now = new Date().toISOString();
+
   const { data: memberships, error } = await supabase
     .from('organisation_memberships')
     .select('membership_id, organisation_id, role, portal_access')
     .eq('person_id', personId)
     .eq('status', 'active')
-    .or('valid_to.is.null,valid_to.gt.now()')
+    .lte('valid_from', now)
+    .or(`valid_to.is.null,valid_to.gt.${now}`)
     .order('valid_from', { ascending: false });
 
   if (error) {
@@ -305,25 +310,40 @@ export async function currentUserIsAdmin(): Promise<boolean> {
  * Follows the canonical chain: auth_credentials → persons → organisation_memberships → organisations.
  * Returns null if the user_id cannot be resolved to an active membership.
  */
-export async function resolveOrganisationFromUser(userId: string): Promise<OrganisationContext | null> {
+export async function resolveOrganisationFromUser(
+  userId: string,
+): Promise<OrganisationContext | null> {
   if (!userId) return null;
+
   try {
     const supabase = await createServiceClientV2();
 
-    const { data: credential, error: credError } = await supabase
+    const { data: credential, error: credentialError } = await supabase
       .from('auth_credentials')
       .select('person_id')
       .eq('auth_user_id', userId)
-      .eq('status', 'active')
       .limit(1)
       .maybeSingle();
 
-    if (credError || !credential) return null;
+    if (credentialError) {
+      console.error(
+        '[lib/auth] Error resolving auth credential:',
+        credentialError,
+      );
+      return null;
+    }
+
+    if (!credential?.person_id) {
+      return null;
+    }
+
     const personId = credential.person_id;
 
-    const { data: membership } = await supabase
+    const { data: membership, error: membershipError } = await supabase
       .from('organisation_memberships')
-      .select('membership_id, organisation_id, role, status, can_spend, valid_from, valid_to, portal_access')
+      .select(
+        'membership_id, organisation_id, role, status, can_spend, valid_from, valid_to, portal_access',
+      )
       .eq('person_id', personId)
       .eq('status', 'active')
       .or('valid_to.is.null,valid_to.gt.now()')
@@ -331,7 +351,17 @@ export async function resolveOrganisationFromUser(userId: string): Promise<Organ
       .limit(1)
       .maybeSingle();
 
-    if (!membership) return null;
+    if (membershipError) {
+      console.error(
+        '[lib/auth] Error resolving organisation membership:',
+        membershipError,
+      );
+      return null;
+    }
+
+    if (!membership) {
+      return null;
+    }
 
     return {
       personId,
@@ -345,11 +375,13 @@ export async function resolveOrganisationFromUser(userId: string): Promise<Organ
       portalAccess: membership.portal_access ?? null,
     };
   } catch (e) {
-    console.error('[lib/auth] Error resolving org from user:', e);
+    console.error(
+      '[lib/auth] Error resolving organisation from user:',
+      e,
+    );
     return null;
   }
 }
-
 /**
  * Resolve organisational context from a known person id (persons.person_id).
  *

@@ -5,7 +5,7 @@
 //
 // /plan is the single convergence point for application identity.
 //
-// The canonical chain is:
+// Canonical identity chain:
 //
 //   Supabase Auth
 //        ↓
@@ -13,55 +13,35 @@
 //        ↓
 //   persons
 //        ↓
-//   organisations
-//        ↓
 //   organisation_memberships
+//        ↓
+//   organisations
 //        ↓
 //   ownership_periods
 //
-// Beta is NOT an alternative identity path.
+// INVARIANTS:
 //
-// A beta code can:
-//   - prove invitation/provisioning provenance;
-//   - grant beta entitlement;
+// - Supabase Auth user.id is NOT a Person ID.
+// - persons.auth_user_id is NOT used.
+// - auth_credentials is the ONLY Auth → Person bridge.
+// - An existing non-null auth_credentials.person_id is IMMUTABLE here.
+// - Client-supplied organisationId is NEVER authority.
+// - Existing organisation access requires canonical active membership.
+// - isOwner NEVER grants access to an existing organisation.
+// - Ownership is separate from membership.
+// - Ownership is temporal.
+// - No organisation is inferred from email.
+// - Email may only be used to recover a Person when no Auth → Person
+//   credential exists.
+// - No identity relationship is silently rebound.
 //
-// but it cannot:
-//   - define Organisation identity;
-//   - define Person identity;
-//   - define membership;
-//   - define ownership.
-//
-// For beta users:
-//
-//   /api/beta/redeem
-//        ↓
-//   Auth account
-//        ↓
-//   /plan
-//        ↓
-//   canonical Organisation
-//        ↓
-//   beta entitlement
-//
-// Client-supplied organisationId is never authority.
-//
-// If supplied, it must already be an Organisation in which this Person has
-// an active membership.
-//
-// If absent, a new Organisation is created.
 
 import { NextResponse } from 'next/server';
-
 import {
   getCurrentOrganisationContext,
   getAuthUser,
 } from '@/lib/auth';
-
 import { createServiceClientV2 } from '@/lib/supabase/server';
-
-import { getBetaGate } from '@/lib/billing';
-
-import { TERMS_VERSION } from '@/lib/terms';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,271 +54,798 @@ type PlanRequestBody = {
   betaCode?: unknown;
 };
 
+type CanonicalPerson = {
+  person_id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email?: string | null;
+};
+
+type CanonicalCredential = {
+  auth_credential_id: string;
+  person_id: string | null;
+  status: string | null;
+};
+
+type CanonicalMembership = {
+  membership_id: string;
+  organisation_id: string;
+  person_id: string;
+  role: string;
+  status: string;
+};
+
 function normaliseString(value: unknown): string {
-  return typeof value === 'string'
-    ? value.trim()
-    : '';
+  return typeof value === 'string' ? value.trim() : '';
 }
 
 function normaliseName(value: unknown): string {
-  return normaliseString(value).replace(
-    /\s+/g,
-    ' ',
-  );
+  return normaliseString(value).replace(/\s+/g, ' ');
 }
 
 /**
- * Normalise a beta code for direct database comparison.
+ * Resolve the canonical Person for the authenticated Supabase user.
  *
- * beta-codes.ts performs the authoritative normalisation when validating and
- * claiming a code. This local normalisation mirrors the established wire
- * format:
+ * AUTHORITY:
  *
- *   KIRA-XXXX-XXXX
+ *   Supabase Auth user.id
+ *          ↓
+ *   auth_credentials.auth_user_id
+ *          ↓
+ *   auth_credentials.person_id
+ *          ↓
+ *   persons.person_id
  *
- * into the stored alphanumeric form.
+ * This function NEVER queries persons.auth_user_id.
  *
  * IMPORTANT:
- *
- * This function is used only for a post-redemption provenance lookup.
- * It never establishes Organisation authority.
+ * An existing credential with a non-null person_id is authoritative and
+ * MUST NOT be rebound to another Person by this endpoint.
  */
-function normaliseBetaCodeForLookup(
-  value: string,
-): string {
-  return value
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, '');
-}
-
-/**
- * Resolve the legacy users.id bridge for the authenticated Auth identity.
- *
- * This is provenance/compatibility only.
- *
- * It is never used as Organisation authority.
- */
-async function getLegacyUserId(
+async function resolvePersonFromAuth(
+  userId: string,
   supabase: ReturnType<typeof createServiceClientV2>,
-  authUserId: string,
-  email: string | null,
-): Promise<string | null> {
-  const { data, error } = await supabase
-    .from('users')
-    .select('id')
-    .eq('auth_user_id', authUserId)
+): Promise<CanonicalPerson | null> {
+  const {
+    data: credential,
+    error: credentialError,
+  } = await supabase
+    .from('auth_credentials')
+    .select(
+      'auth_credential_id, person_id, status',
+    )
+    .eq('auth_user_id', userId)
+    .limit(1)
     .maybeSingle();
 
-  if (error) {
-    console.warn(
-      '[identity/plan] legacy users bridge lookup failed:',
-      error.message,
+  if (credentialError) {
+    console.error(
+      '[identity/plan] auth credential lookup failed:',
+      credentialError,
     );
 
+    throw new Error('AUTH_CREDENTIAL_LOOKUP_FAILED');
+  }
+
+  if (!credential?.person_id) {
     return null;
   }
 
-  if (data?.id) {
-    return data.id;
-  }
+  const {
+    data: person,
+    error: personError,
+  } = await supabase
+    .from('persons')
+    .select(
+      'person_id, first_name, last_name, email',
+    )
+    .eq('person_id', credential.person_id)
+    .maybeSingle();
 
-  if (!email) {
-    return null;
-  }
-
-  const { data: byEmail, error: emailError } =
-    await supabase
-      .from('users')
-      .select('id')
-      .ilike('email', email)
-      .maybeSingle();
-
-  if (emailError) {
-    console.warn(
-      '[identity/plan] legacy users email lookup failed:',
-      emailError.message,
+  if (personError) {
+    console.error(
+      '[identity/plan] person lookup failed:',
+      personError,
     );
 
-    return null;
+    throw new Error('PERSON_LOOKUP_FAILED');
   }
 
-  return byEmail?.id ?? null;
+  if (!person) {
+    console.error(
+      '[identity/plan] auth credential points to missing person:',
+      credential.person_id,
+    );
+
+    throw new Error('PERSON_NOT_FOUND');
+  }
+
+  return person;
 }
 
 /**
- * Determine whether the supplied betaCode was actually redeemed for this
- * authenticated account.
+ * Resolve the Auth → Person credential without filtering by status.
  *
- * The code must be:
+ * Status is NOT part of identity lookup authority.
  *
- *   - present;
- *   - redeemed;
- *   - bound to this Auth identity OR its legacy users.id bridge.
- *
- * We deliberately do NOT trust beta_codes.organisation_id to select the
- * canonical Organisation.
- *
- * The canonical Organisation is determined by the normal /plan flow.
+ * A credential can be inactive and still represent the canonical
+ * Auth → Person relationship. In that case it may be reactivated,
+ * but its person_id must never be changed.
  */
-async function isBetaCodeBoundToAuthenticatedUser(
+async function getAuthCredential(
+  userId: string,
   supabase: ReturnType<typeof createServiceClientV2>,
-  betaCode: string,
-  authUserId: string,
-  email: string | null,
-): Promise<boolean> {
-  const code = normaliseBetaCodeForLookup(
-    betaCode,
-  );
-
-  if (!code) {
-    return false;
-  }
-
-  const { data, error } = await supabase
-    .from('beta_codes')
+): Promise<CanonicalCredential | null> {
+  const {
+    data: credential,
+    error,
+  } = await supabase
+    .from('auth_credentials')
     .select(
-      'code, email, redeemed_at, redeemed_user_id',
+      'auth_credential_id, person_id, status',
     )
-    .eq('code', code)
+    .eq('auth_user_id', userId)
+    .limit(1)
     .maybeSingle();
 
   if (error) {
     console.error(
-      '[identity/plan] beta provenance lookup failed:',
+      '[identity/plan] auth credential lookup failed:',
       error,
     );
 
-    return false;
+    throw new Error('AUTH_CREDENTIAL_LOOKUP_FAILED');
   }
 
-  if (!data?.redeemed_at) {
-    return false;
+  return credential;
+}
+
+/**
+ * Recover an existing Person by email.
+ *
+ * This is ONLY a Person recovery mechanism.
+ *
+ * It does NOT establish organisation authority.
+ * It does NOT establish membership.
+ * It does NOT establish ownership.
+ */
+async function findPersonByEmail(
+  email: string,
+  supabase: ReturnType<typeof createServiceClientV2>,
+): Promise<CanonicalPerson | null> {
+  const {
+    data: person,
+    error,
+  } = await supabase
+    .from('persons')
+    .select(
+      'person_id, first_name, last_name, email',
+    )
+    .ilike('email', email)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error(
+      '[identity/plan] person email lookup failed:',
+      error,
+    );
+
+    throw new Error('PERSON_LOOKUP_FAILED');
   }
+
+  return person;
+}
+
+/**
+ * Establish the canonical Auth → Person relationship.
+ *
+ * Rules:
+ *
+ * 1. Existing credential + non-null person_id:
+ *      - MUST remain attached to that Person.
+ *      - It may only be reactivated.
+ *
+ * 2. Existing credential + null person_id:
+ *      - This is an incomplete/corrupt canonical bridge.
+ *      - We establish the missing Person link only.
+ *
+ * 3. No credential:
+ *      - Create one pointing to the resolved Person.
+ *
+ * NEVER:
+ *
+ *   existing person A → person B
+ *
+ * This function will never perform that rebinding.
+ */
+async function establishAuthCredential(
+  userId: string,
+  personId: string,
+  supabase: ReturnType<typeof createServiceClientV2>,
+): Promise<void> {
+  const credential = await getAuthCredential(
+    userId,
+    supabase,
+  );
+
+  if (!credential) {
+    const {
+      error: createCredentialError,
+    } = await supabase
+      .from('auth_credentials')
+      .insert({
+        auth_user_id: userId,
+        person_id: personId,
+        status: 'active',
+      });
+
+    if (createCredentialError) {
+      console.error(
+        '[identity/plan] auth credential creation failed:',
+        createCredentialError,
+      );
+
+      throw new Error(
+        'AUTH_CREDENTIAL_CREATE_FAILED',
+      );
+    }
+
+    return;
+  }
+
+  // Existing credential already has a canonical Person.
+  if (credential.person_id) {
+    if (credential.person_id !== personId) {
+      console.error(
+        '[identity/plan] auth credential/person mismatch:',
+        {
+          authUserId: userId,
+          credentialPersonId: credential.person_id,
+          resolvedPersonId: personId,
+        },
+      );
+
+      throw new Error(
+        'AUTH_CREDENTIAL_PERSON_MISMATCH',
+      );
+    }
+
+    // Reactivation is allowed.
+    // Rebinding is not.
+    if (credential.status !== 'active') {
+      const {
+        error: credentialRepairError,
+      } = await supabase
+        .from('auth_credentials')
+        .update({
+          status: 'active',
+        })
+        .eq(
+          'auth_credential_id',
+          credential.auth_credential_id,
+        );
+
+      if (credentialRepairError) {
+        console.error(
+          '[identity/plan] auth credential reactivation failed:',
+          credentialRepairError,
+        );
+
+        throw new Error(
+          'AUTH_CREDENTIAL_UPDATE_FAILED',
+        );
+      }
+    }
+
+    return;
+  }
+
+  // Existing credential has no Person attached.
+  //
+  // This is the only situation where an existing credential's person_id
+  // may be populated by this endpoint. We are completing an incomplete
+  // bridge, not rebinding an established identity.
+  const {
+    error: credentialRepairError,
+  } = await supabase
+    .from('auth_credentials')
+    .update({
+      person_id: personId,
+      status: 'active',
+    })
+    .eq(
+      'auth_credential_id',
+      credential.auth_credential_id,
+    )
+    .is('person_id', null);
+
+  if (credentialRepairError) {
+    console.error(
+      '[identity/plan] incomplete auth credential repair failed:',
+      credentialRepairError,
+    );
+
+    throw new Error(
+      'AUTH_CREDENTIAL_UPDATE_FAILED',
+    );
+  }
+
+  // Re-read after repair to ensure the canonical relationship is actually
+  // the one we expect. This also protects against a concurrent change.
+  const repairedCredential =
+    await getAuthCredential(
+      userId,
+      supabase,
+    );
 
   if (
-    typeof data.email === 'string' &&
-    email &&
-    data.email.toLowerCase() !== email.toLowerCase()
+    !repairedCredential ||
+    repairedCredential.person_id !== personId
   ) {
-    return false;
+    console.error(
+      '[identity/plan] auth credential repair verification failed:',
+      {
+        authUserId: userId,
+        expectedPersonId: personId,
+        actualPersonId:
+          repairedCredential?.person_id ?? null,
+      },
+    );
+
+    throw new Error(
+      'AUTH_CREDENTIAL_PERSON_MISMATCH',
+    );
   }
 
-  const legacyUserId = await getLegacyUserId(
-    supabase,
-    authUserId,
-    email,
-  );
-
-  /*
-   * redeem.ts stores:
-   *
-   *   legacy users.id when available
-   *   otherwise auth.users.id
-   *
-   * Accept either because both are explicitly provenance bridges.
-   */
-  return (
-    data.redeemed_user_id === authUserId ||
-    (!!legacyUserId &&
-      data.redeemed_user_id === legacyUserId)
-  );
+  if (repairedCredential.status !== 'active') {
+    throw new Error(
+      'AUTH_CREDENTIAL_UPDATE_FAILED',
+    );
+  }
 }
 
 /**
- * Apply the beta entitlement to the already-resolved canonical Organisation.
+ * Resolve or create the canonical Person.
  *
- * IMPORTANT:
+ * Resolution order:
  *
- * This function receives the canonical Organisation ID from /plan.
+ *   1. Existing auth_credentials.person_id
+ *   2. Existing Person by authenticated email
+ *   3. New Person
  *
- * It does not derive Organisation from:
- *   - beta code;
- *   - email;
- *   - Auth user ID;
- *   - users.id.
+ * Email never establishes organisation authority.
  */
-async function ensureBetaEntitlement(
+async function resolveOrCreatePerson(
+  user: {
+    id: string;
+    email?: string | null;
+  },
+  firstName: string,
+  lastName: string,
   supabase: ReturnType<typeof createServiceClientV2>,
-  betaCode: string,
-  authUserId: string,
-  email: string | null,
-  organisationId: string,
-): Promise<boolean> {
-  const bound = await isBetaCodeBoundToAuthenticatedUser(
-    supabase,
-    betaCode,
-    authUserId,
-    email,
-  );
-
-  if (!bound) {
-    return false;
-  }
-
-  try {
-    await getBetaGate().ensureTrial(
-      organisationId,
+): Promise<string> {
+  const credential =
+    await getAuthCredential(
+      user.id,
+      supabase,
     );
 
-    return true;
-  } catch (error) {
-    /*
-     * Identity has already been established.
-     *
-     * Entitlement failure must not cause the user to retry account creation.
-     *
-     * The caller receives a successful identity response with beta entitlement
-     * reported as false so the application can retry entitlement separately.
-     */
+  // ---------------------------------------------------------------------------
+  // EXISTING AUTH → PERSON BRIDGE
+  // ---------------------------------------------------------------------------
+
+  if (credential?.person_id) {
+    // The credential is authoritative.
+    //
+    // Do not search by email.
+    // Do not create another Person.
+    // Do not change person_id.
+    const personId = credential.person_id;
+
+    const {
+      data: person,
+      error: personError,
+    } = await supabase
+      .from('persons')
+      .select('person_id')
+      .eq('person_id', personId)
+      .maybeSingle();
+
+    if (personError) {
+      console.error(
+        '[identity/plan] canonical person verification failed:',
+        personError,
+      );
+
+      throw new Error(
+        'PERSON_LOOKUP_FAILED',
+      );
+    }
+
+    if (!person) {
+      console.error(
+        '[identity/plan] credential references missing Person:',
+        personId,
+      );
+
+      throw new Error('PERSON_NOT_FOUND');
+    }
+
+    await establishAuthCredential(
+      user.id,
+      personId,
+      supabase,
+    );
+
+    return personId;
+  }
+
+  // ---------------------------------------------------------------------------
+  // NO ESTABLISHED AUTH → PERSON BRIDGE
+  // ---------------------------------------------------------------------------
+
+  let person: CanonicalPerson | null = null;
+
+  if (user.email) {
+    person = await findPersonByEmail(
+      user.email,
+      supabase,
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // EXISTING PERSON RECOVERED BY EMAIL
+  // ---------------------------------------------------------------------------
+
+  if (person) {
+    const personId = person.person_id;
+
+    await establishAuthCredential(
+      user.id,
+      personId,
+      supabase,
+    );
+
+    return personId;
+  }
+
+  // ---------------------------------------------------------------------------
+  // CREATE NEW PERSON
+  // ---------------------------------------------------------------------------
+
+  const {
+    data: createdPerson,
+    error: createPersonError,
+  } = await supabase
+    .from('persons')
+    .insert({
+      email: user.email ?? null,
+      first_name: firstName,
+      last_name: lastName,
+    })
+    .select(
+      'person_id, first_name, last_name, email',
+    )
+    .single();
+
+  if (createPersonError || !createdPerson) {
     console.error(
-      '[identity/plan] beta entitlement failed:',
+      '[identity/plan] person creation failed:',
+      createPersonError,
+    );
+
+    throw new Error('PERSON_CREATE_FAILED');
+  }
+
+  const personId = createdPerson.person_id;
+
+  try {
+    await establishAuthCredential(
+      user.id,
+      personId,
+      supabase,
+    );
+  } catch (error) {
+    // Do not leave an apparently usable Person silently detached from
+    // the authenticated identity.
+    //
+    // We deliberately do not attempt to delete the Person here because
+    // deletion may violate FK/history semantics. The failure is surfaced
+    // and must be handled by the caller/transaction boundary.
+    throw error;
+  }
+
+  return personId;
+}
+
+/**
+ * Update the authenticated Person's profile fields.
+ *
+ * This does NOT alter any identity relationship.
+ */
+async function updatePerson(
+  personId: string,
+  firstName: string,
+  lastName: string,
+  supabase: ReturnType<typeof createServiceClientV2>,
+): Promise<void> {
+  const {
+    error,
+  } = await supabase
+    .from('persons')
+    .update({
+      first_name: firstName,
+      last_name: lastName,
+    })
+    .eq('person_id', personId);
+
+  if (error) {
+    console.error(
+      '[identity/plan] person update failed:',
       error,
     );
 
-    return false;
+    throw new Error('PERSON_UPDATE_FAILED');
   }
 }
 
 /**
- * Resolve the beta tier of a redeemed code.
- *
- * Returns 'superadmin' | 'user' | null. Defaults to 'user' for any redeemed
- * code without an explicit tier (backward compatibility with codes minted
- * before the two-tier scheme existed).
+ * Resolve an organisation by its canonical ID.
  */
-async function resolveBetaType(
+async function resolveOrganisation(
+  organisationId: string,
   supabase: ReturnType<typeof createServiceClientV2>,
-  betaCode: string | null | undefined,
-): Promise<'superadmin' | 'user' | null> {
-  if (!betaCode) return null;
-
-  const code = normaliseBetaCodeForLookup(
-    betaCode,
-  );
-
-  if (!code) return null;
-
-  const { data, error } = await supabase
-    .from('beta_codes')
-    .select('code, beta_type')
-    .eq('code', code)
+) {
+  const {
+    data: organisation,
+    error,
+  } = await supabase
+    .from('organisations')
+    .select(
+      'organisation_id, name',
+    )
+    .eq(
+      'organisation_id',
+      organisationId,
+    )
     .maybeSingle();
 
-  if (error || !data) return null;
+  if (error) {
+    console.error(
+      '[identity/plan] organisation lookup failed:',
+      error,
+    );
 
-  return data.beta_type === 'superadmin'
-    ? 'superadmin'
-    : 'user';
+    throw new Error(
+      'ORGANISATION_LOOKUP_FAILED',
+    );
+  }
+
+  if (!organisation) {
+    throw new Error(
+      'ORGANISATION_NOT_FOUND',
+    );
+  }
+
+  return organisation;
+}
+
+/**
+ * Resolve the Person's current active membership in an organisation.
+ *
+ * Membership is canonical organisation authority.
+ *
+ * No membership = no authority.
+ */
+async function resolveActiveMembership(
+  organisationId: string,
+  personId: string,
+  supabase: ReturnType<typeof createServiceClientV2>,
+): Promise<CanonicalMembership | null> {
+  const {
+    data: membership,
+    error,
+  } = await supabase
+    .from('organisation_memberships')
+    .select(
+      `
+        membership_id,
+        organisation_id,
+        person_id,
+        role,
+        status
+      `,
+    )
+    .eq(
+      'organisation_id',
+      organisationId,
+    )
+    .eq(
+      'person_id',
+      personId,
+    )
+    .eq(
+      'status',
+      'active',
+    )
+    .or(
+      'valid_to.is.null,valid_to.gt.now()',
+    )
+    .order(
+      'valid_from',
+      {
+        ascending: false,
+      },
+    )
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error(
+      '[identity/plan] membership lookup failed:',
+      error,
+    );
+
+    throw new Error(
+      'MEMBERSHIP_LOOKUP_FAILED',
+    );
+  }
+
+  return membership;
+}
+
+/**
+ * Create membership for a newly-created organisation.
+ *
+ * This function is ONLY used for the new-organisation path.
+ *
+ * Existing organisation membership is never upserted here.
+ */
+async function createOrganisationMembership(
+  organisationId: string,
+  personId: string,
+  role: 'owner' | 'member',
+  validFrom: string,
+  supabase: ReturnType<typeof createServiceClientV2>,
+): Promise<CanonicalMembership> {
+  const {
+    data: membership,
+    error,
+  } = await supabase
+    .from('organisation_memberships')
+    .insert({
+      organisation_id: organisationId,
+      person_id: personId,
+      role,
+      status: 'active',
+      valid_from: validFrom,
+    })
+    .select(
+      `
+        membership_id,
+        organisation_id,
+        person_id,
+        role,
+        status
+      `,
+    )
+    .single();
+
+  if (error || !membership) {
+    console.error(
+      '[identity/plan] membership creation failed:',
+      error,
+    );
+
+    throw new Error(
+      'MEMBERSHIP_CREATE_FAILED',
+    );
+  }
+
+  return membership;
+}
+
+/**
+ * Resolve or create current ownership.
+ *
+ * Ownership is separate from membership.
+ *
+ * IMPORTANT:
+ * This is only called when the user is establishing a NEW organisation
+ * and has explicitly declared themselves owner.
+ */
+async function establishOwnership(
+  organisationId: string,
+  personId: string,
+  validFrom: string,
+  supabase: ReturnType<typeof createServiceClientV2>,
+): Promise<void> {
+  const {
+    data: existingOwnership,
+    error: ownershipLookupError,
+  } = await supabase
+    .from('ownership_periods')
+    .select('ownership_id')
+    .eq(
+      'organisation_id',
+      organisationId,
+    )
+    .eq(
+      'person_id',
+      personId,
+    )
+    .eq(
+      'status',
+      'current',
+    )
+    .limit(1)
+    .maybeSingle();
+
+  if (ownershipLookupError) {
+    console.error(
+      '[identity/plan] ownership lookup failed:',
+      ownershipLookupError,
+    );
+
+    throw new Error(
+      'OWNERSHIP_LOOKUP_FAILED',
+    );
+  }
+
+  if (existingOwnership) {
+    return;
+  }
+
+  const {
+    error: ownershipError,
+  } = await supabase
+    .from('ownership_periods')
+    .insert({
+      organisation_id: organisationId,
+      person_id: personId,
+      status: 'current',
+      valid_from: validFrom,
+    });
+
+  if (ownershipError) {
+    console.error(
+      '[identity/plan] ownership creation failed:',
+      ownershipError,
+    );
+
+    throw new Error(
+      'OWNERSHIP_CLAIM_FAILED',
+    );
+  }
 }
 
 /**
  * GET /api/identity/plan
  *
- * Resolve existing authenticated identity through the canonical chain.
+ * Returns canonical identity state.
+ *
+ * Anonymous:
+ *   signedIn = false
+ *
+ * Authenticated without a Person:
+ *   signedIn = true
+ *   personId = null
+ *
+ * Authenticated Person without organisation:
+ *   signedIn = true
+ *   personId = resolved Person
+ *   organisationId = null
+ *
+ * Authenticated Person with organisation:
+ *   complete canonical identity is returned.
  */
 export async function GET() {
   try {
+    // =========================================================================
+    // 1. AUTHENTICATE
+    // =========================================================================
+
     const user = await getAuthUser();
 
     if (!user) {
@@ -350,165 +857,245 @@ export async function GET() {
         organisationId: null,
         organisationName: null,
         isOwner: false,
+        personId: null,
       });
     }
 
-    const ctx =
-      await getCurrentOrganisationContext();
+    const supabase = createServiceClientV2();
 
-    /*
-     * Authenticated but not yet associated with an active Organisation.
-     *
-     * This is a valid /plan state for a newly established Person.
-     */
-    if (!ctx) {
-      const supabase =
-        createServiceClientV2();
+    // =========================================================================
+    // 2. RESOLVE CANONICAL PERSON FIRST
+    // =========================================================================
+    //
+    // Organisation context must never be allowed to establish Person
+    // identity. The Auth → Person bridge is resolved independently first.
+    // =========================================================================
 
-      /*
-       * Resolve Person through the canonical auth_credentials bridge.
-       *
-       * persons has no auth_user_id column; the Auth identity → Person
-       * mapping lives in auth_credentials (auth_user_id → person_id).
-       */
-      const {
-        data: credential,
-        error: credentialError,
-      } = await supabase
-        .from('auth_credentials')
-        .select('person_id')
-        .eq('auth_user_id', user.id)
-        .maybeSingle();
+    let person: CanonicalPerson | null;
 
-      if (credentialError) {
-        console.error(
-          '[identity/plan][GET] auth_credentials lookup failed:',
-          credentialError,
-        );
+    try {
+      person = await resolvePersonFromAuth(
+        user.id,
+        supabase,
+      );
+    } catch (error) {
+      const code =
+        error instanceof Error
+          ? error.message
+          : 'IDENTITY_RESOLUTION_FAILED';
 
-        return NextResponse.json(
-          {
-            error:
-              'Unable to resolve person identity',
-            code: 'PERSON_LOOKUP_FAILED',
-          },
-          { status: 500 },
-        );
-      }
-
-      const credentialPersonId =
-        credential?.person_id ?? null;
-
-      let firstName: string | null = null;
-      let lastName: string | null = null;
-      let personId: string | null =
-        credentialPersonId;
-
-      if (credentialPersonId) {
-        const {
-          data: person,
-          error: personError,
-        } = await supabase
-          .from('persons')
-          .select(
-            'person_id, first_name, last_name',
-          )
-          .eq('person_id', credentialPersonId)
-          .maybeSingle();
-
-        if (personError) {
-          console.error(
-            '[identity/plan][GET] person lookup failed:',
-            personError,
+      switch (code) {
+        case 'AUTH_CREDENTIAL_LOOKUP_FAILED':
+          return NextResponse.json(
+            {
+              error:
+                'Unable to resolve authenticated identity',
+              code,
+            },
+            { status: 500 },
           );
 
+        case 'PERSON_LOOKUP_FAILED':
           return NextResponse.json(
             {
               error:
                 'Unable to resolve person identity',
-              code: 'PERSON_LOOKUP_FAILED',
+              code,
             },
             { status: 500 },
           );
-        }
 
-        firstName = person?.first_name ?? null;
-        lastName = person?.last_name ?? null;
-        personId = person?.person_id ?? credentialPersonId;
+        case 'PERSON_NOT_FOUND':
+          return NextResponse.json(
+            {
+              error:
+                'Authenticated identity references a missing person',
+              code,
+            },
+            { status: 500 },
+          );
+
+        default:
+          return NextResponse.json(
+            {
+              error:
+                'Unable to resolve organisational identity',
+              code,
+            },
+            { status: 500 },
+          );
       }
+    }
 
+    // =========================================================================
+    // 3. NO ESTABLISHED PERSON
+    // =========================================================================
+
+    if (!person) {
       return NextResponse.json({
         ok: true,
         signedIn: true,
-        firstName,
-        lastName,
+        firstName: null,
+        lastName: null,
         organisationId: null,
         organisationName: null,
         isOwner: false,
-        personId,
+        personId: null,
       });
     }
 
-    const supabase =
-      createServiceClientV2();
+    // =========================================================================
+    // 4. RESOLVE CURRENT ORGANISATION CONTEXT
+    // =========================================================================
 
-    const {
-      data: organisation,
-      error: organisationError,
-    } = await supabase
-      .from('organisations')
-      .select(
-        'organisation_id, legal_name',
-      )
-      .eq(
-        'organisation_id',
-        ctx.organisationId,
-      )
-      .maybeSingle();
+    const ctx =
+      await getCurrentOrganisationContext();
 
-    if (organisationError) {
+    if (!ctx) {
+      return NextResponse.json({
+        ok: true,
+        signedIn: true,
+        firstName:
+          person.first_name ?? null,
+        lastName:
+          person.last_name ?? null,
+        organisationId: null,
+        organisationName: null,
+        isOwner: false,
+        personId: person.person_id,
+      });
+    }
+
+    // =========================================================================
+    // 5. SECURITY CHECK — CONTEXT PERSON MUST MATCH AUTH PERSON
+    // =========================================================================
+
+    if (ctx.personId !== person.person_id) {
       console.error(
-        '[identity/plan][GET] organisation lookup failed:',
-        organisationError,
+        '[identity/plan][GET] organisation context/person mismatch:',
+        {
+          authPersonId: person.person_id,
+          contextPersonId: ctx.personId,
+          organisationId: ctx.organisationId,
+        },
       );
 
       return NextResponse.json(
         {
           error:
-            'Unable to resolve organisation',
+            'Organisation context does not match authenticated identity',
           code:
-            'ORGANISATION_LOOKUP_FAILED',
+            'ORGANISATION_CONTEXT_PERSON_MISMATCH',
+        },
+        { status: 403 },
+      );
+    }
+
+    // =========================================================================
+    // 6. RESOLVE ORGANISATION
+    // =========================================================================
+
+    let organisation;
+
+    try {
+      organisation =
+        await resolveOrganisation(
+          ctx.organisationId,
+          supabase,
+        );
+    } catch (error) {
+      const code =
+        error instanceof Error
+          ? error.message
+          : 'ORGANISATION_LOOKUP_FAILED';
+
+      if (code === 'ORGANISATION_NOT_FOUND') {
+        return NextResponse.json(
+          {
+            error: 'Organisation not found',
+            code,
+          },
+          { status: 404 },
+        );
+      }
+
+      return NextResponse.json(
+        {
+          error:
+            'Unable to resolve organisation',
+          code,
         },
         { status: 500 },
       );
     }
 
-    if (!organisation) {
+    // =========================================================================
+    // 7. VERIFY CANONICAL MEMBERSHIP
+    // =========================================================================
+
+    let membership;
+
+    try {
+      membership =
+        await resolveActiveMembership(
+          organisation.organisation_id,
+          person.person_id,
+          supabase,
+        );
+    } catch (error) {
+      const code =
+        error instanceof Error
+          ? error.message
+          : 'MEMBERSHIP_LOOKUP_FAILED';
+
       return NextResponse.json(
         {
-          error: 'Organisation not found',
-          code:
-            'ORGANISATION_NOT_FOUND',
+          error:
+            'Unable to verify organisation membership',
+          code,
         },
-        { status: 404 },
+        { status: 500 },
       );
     }
+
+    if (!membership) {
+      console.error(
+        '[identity/plan][GET] context has no canonical active membership:',
+        {
+          organisationId:
+            organisation.organisation_id,
+          personId: person.person_id,
+        },
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            'Authenticated identity is not an active member of the organisation',
+          code:
+            'NOT_ORGANISATION_MEMBER',
+        },
+        { status: 403 },
+      );
+    }
+
+    // =========================================================================
+    // 8. RESOLVE OWNERSHIP
+    // =========================================================================
 
     const {
       data: ownership,
       error: ownershipError,
     } = await supabase
       .from('ownership_periods')
-      .select(
-        'ownership_period_id',
-      )
+      .select('ownership_id')
       .eq(
         'organisation_id',
-        ctx.organisationId,
+        organisation.organisation_id,
       )
       .eq(
         'person_id',
-        ctx.personId,
+        person.person_id,
       )
       .eq(
         'status',
@@ -534,57 +1121,37 @@ export async function GET() {
       );
     }
 
-    const {
-      data: person,
-      error: personError,
-    } = await supabase
-      .from('persons')
-      .select(
-        'person_id, first_name, last_name',
-      )
-      .eq(
-        'person_id',
-        ctx.personId,
-      )
-      .maybeSingle();
-
-    if (personError) {
-      console.error(
-        '[identity/plan][GET] person lookup failed:',
-        personError,
-      );
-
-      return NextResponse.json(
-        {
-          error:
-            'Unable to resolve person identity',
-          code:
-            'PERSON_LOOKUP_FAILED',
-        },
-        { status: 500 },
-      );
-    }
+    // =========================================================================
+    // 9. RETURN CANONICAL IDENTITY
+    // =========================================================================
 
     return NextResponse.json({
       ok: true,
       signedIn: true,
+
       firstName:
-        person?.first_name ?? null,
+        person.first_name ?? null,
+
       lastName:
-        person?.last_name ?? null,
+        person.last_name ?? null,
+
       organisationId:
         organisation.organisation_id,
+
       organisationName:
-        organisation.legal_name ?? null,
-      isOwner: Boolean(ownership),
-      personId: ctx.personId,
-      membershipId: ctx.membershipId,
-      role: ctx.role,
-      portalAccess: ctx.portalAccess ?? 'user',
-      isSuperadmin:
-        ctx.role === 'superadmin' &&
-        (ctx.portalAccess === 'admin' ||
-          ctx.portalAccess === 'both'),
+        organisation.name ?? null,
+
+      isOwner:
+        Boolean(ownership),
+
+      personId:
+        person.person_id,
+
+      membershipId:
+        membership.membership_id,
+
+      role:
+        membership.role,
     });
   } catch (error) {
     console.error(
@@ -607,17 +1174,43 @@ export async function GET() {
 /**
  * POST /api/identity/plan
  *
- * Establish canonical identity and, when a valid redeemed beta invitation is
- * supplied, attach the beta entitlement to the resulting canonical
- * Organisation.
+ * Canonical identity-establishment boundary.
+ *
+ * EXISTING ORGANISATION:
+ *
+ *   organisationId supplied
+ *        ↓
+ *   organisation must exist
+ *        ↓
+ *   authenticated Person must already be an active member
+ *        ↓
+ *   existing membership is returned unchanged
+ *
+ * NEW ORGANISATION:
+ *
+ *   no organisationId
+ *        ↓
+ *   organisation created
+ *        ↓
+ *   Person becomes member
+ *        ↓
+ *   if isOwner === true:
+ *        ownership_period created
+ *
+ * IMPORTANT:
+ *
+ * Client-supplied organisationId is NEVER authority.
+ *
+ * Client-supplied isOwner is NEVER sufficient to obtain authority
+ * over an existing organisation.
  */
 export async function POST(
   request: Request,
 ) {
   try {
-    // -----------------------------------------------------------------------
+    // =========================================================================
     // 1. AUTHENTICATE
-    // -----------------------------------------------------------------------
+    // =========================================================================
 
     const user = await getAuthUser();
 
@@ -635,9 +1228,9 @@ export async function POST(
     const supabase =
       createServiceClientV2();
 
-    // -----------------------------------------------------------------------
+    // =========================================================================
     // 2. READ REQUEST
-    // -----------------------------------------------------------------------
+    // =========================================================================
 
     let body: PlanRequestBody;
 
@@ -647,18 +1240,24 @@ export async function POST(
     } catch {
       return NextResponse.json(
         {
-          error: 'Invalid JSON body',
-          code: 'INVALID_JSON',
+          error:
+            'Invalid JSON body',
+          code:
+            'INVALID_JSON',
         },
         { status: 400 },
       );
     }
 
     const firstName =
-      normaliseName(body.firstName);
+      normaliseName(
+        body.firstName,
+      );
 
     const lastName =
-      normaliseName(body.lastName);
+      normaliseName(
+        body.lastName,
+      );
 
     const submittedOrganisationId =
       normaliseString(
@@ -679,6 +1278,10 @@ export async function POST(
       typeof body.isOwner === 'boolean'
         ? body.isOwner
         : false;
+
+    // =========================================================================
+    // 3. VALIDATE PERSON DATA
+    // =========================================================================
 
     if (!firstName) {
       return NextResponse.json(
@@ -704,426 +1307,219 @@ export async function POST(
       );
     }
 
-    // -----------------------------------------------------------------------
-    // 3. RESOLVE / CREATE PERSON
-    // -----------------------------------------------------------------------
-
-    const {
-      data: credential,
-      error: credentialLookupError,
-    } = await supabase
-      .from('auth_credentials')
-      .select('person_id')
-      .eq(
-        'auth_user_id',
-        user.id,
-      )
-      .eq(
-        'status',
-        'active',
-      )
-      .limit(1)
-      .maybeSingle();
-
-    if (credentialLookupError) {
-      console.error(
-        '[identity/plan][POST] auth credential lookup failed:',
-        credentialLookupError,
-      );
-
-      return NextResponse.json(
-        {
-          error:
-            'Unable to resolve authenticated identity',
-          code:
-            'AUTH_CREDENTIAL_LOOKUP_FAILED',
-        },
-        { status: 500 },
-      );
-    }
+    // =========================================================================
+    // 4. RESOLVE / CREATE CANONICAL PERSON
+    // =========================================================================
 
     let personId: string;
 
-    if (credential?.person_id) {
-      personId = credential.person_id;
-    } else if (user.email) {
-      const {
-        data: personByEmail,
-        error:
-          personEmailLookupError,
-      } = await supabase
-        .from('persons')
-        .select('person_id')
-        .ilike(
-          'email',
-          user.email,
-        )
-        .maybeSingle();
-
-      if (personEmailLookupError) {
-        console.error(
-          '[identity/plan][POST] person email lookup failed:',
-          personEmailLookupError,
-        );
-
-        return NextResponse.json(
+    try {
+      personId =
+        await resolveOrCreatePerson(
           {
-            error:
-              'Unable to resolve person identity',
-            code:
-              'PERSON_LOOKUP_FAILED',
+            id: user.id,
+            email:
+              user.email ?? null,
           },
-          { status: 500 },
+          firstName,
+          lastName,
+          supabase,
         );
-      }
+    } catch (error) {
+      const code =
+        error instanceof Error
+          ? error.message
+          : 'IDENTITY_RESOLUTION_FAILED';
 
-      if (personByEmail?.person_id) {
-        personId =
-          personByEmail.person_id;
-      } else {
-        const {
-          data: createdPerson,
-          error:
-            createPersonError,
-        } = await supabase
-          .from('persons')
-          .insert({
-            email: user.email,
-            first_name: firstName,
-            last_name: lastName,
-          })
-          .select('person_id')
-          .single();
-
-        if (
-          createPersonError ||
-          !createdPerson
-        ) {
-          console.error(
-            '[identity/plan][POST] person creation failed:',
-            createPersonError,
-          );
-
+      switch (code) {
+        case 'AUTH_CREDENTIAL_LOOKUP_FAILED':
           return NextResponse.json(
             {
               error:
-                'Unable to create person identity',
-              code:
-                'PERSON_CREATE_FAILED',
+                'Unable to resolve authenticated identity',
+              code,
             },
             { status: 500 },
           );
-        }
 
-        personId =
-          createdPerson.person_id;
-      }
-    } else {
-      const {
-        data: createdPerson,
-        error:
-          createPersonError,
-      } = await supabase
-        .from('persons')
-        .insert({
-          email: null,
-          first_name: firstName,
-          last_name: lastName,
-        })
-        .select('person_id')
-        .single();
-
-      if (
-        createPersonError ||
-        !createdPerson
-      ) {
-        console.error(
-          '[identity/plan][POST] person creation failed:',
-          createPersonError,
-        );
-
-        return NextResponse.json(
-          {
-            error:
-              'Unable to create person identity',
-            code:
-              'PERSON_CREATE_FAILED',
-          },
-          { status: 500 },
-        );
-      }
-
-      personId =
-        createdPerson.person_id;
-    }
-
-    // ---------------------------------------------------------------------    
-    // ESTABLISH AUTH → PERSON BRIDGE
-      // ---------------------------------------------------------------------
-
-      const {
-        data: existingCredential,
-        error:
-          existingCredentialError,
-      } = await supabase
-        .from('auth_credentials')
-        .select(
-          'auth_credential_id, person_id, status',
-        )
-        .eq(
-          'auth_user_id',
-          user.id,
-        )
-        .limit(1)
-        .maybeSingle();
-
-      if (existingCredentialError) {
-        console.error(
-          '[identity/plan][POST] auth credential re-check failed:',
-          existingCredentialError,
-        );
-
-        return NextResponse.json(
-          {
-            error:
-              'Unable to establish authenticated identity',
-            code:
-              'AUTH_CREDENTIAL_LOOKUP_FAILED',
-          },
-          { status: 500 },
-        );
-      }
-
-      if (existingCredential) {
-        if (
-          existingCredential.person_id !==
-            personId ||
-          existingCredential.status !==
-            'active'
-        ) {
-          const {
-            error:
-              credentialRepairError,
-          } = await supabase
-            .from('auth_credentials')
-            .update({
-              person_id: personId,
-              status: 'active',
-            })
-            .eq(
-              'auth_credential_id',
-              existingCredential.auth_credential_id,
-            );
-
-          if (
-            credentialRepairError
-          ) {
-            console.error(
-              '[identity/plan][POST] auth credential repair failed:',
-              credentialRepairError,
-            );
-
-            return NextResponse.json(
-              {
-                error:
-                  'Unable to establish authenticated identity',
-                code:
-                  'AUTH_CREDENTIAL_UPDATE_FAILED',
-              },
-              { status: 500 },
-            );
-          }
-        }
-      } else {
-        const {
-          error:
-            createCredentialError,
-        } = await supabase
-          .from('auth_credentials')
-          .insert({
-            person_id: personId,
-            auth_user_id: user.id,
-            status: 'active',
-          });
-
-        if (createCredentialError) {
-          console.error(
-            '[identity/plan][POST] auth credential creation failed:',
-            createCredentialError,
+        case 'AUTH_CREDENTIAL_PERSON_MISMATCH':
+          return NextResponse.json(
+            {
+              error:
+                'Authenticated identity is already linked to a different person',
+              code,
+            },
+            { status: 409 },
           );
 
+        case 'AUTH_CREDENTIAL_CREATE_FAILED':
           return NextResponse.json(
             {
               error:
                 'Unable to establish authenticated identity',
-              code:
-                'AUTH_CREDENTIAL_CREATE_FAILED',
+              code,
             },
             { status: 500 },
           );
-        }
+
+        case 'AUTH_CREDENTIAL_UPDATE_FAILED':
+          return NextResponse.json(
+            {
+              error:
+                'Unable to establish authenticated identity',
+              code,
+            },
+            { status: 500 },
+          );
+
+        case 'PERSON_LOOKUP_FAILED':
+          return NextResponse.json(
+            {
+              error:
+                'Unable to resolve person identity',
+              code,
+            },
+            { status: 500 },
+          );
+
+        case 'PERSON_NOT_FOUND':
+          return NextResponse.json(
+            {
+              error:
+                'Authenticated identity references a missing person',
+              code,
+            },
+            { status: 500 },
+          );
+
+        case 'PERSON_CREATE_FAILED':
+          return NextResponse.json(
+            {
+              error:
+                'Unable to create person identity',
+              code,
+            },
+            { status: 500 },
+          );
+
+        default:
+          return NextResponse.json(
+            {
+              error:
+                'Unable to resolve authenticated identity',
+              code,
+            },
+            { status: 500 },
+          );
       }
+    }
 
-    // -----------------------------------------------------------------------    
-    // 4. UPDATE PERSON
-    // -----------------------------------------------------------------------
+    // =========================================================================
+    // 5. UPDATE PERSON PROFILE
+    // =========================================================================
 
-    const personUpdate: Record<
-      string,
-      string
-    > = {
-      first_name: firstName,
-      last_name: lastName,
-    };
-
-    const {
-      error: personUpdateError,
-    } = await supabase
-      .from('persons')
-      .update(personUpdate)
-      .eq(
-        'person_id',
+    try {
+      await updatePerson(
         personId,
+        firstName,
+        lastName,
+        supabase,
       );
-
-    if (personUpdateError) {
-      console.error(
-        '[identity/plan][POST] person update failed:',
-        personUpdateError,
-      );
+    } catch (error) {
+      const code =
+        error instanceof Error
+          ? error.message
+          : 'PERSON_UPDATE_FAILED';
 
       return NextResponse.json(
         {
           error:
             'Unable to save person identity',
-          code:
-            'PERSON_UPDATE_FAILED',
+          code,
         },
         { status: 500 },
       );
     }
 
-    // -----------------------------------------------------------------------
-    // 5. RESOLVE / CREATE ORGANISATION
-    // -----------------------------------------------------------------------
-
-    let canonicalOrganisationId: string;
-    let canonicalOrganisationName:
-      | string
-      | null = null;
+    // =========================================================================
+    // 6. EXISTING ORGANISATION PATH
+    // =========================================================================
+    //
+    // This path is intentionally NOT an upsert.
+    //
+    // The caller must already possess canonical membership.
+    //
+    // isOwner is deliberately ignored for authority purposes here.
+    // A client cannot promote itself merely by posting isOwner=true.
+    // =========================================================================
 
     if (submittedOrganisationId) {
-      // ---------------------------------------------------------------------
-      // EXISTING ORGANISATION
-      // ---------------------------------------------------------------------
+      let organisation;
 
-      const {
-        data: organisation,
-        error:
-          organisationError,
-      } = await supabase
-        .from('organisations')
-        .select(
-          'organisation_id, legal_name',
-        )
-        .eq(
-          'organisation_id',
-          submittedOrganisationId,
-        )
-        .maybeSingle();
+      try {
+        organisation =
+          await resolveOrganisation(
+            submittedOrganisationId,
+            supabase,
+          );
+      } catch (error) {
+        const code =
+          error instanceof Error
+            ? error.message
+            : 'ORGANISATION_LOOKUP_FAILED';
 
-      if (organisationError) {
-        console.error(
-          '[identity/plan][POST] organisation lookup failed:',
-          organisationError,
-        );
+        if (
+          code ===
+          'ORGANISATION_NOT_FOUND'
+        ) {
+          return NextResponse.json(
+            {
+              error:
+                'Organisation not found',
+              code,
+            },
+            { status: 404 },
+          );
+        }
 
         return NextResponse.json(
           {
             error:
               'Unable to resolve organisation',
-            code:
-              'ORGANISATION_LOOKUP_FAILED',
+            code,
           },
           { status: 500 },
         );
       }
 
-      if (!organisation) {
-        return NextResponse.json(
-          {
-            error:
-              'Organisation not found',
-            code:
-              'ORGANISATION_NOT_FOUND',
-          },
-          { status: 404 },
-        );
-      }
+      let membership:
+        | CanonicalMembership
+        | null;
 
-      canonicalOrganisationId =
-        organisation.organisation_id;
-
-      canonicalOrganisationName =
-        organisation.legal_name ?? null;
-
-      /*
-       * Client organisationId is accepted only because the Person already has
-       * an active membership in that Organisation.
-       */
-      const {
-        data: existingMembership,
-        error:
-          membershipLookupError,
-      } = await supabase
-        .from(
-          'organisation_memberships',
-        )
-        .select(
-          'membership_id, organisation_id, person_id, role, status',
-        )
-        .eq(
-          'organisation_id',
-          canonicalOrganisationId,
-        )
-        .eq(
-          'person_id',
-          personId,
-        )
-        .eq(
-          'status',
-          'active',
-        )
-        .or(
-          'valid_to.is.null,valid_to.gt.now()',
-        )
-        .order(
-          'valid_from',
-          {
-            ascending: false,
-          },
-        )
-        .limit(1)
-        .maybeSingle();
-
-      if (membershipLookupError) {
-        console.error(
-          '[identity/plan][POST] membership lookup failed:',
-          membershipLookupError,
-        );
+      try {
+        membership =
+          await resolveActiveMembership(
+            organisation.organisation_id,
+            personId,
+            supabase,
+          );
+      } catch (error) {
+        const code =
+          error instanceof Error
+            ? error.message
+            : 'MEMBERSHIP_LOOKUP_FAILED';
 
         return NextResponse.json(
           {
             error:
               'Unable to verify organisation membership',
-            code:
-              'MEMBERSHIP_LOOKUP_FAILED',
+            code,
           },
           { status: 500 },
         );
       }
 
-      if (!existingMembership) {
+      if (!membership) {
         return NextResponse.json(
           {
             error:
@@ -1134,165 +1530,27 @@ export async function POST(
           { status: 403 },
         );
       }
-    } else {
-      // ---------------------------------------------------------------------
-      // NEW ORGANISATION
-      // ---------------------------------------------------------------------
 
-      if (!organisationName) {
-        return NextResponse.json(
-          {
-            error:
-              'Please enter your business name',
-            code:
-              'ORGANISATION_NAME_REQUIRED',
-          },
-          { status: 400 },
-        );
-      }
+      // Existing membership is authoritative.
+      //
+      // Do NOT:
+      // - change role
+      // - change valid_from
+      // - create another membership
+      // - create ownership because client says isOwner=true
+      //
+      // The endpoint is an identity-establishment boundary, not an
+      // authorisation escalation endpoint.
 
       const {
-        data: createdOrganisation,
-        error:
-          createOrganisationError,
+        data: ownership,
+        error: ownershipError,
       } = await supabase
-        .from('organisations')
-        .insert({
-          legal_name: organisationName,
-        })
-        .select(
-          'organisation_id, legal_name',
-        )
-        .single();
-
-      if (
-        createOrganisationError ||
-        !createdOrganisation
-      ) {
-        console.error(
-          '[identity/plan][POST] organisation creation failed:',
-          createOrganisationError,
-        );
-
-        return NextResponse.json(
-          {
-            error:
-              'Unable to create organisation',
-            code:
-              'ORGANISATION_CREATE_FAILED',
-          },
-          { status: 500 },
-        );
-      }
-
-      canonicalOrganisationId =
-        createdOrganisation.organisation_id;
-
-      canonicalOrganisationName =
-        createdOrganisation.legal_name ?? null;
-    }
-
-    // -----------------------------------------------------------------------
-    // 6. ESTABLISH MEMBERSHIP
-    // -----------------------------------------------------------------------
-
-    const now =
-      new Date().toISOString();
-
-    /*
-     * The beta tier determines the membership role and portal access:
-     *
-     *   superadmin-tier beta -> role 'superadmin', portal_access 'both'
-     *     (governs the org AND uses the product)
-     *   user-tier beta / owner -> role 'owner', portal_access 'user'
-     *   user-tier beta / member -> role 'member', portal_access 'user'
-     *
-     * Ownership is tracked separately in ownership_periods below.
-     */
-    const betaType =
-      await resolveBetaType(
-        supabase,
-        betaCode,
-      );
-
-    const membershipRole =
-      betaType === 'superadmin'
-        ? 'superadmin'
-        : isOwner
-          ? 'owner'
-          : 'member';
-
-    const portalAccess =
-      betaType === 'superadmin'
-        ? 'both'
-        : 'user';
-
-    const {
-      data: membership,
-      error: membershipError,
-    } = await supabase
-      .from(
-        'organisation_memberships',
-      )
-      .upsert(
-        {
-          organisation_id:
-            canonicalOrganisationId,
-          person_id: personId,
-          role: membershipRole,
-          portal_access: portalAccess,
-          status: 'active',
-          valid_from: now,
-        },
-        {
-          onConflict:
-            'organisation_id,person_id,role',
-        },
-      )
-      .select(
-        'membership_id, organisation_id, person_id, role, portal_access, status',
-      )
-      .single();
-
-    if (
-      membershipError ||
-      !membership
-    ) {
-      console.error(
-        '[identity/plan][POST] membership creation/update failed:',
-        membershipError,
-      );
-
-      return NextResponse.json(
-        {
-          error:
-            'Unable to establish organisation membership',
-          code:
-            'MEMBERSHIP_UPDATE_FAILED',
-        },
-        { status: 500 },
-      );
-    }
-
-    // -----------------------------------------------------------------------
-    // 7. SELF-DECLARED OWNERSHIP
-    // -----------------------------------------------------------------------
-
-    if (isOwner) {
-      const {
-        data: existingOwnership,
-        error:
-          ownershipLookupError,
-      } = await supabase
-        .from(
-          'ownership_periods',
-        )
-        .select(
-          'ownership_period_id',
-        )
+        .from('ownership_periods')
+        .select('ownership_id')
         .eq(
           'organisation_id',
-          canonicalOrganisationId,
+          organisation.organisation_id,
         )
         .eq(
           'person_id',
@@ -1305,16 +1563,16 @@ export async function POST(
         .limit(1)
         .maybeSingle();
 
-      if (ownershipLookupError) {
+      if (ownershipError) {
         console.error(
-          '[identity/plan][POST] ownership lookup failed:',
-          ownershipLookupError,
+          '[identity/plan][POST] existing organisation ownership lookup failed:',
+          ownershipError,
         );
 
         return NextResponse.json(
           {
             error:
-              'Unable to verify ownership declaration',
+              'Unable to resolve ownership',
             code:
               'OWNERSHIP_LOOKUP_FAILED',
           },
@@ -1322,67 +1580,177 @@ export async function POST(
         );
       }
 
-      if (!existingOwnership) {
-        const {
-          error: ownershipError,
-        } = await supabase
-          .from(
-            'ownership_periods',
-          )
-          .insert({
-            organisation_id:
-              canonicalOrganisationId,
-            person_id: personId,
-            status: 'current',
-            valid_from: now,
-          });
+      return NextResponse.json({
+        ok: true,
 
-        if (ownershipError) {
-          console.error(
-            '[identity/plan][POST] ownership claim failed:',
-            ownershipError,
-          );
+        identity: {
+          organisationId:
+            organisation.organisation_id,
 
+          organisationName:
+            organisation.name ?? null,
+
+          personId,
+
+          membershipId:
+            membership.membership_id,
+
+          role:
+            membership.role,
+
+          isOwner:
+            Boolean(ownership),
+        },
+
+        betaCode:
+          betaCode || undefined,
+      });
+    }
+
+    // =========================================================================
+    // 7. NEW ORGANISATION PATH
+    // =========================================================================
+
+    if (!organisationName) {
+      return NextResponse.json(
+        {
+          error:
+            'Please enter your business name',
+          code:
+            'ORGANISATION_NAME_REQUIRED',
+        },
+        { status: 400 },
+      );
+    }
+
+    const {
+      data: createdOrganisation,
+      error: createOrganisationError,
+    } = await supabase
+      .from('organisations')
+      .insert({
+        name: organisationName,
+      })
+      .select(
+        'organisation_id, name',
+      )
+      .single();
+
+    if (
+      createOrganisationError ||
+      !createdOrganisation
+    ) {
+      console.error(
+        '[identity/plan][POST] organisation creation failed:',
+        createOrganisationError,
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            'Unable to create organisation',
+          code:
+            'ORGANISATION_CREATE_FAILED',
+        },
+        { status: 500 },
+      );
+    }
+
+    const canonicalOrganisationId =
+      createdOrganisation.organisation_id;
+
+    const canonicalOrganisationName =
+      createdOrganisation.name ?? null;
+
+    const now =
+      new Date().toISOString();
+
+    // =========================================================================
+    // 8. CREATE MEMBERSHIP FOR NEW ORGANISATION
+    // =========================================================================
+
+    let membership:
+      CanonicalMembership;
+
+    try {
+      membership =
+        await createOrganisationMembership(
+          canonicalOrganisationId,
+          personId,
+          isOwner
+            ? 'owner'
+            : 'member',
+          now,
+          supabase,
+        );
+    } catch (error) {
+      const code =
+        error instanceof Error
+          ? error.message
+          : 'MEMBERSHIP_CREATE_FAILED';
+
+      return NextResponse.json(
+        {
+          error:
+            'Unable to establish organisation membership',
+          code,
+        },
+        { status: 500 },
+      );
+    }
+
+    // =========================================================================
+    // 9. ESTABLISH OWNERSHIP
+    // =========================================================================
+    //
+    // Ownership is separate from membership.
+    //
+    // It is created ONLY for a newly-created organisation and ONLY when
+    // the caller declared themselves owner.
+    // =========================================================================
+
+    if (isOwner) {
+      try {
+        await establishOwnership(
+          canonicalOrganisationId,
+          personId,
+          now,
+          supabase,
+        );
+      } catch (error) {
+        const code =
+          error instanceof Error
+            ? error.message
+            : 'OWNERSHIP_CLAIM_FAILED';
+
+        if (
+          code ===
+          'OWNERSHIP_LOOKUP_FAILED'
+        ) {
           return NextResponse.json(
             {
               error:
-                'Unable to save ownership declaration',
-              code:
-                'OWNERSHIP_CLAIM_FAILED',
+                'Unable to verify ownership declaration',
+              code,
             },
             { status: 500 },
           );
         }
+
+        return NextResponse.json(
+          {
+            error:
+              'Unable to save ownership declaration',
+            code,
+          },
+          { status: 500 },
+        );
       }
     }
 
-    // -----------------------------------------------------------------------
-    // 8. BETA ENTITLEMENT
-    // -----------------------------------------------------------------------
-    //
-    // This is deliberately AFTER canonical Organisation establishment.
-    //
-    // betaCode is provenance/access evidence.
-    //
-    // canonicalOrganisationId is the identity authority.
-    //
-
-    let betaEntitled = false;
-
-    if (betaCode) {
-      betaEntitled =
-        await ensureBetaEntitlement(
-          supabase,
-          betaCode,
-          user.id,
-          user.email ?? null,
-          canonicalOrganisationId,
-        );
-    }
-
-    // -----------------------------------------------------------------------
-    // 9. RETURN CANONICAL IDENTITY
-    // -----------------------------------------------------------------------
+    // =========================================================================
+    // 10. RETURN CANONICAL IDENTITY
+    // =========================================================================
 
     return NextResponse.json({
       ok: true,
@@ -1390,36 +1758,24 @@ export async function POST(
       identity: {
         organisationId:
           canonicalOrganisationId,
+
         organisationName:
           canonicalOrganisationName,
+
         personId,
+
         membershipId:
           membership.membership_id,
-        role: membership.role,
-        portalAccess:
-          membership.portal_access ?? 'user',
-        isSuperadmin:
-          membership.role === 'superadmin' &&
-          (membership.portal_access === 'admin' ||
-            membership.portal_access === 'both'),
+
+        role:
+          membership.role,
+
+        isOwner:
+          isOwner,
       },
 
-      /*
-       * betaCode is retained as provenance information for the client.
-       *
-       * It is NOT an identity authority.
-       */
       betaCode:
         betaCode || undefined,
-
-      /*
-       * Explicitly tell the caller whether the verified beta invitation
-       * resulted in an entitlement attempt/success.
-       *
-       * This prevents the client from assuming that simply supplying a string
-       * called betaCode means beta access was granted.
-       */
-      betaEntitled,
     });
   } catch (error) {
     console.error(
