@@ -18,6 +18,8 @@ import type { EmailOtpType } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { createSessionClientV2 } from '@/lib/supabase/server-session';
 
+const DIAG = '[auth/callback][DIAG]';
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
@@ -25,38 +27,68 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get('type') as EmailOtpType | null;
   const next = searchParams.get('next') || '/dashboard';
 
+  // --- DIAGNOSTIC: cookie inventory (names only, NEVER values) ---
+  const cookieStore = await cookies();
+  const allCookies = cookieStore.getAll();
+  const sbCookieNames = allCookies
+    .filter((c) => c.name.startsWith('sb-'))
+    .map((c) => c.name);
+  const hasCodeVerifier = sbCookieNames.some((n) => n.includes('code-verifier'));
+
+  console.log(`${DIAG} hostname=${new URL(request.url).hostname}`);
+  console.log(`${DIAG} has_code=${!!code} has_token_hash=${!!tokenHash} type=${type}`);
+  console.log(`${DIAG} next=${next}`);
+  console.log(`${DIAG} sb_cookie_count=${sbCookieNames.length} names=[${sbCookieNames.join(', ')}]`);
+  console.log(`${DIAG} has_pkce_verifier_cookie=${hasCodeVerifier}`);
+
   const supabase = await createSessionClientV2();
 
   let ok = false;
   if (tokenHash && type) {
+    console.log(`${DIAG} entering token_hash branch`);
     const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
+    if (error) {
+      console.error(
+        `${DIAG} verifyOtp FAILED: name=${error.name} message=${error.message} status=${(error as Record<string, unknown>).status ?? 'n/a'}`,
+      );
+    } else {
+      console.log(`${DIAG} verifyOtp OK`);
+    }
     ok = !error;
   } else if (code) {
+    console.log(`${DIAG} entering code (PKCE) branch`);
     const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) {
+      console.error(
+        `${DIAG} exchangeCodeForSession FAILED: name=${error.name} message=${error.message} status=${(error as Record<string, unknown>).status ?? 'n/a'}`,
+      );
+    } else {
+      console.log(`${DIAG} exchangeCodeForSession OK`);
+    }
     ok = !error;
+  } else {
+    console.warn(`${DIAG} NEITHER code NOR token_hash present in callback URL`);
   }
 
   const target = ok ? `${origin}${next}` : `${origin}/login?error=auth_callback`;
-  const response = NextResponse.redirect(target);
+  console.log(`${DIAG} outcome=${ok ? 'SUCCESS' : 'FAILURE'} redirect_to=${target}`);
 
-  if (ok) {
-    // Carry the session cookies the OTP exchange just wrote onto the redirect response.
-    // Re-apply the same attributes the SSR client uses (path=/, httpOnly, sameSite=lax, secure in
-    // prod); a missing or wrong path makes the next request not carry them and the user is bounced
-    // to /login despite a successful exchange.
-    const cookieStore = await cookies();
-    const secure = process.env.NODE_ENV === 'production';
-    for (const cookie of cookieStore.getAll()) {
-      if (cookie.name.startsWith('sb-')) {
-        response.cookies.set(cookie.name, cookie.value, {
-          path: '/',
-          httpOnly: true,
-          sameSite: 'lax',
-          secure,
-        });
-      }
-    }
+  // --- CARBON-COPY COOKIE BRIDGE ------------------------------------------------
+  //
+  // exchangeCodeForSession / verifyOtp write session cookies into the in-memory
+  // Next.js cookie store.  A bare `NextResponse.redirect(...)` carries NO cookies
+  // back to the browser because it constructs a fresh Headers object.  We must
+  // manually copy every Set-Cookie that the cookie store now holds onto the
+  // redirect response so the browser actually receives the session.
+  //
+  // This mirrors the identical fix applied to middleware.ts / proxy.ts
+  // (redirectPreservingSession, dated 2026-08-06).
+
+  const res = NextResponse.redirect(target);
+
+  for (const { name, value, options } of cookieStore.getAll()) {
+    res.cookies.set(name, value, options as Parameters<typeof res.cookies.set>[2]);
   }
 
-  return response;
+  return res;
 }
