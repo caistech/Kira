@@ -94,9 +94,10 @@ export function isAdminEmail(email?: string | null): boolean {
  * It does NOT establish Person, Organisation, Membership, or Ownership
  * authority.
  */
+
 export async function getAuthUser() {
   try {
-    const supabase = createSessionClientV2();
+    const supabase = await createSessionClientV2();
 
     const {
       data: { user },
@@ -109,6 +110,14 @@ export async function getAuthUser() {
 
     return user;
   } catch (error) {
+    if (
+      error instanceof Error &&
+      'digest' in error &&
+      error.digest === 'DYNAMIC_SERVER_USAGE'
+    ) {
+      throw error;
+    }
+
     console.error('[lib/auth] getAuthUser failed:', error);
     return null;
   }
@@ -1209,50 +1218,7 @@ export async function currentUserHasAdminPortalAccess(): Promise<boolean> {
  *
  * This function therefore checks ownership_periods rather than simply
  * checking membership.role === 'owner'.
- */
-export async function currentUserOwnsOrganisation(): Promise<boolean> {
-  const context =
-    await getCurrentOrganisationContext();
-
-  if (!context) {
-    return false;
-  }
-
-  try {
-    const supabase = createServiceClientV2();
-    const now = getNowIso();
-
-    const { data, error } = await supabase
-      .from('ownership_periods')
-      .select('ownership_period_id')
-      .eq('organisation_id', context.organisationId)
-      .eq('person_id', context.personId)
-      .eq('status', 'current')
-      .lte('valid_from', now)
-      .or(`valid_to.is.null,valid_to.gt.${now}`)
-      .limit(1)
-      .maybeSingle();
-
-    if (error) {
-      console.error(
-        '[lib/auth] current ownership lookup failed:',
-        error,
-      );
-      return false;
-    }
-
-    return Boolean(data);
-  } catch (error) {
-    console.error(
-      '[lib/auth] currentUserOwnsOrganisation failed:',
-      error,
-    );
-
-    return false;
-  }
-}
-
-// ---------------------------------------------------------------------------
+ */// ---------------------------------------------------------------------------
 // ORGANISATION LOOKUP
 // ---------------------------------------------------------------------------
 //
@@ -1262,6 +1228,10 @@ export async function currentUserOwnsOrganisation(): Promise<boolean> {
 // Membership establishes access.
 //
 
+async function getOrganisation(
+  organisationId: string,
+): Promise<OrganisationRow | null> {
+  const supabase = createServiceClientV2();
 
   const { data, error } = await supabase
     .from('organisations')
@@ -1278,42 +1248,4 @@ export async function currentUserOwnsOrganisation(): Promise<boolean> {
   }
 
   return data as OrganisationRow | null;
-}
-
-/**
- * Verify that a canonical Person has active membership in a specific
- * organisation.
- *
- * This function is exported because some server-side callers may need the
- * explicit membership check.
- *
- * It is read-only.
- */
-export async function hasOrganisationMembership(
-  personId: string,
-  organisationId: string,
-): Promise<boolean> {
-  if (!personId || !organisationId) {
-    return false;
-  }
-
-  try {
-    const supabase = createServiceClientV2();
-
-    const membership =
-      await resolveActiveMembership(
-        organisationId,
-        personId,
-        supabase,
-      );
-
-    return membership !== null;
-  } catch (error) {
-    console.error(
-      '[lib/auth] hasOrganisationMembership failed:',
-      error,
-    );
-
-    return false;
-  }
 }
