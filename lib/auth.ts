@@ -96,7 +96,7 @@ export function isAdminEmail(email?: string | null): boolean {
  */
 export async function getAuthUser() {
   try {
-    const supabase = await createSessionClientV2();
+    const supabase = createSessionClientV2();
 
     const {
       data: { user },
@@ -246,7 +246,7 @@ function applyActiveMembershipFilter<T extends {
  */
 async function getAuthCredential(
   userId: string,
-  supabase: Awaited<ReturnType<typeof createServiceClientV2>>,
+  supabase: ReturnType<typeof createServiceClientV2>,
 ): Promise<CanonicalCredential | null> {
   if (!userId) return null;
 
@@ -282,7 +282,7 @@ async function getAuthCredential(
  */
 async function resolvePersonFromAuth(
   userId: string,
-  supabase: Awaited<ReturnType<typeof createServiceClientV2>>,
+  supabase: ReturnType<typeof createServiceClientV2>,
 ): Promise<CanonicalPerson | null> {
   const credential = await getAuthCredential(userId, supabase);
 
@@ -363,7 +363,7 @@ export async function getCurrentAppUser(): Promise<CanonicalPerson | null> {
   }
 
   try {
-    const supabase = await createServiceClientV2();
+    const supabase = createServiceClientV2();
 
     return await resolvePersonFromAuth(
       authUser.id,
@@ -426,7 +426,7 @@ const MEMBERSHIP_SELECT = `
 async function resolveMembershipForPerson(
   personId: string,
   selectedOrganisationId: string | null,
-  supabase: Awaited<ReturnType<typeof createServiceClientV2>>,
+  supabase: ReturnType<typeof createServiceClientV2>,
 ): Promise<CanonicalMembership | null> {
   if (!personId) {
     return null;
@@ -507,7 +507,7 @@ async function resolveMembershipForPerson(
 async function resolveActiveMembership(
   organisationId: string,
   personId: string,
-  supabase: Awaited<ReturnType<typeof createServiceClientV2>>,
+  supabase: ReturnType<typeof createServiceClientV2>,
 ): Promise<CanonicalMembership | null> {
   if (!organisationId || !personId) {
     return null;
@@ -577,7 +577,7 @@ export async function getCurrentOrganisationContext(): Promise<OrganisationConte
       return null;
     }
 
-    const supabase = await createServiceClientV2();
+    const supabase = createServiceClientV2();
 
     // -----------------------------------------------------------------------
     // AUTH → PERSON
@@ -697,7 +697,7 @@ export async function getUserOrganisations(
   }
 
   try {
-    const supabase = await createServiceClientV2();
+    const supabase = createServiceClientV2();
     const now = getNowIso();
 
     const query = supabase
@@ -877,7 +877,7 @@ export async function resolveOrganisationFromUser(
   }
 
   try {
-    const supabase = await createServiceClientV2();
+    const supabase = createServiceClientV2();
 
     const credential = await getAuthCredential(
       userId,
@@ -944,7 +944,7 @@ export async function resolveOrganisationForPerson(
   }
 
   try {
-    const supabase = await createServiceClientV2();
+    const supabase = createServiceClientV2();
 
     const membership =
       await resolveMembershipForPerson(
@@ -1006,7 +1006,7 @@ export async function getSuperadminContext(): Promise<OrganisationContext | null
       return null;
     }
 
-    const supabase = await createServiceClientV2();
+    const supabase = createServiceClientV2();
 
     const credential = await getAuthCredential(
       authUser.id,
@@ -1078,7 +1078,7 @@ export async function resolveSuperadminFromUser(
   }
 
   try {
-    const supabase = await createServiceClientV2();
+    const supabase = createServiceClientV2();
 
     const credential = await getAuthCredential(
       userId,
@@ -1219,7 +1219,7 @@ export async function currentUserOwnsOrganisation(): Promise<boolean> {
   }
 
   try {
-    const supabase = await createServiceClientV2();
+    const supabase = createServiceClientV2();
     const now = getNowIso();
 
     const { data, error } = await supabase
@@ -1262,13 +1262,6 @@ export async function currentUserOwnsOrganisation(): Promise<boolean> {
 // Membership establishes access.
 //
 
-async function resolveOrganisation(
-  organisationId: string,
-  supabase: Awaited<ReturnType<typeof createServiceClientV2>>,
-): Promise<OrganisationRow | null> {
-  if (!organisationId) {
-    return null;
-  }
 
   const { data, error } = await supabase
     .from('organisations')
@@ -1305,7 +1298,7 @@ export async function hasOrganisationMembership(
   }
 
   try {
-    const supabase = await createServiceClientV2();
+    const supabase = createServiceClientV2();
 
     const membership =
       await resolveActiveMembership(
