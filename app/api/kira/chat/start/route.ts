@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     // Verify agent belongs to this organisation (or user owns it for backward compatibility)
     const { data: membership } = await supabase
       .from('organisation_memberships')
-      .select('id')
+      .select('membership_id')
       .eq('organisation_id', organisationId)
       .eq('person_id', organisationContext.personId)
       .eq('status', 'active')

@@ -256,7 +256,7 @@ export async function POST(req: NextRequest) {
   // Check organisation membership for agent access
   const { data: membership } = await supabase
     .from('organisation_memberships')
-    .select('id')
+    .select('membership_id')
     .eq('organisation_id', organisationId)
     .eq('person_id', organisationContext.personId)
     .eq('status', 'active')

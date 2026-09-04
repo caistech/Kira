@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     
     const { data: membership } = await supabase
       .from('organisation_memberships')
-      .select('id')
+      .select('membership_id')
       .eq('organisation_id', organisationId)
       .eq('person_id', organisationContext.personId)
       .eq('status', 'active')
