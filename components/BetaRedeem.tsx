@@ -19,7 +19,7 @@ TermsAgreement,
 TERMS_VERSION,
 } from '@/components/TermsAgreement';
 
-import { createClient } from '@/lib/supabase/browser';
+import { createClientV2 } from '@/lib/supabase/browser';
 
 type Stage = 'code' | 'password' | 'done';
 
@@ -309,7 +309,7 @@ try {
    *
    * Establish the Auth session using the password just created.
    */
-  const supabase = createClient();
+  const supabase = createClientV2();
 
   const {
     data: sessionData,

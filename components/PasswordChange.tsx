@@ -2,11 +2,11 @@
 
 // components/PasswordChange.tsx
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase/browser';
+import { createClientV2 } from '@/lib/supabase/browser';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 
 export function PasswordChange() {
-  const supabase = createClient();
+  const supabase = createClientV2();
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);

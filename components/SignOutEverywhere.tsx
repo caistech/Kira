@@ -18,7 +18,7 @@
 
 import { useState } from 'react';
 
-import { createClient } from '@/lib/supabase/browser';
+import { createClientV2 } from '@/lib/supabase/browser';
 
 export function SignOutEverywhere() {
   const [state, setState] = useState<'idle' | 'confirming' | 'working' | 'failed'>('idle');
@@ -26,7 +26,7 @@ export function SignOutEverywhere() {
   async function signOutEverywhere() {
     setState('working');
     try {
-      const { error } = await createClient().auth.signOut({ scope: 'global' });
+      const { error } = await createClientV2().auth.signOut({ scope: 'global' });
       if (error) {
         setState('failed');
         return;

@@ -1,10 +1,10 @@
 'use client';
 
 // components/SignOutButton.tsx
-import { createClient } from '@/lib/supabase/browser';
+import { createClientV2 } from '@/lib/supabase/browser';
 
 export function SignOutButton({ className }: { className?: string }) {
-  const supabase = createClient();
+  const supabase = createClientV2();
   async function signOut() {
     await supabase.auth.signOut();
     window.location.assign('/login');

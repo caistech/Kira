@@ -2,12 +2,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/browser';
+import { createClientV2 } from '@/lib/supabase/browser';
 import { useRouter } from 'next/navigation';
 
 export default function PubGuardLoginPage() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = createClientV2();
 
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
