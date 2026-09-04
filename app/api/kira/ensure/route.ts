@@ -144,11 +144,18 @@ export async function POST() {
     let legacyUserId: string | null = null;
     const authSession = await getAuthUser();
     if (authSession) {
-      const { data: legacyRow } = await supabase
+      const { data: legacyRow, error: legacyError  } = await supabase
         .from('users')
         .select('id')
         .eq('auth_user_id', authSession.id)
         .maybeSingle();
+
+      if (legacyError) {
+        throw new Error(
+          `Failed to resolve legacy users row: ${legacyError.message}`,
+        );
+      }
+
       legacyUserId = (legacyRow?.id as string) ?? null;
     }
 
@@ -188,6 +195,47 @@ export async function POST() {
     await log(supabase, requestId, 'prompt_build', 'success', undefined, {
       agentName,
     });
+
+
+//        await log(supabase, requestId, 'prompt_build', 'success', undefined, {
+//          agentName,
+//        });
+
+        // -----------------------------------------------------------------
+        // FINAL IDENTITY GUARD — do not mint a paid ElevenLabs resource
+        // until the legacy users.id required by kira_agents.user_id is
+        // confirmed for the authenticated session.
+        //
+        // Canonical identity remains:
+        //   orgContext.personId     → canonical Person
+        //   orgContext.organisationId → canonical Organisation
+        //
+        // kira_agents.user_id is currently a NOT NULL compatibility/provenance
+        // column, so we must resolve it BEFORE creating the external agent.
+        // -----------------------------------------------------------------
+        if (!legacyUserId) {
+          await log(
+            supabase,
+            requestId,
+            'identity_validation',
+            'error',
+            'Authenticated user has no legacy users row required by kira_agents.user_id',
+            {
+              authUserId: authSession?.id ?? null,
+              personId: orgContext.personId,
+              organisationId: orgContext.organisationId,
+            },
+          );
+
+          return NextResponse.json(
+            {
+              error: 'Account identity is incomplete. Kira cannot be provisioned yet.',
+              requestId,
+            },
+            { status: 409 },
+          );
+        }
+
 
     // -----------------------------------------------------------------
     // Mint the ElevenLabs agent.
