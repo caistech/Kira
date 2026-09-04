@@ -9,6 +9,7 @@ import { getAuthUser, getCurrentOrganisationContext } from '@/lib/auth';
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import ChatPage from '@/app/chat/[agentId]/page';
 import { isAreaKey } from '@/lib/kira/area-focus';
+import KiraBootstrap from './kira-bootstrap';
 
 export const dynamic = 'force-dynamic';
 
@@ -90,7 +91,23 @@ export default async function TalkPage({
       />
     );
   }
-  // NO KIRA YET — send him to the flow that MAKES her, which is what he asked for.
+
+  // ORG CONTEXT EXISTS but no Kira yet → on-demand provisioning (the "normal user" path).
+  // The server showed it was a member; now we mint the agent lazily so the user does not
+  // get bounced through the draft-approval flow (which most owners never see).
+  //
+  // If orgContext is null (mid-setup, no membership yet), fall through to the honest static
+  // card: provisioning cannot work without an org to scope the agent to.
+  if (orgContext) {
+    return (
+      <KiraBootstrap
+        firstName={(person?.first_name as string) ?? null}
+        focusArea={focusArea}
+      />
+    );
+  }
+
+  // NO KIRA YET + no org context → mid-setup state.
   //
   // HISTORY, because this line has now been wrong in both directions. It once jumped straight to
   // `/start`, which put a brand-new owner's first ever screen on a bare "choose a journey" page with

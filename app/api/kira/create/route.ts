@@ -20,7 +20,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { createServiceClientV2 } from '@/lib/supabase/server';
-import { getCurrentOrganisationContext, getCurrentAppUser, resolveOrganisationForPerson } from '@/lib/auth';
+import { getCurrentOrganisationContext, getCurrentAppUser, getAuthUser, resolveOrganisationForPerson } from '@/lib/auth';
 import { saveMemory } from '@/lib/kira/memory-contract';
 import {
   getKiraPrompt,
@@ -98,6 +98,23 @@ export async function POST(req: NextRequest) {
     const user = await getCurrentAppUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // The agent table still carries the LEGACY FK to users(id) (it was never dropped at
+    // canonicalisation) and it is NOT NULL. getCurrentAppUser now returns the canonical Person, so
+    // `user.person_id` is the right actor for the tools' ?uid= (resolveOrganisationForPerson reads a
+    // person id) but is NOT a valid users(id) value. Resolve the legacy row once so provenance is
+    // stored against the FK it actually references — a wrong id here turns the insert into a FK
+    // error and the live agent into an orphan.
+    let legacyUserId: string | null = null;
+    const authSession = await getAuthUser();
+    if (authSession) {
+      const { data: legacyRow } = await supabase
+        .from('users')
+        .select('id')
+        .eq('auth_user_id', authSession.id)
+        .maybeSingle();
+      legacyUserId = (legacyRow?.id as string) ?? null;
     }
 
     const body = await req.json();
@@ -495,7 +512,7 @@ export async function POST(req: NextRequest) {
       // Kept non-fatal deliberately — the owner should not lose his account because ElevenLabs
       // was slow — but non-fatal must not mean unnoticed. One retry, then an honest log naming
       // the observed count, so `tools_attach: success` means the tools are on the agent.
-      const desired = kiraAllTools(APP_URL, user.id);
+      const desired = kiraAllTools(APP_URL, user.person_id);
       const attachedCount = async (): Promise<number> => {
         const live: any = await getAgent(ELEVENLABS_API_KEY, agentId);
         return (live?.conversation_config?.agent?.prompt?.tool_ids ?? []).length;
@@ -547,8 +564,6 @@ export async function POST(req: NextRequest) {
           .from('kira_agents')
           .update({
             agent_name: agentName,
-            framework,
-            draft_id: draftId,
             voice_id: ELEVENLABS_CONFIG.voice_id,
             updated_at: new Date().toISOString(),
           })
@@ -559,12 +574,14 @@ export async function POST(req: NextRequest) {
           .from('kira_agents')
           .insert({
             organisation_id: organisationContext.organisationId,
-            person_id: user.id, // provenance
+            // user_id is provenance, stored against the legacy FK users(id) it still references
+            // (NOT NULL, never dropped at canonicalisation). The live table has no
+            // `person_id`/`framework`/`draft_id` columns — those were dropped — so the insert
+            // targets exactly the schema.
+            user_id: legacyUserId,
             agent_name: agentName,
             journey_type: draft.journey_type,
             elevenlabs_agent_id: agentId,
-            framework,
-            draft_id: draftId,
             status: 'active',
             voice_id: ELEVENLABS_CONFIG.voice_id,
           })
@@ -595,12 +612,12 @@ export async function POST(req: NextRequest) {
     // first conversation. Non-fatal.
     if (savedAgent?.id) {
       try {
-        const orgContext = await resolveOrganisationForPerson(user.id);
+        const orgContext = await resolveOrganisationForPerson(user.person_id);
         if (orgContext) {
           const { data: cp } = await supabase
             .from('client_profiles')
             .select('profile')
-            .eq('user_id', user.id)
+            .eq('user_id', user.person_id)
             .maybeSingle();
           if (cp?.profile) {
             await saveMemory(orgContext, {
@@ -674,7 +691,7 @@ export async function POST(req: NextRequest) {
       // ⚠️ ORG-SCOPED SINCE P2.4-B. The valuation belongs to the Organisation, not the person —
       // the business's baseline seed must follow the business, whoever currently holds the seat.
       try {
-        const orgContext = await resolveOrganisationForPerson(user.id);
+        const orgContext = await resolveOrganisationForPerson(user.person_id);
         const { data: val } = orgContext
           ? await supabase
               .from('business_valuations')
@@ -722,7 +739,7 @@ export async function POST(req: NextRequest) {
 
       if (seeds.length) {
         try {
-          const orgContext = await resolveOrganisationForPerson(user.id);
+          const orgContext = await resolveOrganisationForPerson(user.person_id);
           if (orgContext) {
             for (const s of seeds) {
               await saveMemory(orgContext, {
@@ -760,7 +777,7 @@ export async function POST(req: NextRequest) {
           await supabase
             .from('email_logs')
             .insert({
-              user_id: user.id,
+user_id: user.person_id, // canonical actor id (FK dropped at canonicalisation)
               email_type: 'kira_ready',
               recipient: user.email,
               status: 'sent',
