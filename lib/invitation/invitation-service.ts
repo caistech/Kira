@@ -101,44 +101,74 @@ export async function sendInvitationEmail(invitation: MintParams & { code: strin
   const codeUrl = `${APP_URL}/?code=${normalise(invitation.code)}`;
   const firstName = invitation.firstName || invitation.email.split('@')[0];
   const sender = senderIdentityOrNull();
-  const role =
-    invitation.betaType === 'superadmin' ? 'owner (CEO)' : 'member';
 
-  const subject = 'Invitation: Kira Beta Access';
+  const subject = 'Invitation: Kira Beta';
 
   const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:40px 20px;">
 <tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,.1);">
+<table width="640" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,.1);">
   <tr><td style="background:linear-gradient(135deg,#E8998D 0%,#D4847C 100%);padding:40px;text-align:center;">
-    <img src="${APP_URL}/female_avatar.jpeg" alt="Kira" style="width:80px;height:80px;border-radius:50%;border:4px solid #fff;margin-bottom:16px;">
-    <h1 style="color:#fff;margin:0;font-size:28px;">You're Invited to Kira Beta</h1>
+    <h1 style="color:#fff;margin:0;font-size:24px;">Kira Beta</h1>
   </td></tr>
   <tr><td style="padding:40px;">
-    <p style="font-size:18px;color:#333;margin:0 0 24px;">Hey ${firstName},</p>
-    <p style="font-size:16px;color:#555;line-height:1.6;margin:0 0 24px;">
-      You've been invited to join <strong>Kira</strong> as a ${role}.
-      Your Kira Voice Agent is already set up and waiting for you inside.
+    <p style="font-size:16px;color:#333;line-height:1.7;margin:0 0 20px;">Dear ${firstName},</p>
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 20px;">
+      Thanks for agreeing to be a Beta Tester for the Kira Platform.
+      I have set up a <strong>sandbox Kira portal</strong> for beta testers, so there's nothing you can
+      break as you test it out&nbsp;:)
     </p>
-    <p style="font-size:16px;color:#555;line-height:1.6;margin:0 0 32px;">
-      As part of the beta process, we also ask that you complete the
-      <a href="${APP_URL}/business-valuation" style="color:#D4847C;">13-question valuation exercise</a>
-      when you log in. This establishes your baseline and lets you experience
-      how Kira builds the original valuation and guides transferability.
+
+    <h2 style="font-size:17px;color:#333;margin:28px 0 12px;">What Kira is</h2>
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 16px;">
+      Kira is a business support platform I built to help Baby Boomer Business Owners (BBBO's)
+      who are running successful businesses but the "Owner Dependence" levels are high (ie the
+      business just can't run without them).
     </p>
-    <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
-      <a href="${codeUrl}" style="display:inline-block;background:linear-gradient(135deg,#E8998D 0%,#D4847C 100%);color:#fff;text-decoration:none;padding:16px 48px;border-radius:8px;font-size:18px;font-weight:600;box-shadow:0 4px 12px rgba(232,153,141,.4);">
-        Join Kira &rarr;
-      </a>
-    </td></tr></table>
-    <p style="font-size:14px;color:#888;text-align:center;margin:24px 0 0;">
-      Or go to <a href="${codeUrl}" style="color:#D4847C;">${codeUrl}</a>
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 16px;">
+      Kira can help them create more value in their businesses by using AI (and specifically
+      Kira — an AI Voice Agent) by systemising their business over time as well as helping them
+      in the day to day running of their business.
     </p>
-    <p style="font-size:14px;color:#888;margin:24px 0 0;">
-      This invitation is tied to your email address. Let me know once you've
-      logged in so I can hear how it's going for you.
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 16px;">
+      As an example, Kira will build out their business systems and Standard Operating
+      Procedures (SOPs) just by observing and recording and systemising what she notices as she
+      works with the owner (and others — every employee can have their own Kira and the
+      collective intelligence will be collated and used to build the overall Business genome —
+      it's DNA).
+    </p>
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 20px;">
+      And that's where the true value is for the BBBO's — they are coming up to retirement and
+      we want them to maximise the value of their businesses — because, in many cases, that's
+      their true retirement fund.
+    </p>
+
+    <h2 style="font-size:17px;color:#333;margin:28px 0 12px;">What We Are Asking of You</h2>
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 16px;">
+      You are invited to join the Kira Beta. Your invitation grants you CEO access to the
+      sandbox CAIS Beta org I have set up within Kira.
+    </p>
+
+    <p style="font-size:16px;color:#333;line-height:1.7;margin:0 0 10px;"><strong>How it works — read this so it's not surprising:</strong></p>
+    <ol style="font-size:16px;color:#555;line-height:1.8;margin:0 0 20px;padding-left:22px;">
+      <li>Go to <strong style="color:#D4847C;">${codeUrl}</strong> and confirm your name — you'll land on the Kira home page first.</li>
+      <li>While you're there, take the <strong>13-question business valuation exercise</strong> so you experience the flow a Kira owner walks.</li>
+      <li>You'll then be taken to the <strong>beta code insertion form</strong> — enter your code
+          <strong style="color:#D4847C;">${normalise(invitation.code)}</strong>.</li>
+      <li>That takes you into the <strong>CAIS Beta org portal as its CEO</strong> — your Kira Voice
+          Agent is already set up and waiting for you inside.</li>
+    </ol>
+
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 24px;">
+      One honest note: the CAIS Beta org's Genome, valuation and report are <strong>not built from your
+      13 answers</strong> — the org is pre-seeded with a business scenario so you can see a fully populated
+      portal on day one. Your 13 answers give you the experience of the flow itself.
+    </p>
+
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0;">
+      Let me know once you have logged in so I can hear how it's going for you.
     </p>
   </td></tr>
   <tr><td style="background:#f9f9f9;padding:24px 40px;text-align:center;border-top:1px solid #eee;">
