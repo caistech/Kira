@@ -50,6 +50,7 @@ import {
 } from '@/lib/auth';
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import { getBetaGate } from '@/lib/billing';
+import { resolveBoundOrganisation } from '@/lib/billing/beta-codes';
 
 export const dynamic = 'force-dynamic';
 
@@ -684,6 +685,98 @@ async function getLegacyUserIdForBetaProvenance(
 }
 
 /**
+ * Resolve the server-minted organisation carried by a beta code, if the code
+ * is entitled to the authenticated user.
+ *
+ * THIS IS THE ONE AUTHORISED EXCEPTION TO "beta never selects an
+ * organisation". It is safe for four reasons, all of which must hold:
+ *
+ *   1. The organisation comes from the `beta_codes` row, written by the
+ *      OPERATOR at mint time — it is never client-supplied, so this is
+ *      authority from the server, not from the form.
+ *   2. The code must be entitled to THIS authenticated user (redeemed_user_id
+ *      or the legacy users bridge), so a stranger cannot steer someone else's
+ *      invitation into their own org.
+ *   3. The code row must actually carry an organisation_id — a normal code
+ *      (null org) falls through to the standard new-organisation path.
+ *   4. Membership role is derived ONLY from beta_type (superadmin → owner,
+ *      user → member). An already-existing membership is never modified:
+ *      no promotion, no demotion, no ownership claim on an existing org.
+ *
+ * Returns null when any of these conditions fail, so the caller falls through
+ * to the existing organisation / new organisation paths unchanged.
+ */
+async function resolveBoundOrganisationForCode(
+  betaCode: string,
+  user: { id: string; email?: string | null },
+  supabase: ReturnType<typeof createServiceClientV2>,
+): Promise<{
+  organisationId: string;
+  betaType: string;
+  email: string;
+} | null> {
+  const normalisedCode = normaliseBetaCode(betaCode);
+
+  if (!normalisedCode) {
+    return null;
+  }
+
+  const { organisationId, betaType, email } =
+    await resolveBoundOrganisation(normalisedCode);
+
+  if (!organisationId) {
+    return null;
+  }
+
+  const { data: entitlement, error } = await supabase
+    .from('beta_codes')
+    .select('redeemed_user_id, redeemed_at, revoked_at')
+    .eq('code', normalisedCode)
+    .maybeSingle();
+
+  if (error) {
+    console.error(
+      '[identity/plan] bound-code entitlement lookup failed (non-fatal):',
+      error,
+    );
+    return null;
+  }
+
+  if (!entitlement?.redeemed_at) {
+    return null;
+  }
+
+  if (entitlement.revoked_at) {
+    return null;
+  }
+
+  let entitledToThisUser =
+    Boolean(entitlement.redeemed_user_id) &&
+    entitlement.redeemed_user_id === user.id;
+
+  if (!entitledToThisUser && entitlement.redeemed_user_id) {
+    const legacyUserId = await getLegacyUserIdForBetaProvenance(
+      supabase,
+      user.id,
+      user.email ?? null,
+    );
+
+    entitledToThisUser =
+      legacyUserId === entitlement.redeemed_user_id;
+  }
+
+  if (!entitledToThisUser) {
+    return null;
+  }
+
+  return {
+    organisationId,
+    betaType,
+    email,
+  };
+}
+
+/**
  * Apply beta entitlement AFTER canonical organisation resolution.
  *
  * Beta data cannot select the organisation, establish membership, establish
@@ -818,10 +911,56 @@ function identityErrorResponse(
  * GET /api/identity/plan
  *
  * Read-only canonical identity projection.
+ *
+ * Accepts an optional `?code=<betaCode>` so the identity surface can resolve
+ * an operator-minted, org-bound invitation before the user submits anything —
+ * letting /plan render "You're joining CAIS Beta" as a read-only notice and
+ * skip the business-name step. Read-only: nothing here is minted or claimed.
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const user = await getAuthUser();
+
+    const url = new URL(request.url);
+    const requestCode = normaliseString(url.searchParams.get('code'));
+
+    const boundOrganisation = requestCode
+      ? await resolveBoundOrganisationForCode(
+          requestCode,
+          {
+            id: user?.id ?? '',
+            email: user?.email ?? null,
+          },
+          createServiceClientV2(),
+        )
+      : null;
+
+    let boundOrganisationInfo: {
+      organisationId: string | null;
+      organisationName: string | null;
+      boundRole: 'owner' | 'member' | null;
+      boundBetaType: string | null;
+    } = {
+      organisationId: null,
+      organisationName: null,
+      boundRole: null,
+      boundBetaType: null,
+    };
+
+    if (boundOrganisation) {
+      const org = await resolveOrganisation(
+        boundOrganisation.organisationId,
+        createServiceClientV2(),
+      ).catch(() => null);
+
+      boundOrganisationInfo = {
+        organisationId: org?.organisation_id ?? null,
+        organisationName: org?.legal_name ?? null,
+        boundRole:
+          boundOrganisation.betaType === 'superadmin' ? 'owner' : 'member',
+        boundBetaType: boundOrganisation.betaType,
+      };
+    }
 
     if (!user) {
       return NextResponse.json({
@@ -833,6 +972,7 @@ export async function GET() {
         organisationName: null,
         isOwner: false,
         personId: null,
+        boundOrganisation: boundOrganisationInfo,
       });
     }
 
@@ -851,6 +991,7 @@ export async function GET() {
         organisationName: null,
         isOwner: false,
         personId: null,
+        boundOrganisation: boundOrganisationInfo,
       });
     }
 
@@ -868,6 +1009,7 @@ export async function GET() {
         organisationName: null,
         isOwner: false,
         personId: person.person_id,
+        boundOrganisation: boundOrganisationInfo,
       });
     }
 
@@ -1057,7 +1199,96 @@ export async function POST(request: Request) {
     );
 
     // -----------------------------------------------------------------------
-    // 2. EXISTING ORGANISATION PATH
+    // 2. BOUND-ORGANISATION BETA PATH
+    // -----------------------------------------------------------------------
+    // An operator-minted code names an organisation on the server. When it does,
+    // onboarding skips the "enter your business name" step entirely: the tester
+    // joins the bound org, with their persona role derived from beta_type.
+    //
+    // RULES (see resolveBoundOrganisationForCode):
+    // - The org comes from the beta_codes row (server-minted), never the client.
+    // - The code must be entitled to this authenticated user.
+    // - Role: superadmin → owner, user → member. No promotion/demotion of an
+    //   existing membership. No ownership claim on an existing organisation.
+    // - A code without a bound org falls through to the paths below unchanged.
+    const boundOrganisation = betaCode
+      ? await resolveBoundOrganisationForCode(
+          betaCode,
+          {
+            id: user.id,
+            email: user.email ?? null,
+          },
+          supabase,
+        )
+      : null;
+
+    if (boundOrganisation) {
+      const organisation = await resolveOrganisation(
+        boundOrganisation.organisationId,
+        supabase,
+      );
+
+      const existingMembership = await resolveActiveMembership(
+        organisation.organisation_id,
+        personId,
+        supabase,
+      );
+
+      const membership =
+        existingMembership ??
+        (await createOrganisationMembership(
+          organisation.organisation_id,
+          personId,
+          boundOrganisation.betaType === 'superadmin' ? 'owner' : 'member',
+          new Date().toISOString(),
+          supabase,
+        ));
+
+      const { data: ownership, error: ownershipError } = await supabase
+        .from('ownership_periods')
+        .select('ownership_period_id')
+        .eq('organisation_id', organisation.organisation_id)
+        .eq('person_id', personId)
+        .eq('status', 'current')
+        .limit(1)
+        .maybeSingle();
+
+      if (ownershipError) {
+        console.error(
+          '[identity/plan][POST:bound] ownership lookup failed:',
+          ownershipError,
+        );
+        throw new Error('OWNERSHIP_LOOKUP_FAILED');
+      }
+
+      const betaEntitled = await applyBetaEntitlement(
+        betaCode,
+        {
+          id: user.id,
+          email: user.email ?? null,
+        },
+        organisation.organisation_id,
+        supabase,
+      );
+
+      return NextResponse.json({
+        ok: true,
+        identity: {
+          organisationId: organisation.organisation_id,
+          organisationName: organisation.legal_name,
+          personId,
+          membershipId: membership.membership_id,
+          role: membership.role,
+          isOwner: Boolean(ownership),
+        },
+        betaCode: betaCode || undefined,
+        betaEntitled,
+        boundOrganisation: true,
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // 3. EXISTING ORGANISATION PATH
     // -----------------------------------------------------------------------
     if (submittedOrganisationId) {
       const organisation = await resolveOrganisation(
@@ -1130,7 +1361,7 @@ export async function POST(request: Request) {
     }
 
     // -----------------------------------------------------------------------
-    // 3. NEW ORGANISATION PATH
+    // 4. NEW ORGANISATION PATH
     // -----------------------------------------------------------------------
     if (!organisationName) {
       return NextResponse.json(

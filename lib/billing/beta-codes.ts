@@ -208,6 +208,43 @@ export async function peekBetaCode(
 }
 
 /**
+ * Resolve the server-minted organisation bound to a code, if any.
+ *
+ * Unlike `peekBetaCode`, this deliberately works for REDEEMED codes too (the
+ * state a code is in when its owner is already signed in). It is used by the
+ * identity boundary to answer one question: "does this invitation name an
+ * organisation, and if so which one?" — so `/plan` can present that org as a
+ * read-only joining notice instead of asking for a business name.
+ *
+ * The organisation was set BY THE OPERATOR at mint, never by the client, so
+ * there are no ab tests to reject here. A `null` organisation_id simply means
+ * this is a free-form code and the normal new-organisation path applies.
+ */
+export async function resolveBoundOrganisation(raw: string): Promise<{
+  organisationId: string | null;
+  betaType: string;
+  email: string;
+}> {
+  const svc = createServiceClientV2();
+
+  const { data, error } = await svc
+    .from('beta_codes')
+    .select('code, email, organisation_id, beta_type')
+    .eq('code', normaliseBetaCode(raw))
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`beta_codes bound-organisation lookup failed: ${error.message}`);
+  }
+
+  return {
+    organisationId: data?.organisation_id ? String(data.organisation_id) : null,
+    betaType: data?.beta_type ?? 'user',
+    email: String(data?.email ?? '').toLowerCase(),
+  };
+}
+
+/**
  * Consume a code, atomically.
  *
  * ⚠️ THE UPDATE IS THE LOCK. `WHERE code = ? AND redeemed_at IS NULL` and then checking whether a

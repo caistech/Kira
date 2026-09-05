@@ -75,6 +75,13 @@ type IdentityResponse = {
     isSuperadmin?: boolean;
   };
 
+  boundOrganisation?: {
+    organisationId?: string | null;
+    organisationName?: string | null;
+    boundRole?: 'owner' | 'member' | null;
+    boundBetaType?: string | null;
+  } | null;
+
   error?: string;
   code?: string;
 };
@@ -104,6 +111,13 @@ export default function PlanPage() {
   const [isSuperadmin, setIsSuperadmin] = useState(false);
   const [ownershipAlreadyEstablished, setOwnershipAlreadyEstablished] =
     useState(false);
+
+  const [boundOrganisation, setBoundOrganisation] = useState<{
+    organisationId: string | null;
+    organisationName: string | null;
+    boundRole: 'owner' | 'member' | null;
+    boundBetaType: string | null;
+  } | null>(null);
 
   // ---------------------------------------------------------------------------
   // BETA CODE (for passing to BetaRedeem as initialCode)
@@ -149,7 +163,24 @@ export default function PlanPage() {
 
     setIdentityLoading(true);
 
-    fetch('/api/identity/plan', {
+    let query = '';
+    let storageCode = '';
+
+    try {
+      storageCode = normaliseString(
+        window.sessionStorage.getItem(BETA_CODE_STORAGE_KEY),
+      );
+    } catch {
+      // Browser storage is best-effort only.
+    }
+
+    const codeToUse = normaliseString(initialBetaCode) || storageCode;
+
+    if (codeToUse) {
+      query = `?code=${encodeURIComponent(codeToUse)}`;
+    }
+
+    fetch(`/api/identity/plan${query}`, {
       method: 'GET',
       cache: 'no-store',
     })
@@ -192,6 +223,19 @@ export default function PlanPage() {
         setOwnershipAlreadyEstablished(existingOwner);
         setIsSuperadmin(existingSuperadmin);
 
+        const bound = body.boundOrganisation;
+
+        if (bound && normaliseString(bound.organisationId)) {
+          setBoundOrganisation({
+            organisationId: normaliseString(bound.organisationId),
+            organisationName: normaliseString(bound.organisationName),
+            boundRole: bound.boundRole === 'owner' ? 'owner' : 'member',
+            boundBetaType: normaliseString(bound.boundBetaType),
+          });
+        } else {
+          setBoundOrganisation(null);
+        }
+
         setIdentityLoading(false);
       })
       .catch((error: unknown) => {
@@ -208,7 +252,7 @@ export default function PlanPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialBetaCode]);
 
   // ---------------------------------------------------------------------------
   // IDENTITY BOUNDARY
@@ -224,6 +268,9 @@ export default function PlanPage() {
     const cleanOrganisationName = normaliseString(organisationName);
     const cleanOrganisationId = normaliseString(organisationId);
     const cleanBetaCode = normaliseString(initialBetaCode);
+    const isBoundOrganisation = Boolean(
+      boundOrganisation && normaliseString(boundOrganisation.organisationId),
+    );
 
     if (!cleanFirstName) {
       setIdentityError('Please enter your first name.');
@@ -235,16 +282,21 @@ export default function PlanPage() {
       return;
     }
 
-    if (!cleanOrganisationId && !cleanOrganisationName) {
-      setIdentityError('Please enter your business name.');
-      return;
-    }
+    // An operator-minted, org-bound code replaces the business-name step: the
+    // organisation is already named by the invitation, so neither a name nor an
+    // owner declaration is required from the tester.
+    if (!isBoundOrganisation) {
+      if (!cleanOrganisationId && !cleanOrganisationName) {
+        setIdentityError('Please enter your business name.');
+        return;
+      }
 
-    if (!cleanOrganisationId && !isOwner) {
-      setIdentityError(
-        'For beta onboarding, please confirm that you are the owner of this business.',
-      );
-      return;
+      if (!cleanOrganisationId && !isOwner) {
+        setIdentityError(
+          'For beta onboarding, please confirm that you are the owner of this business.',
+        );
+        return;
+      }
     }
 
     setIdentitySaving(true);
@@ -259,9 +311,13 @@ export default function PlanPage() {
           firstName: cleanFirstName,
           lastName: cleanLastName,
 
-          organisationId: cleanOrganisationId || undefined,
-          organisationName: cleanOrganisationName || undefined,
-          isOwner: isOwner === true,
+          organisationId: isBoundOrganisation
+            ? undefined
+            : cleanOrganisationId || undefined,
+          organisationName: isBoundOrganisation
+            ? undefined
+            : cleanOrganisationName || undefined,
+          isOwner: isBoundOrganisation ? false : isOwner === true,
           betaCode: cleanBetaCode || undefined,
         }),
       });
@@ -420,12 +476,15 @@ export default function PlanPage() {
           </div>
 
           <h1 className="font-display text-3xl font-bold text-stone-900">
-            Set up your business
+            {boundOrganisation
+              ? 'You&apos;re joining the Kira beta'
+              : 'Set up your business'}
           </h1>
 
           <p className="mt-3 text-stone-600 leading-relaxed max-w-xl mx-auto">
-            Before you enter the portal, we need to establish who you are,
-            which business you are acting for, and your relationship with it.
+            {boundOrganisation
+              ? 'Your invitation has already named your organisation. Just confirm your details.'
+              : 'Before you enter the portal, we need to establish who you are, which business you are acting for, and your relationship with it.'}
           </p>
         </div>
 
@@ -504,7 +563,7 @@ export default function PlanPage() {
             </div>
           </section>
 
-          {/* ORGANISATION */}
+{/* ORGANISATION */}
 
           <section className="rounded-3xl border border-stone-200 bg-white p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-5">
@@ -514,75 +573,100 @@ export default function PlanPage() {
 
               <div>
                 <h2 className="font-display font-bold text-stone-900">
-                  Your business
+                  {boundOrganisation ? 'Your organisation' : 'Your business'}
                 </h2>
 
                 <p className="text-sm text-stone-500">
-                  The Organisation is the enduring business identity.
+                  {boundOrganisation
+                    ? 'Set by your invitation — nothing to enter.'
+                    : 'The Organisation is the enduring business identity.'}
                 </p>
               </div>
             </div>
 
-            <div>
-              <label
-                htmlFor="organisation-name"
-                className="block text-sm font-semibold text-stone-800"
-              >
-                Business name
-              </label>
+            {boundOrganisation ? (
+              <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4 flex items-start gap-3">
+                <Building2 className="h-5 w-5 mt-0.5 shrink-0 text-violet-600" />
 
-              <input
-                id="organisation-name"
-                name="organisationName"
-                value={organisationName}
-                onChange={(event) =>
-                  setOrganisationName(event.target.value)
-                }
-                autoComplete="organization"
-                placeholder="Your business name"
-                className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
-                required
-              />
+                <div>
+                  <p className="font-semibold text-stone-900">
+                    You're joining{' '}
+                    {boundOrganisation.organisationName || 'your organisation'}
+                  </p>
 
-              <p className="mt-2 text-xs text-stone-500 leading-relaxed">
-                This creates the canonical Organisation. The beta code
-                itself is never used as the organisation identity.
-              </p>
-            </div>
-          </section>
-
-          {/* OWNERSHIP */}
-
-          <section className="rounded-3xl border border-stone-200 bg-white p-6 shadow-sm">
-            <div className="flex items-start gap-4">
-              <input
-                id="owner"
-                name="owner"
-                type="checkbox"
-                checked={isOwner || ownershipAlreadyEstablished}
-                disabled={ownershipAlreadyEstablished}
-                onChange={(event) =>
-                  setIsOwner(event.target.checked)
-                }
-                className="mt-1 h-5 w-5 rounded border-stone-300"
-              />
-
+                  <p className="mt-1 text-sm text-stone-600 leading-relaxed">
+                    {boundOrganisation.boundRole === 'owner'
+                      ? 'Your invitation grants you owner access to this organisation.'
+                      : 'Your invitation grants you membership of this organisation.'}
+                  </p>
+                </div>
+              </div>
+            ) : (
               <div>
                 <label
-                  htmlFor="owner"
-                  className="font-semibold text-stone-900 cursor-pointer"
+                  htmlFor="organisation-name"
+                  className="block text-sm font-semibold text-stone-800"
                 >
-                  I am the Owner of this Business
+                  Business name
                 </label>
 
-                <p className="mt-1 text-sm text-stone-600 leading-relaxed">
-                  {ownershipAlreadyEstablished
-                    ? 'Your existing ownership relationship has already been established.'
-                    : 'This is an explicit ownership declaration. Beta access does not establish ownership.'}
+                <input
+                  id="organisation-name"
+                  name="organisationName"
+                  value={organisationName}
+                  onChange={(event) =>
+                    setOrganisationName(event.target.value)
+                  }
+                  autoComplete="organization"
+                  placeholder="Your business name"
+                  className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
+                  required
+                />
+
+                <p className="mt-2 text-xs text-stone-500 leading-relaxed">
+                  This creates the canonical Organisation. The beta code
+                  itself is never used as the organisation identity.
                 </p>
               </div>
-            </div>
+            )}
           </section>
+
+          {/* OWNERSHIP (not needed for an org-bound invitation) */}
+
+          {!boundOrganisation && (
+            <section
+              className="rounded-3xl border border-stone-200 bg-white p-6 shadow-sm"
+            >
+              <div className="flex items-start gap-4">
+                <input
+                  id="owner"
+                  name="owner"
+                  type="checkbox"
+                  checked={isOwner || ownershipAlreadyEstablished}
+                  disabled={ownershipAlreadyEstablished}
+                  onChange={(event) =>
+                    setIsOwner(event.target.checked)
+                  }
+                  className="mt-1 h-5 w-5 rounded border-stone-300"
+                />
+
+                <div>
+                  <label
+                    htmlFor="owner"
+                    className="font-semibold text-stone-900 cursor-pointer"
+                  >
+                    I am the Owner of this Business
+                  </label>
+
+                  <p className="mt-1 text-sm text-stone-600 leading-relaxed">
+                    {ownershipAlreadyEstablished
+                      ? 'Your existing ownership relationship has already been established.'
+                      : 'This is an explicit ownership declaration for the business you are entering.'}
+                  </p>
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* SUBMIT */}
 
@@ -592,15 +676,15 @@ export default function PlanPage() {
               identitySaving ||
               !firstName.trim() ||
               !lastName.trim() ||
-              !organisationName.trim() ||
-              !isOwner
+              (!boundOrganisation &&
+                (!organisationName.trim() || !isOwner))
             }
               className="w-full bg-stone-900 text-white font-display font-bold px-6 py-4 rounded-full inline-flex items-center justify-center gap-2 min-h-[54px] disabled:opacity-60"
           >
             {identitySaving ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" />
-                Setting up your business…
+                Setting up your account…
               </>
             ) : (
               <>
