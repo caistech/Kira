@@ -97,11 +97,13 @@ async function revoke(raw) {
 async function mint() {
   const email = String(arg('email') ?? '').trim().toLowerCase();
   if (!email || !email.includes('@')) {
-    console.error('Usage: --email someone@example.com [--label "who they are"] [--days 45] [--type superadmin|user] [--org <organisation_id>]');
+    console.error('Usage: --email someone@example.com [--first-name "Craig"] [--last-name "Roberts"] [--label "who they are"] [--days 45] [--type superadmin|user] [--org <organisation_id>]');
     process.exit(1);
   }
   const days = Number(arg('days') ?? DEFAULT_DAYS);
   const label = arg('label') ?? null;
+  const firstName = arg('first-name') ?? null;
+  const lastName = arg('last-name') ?? null;
   const type = arg('type') ?? (has('superadmin') ? 'superadmin' : 'user');
   if (!['superadmin', 'user'].includes(type)) {
     console.error(`--type must be 'superadmin' or 'user' (got '${type}').`);
@@ -130,6 +132,8 @@ async function mint() {
     code,
     email,
     label,
+    first_name: firstName,
+    last_name: lastName,
     beta_type: type,
     organisation_id: organisationId,
     expires_at: expires.toISOString(),
@@ -138,12 +142,13 @@ async function mint() {
   if (error) throw error;
 
   const pretty = group(code);
+  const prettyName = [firstName, lastName].filter(Boolean).join(' ') || null;
   const tier =
     type === 'superadmin'
       ? 'Superadmin tester — on redemption they join the org as an owner (CEO).'
       : 'User tester — on redemption they join the org as a member.';
   console.log(`\n  Code:    ${pretty}`);
-  console.log(`  For:     ${email}`);
+  console.log(`  For:     ${prettyName ? `${prettyName} <${email}>` : email}`);
   console.log(`  Type:    ${type}`);
   console.log(
     `  Org:     ${organisationId ? 'bound to organisation ' + organisationId : 'free-form (new organisation on redemption)'}`,

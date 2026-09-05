@@ -714,6 +714,8 @@ async function resolveBoundOrganisationForCode(
   organisationId: string;
   betaType: string;
   email: string;
+  firstName: string | null;
+  lastName: string | null;
 } | null> {
   const normalisedCode = normaliseBetaCode(betaCode);
 
@@ -721,7 +723,7 @@ async function resolveBoundOrganisationForCode(
     return null;
   }
 
-  const { organisationId, betaType, email } =
+  const { organisationId, betaType, email, firstName, lastName } =
     await resolveBoundOrganisation(normalisedCode);
 
   if (!organisationId) {
@@ -773,6 +775,8 @@ async function resolveBoundOrganisationForCode(
     organisationId,
     betaType,
     email,
+    firstName,
+    lastName,
   };
 }
 
@@ -940,11 +944,15 @@ export async function GET(request: Request) {
       organisationName: string | null;
       boundRole: 'owner' | 'member' | null;
       boundBetaType: string | null;
+      boundFirstName: string | null;
+      boundLastName: string | null;
     } = {
       organisationId: null,
       organisationName: null,
       boundRole: null,
       boundBetaType: null,
+      boundFirstName: null,
+      boundLastName: null,
     };
 
     if (boundOrganisation) {
@@ -959,6 +967,8 @@ export async function GET(request: Request) {
         boundRole:
           boundOrganisation.betaType === 'superadmin' ? 'owner' : 'member',
         boundBetaType: boundOrganisation.betaType,
+        boundFirstName: boundOrganisation.firstName ?? null,
+        boundLastName: boundOrganisation.lastName ?? null,
       };
     }
 

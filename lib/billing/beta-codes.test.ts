@@ -24,6 +24,7 @@ import {
 const row = (over: Partial<BetaCodeRow> = {}): BetaCodeRow => ({
   code: 'KIRA7H2K9QLM',
   email: 'someone@example.com',
+  organisation_id: '00000000-0000-0000-0000-000000000000',
   expires_at: '2026-12-31T00:00:00.000Z',
   redeemed_at: null,
   revoked_at: null,

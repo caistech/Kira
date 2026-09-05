@@ -224,12 +224,14 @@ export async function resolveBoundOrganisation(raw: string): Promise<{
   organisationId: string | null;
   betaType: string;
   email: string;
+  firstName: string | null;
+  lastName: string | null;
 }> {
   const svc = createServiceClientV2();
 
   const { data, error } = await svc
     .from('beta_codes')
-    .select('code, email, organisation_id, beta_type')
+    .select('code, email, organisation_id, beta_type, first_name, last_name')
     .eq('code', normaliseBetaCode(raw))
     .maybeSingle();
 
@@ -241,6 +243,8 @@ export async function resolveBoundOrganisation(raw: string): Promise<{
     organisationId: data?.organisation_id ? String(data.organisation_id) : null,
     betaType: data?.beta_type ?? 'user',
     email: String(data?.email ?? '').toLowerCase(),
+    firstName: data?.first_name ?? null,
+    lastName: data?.last_name ?? null,
   };
 }
 

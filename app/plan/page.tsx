@@ -80,6 +80,8 @@ type IdentityResponse = {
     organisationName?: string | null;
     boundRole?: 'owner' | 'member' | null;
     boundBetaType?: string | null;
+    boundFirstName?: string | null;
+    boundLastName?: string | null;
   } | null;
 
   error?: string;
@@ -117,6 +119,8 @@ export default function PlanPage() {
     organisationName: string | null;
     boundRole: 'owner' | 'member' | null;
     boundBetaType: string | null;
+    boundFirstName: string | null;
+    boundLastName: string | null;
   } | null>(null);
 
   // ---------------------------------------------------------------------------
@@ -231,7 +235,19 @@ export default function PlanPage() {
             organisationName: normaliseString(bound.organisationName),
             boundRole: bound.boundRole === 'owner' ? 'owner' : 'member',
             boundBetaType: normaliseString(bound.boundBetaType),
+            boundFirstName: normaliseString(bound.boundFirstName),
+            boundLastName: normaliseString(bound.boundLastName),
           });
+          // Pre-fill the invitee's name from the operator-minted invitation
+          // when the authenticated person has no name on record yet.
+          if (!normaliseString(body.firstName) && !normaliseString(body.lastName)) {
+            if (normaliseString(bound.boundFirstName)) {
+              setFirstName(normaliseString(bound.boundFirstName));
+            }
+            if (normaliseString(bound.boundLastName)) {
+              setLastName(normaliseString(bound.boundLastName));
+            }
+          }
         } else {
           setBoundOrganisation(null);
         }
