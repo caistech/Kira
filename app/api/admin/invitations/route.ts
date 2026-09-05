@@ -74,24 +74,31 @@ export async function POST(request: NextRequest) {
       createdBy: auth.user.id,
     });
 
-    // Send the invitation email (non-blocking: if it fails, the code still exists)
-    sendInvitationEmail({
-      organisationId: auth.org.organisationId,
-      email: body.email,
-      firstName: body.firstName ?? null,
-      lastName: body.lastName ?? null,
-      betaType: (body.betaType as 'superadmin' | 'user') ?? 'user',
-      label: minted.invitation.label,
-      code: minted.code,
-      prettyCode: minted.prettyCode,
-    }).catch((err) => {
-      console.error('[api/admin/invitations] email send failed (non-fatal):', err);
-    });
+    // The code is the deliverable — it exists regardless of email outcome. Send
+    // the email now and report its real result so the operator is never told
+    // "email sent" when the provider rejected it.
+    let emailStatus: 'sent' | 'failed' = 'sent';
+    try {
+      await sendInvitationEmail({
+        organisationId: auth.org.organisationId,
+        email: body.email,
+        firstName: body.firstName ?? null,
+        lastName: body.lastName ?? null,
+        betaType: (body.betaType as 'superadmin' | 'user') ?? 'user',
+        label: minted.invitation.label,
+        code: minted.code,
+        prettyCode: minted.prettyCode,
+      });
+    } catch (err) {
+      emailStatus = 'failed';
+      console.error('[api/admin/invitations] email send failed:', err);
+    }
 
     return NextResponse.json({
       ok: true,
       code: minted.prettyCode,
       invitation: minted.invitation,
+      email: { status: emailStatus },
     });
   } catch (error) {
     console.error('[api/admin/invitations] POST error:', error);

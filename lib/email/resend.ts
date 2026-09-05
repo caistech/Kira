@@ -23,7 +23,25 @@ function getResend(): Resend {
 // (the bare apex is NOT verified) — so it is the default, not a placeholder. The previous fallback
 // was a literal 'kira@yourdomain.com', and since EMAIL_FROM is set in no environment, every
 // transactional email Kira has ever sent was addressed from an unverified domain and rejected.
-const FROM_EMAIL = process.env.EMAIL_FROM || 'Kira <noreply@updates.corporateaisolutions.com>';
+//
+// ⚠️ EMAIL_FROM VALIDATION. Resend rejects any from address that isn't `email@example.com` or
+// `Name <email@example.com>` — a 422 that surfaces in NO log because callers that fire-and-forget
+// the send only see it in the rejected promise. If EMAIL_FROM is unset OR malformed, fall back to
+// the verified subdomain rather than letting a bad operator override every send.
+const VERIFIED_FROM = 'Kira <noreply@updates.corporateaisolutions.com>';
+const EMAIL_FROM = (() => {
+  const configured = process.env.EMAIL_FROM;
+  if (!configured?.trim()) return VERIFIED_FROM;
+  const bare = /^[^<>@\s]+@[^<>@\s]+\.[^<>@\s]+$/.test(configured);
+  const named = /^\S+\s*<[^>]+>?$/.test(configured) && configured.includes('@') && configured.includes('<');
+  if (!bare && !named) {
+    console.warn(
+      `[email] EMAIL_FROM is malformed ("${configured}") — using ${VERIFIED_FROM} instead.`,
+    );
+    return VERIFIED_FROM;
+  }
+  return configured;
+})();
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://kira.app';
 
 interface SendEmailParams {
@@ -37,7 +55,7 @@ export async function sendEmail({ to, subject, html, text }: SendEmailParams) {
   try {
     const { data, error } = await getResend().emails.send({
       replyTo: replyToAddress(),
-      from: FROM_EMAIL,
+      from: EMAIL_FROM,
       to,
       subject,
       html,

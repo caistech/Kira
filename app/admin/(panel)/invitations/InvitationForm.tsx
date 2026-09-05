@@ -31,7 +31,12 @@ export default function InvitationForm() {
         return;
       }
 
-      setResult(`Invitation created. Code: ${body.code}. Email sent to ${email}.`);
+      const emailLine =
+        body.email?.status === 'failed'
+          ? 'Email FAILED to send — send the code manually below.'
+          : `Invitation email sent to ${email}.`;
+
+      setResult(`Invitation created. Code: ${body.code}. ${emailLine}`);
       setFirstName('');
       setLastName('');
       setEmail('');
