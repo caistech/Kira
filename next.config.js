@@ -18,13 +18,3 @@ const nextConfig = {
 
 module.exports = nextConfig;
 
-// Redirect for admin/invitations
-module.exports.redirects = async () => {
-  return [
-    {
-      source: '/admin/invitations',
-      destination: '/admin/beta-testers',
-      permanent: true,
-    },
-  ];
-};
