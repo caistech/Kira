@@ -10,7 +10,7 @@ import { getCurrentOrganisationContext } from '@/lib/auth';
 import { formatCode } from '@/lib/invitation/invitation-service';
 import InvitationForm from './InvitationForm';
 
-export const metadata = { title: 'Invitations — Admin' };
+export const metadata = { title: 'Beta testers — Admin' };
 
 export default async function InvitationsPage() {
   const svc = createServiceClientV2();
@@ -49,9 +49,9 @@ export default async function InvitationsPage() {
   return (
     <div className="max-w-4xl mx-auto p-6">
       <header className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Invitations</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Beta testers</h1>
         <p className="mt-1 text-sm text-gray-600">
-          Mint and manage beta / team invitations for your organisation.
+          Mint and manage beta-tester invitations for your organisation.
         </p>
       </header>
 
