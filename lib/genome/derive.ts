@@ -709,7 +709,7 @@ export async function applyReviewedClassification(
  */
 export async function deriveOwnerGenome(organisationContext: { organisationId: string, personId: string }): Promise<OwnerGenome> {
   const supabase = createServiceClientV2();
-  const userId = organisationContext.personId;
+  const ownerPersonId = organisationContext.personId;
   const organisationId = organisationContext.organisationId;
 
   // ⚠️ HIS OWN NAME, SO IT CAN BE TAKEN BACK OUT OF EVERY LINE.
@@ -718,10 +718,13 @@ export async function deriveOwnerGenome(organisationContext: { organisationId: s
   // done verbally in Ray's head" into the copy meant for a buyer anyway. Applied at READ time rather
   // than at write time so it covers the rows already in the table, and in one place rather than in
   // each of the four surfaces that render an entry.
+  //
+  // P0.5 note: the canonical identity chain made `persons.person_id` the owner id, and the legacy
+  // `users.id` no longer equals it. Reading the name from `persons` is the only lookup that resolves.
   const { data: ownerRow } = await supabase
-    .from('users')
+    .from('persons')
     .select('first_name')
-    .eq('id', userId)
+    .eq('person_id', ownerPersonId)
     .maybeSingle();
   const ownerFirstName = (ownerRow?.first_name as string | null) ?? null;
   const clean = (text: string) => withoutOwnerName(text, ownerFirstName);
