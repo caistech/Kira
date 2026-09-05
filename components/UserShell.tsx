@@ -58,8 +58,8 @@ import {
   getAuthUser,
   getCurrentOrganisationContext,
   getUserOrganisations,
-  isCurrentUserAdmin,
 } from '@/lib/auth';
+import { getAuthorisedPortals } from '@/lib/portal';
 
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import { PortalShell, type NavItem } from '@/components/PortalShell';
@@ -331,23 +331,16 @@ export async function UserShell({
     : null;
 
   // ===========================================================================
-  // 5. ADMIN STATUS
+  // 5. PORTAL / PERSONA CONTEXTS
   // ===========================================================================
   //
-  // An operator may enter the user portal, but ordinary customers must never
-  // see a route into the Admin console.
+  // The operator console ("Organisation Admin") is now a separate PORTAL, not a
+  // nav item inside the user portal. A person who is authorised for several
+  // experiences switches between them via the PortalSelector; the user nav here
+  // stays purely the business-owner nav. Removing "Admin console" from this
+  // list is what stops the two experiences from being conflated.
 
-  const isOperator = await isCurrentUserAdmin();
-
-  const navigation: NavItem[] = isOperator
-    ? [
-        ...USER_NAV,
-        {
-          href: '/admin',
-          label: 'Admin console',
-        },
-      ]
-    : USER_NAV;
+  const portals = await getAuthorisedPortals();
 
   // ===========================================================================
   // 6. PORTAL CHROME
@@ -357,9 +350,11 @@ export async function UserShell({
     <PortalShell
       title={shellTitle(identity)}
       homeHref="/dashboard"
-      items={navigation}
+      items={USER_NAV}
       userEmail={authUser.email ?? ''}
       orgOptions={orgOptions}
+      portals={portals}
+      currentPortalId="user"
     >
       {claimValuation && (
         <ClaimStoredValuation

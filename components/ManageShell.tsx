@@ -23,6 +23,7 @@ import {
   getSuperadminContext,
   getUserOrganisations,
 } from '@/lib/auth';
+import { getAuthorisedPortals } from '@/lib/portal';
 
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import { PortalShell, type NavItem } from '@/components/PortalShell';
@@ -81,6 +82,8 @@ export async function ManageShell({ children }: { children: ReactNode }) {
     ctx.organisationId,
   );
 
+  const portals = await getAuthorisedPortals();
+
   return (
     <PortalShell
       title={`${orgName || 'Organisation'} · Manage`}
@@ -89,6 +92,8 @@ export async function ManageShell({ children }: { children: ReactNode }) {
       userEmail={authUser.email ?? ''}
       settingsHref="/manage/settings"
       orgOptions={orgOptions}
+      portals={portals}
+      currentPortalId="org-admin"
     >
       {children}
     </PortalShell>

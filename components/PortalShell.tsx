@@ -11,7 +11,9 @@ import { usePathname } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
 import { SignOutButton } from '@/components/SignOutButton';
 import { OrgSwitcher } from '@/components/OrgSwitcher';
+import { PortalSelector } from '@/components/PortalSelector';
 import type { UserOrganisationOption } from '@/lib/auth';
+import type { PortalId, PortalOption } from '@/lib/portal';
 
 export interface NavItem {
   href: string;
@@ -34,6 +36,18 @@ interface PortalShellProps {
    * place of the static brand title. When absent or length < 2, renders the plain title link.
    */
   orgOptions?: UserOrganisationOption[];
+  /**
+   * Portals the current person is authorised to use, resolved server-side.
+   *
+   * When supplied AND length >= 2, renders the PortalSelector above the brand/org chrome so the
+   * person can switch "hats" without leaving the authenticated shell. When absent or length < 2,
+   * no selector is rendered (they had no choice to make).
+   */
+  portals?: PortalOption[];
+  /**
+   * Which portal the current route belongs to, used to highlight the active option.
+   */
+  currentPortalId?: PortalId;
   children: React.ReactNode;
 }
 
@@ -44,6 +58,8 @@ export function PortalShell({
   userEmail,
   settingsHref = '/settings',
   orgOptions,
+  portals,
+  currentPortalId = 'user',
   children,
 }: PortalShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -62,6 +78,12 @@ export function PortalShell({
 
   const nav = (
     <nav className="flex h-full flex-col">
+      {/* PORTAL / PERSONA SELECTOR — only when this person has more than one hat.
+          Sits ABOVE the brand/org chrome: portal = which experience, org = which
+          organisation. They are separate controls on purpose. */}
+      {portals && portals.length > 1 && (
+        <PortalSelector portals={portals} currentId={currentPortalId} />
+      )}
       {/* ONE BRAND EITHER SIDE OF THE LOGIN. The marketing site sets "Kira" in the amber→pink→violet
           gradient; this shell used plain grey with teal accents, and a tester crossing from one to
           the other said: "the logo changes from the pink circle on the website to a green square in

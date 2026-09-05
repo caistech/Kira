@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getAuthUser, isCurrentUserAdmin } from '@/lib/auth';
+import { getAuthorisedPortals } from '@/lib/portal';
 import { PortalShell, type NavItem } from '@/components/PortalShell';
 
 // This layout wraps ONLY the admin dashboard (the (panel) route group), NOT /admin/login or the
@@ -21,8 +22,17 @@ export default async function AdminPanelLayout({ children }: { children: React.R
   if (!authUser) redirect('/admin/login');
   if (!(await isCurrentUserAdmin())) redirect('/admin/login?error=not_admin');
 
+  const portals = await getAuthorisedPortals();
+
   return (
-    <PortalShell title="Kira Admin" homeHref="/admin" items={ADMIN_NAV} userEmail={authUser.email ?? ''}>
+    <PortalShell
+      title="Kira Admin"
+      homeHref="/admin"
+      items={ADMIN_NAV}
+      userEmail={authUser.email ?? ''}
+      portals={portals}
+      currentPortalId="corporate-admin"
+    >
       {children}
     </PortalShell>
   );
