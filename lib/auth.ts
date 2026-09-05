@@ -578,7 +578,7 @@ async function resolveActiveMembership(
  * - the Person does not exist
  * - the Person has no active/time-valid membership
  */
-export async function getCurrentOrganisationContext(): Promise<OrganisationContext | null> {
+export async function getCurrentOrganisationContext(role?: string): Promise<OrganisationContext | null> {
   try {
     const authUser = await getAuthUser();
 
@@ -640,11 +640,12 @@ export async function getCurrentOrganisationContext(): Promise<OrganisationConte
     // PERSON → MEMBERSHIP
     // -----------------------------------------------------------------------
 
-    const membership = await resolveMembershipForPerson(
-      personId,
-      credential.selected_org_id ?? null,
-      supabase,
-    );
+    const memberships = await supabase
+      .from('organisation_memberships')
+      .select(MEMBERSHIP_SELECT)
+      .eq('person_id', personId)
+      .in('role', role ? [role, 'superadmin'] : ['superadmin', 'admin', 'member']);
+    const membership = memberships.data?.[0];
 
     if (!membership) {
       return null;
