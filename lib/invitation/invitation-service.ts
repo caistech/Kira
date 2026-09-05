@@ -153,12 +153,13 @@ export async function sendInvitationEmail(invitation: MintParams & { code: strin
 
     <p style="font-size:16px;color:#333;line-height:1.7;margin:0 0 10px;"><strong>How it works — read this so it's not surprising:</strong></p>
     <ol style="font-size:16px;color:#555;line-height:1.8;margin:0 0 20px;padding-left:22px;">
-      <li>Go to <strong style="color:#D4847C;">${codeUrl}</strong> and confirm your name — you'll land on the Kira home page first.</li>
-      <li>While you're there, take the <strong>13-question business valuation exercise</strong> so you experience the flow a Kira owner walks.</li>
-      <li>You'll then be taken to the <strong>beta code insertion form</strong> — enter your code
-          <strong style="color:#D4847C;">${normalise(invitation.code)}</strong>.</li>
-      <li>That takes you into the <strong>CAIS Beta org portal as its CEO</strong> — your Kira Voice
-          Agent is already set up and waiting for you inside.</li>
+      <li>Start at <strong style="color:#D4847C;">${codeUrl}</strong> — your invitation is carried with
+          you automatically, so there's no code to type in.</li>
+      <li>Take the <strong>13-question business valuation exercise</strong> so you experience the flow a
+          Kira owner walks.</li>
+      <li>At the end, <strong>confirm your name</strong>.</li>
+      <li>That takes you straight into the <strong>CAIS Beta org portal as its CEO</strong> — your Kira
+          Voice Agent is already set up and waiting for you inside.</li>
     </ol>
 
     <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 24px;">
