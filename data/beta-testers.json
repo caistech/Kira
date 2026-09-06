@@ -1,192 +1,461 @@
 [
   {
-    "email": "sukhdeep.mangat@linkbusiness.com.au",
-    "name": "Sukhdeep Mangat",
-    "code": "LINK-1234-5678",
-    "group": "B",
-    "country": "AU",
-    "consent": true,
-    "email_optout": false,
-    "physical_address": "Link Business, Australia",
-    "jurisdiction_config": {
-      "requires_consent": true,
-      "requires_physical_address": true,
-      "supported": true
-    },
-    "trial_started_at": null,
-    "usage_count": 0,
-    "last_email_sent": null,
-    "comment": "Needs nudge"
+    "email": "a.shojaei.k.k@gmail.com",
+    "firstName": "Ali Reza",
+    "lastName": null,
+    "group": "C",
+    "priority": 3,
+    "contactType": "Testing Partner"
   },
   {
-    "email": "gareth@plausible.gg",
-    "name": "Gareth Newman",
-    "code": "PLGB-2345-6789",
-    "group": "B",
-    "country": "AU",
-    "consent": true,
-    "email_optout": false,
-    "physical_address": "Plausible, Australia",
-    "jurisdiction_config": {
-      "requires_consent": true,
-      "requires_physical_address": true,
-      "supported": true
-    },
-    "trial_started_at": null,
-    "usage_count": 0,
-    "last_email_sent": null,
-    "comment": "Needs nudge"
+    "email": "aditya20041979@gmail.com",
+    "firstName": "Jai",
+    "lastName": "Aditya"
   },
   {
-    "email": "simon.crisp@finnbusinesssales.com.au",
-    "name": "Simon Crisp",
-    "code": "FINN-3456-7890",
+    "email": "alexphanvo@gmail.com",
+    "firstName": "Alex",
+    "lastName": "Vo",
     "group": "B",
+    "company": "Prelabz",
+    "priority": 2,
+    "contactType": "Testing Partner"
+  },
+  {
+    "email": "amederco1445@gmail.com",
+    "firstName": "Amadeo",
+    "lastName": "Mercole",
+    "group": "C",
+    "priority": 3,
+    "contactType": "Tech Partner"
+  },
+  {
+    "email": "ariy.laksmana@gmail.com",
+    "firstName": "Ari",
+    "lastName": "Yuda Laksmana",
+    "group": "C",
+    "priority": 3,
+    "contactType": "Testing Partner"
+  },
+  {
+    "email": "artem.gavrilov@dfuture.co",
+    "firstName": "Artem",
+    "lastName": "Gavril",
+    "group": "A",
+    "priority": 1,
+    "contactType": "Tech Partner"
+  },
+  {
+    "email": "ash@strategyandscale.com.au",
+    "firstName": "Ash",
+    "lastName": "Dawson",
+    "country": "AU"
+  },
+  {
+    "email": "ben@itsgroup.co.nz",
+    "firstName": "Ben",
+    "lastName": null,
+    "group": "B",
+    "country": "NZ",
+    "company": "PresenceGraph",
+    "priority": 2,
+    "contactType": "Testing Partner"
+  },
+  {
+    "email": "bilal.anwar@zencloudtechnologies.com",
+    "firstName": "Bilal",
+    "lastName": "Anwar",
+    "group": "C",
+    "priority": 3,
+    "contactType": "Tech Partner"
+  },
+  {
+    "email": "bkerrigan@excelerating.com",
+    "firstName": "Brian",
+    "lastName": "Kerrigan"
+  },
+  {
+    "email": "danjmaneveld@gmail.com",
+    "firstName": "Daniel",
+    "lastName": "Maneveld",
+    "group": "B",
+    "company": "LingoPure",
+    "priority": 2,
+    "contactType": "Testing Partner"
+  },
+  {
+    "email": "darren.cron@thealternativeboard.com.au",
+    "firstName": "Darren",
+    "lastName": "Cron",
+    "group": "A",
     "country": "AU",
-    "consent": true,
-    "email_optout": false,
-    "physical_address": "Finn Business Sales, Australia",
-    "jurisdiction_config": {
-      "requires_consent": true,
-      "requires_physical_address": true,
-      "supported": true
-    },
-    "trial_started_at": null,
-    "usage_count": 0,
-    "last_email_sent": null,
-    "comment": "Needs nudge"
+    "position": "Franchisee",
+    "company": "The Alternative Board",
+    "priority": 1,
+    "contactType": "Distribution Partner"
+  },
+  {
+    "email": "darren@platinumconsultants.com.au",
+    "firstName": "Darren",
+    "lastName": null,
+    "country": "AU"
   },
   {
     "email": "darshilp.softrefine@gmail.com",
-    "name": "Darshilp",
+    "firstName": "Darshilp",
+    "lastName": null,
     "code": "SOFT-4567-8901",
     "group": "B",
     "country": "AU",
+    "position": "Tech Founder",
+    "company": "SoftRefine",
+    "priority": 1,
+    "contactType": "Tech Partner",
     "consent": true,
-    "email_optout": false,
-    "physical_address": "SoftRefine, Australia",
-    "jurisdiction_config": {
-      "requires_consent": true,
-      "requires_physical_address": true,
-      "supported": true
-    },
-    "trial_started_at": null,
-    "usage_count": 0,
-    "last_email_sent": null,
     "comment": "Needs nudge"
   },
   {
     "email": "dennis@corporateaisolutions.com",
-    "name": "Dennis Corporate",
+    "firstName": "Dennis",
+    "lastName": "Corporate",
     "code": "CORP-5678-9012",
     "group": "A",
     "country": "AU",
+    "position": "Tech Founder",
+    "company": "CorporateAI Solutions",
+    "phone": "61402612471",
+    "priority": 1,
+    "contactType": "Tech Partner",
     "consent": true,
-    "email_optout": false,
-    "physical_address": "Corporate AI Solutions, 76-84 Brunswick Street, Fortitude Valley QLD 4006",
-    "jurisdiction_config": {
-      "requires_consent": true,
-      "requires_physical_address": true,
-      "supported": true
-    },
-    "trial_started_at": "2026-07-27T07:40:56.872Z",
-    "usage_count": 5,
-    "last_email_sent": "2026-08-15T00:00:00.000Z",
     "comment": "Needs nudge"
   },
   {
     "email": "dennis@factory2key.com.au",
-    "name": "Dennis F2K",
+    "firstName": "Dennis",
+    "lastName": "F2K",
     "code": "F2K-6789-0123",
     "group": "A",
     "country": "AU",
+    "position": "Tech Founder",
+    "company": "Factory2key",
+    "phone": "61402612471",
+    "priority": 1,
+    "contactType": "Tech Partner",
     "consent": true,
-    "email_optout": false,
-    "physical_address": "Factory2Key, Australia",
-    "jurisdiction_config": {
-      "requires_consent": true,
-      "requires_physical_address": true,
-      "supported": true
-    },
-    "trial_started_at": "2026-07-27T07:40:56.872Z",
-    "usage_count": 5,
-    "last_email_sent": "2026-08-15T00:00:00.000Z",
     "comment": "Needs nudge"
+  },
+  {
+    "email": "gareth@plausible.gg",
+    "firstName": "Gareth",
+    "lastName": "Newman",
+    "code": "PLGB-2345-6789",
+    "group": "B",
+    "country": "AU",
+    "position": "CEO",
+    "company": "Plausible Gaming",
+    "priority": 1,
+    "contactType": "Tech Partner",
+    "consent": true,
+    "comment": "Needs nudge"
+  },
+  {
+    "email": "haq@pdx.edu",
+    "firstName": "Arsh",
+    "lastName": "Haque",
+    "group": "C",
+    "country": "US",
+    "priority": 3,
+    "contactType": "Distribution Partner"
+  },
+  {
+    "email": "hardiktech66@gmail.com",
+    "firstName": "Hardik",
+    "lastName": "Patel",
+    "group": "C",
+    "priority": 3,
+    "contactType": "Tech Partner"
+  },
+  {
+    "email": "jason@buildgravity.ca",
+    "firstName": "Jason",
+    "lastName": "Deichewrt",
+    "group": "C",
+    "country": "CA",
+    "priority": 3,
+    "contactType": "Tech Partner"
+  },
+  {
+    "email": "jason@orbitcapital.net",
+    "firstName": "Jason",
+    "lastName": "Butcher",
+    "group": "C",
+    "priority": 3,
+    "contactType": "Funding Partner"
+  },
+  {
+    "email": "jcb@hyperhq.com",
+    "firstName": "James",
+    "lastName": "Casey-Browne"
   },
   {
     "email": "joseph@xcapitalgroup.com.au",
-    "name": "Joey Wehbe",
+    "firstName": "Joey",
+    "lastName": "Wehbe",
     "code": "XCAP-7890-1234",
     "group": "A",
     "country": "AU",
+    "position": "Finance Broker",
+    "company": "Xcapital Group",
+    "priority": 1,
+    "contactType": "Funding Partner",
     "consent": true,
-    "email_optout": false,
-    "physical_address": "X Capital Group, Australia",
-    "jurisdiction_config": {
-      "requires_consent": true,
-      "requires_physical_address": true,
-      "supported": true
-    },
-    "trial_started_at": null,
-    "usage_count": 0,
-    "last_email_sent": null,
     "comment": "Needs nudge"
   },
   {
-    "email": "mcmdennis+humanwalkthrough@gmail.com",
-    "name": "Dennis Walkthrough",
-    "code": "GUQ4-8DEW-TFQ3",
-    "group": "C",
-    "country": "AU",
-    "consent": true,
-    "email_optout": false,
-    "physical_address": "Corporate AI Solutions, 76-84 Brunswick Street, Fortitude Valley QLD 4006",
-    "jurisdiction_config": {
-      "requires_consent": true,
-      "requires_physical_address": true,
-      "supported": true
-    },
-    "trial_started_at": "2026-09-02T09:58:47.000Z",
-    "usage_count": 1,
-    "last_email_sent": null,
-    "comment": "Internal human walkthrough - created 2026-09-02, code minted"
+    "email": "josh@nsp.group",
+    "firstName": "Josh",
+    "lastName": "Hill"
   },
   {
-    "email": "mcmdennis+secondhumanwalkthrough@gmail.com",
-    "name": "Dennis Walkthrough2",
-    "code": "8F8M-ZGA6-V9UW",
-    "group": "C",
-    "country": "US",
-    "consent": true,
-    "email_optout": false,
-    "physical_address": "123 Main St, Anytown, US",
-    "jurisdiction_config": {
-      "requires_consent": true,
-      "requires_physical_address": true,
-      "supported": true
-    },
-    "trial_started_at": null,
-    "usage_count": 0,
-    "last_email_sent": null,
-    "comment": "Needs new email with code"
+    "email": "karen.engel@mmcbuild.com.au",
+    "firstName": "Karen",
+    "lastName": "van Den Engel",
+    "group": "B",
+    "country": "AU",
+    "position": "Founder",
+    "company": "MMC Build",
+    "priority": 2,
+    "contactType": "Testing Partner"
   },
   {
-    "email": "dennis+beta-test@corporateaisolutions.com",
-    "name": "Beta Tester",
-    "code": "LY6M-E4GU-7HFL",
+    "email": "kumarsaumy@gmail.com",
+    "firstName": "Kumar",
+    "lastName": "Saumy",
+    "group": "C",
+    "priority": 3,
+    "contactType": "Testing Partner"
+  },
+  {
+    "email": "lisahills@boomi.com",
+    "firstName": "Lisa",
+    "lastName": "Hill"
+  },
+  {
+    "email": "malvin@musanhi.com",
+    "firstName": "Malvin",
+    "lastName": "Muhasi",
+    "group": "C",
+    "priority": 3,
+    "contactType": "Testing Partner"
+  },
+  {
+    "email": "mcmdennis@gmail.com",
+    "firstName": "Dennis",
+    "lastName": "McMahon",
+    "group": "A",
+    "position": "Tech Founder",
+    "company": "Global Buildtech",
+    "phone": "61402612471",
+    "priority": 1,
+    "contactType": "Tech Partner"
+  },
+  {
+    "email": "mdashrraf@gmail.com",
+    "firstName": "Mohammad",
+    "lastName": "Ashraff"
+  },
+  {
+    "email": "moshanymo@gmail.com",
+    "firstName": "Shany",
+    "lastName": "Mo",
+    "group": "C",
+    "priority": 3,
+    "contactType": "Testing Partner"
+  },
+  {
+    "email": "munich.stephen@gmail.com",
+    "firstName": "Steve",
+    "lastName": "Munich",
+    "group": "B",
+    "priority": 2,
+    "contactType": "Funding Partner"
+  },
+  {
+    "email": "neil@2innovate.com.au",
+    "firstName": "Neil",
+    "lastName": "Mulchay",
+    "country": "AU"
+  },
+  {
+    "email": "paul@presencegraph.co.nz",
+    "firstName": "Paul",
+    "lastName": "Simpson",
+    "group": "B",
+    "country": "NZ",
+    "company": "PresenceGraph",
+    "priority": 2,
+    "contactType": "Testing Partner"
+  },
+  {
+    "email": "peter@clickwa.com.au",
+    "firstName": "Peter",
+    "lastName": "McDowell",
+    "country": "AU"
+  },
+  {
+    "email": "rao.kar@gmail.com",
+    "firstName": "Karthik",
+    "lastName": "Rao",
+    "group": "B",
+    "position": "Founder",
+    "company": "MMC Build",
+    "priority": 2,
+    "contactType": "Testing Partner"
+  },
+  {
+    "email": "richard.yang@boomi.com",
+    "firstName": "Richard",
+    "lastName": "Yang"
+  },
+  {
+    "email": "richardsilberbauer@gmail.com",
+    "firstName": "Richard",
+    "lastName": "Silberbauer"
+  },
+  {
+    "email": "ryan@b2bleads.com",
+    "firstName": "Ryan",
+    "lastName": "Caswell"
+  },
+  {
+    "email": "saadkhalid.uhy@gmail.com",
+    "firstName": "Saad",
+    "lastName": "Khalid",
+    "group": "C",
+    "priority": 3,
+    "contactType": "Testing Partner"
+  },
+  {
+    "email": "sam.forbes@dovetalesport.com",
+    "firstName": "Sam",
+    "lastName": "Forbes"
+  },
+  {
+    "email": "shamini.bhaskaran@gmail.com",
+    "firstName": "Shamini",
+    "lastName": "Bhaskaran",
+    "group": "A",
+    "position": "Advisor",
+    "company": "Global Buildtech",
+    "phone": "60163034307",
+    "priority": 1,
+    "contactType": "Feedback Partner"
+  },
+  {
+    "email": "shani.shah@softrefine.com",
+    "firstName": "Shani",
+    "lastName": "Shah",
+    "group": "A",
+    "position": "Tech Founder",
+    "company": "SoftRefine",
+    "priority": 1,
+    "contactType": "Tech Partner"
+  },
+  {
+    "email": "shhahhussain@gmail.com",
+    "firstName": "Shah",
+    "lastName": "Hussein",
+    "group": "A",
+    "position": "Tech Founder",
+    "company": "Mnemo",
+    "priority": 1,
+    "contactType": "Tech Partner"
+  },
+  {
+    "email": "simon.crisp@finnbusinesssales.com.au",
+    "firstName": "Simon",
+    "lastName": "Crisp",
+    "code": "FINN-3456-7890",
+    "group": "B",
+    "country": "AU",
+    "position": "Business Broker",
+    "company": "Finn Business Sales",
+    "priority": 1,
+    "contactType": "Tech Partner",
+    "consent": true,
+    "comment": "Needs nudge"
+  },
+  {
+    "email": "stephen.pelosi@thealternativeboard.com.au",
+    "firstName": "Stephen",
+    "lastName": "Pelosi",
+    "country": "AU"
+  },
+  {
+    "email": "sukhdeep.mangat@linkbusiness.com.au",
+    "firstName": "Sukhdeep",
+    "lastName": "Mangat",
+    "code": "LINK-1234-5678",
+    "group": "B",
+    "country": "AU",
+    "position": "Business Broker",
+    "company": "Link Business Brokers",
+    "phone": "+61476958358",
+    "priority": 1,
+    "contactType": "Distribution Partner",
+    "consent": true,
+    "comment": "Needs nudge"
+  },
+  {
+    "email": "thomas.avery@boomi.com",
+    "firstName": "Tom",
+    "lastName": "Avery"
+  },
+  {
+    "email": "tictocklean@gmail.com",
+    "firstName": "Will",
+    "lastName": "Brennan",
+    "comment": "Name supplied 2026-09-06 (Will Brennan)."
+  },
+  {
+    "email": "tim.eckenfels@thealternativeboard.com.au",
+    "firstName": "Tim",
+    "lastName": "Eckenfels",
+    "country": "AU"
+  },
+  {
+    "email": "uwe@propertyfriends.com.au",
+    "firstName": "Uwe",
+    "lastName": "Jacobs",
     "group": "C",
     "country": "AU",
-    "consent": true,
-    "email_optout": false,
-    "physical_address": "Corporate AI Solutions, 76-84 Brunswick Street, Fortitude Valley QLD 4006",
-    "jurisdiction_config": {
-      "requires_consent": true,
-      "requires_physical_address": true,
-      "supported": true
-    },
-    "trial_started_at": null,
-    "usage_count": 0,
-    "last_email_sent": null,
-    "comment": "New Australian beta tester - auth flow testing"
+    "position": "CEO",
+    "company": "Property Friends",
+    "priority": 3,
+    "contactType": "Testing Partner"
+  },
+  {
+    "email": "vishaladhlakha@gmail.com",
+    "firstName": "Vishal",
+    "lastName": "Adhlaka",
+    "group": "C",
+    "priority": 3,
+    "contactType": "Testing Partner"
+  },
+  {
+    "email": "yuvraj.softrefine@gmail.com",
+    "firstName": "Yuvraj",
+    "lastName": null,
+    "group": "A",
+    "position": "Tech Founder",
+    "company": "SoftRefine",
+    "priority": 1,
+    "contactType": "Tech Partner"
+  },
+  {
+    "email": "zhai.oneill@simpro.com.au",
+    "firstName": "Zhai",
+    "lastName": "O'Neill",
+    "country": "AU"
   }
 ]

@@ -132,15 +132,23 @@ async function getBetaTesters(): Promise<BetaTester[]> {
     const rawData = fs.readFileSync(filePath, 'utf-8');
     const testersData = JSON.parse(rawData);
 
-    return testersData.map((tester: any) => ({
-      email: tester.email,
-      name: tester.name || tester.email.split('@')[0],
-      code: tester.code,
-      group: tester.group || 'C', // Default to Group C if not specified
-      trial_started_at: tester.trial_started_at || null,
-      usage_count: tester.usage_count || 0,
-      last_email_sent: tester.last_email_sent || null
-    }));
+    return testersData.map((tester: any) => {
+      // The registry migrated from a single `name` to mandatory `firstName`/`lastName`.
+      // Compose the salutation from those, falling back to the email prefix only if both
+      // are absent — never a stale combined `name` field.
+      const first = tester.firstName?.trim() ?? '';
+      const last = tester.lastName?.trim() ?? '';
+      const name = [first, last].filter(Boolean).join(' ').trim() || (tester.name?.trim() ?? '') || tester.email.split('@')[0];
+      return {
+        email: tester.email,
+        name,
+        code: tester.code,
+        group: tester.group || 'C', // Default to Group C if not specified
+        trial_started_at: tester.trial_started_at || null,
+        usage_count: tester.usage_count || 0,
+        last_email_sent: tester.last_email_sent || null,
+      };
+    });
   } catch (error) {
     console.error('Error fetching beta testers:', error);
     throw error;

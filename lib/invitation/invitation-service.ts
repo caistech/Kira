@@ -102,7 +102,7 @@ export async function sendInvitationEmail(invitation: MintParams & { code: strin
   const firstName = invitation.firstName || invitation.email.split('@')[0];
   const sender = senderIdentityOrNull();
 
-  const subject = 'Invitation: Kira Beta';
+  const subject = `${firstName}, Your Invitation to the Kira Beta Testing Programme`;
 
   const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
@@ -116,16 +116,28 @@ export async function sendInvitationEmail(invitation: MintParams & { code: strin
   <tr><td style="padding:40px;">
     <p style="font-size:16px;color:#333;line-height:1.7;margin:0 0 20px;">Dear ${firstName},</p>
     <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 20px;">
-      Thanks for agreeing to be a Beta Tester for the Kira Platform.
+      Dennis McMahon here from Corporate AI Solutions.
+    </p>  
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 20px;">
+      You and I had discussed the Kira Platform for Baby Boomer Business Owners.
+    </p>  
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 20px;">
+      I had asked you (and I think you agreed :) to be a Beta Tester for the Kira Platform.
+    </p>    
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 20px;">
       I have set up a <strong>sandbox Kira portal</strong> for beta testers, so there's nothing you can
       break as you test it out&nbsp;:)
     </p>
 
     <h2 style="font-size:17px;color:#333;margin:28px 0 12px;">What Kira is</h2>
     <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 16px;">
-      Kira is a business support platform I built to help Baby Boomer Business Owners (BBBO's)
+      Kira is a business support platform I built to help Baby Boomer Business Owners (BBBOs)
       who are running successful businesses but the "Owner Dependence" levels are high (ie the
       business just can't run without them).
+      
+      I want them to get the maximum value from their businesses when they choose to exit and retire.
+       
+       And - at the same time - create a valuable business opportunity for ourselves and the consultants that will be needed to support the business owners:)
     </p>
     <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 16px;">
       Kira can help them create more value in their businesses by using AI (and specifically
@@ -140,7 +152,7 @@ export async function sendInvitationEmail(invitation: MintParams & { code: strin
       it's DNA).
     </p>
     <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 20px;">
-      And that's where the true value is for the BBBO's — they are coming up to retirement and
+      And that's where the true value is for the BBBOs — they are coming up to retirement and
       we want them to maximise the value of their businesses — because, in many cases, that's
       their true retirement fund.
     </p>

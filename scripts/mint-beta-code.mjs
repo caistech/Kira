@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 // scripts/mint-beta-code.mjs
 //
 // Mint a beta invitation code for one named person.
@@ -53,7 +53,7 @@ if (!url || !key) {
   process.exit(1);
 }
 const db = createClient(url, key, { auth: { persistSession: false } });
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app';
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kiraexec.com';
 
 async function list() {
   const { data, error } = await db
@@ -158,7 +158,7 @@ async function mint() {
   console.log('  ── Send them this ─────────────────────────────────────────────\n');
 
   if (organisationId) {
-    console.log(`  Go to ${appUrl}/?code=${code} — it lands on our main page with your`);
+    console.log(`  Go to ${appUrl}/plan?code=${encodeURIComponent(code)} — it lands on our main page with your`);
     console.log('  code in your pocket. From there it is quick: you confirm your');
     console.log('  name and you are in — your invite has already named your');
     console.log('  organisation, so there is no business setup to do.');
@@ -166,7 +166,7 @@ async function mint() {
     console.log('  The code works for the next few weeks, so there is no rush — and');
     console.log('  it only works for this email address.\n');
   } else {
-    console.log(`  Go to ${appUrl}/?code=${code} — it lands on our main page with your`);
+    console.log(`  Go to ${appUrl}/plan?code=${encodeURIComponent(code)} — it lands on our main page with your`);
     console.log('  code in your pocket. From there it is the same visit any owner makes:');
     console.log('  a look at what Kira does, then the questions about a business.');
     console.log('  Three honest numbers at the end.');
@@ -184,3 +184,5 @@ run.catch((error) => {
   console.error(error);
   process.exit(1);
 });
+
+

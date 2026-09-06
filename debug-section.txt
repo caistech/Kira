@@ -1,0 +1,38 @@
+﻿   */
+  const [returningToApp, setReturningToApp] = useState(false);
+  // ⚠️ SAME EFFECT-NOT-INITIALISER RULE as above — the URL is not settled until after commit.
+  // `?rerun=1` means he pressed "Run the numbers again" on a dashboard that already holds a frozen
+  // baseline, so the result must say what it does to that baseline WHERE the new figure appears.
+  const [isRerun, setIsRerun] = useState(false);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setReturningToApp(params.get('from') === 'app');
+    setIsRerun(params.get('rerun') === '1');
+  }, []);
+
+  useEffect(() => {
+    if (!isResult) return;
+    storeValuation({
+      // ⚠️ `forSharing`, NOT the raw answers. It strips the device-only answers — today that is the
+      // exit timeframe, which must never become a row on an account (H3; see share.ts). The page
+      // keeps rendering from the full set, because the advice below is built from what this removes.
+      inputs: forSharing(answers),
+      currency,
+      firstName: firstName.trim() || undefined,
+      // Carried so the app does not later ask him whether a valuation he ran from his own dashboard,
+      // signed in, is his — see ValuationPayload.fromApp.
+      fromApp: returningToApp,
+    });
+    // `returningToApp` is in the deps and DECLARED ABOVE, deliberately. It was below, so the
+    // effect closed over the initial false and only worked by accident of ordering — the
+    // result screen is eleven answers away, by which time the flag has settled.
+  }, [isResult, answers, currency, firstName, returningToApp]);
+
+  const planHref = returningToApp ? '/dashboard' : '/plan';
+
+  const progress = isResult ? 100 : Math.round(((stepIndex + 1) / (total + 1)) * 100);
+
+  return (
+    <div className="min-h-screen bg-amber-50 text-stone-800 font-body">
+      <style>{`
+        /* SELF-HOSTED FONTS, PAGE-SCOPED TYPOGRAPHY — K5/P3.

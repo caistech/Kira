@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 // @public-route
 
@@ -360,7 +360,12 @@ export default function PlanPage() {
         body.identity?.isSuperadmin === true ||
         body.isSuperadmin === true;
 
-      window.location.assign(becameSuperadmin ? '/manage' : '/dashboard');
+      if (boundOrganisation) {
+        window.location.assign('/dashboard');
+      } else {
+        window.location.assign(becameSuperadmin ? '/manage' : '/dashboard');
+      }
+
     } catch (error: unknown) {
       setIdentityError(
         error instanceof Error
@@ -720,3 +725,4 @@ export default function PlanPage() {
     </main>
   );
 }
+

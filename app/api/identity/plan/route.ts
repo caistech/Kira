@@ -1,4 +1,4 @@
-// app/api/identity/plan/route.ts
+﻿// app/api/identity/plan/route.ts
 //
 // CANONICAL IDENTITY BOUNDARY
 // ---------------------------
@@ -1244,12 +1244,17 @@ export async function POST(request: Request) {
         supabase,
       );
 
+      const invitedRole =
+        boundOrganisation.betaType === 'superadmin'
+            ? 'owner'
+            : 'member';
+
       const membership =
         existingMembership ??
         (await createOrganisationMembership(
           organisation.organisation_id,
           personId,
-          boundOrganisation.betaType === 'superadmin' ? 'owner' : 'member',
+          invitedRole,
           new Date().toISOString(),
           supabase,
         ));
@@ -1492,3 +1497,5 @@ export async function POST(request: Request) {
     return response;
   }
 }
+
+

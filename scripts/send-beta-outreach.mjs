@@ -11,25 +11,34 @@
 // the first of each draft can be checked before the batch runs. A bad batch cannot be recalled, and
 // these are real relationships.
 //
-// ⚠️ IT REFUSES TO SEND DRAFT A WITHOUT A CODE for that address. An outreach email whose whole point
-// is an access code, arriving with `{CODE}` in it, is worse than not sending — the recipient reads
-// it as carelessness about the thing being asked of them.
+// ⚠️ IT REFUSES TO SEND DRAFT A (OR THE INVITE) WITHOUT A CODE for that address. An outreach email
+// whose whole point is an access code, arriving with `{CODE}` in it, is worse than not sending — the
+// recipient reads it as carelessness about the thing being asked of them.
 //
-//   node scripts/send-beta-outreach.mjs --draft a --only shamini.bhaskaran@gmail.com --dry
-//   node scripts/send-beta-outreach.mjs --draft a --only shamini.bhaskaran@gmail.com --send
+// DRAFTS:
+//   a       — the re-engagement "what changed" ask for people already spoken to
+//   invite  — THE CANONICAL beta invite ("What Kira is / What we're asking") for the cohort
+//   d       — the cold-but-warm "would you take a look at what I have built?" ask
+//   reply   — a per-person reply (body from a file in docs/replies/)
+//
+//   node scripts/send-beta-outreach.mjs --draft invite --only gareth@plausible.gg --dry
+//   node scripts/send-beta-outreach.mjs --draft invite --only gareth@plausible.gg --send
 //
 // Dry run by default. Nothing leaves without --send.
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';
-import { assertJurisdictionAllowed } from '@caistech/email-compliance';
+import { assertJurisdictionAllowed, unsubscribeUrlFor } from '@caistech/email-compliance';
 
 const envPath = path.join(process.cwd(), '.env.local');
 if (fs.existsSync(envPath)) {
-  for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
-    const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
-    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+  // .env.local is CRLF on Windows; a trailing \r is not matched by `.*` (dot excludes \r), which
+  // silently dropped every value and surfaced as "RESEND_API_KEY missing" on the first new-machine
+  // run. Trim it before matching so single-line values load.
+  for (const raw of fs.readFileSync(envPath, 'utf8').split('\n')) {
+    const m = raw.replace(/\r$/, '').match(/^([A-Z0-9_]+)=(.*)$/);
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '').trim();
   }
 }
 
@@ -50,15 +59,43 @@ const CC = 'dennis@corporateaisolutions.com';
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 
-/** The identification footer. Required on every commercial send — Spam Act pillar 2. */
-const FOOTER = `
+/**
+ * The identification footer. Required on every commercial send — Spam Act pillar 2 (identify the
+ * sender with accurate contact detail) and pillar 3 (a WORKING, honoured unsubscribe).
+ *
+ * ⚠️ THE UNSUBSCRIBE IS A REAL LINK, NOT "REPLY STOP". The shared product path (`lib/email/
+ * commercial.ts`) honours a signed unsubscribe token through @caistech/email-compliance — the same
+ * route `/unsubscribe` every product uses. This script calls Resend directly (for the cc), so to
+ * keep the footer a single source of truth it builds the same signed link here via
+ * `unsubscribeUrlFor`. A recipient clicking it lands on the product's confirm-then-act opt-out and
+ * is added to the durable suppression list that blocks ALL future commercial sends. The old "reply
+ * with stop" line was a grey area under the Spam Act and, worse, gave no durable opt-out — remove
+ * nothing from this footer.
+ *
+ * The physical address is the operating entity's registered address (Global Buildtech Australia
+ * Pty Ltd, trading as Corporate AI Solutions) — pillar 2 identification.
+ */
+async function footer(email) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kiraexec.com';
+  const secret = process.env.UNSUBSCRIBE_SECRET;
+  let unsubLink = 'https://kiraexec.com/unsubscribe';
+  if (secret) {
+    try {
+      unsubLink = await unsubscribeUrlFor(appUrl, email, secret);
+    } catch {
+      // If the secret is missing the token cannot be signed — fail loudly on a real send, but let a
+      // dry run show the recipient without inventing a token.
+    }
+  }
+  return `
 <hr style="border:none;border-top:1px solid #ddd;margin:28px 0 14px">
 <p style="font-size:12px;color:#666;line-height:1.5;margin:0">
 Sent by Global Buildtech Australia Pty Ltd (ABN 54 672 395 685), trading as Corporate AI Solutions,
-76-84 Brunswick Street, Fortitude Valley QLD 4006 &middot; dennis@corporateaisolutions.com<br>
-You are receiving this because you agreed to test Kira. Reply with "stop" and I will not contact you
-about it again.
+76-84 Brunswick Street, Fortitude Valley QLD 4006 · <a href="mailto:dennis@corporateaisolutions.com">dennis@corporateaisolutions.com</a><br>
+You are receiving this because you agreed to test Kira. If you would rather not hear about it again,
+<a href="${unsubLink}">unsubscribe here</a>.
 </p>`;
+}
 
 function paragraphs(text) {
   return text
@@ -68,7 +105,7 @@ function paragraphs(text) {
     .join('\n');
 }
 
-function draftA({ firstName, code }) {
+async function draftA({ firstName, code, email }) {
   const body = `Hello ${firstName},
 
 A short note, because what I sent you before no longer matches what happens.
@@ -106,10 +143,10 @@ That second one is the whole question for me. Most of you would be the person ha
 One thing worth knowing before you begin: what you tell her is kept, and it is what builds the handover document at the end. So use a real business if you have one, or a plausible one if you would rather not.
 
 Dennis`;
-  return { subject: 'Kira — your access code, and a change to how you start', html: paragraphs(body) + FOOTER };
+  return { subject: 'Kira — your access code, and a change to how you start', html: paragraphs(body) + await footer(email) };
 }
 
-function draftD({ firstName }) {
+async function draftD({ firstName, email }) {
   const body = `Hello ${firstName},
 
 We have talked about what you are building. I have something at the point where it needs people who will tell me it is wrong, and I would rather that came from someone who has shipped things than from a survey.
@@ -130,7 +167,54 @@ It is a beta and some of it is visibly unfinished — she cannot write documents
 If you are in, reply and I will send you a code. If not, that is a perfectly good answer and I will not ask twice.
 
 Dennis`;
-  return { subject: 'Would you take a look at what I have built?', html: paragraphs(body) + FOOTER };
+  return { subject: 'Would you take a look at what I have built?', html: paragraphs(body) + await footer(email) };
+}
+
+/**
+ * THE CANONICAL BETA INVITE — the friendly "What Kira is / What we're asking" copy chosen as the
+ * single to-send message for the beta cohort.
+ *
+ * ⚠️ WORDS THE RECIPIENT WILL READ, SO THEY MUST BE TRUE. The CAIS Beta org is pre-seeded with a
+ * business scenario so a new tester sees a fully populated portal on day one; their 13 answers give
+ * the experience of the flow but do not drive the seeded Genome/valuation/report. That is stated
+ * plainly below — a tester who discovers it themselves reads the whole product as a demo.
+ *
+ * The access code is personal to the recipient (looked up from `beta_codes` by the caller) and the
+ * link carries it, so there is nothing to type.
+ */
+async function draftInvite({ firstName, code, email }) {
+  const body = `Hello ${firstName},
+
+Thanks for agreeing to be a Beta Tester for the Kira Platform. I have set up a sandbox Kira portal for beta testers, so there's nothing you can break as you test it out :)
+
+<strong>What Kira is</strong>
+
+Kira is a business support platform I built to help Baby Boomer Business Owners (BBBOs) who are running successful businesses but the Owner Dependence levels are high (ie the business just can't run without them).
+
+Kira can help them create more value in their businesses by using AI (and specifically Kira — an AI Voice Agent) by systemising their business over time as well as helping them in the day to day running of their business.
+
+As an example, Kira will build out their business systems and Standard Operating Procedures (SOPs) just by observing, recording and systemising what she notices as she works with the owner (and others — every employee can have their own Kira and the collective intelligence will be collated and used to build the overall Business Genome — its DNA).
+
+And that is where the true value is for the BBBOs — they are coming up to retirement and we want them to maximise the value of their businesses — because, in many cases, that is their true retirement fund.
+
+<strong>What we are asking of you</strong>
+
+You are invited to join the Kira Beta. Your invitation grants you CEO access to the sandbox CAIS Beta org I have set up within Kira.
+
+<strong>How it works — read this so it is not surprising</strong>
+
+1. Start at <a href="https://kiraexec.com/?code=${code}">this link</a> — your invitation is carried with you automatically, so there is no code to type in.
+2. Take the 13-question business valuation exercise so you experience the flow a Kira owner walks.
+3. At the end, confirm your name.
+
+That takes you straight into the CAIS Beta org portal as its CEO — your Kira Voice Agent is already set up and waiting for you inside.
+
+One honest note: the CAIS Beta org's Genome, valuation and report are not built from your 13 answers — the org is pre-seeded with a business scenario so you can see a fully populated portal on day one. Your 13 answers give you the experience of the flow itself.
+
+Let me know once you have logged in so I can hear how it is going for you.
+
+Dennis`;
+  return { subject: 'Kira Beta — invited as a beta tester', html: paragraphs(body) + await footer(email) };
 }
 
 /**
@@ -153,7 +237,7 @@ Dennis`;
  *   node scripts/send-beta-outreach.mjs --draft reply --only x@y.com \
  *     --subject "..." --body docs/replies/x.txt --dry
  */
-function draftReply({ subject, bodyPath }) {
+async function draftReply({ subject, bodyPath, email }) {
   if (!subject) throw new Error('--subject is required for a reply.');
   if (!bodyPath) throw new Error('--body <file> is required for a reply.');
   const body = fs.readFileSync(bodyPath, 'utf8');
@@ -162,7 +246,7 @@ function draftReply({ subject, bodyPath }) {
   // {FirstName} still in it is the same failure wearing different clothes.
   const leftover = body.match(/\{[A-Za-z]+\}/);
   if (leftover) throw new Error(`${bodyPath} still contains the placeholder ${leftover[0]}.`);
-  return { subject, html: paragraphs(body) + FOOTER };
+  return { subject, html: paragraphs(body) + await footer(email) };
 }
 
 if (!ONLY) throw new Error('--only <email> is required. This script sends to one person per run, on purpose.');
@@ -226,9 +310,9 @@ try {
   process.exit(1);
 }
 
-// The code, for draft A. Read rather than assumed — see the note at the top.
+// The code, for drafts that carry one (A and invite). Read rather than assumed — see the note at the top.
 let code = null;
-if (DRAFT === 'a') {
+if (DRAFT === 'a' || DRAFT === 'invite') {
   const { data } = await supabase
     .from('beta_codes')
     .select('code, redeemed_at, revoked_at')
@@ -247,10 +331,12 @@ if (DRAFT === 'a') {
 const firstName = (arg('name') || ONLY.split('@')[0]).trim();
 const { subject, html } =
   DRAFT === 'a'
-    ? draftA({ firstName, code })
-    : DRAFT === 'reply'
-      ? draftReply({ subject: arg('subject'), bodyPath: arg('body') })
-      : draftD({ firstName });
+    ? await draftA({ firstName, code, email: ONLY })
+    : DRAFT === 'invite'
+      ? await draftInvite({ firstName, code, email: ONLY })
+      : DRAFT === 'reply'
+        ? await draftReply({ subject: arg('subject'), bodyPath: arg('body'), email: ONLY })
+        : await draftD({ firstName, email: ONLY });
 
 console.log(`draft ${DRAFT.toUpperCase()} -> ${ONLY}  (cc ${CC})`);
 console.log(`subject: ${subject}`);
