@@ -19,10 +19,11 @@ async function count(table: string): Promise<number> {
 
 export default async function AdminOverviewPage() {
   const svc = createServiceClientV2();
-  const [users, agents, conversations] = await Promise.all([
+  const [users, agents, conversations, organisations] = await Promise.all([
     count('users'),
     count('kira_agents'),
     count('conversations'),
+    count('organisations'),
   ]);
 
   const { data: recentUsers } = await svc
@@ -37,12 +38,19 @@ export default async function AdminOverviewPage() {
     .order('created_at', { ascending: false })
     .limit(10);
 
+  const { data: recentOrganisations } = await svc
+    .from('organisations')
+    .select('organisation_id, legal_name, kira_status, created_at')
+    .order('created_at', { ascending: false })
+    .limit(10);
+
   const liveBilling = isLiveMode();
 
   const stats = [
     { label: 'Users', value: users },
     { label: 'Kira agents', value: agents },
     { label: 'Conversations', value: conversations },
+    { label: 'Organisations', value: organisations },
   ];
 
   return (
@@ -78,7 +86,7 @@ export default async function AdminOverviewPage() {
         </p>
       </div>
 
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
           <div key={s.label} className="rounded-2xl border border-gray-200 bg-white p-5">
             <p className="text-sm font-medium text-gray-500">{s.label}</p>
@@ -87,7 +95,7 @@ export default async function AdminOverviewPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <section className="rounded-2xl border border-gray-200 bg-white p-5">
           <h2 className="mb-3 text-lg font-semibold text-gray-900">Recent users</h2>
           <div className="overflow-x-auto">
@@ -131,6 +139,36 @@ export default async function AdminOverviewPage() {
                     <td className="py-2 pr-3 text-gray-800">{String(a.agent_name ?? 'Kira')}</td>
                     <td className="py-2 pr-3 capitalize text-gray-600">{String(a.journey_type ?? '')}</td>
                     <td className="py-2 text-gray-500">{Number(a.total_conversations ?? 0)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-gray-200 bg-white p-5 lg:col-span-2">
+          <h2 className="mb-3 text-lg font-semibold text-gray-900">Recent organisations</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="text-gray-500">
+                  <th className="py-2 pr-3 font-medium">Organisation</th>
+                  <th className="py-2 pr-3 font-medium">Status</th>
+                  <th className="py-2 font-medium">Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(recentOrganisations ?? []).map((o: Record<string, unknown>, i: number) => (
+                  <tr key={i} className="border-t border-gray-100">
+                    <td className="py-2 pr-3 text-gray-800">{String(o.legal_name ?? 'Unnamed')}</td>
+                    <td className="py-2 pr-3">
+                      <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${o.kira_status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                        {String(o.kira_status ?? 'Provisioned')}
+                      </span>
+                    </td>
+                    <td className="py-2 text-gray-500">
+                      {o.created_at ? new Date(String(o.created_at)).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
+                    </td>
                   </tr>
                 ))}
               </tbody>
