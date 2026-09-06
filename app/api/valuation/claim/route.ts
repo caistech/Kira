@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Not authorised to claim valuation' }, { status: 401 });
   }
 
-  let body: { inputs?: unknown; currency?: unknown };
+  let body: { inputs?: unknown; currency?: unknown; confirmed?: unknown; action?: 'adopt' | 'replace' };
   try {
     body = await request.json();
   } catch {
@@ -65,57 +65,65 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid valuation inputs' }, { status: 400 });
   }
 
-  if ((body as { confirmed?: unknown }).confirmed !== true) {
+  if (body.confirmed !== true) {
     return NextResponse.json({ claimed: false, reason: 'needs_confirmation' });
+  }
+
+  if (body.action !== 'adopt' && body.action !== 'replace') {
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   }
 
   const currency = typeof body.currency === 'string' && body.currency ? body.currency : DEFAULT_CURRENCY;
   const svc = createServiceClientV2();
 
-  // First valuation wins - see the header note.
   const { data: existing } = await svc
     .from('business_valuations')
     .select('id')
     .eq('organisation_id', orgContext.organisationId)
     .maybeSingle();
 
-  if (existing) {
+  if (existing && body.action === 'adopt') {
     return NextResponse.json({ claimed: false, reason: 'already_present' });
   }
 
-  // Recomputed here, from the answers, by our model. Never taken from the client.
   const result = computeValuation(body.inputs);
+  const valuationData = {
+    organisation_id: orgContext.organisationId,
+    user_id: orgContext.personId, // Retained for provenance
+    inputs: body.inputs,
+    currency,
+    gap: result.gap,
+    worth_today: result.today,
+    worth_potential: result.potential,
+    walk_away: result.walkAway,
+    sde_multiple: result.sdeMultiple,
+    readiness: result.readiness,
+    industry: body.inputs.industry,
+    updated_at: new Date().toISOString(),
+  };
 
-  const { error: writeError } = await svc.from('business_valuations').upsert(
-    {
-      organisation_id: orgContext.organisationId,
-      user_id: orgContext.personId, // Retained for provenance
-      inputs: body.inputs,
-      currency,
-      gap: result.gap,
-      worth_today: result.today,
-      worth_potential: result.potential,
-      walk_away: result.walkAway,
-      sde_multiple: result.sdeMultiple,
-      readiness: result.readiness,
-      industry: body.inputs.industry,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'organisation_id' },
-  );
+  let writeError;
+  if (existing && body.action === 'replace') {
+    ({ error: writeError } = await svc
+      .from('business_valuations')
+      .update(valuationData)
+      .eq('id', existing.id));
+  } else {
+    ({ error: writeError } = await svc
+      .from('business_valuations')
+      .insert(valuationData));
+  }
 
   if (writeError) {
     console.error('[api/valuation/claim] write failed:', writeError.message);
     return NextResponse.json({ error: 'Could not save valuation' }, { status: 500 });
   }
 
-  // The baseline point. Without this the introducer board has a current figure and no origin —
-  // which is the state that made "valuation movement" a claim the data could not support.
   await recordValuationSnapshot({
     userId: orgContext.personId,
     organisationId: orgContext.organisationId,
     inputs: body.inputs,
-    source: 'onboarding',
+    source: body.action === 'replace' ? 'manual' : 'onboarding',
     currency,
     gap: result.gap,
     worthToday: result.today,
@@ -124,7 +132,9 @@ export async function POST(request: NextRequest) {
     sdeMultiple: result.sdeMultiple,
     readiness: result.readiness,
     readinessPotential: result.readinessPotential,
-    reason: 'Your starting position, from the valuation you ran before signing up.',
+    reason: body.action === 'replace'
+      ? 'Manually replaced existing valuation via claim.'
+      : 'Adopted from pre-signup valuation.',
   });
 
   return NextResponse.json({ claimed: true, gap: result.gap });

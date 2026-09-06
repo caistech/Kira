@@ -86,7 +86,7 @@ export function ClaimStoredValuation({
     // Claimed without asking, so it must also stand down without announcing itself — otherwise the
     // hold-until-refreshed state below turns a silent claim into a visible one.
     setSilent(true);
-    void decide(true);
+    void decide(existing ? 'replace' : 'adopt');
     // `decide` is stable for this purpose and re-running on its identity would re-fire the claim.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [payload?.fromApp]);
@@ -117,26 +117,21 @@ export function ClaimStoredValuation({
     /* an unreadable payload still gets a prompt — he can discard it */
   }
 
-  async function decide(mine: boolean) {
+  async function decide(action: 'adopt' | 'replace') {
     if (!payload || busy) return;
     setBusy(true);
-    if (!mine) {
-      // His answer is the whole point: discard means gone from the device, not "ask again later".
-      clearStoredValuation();
-      setPayload(null);
-      return;
-    }
     try {
       const res = await fetch('/api/valuation/claim', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         // The server refuses to write without this, so a stale client cannot claim silently.
-        body: JSON.stringify({ ...payload, confirmed: true }),
+        body: JSON.stringify({ ...payload, confirmed: true, action }),
       });
       // Cleared only on a definite answer. A network failure keeps it parked so the next
       // authenticated load can ask again — losing it here would reproduce the bug this component
       // was originally written to fix.
-      if (res.ok) {
+      const data = await res.json();
+      if (res.ok && data.claimed === true) {
         clearStoredValuation();
         // RE-READ THE SERVER, or the page keeps saying he has no baseline.
         //
@@ -227,7 +222,7 @@ export function ClaimStoredValuation({
         <button
           type="button"
           disabled={busy}
-          onClick={() => decide(true)}
+          onClick={() => decide(existing ? 'replace' : 'adopt')}
           className="min-h-[44px] rounded-full bg-stone-900 px-5 py-3 text-base font-semibold text-white disabled:opacity-60"
         >
           {/* The label states the CONSEQUENCE when there is something to lose. "That's mine — use
@@ -237,7 +232,7 @@ export function ClaimStoredValuation({
         <button
           type="button"
           disabled={busy}
-          onClick={() => decide(false)}
+          onClick={() => { clearStoredValuation(); setPayload(null); }}
           className="min-h-[44px] rounded-full border border-stone-300 bg-white px-5 py-3 text-base font-semibold text-stone-800 disabled:opacity-60"
         >
           {existing ? `Keep ${existing.gapText}` : 'Not mine — discard it'}
