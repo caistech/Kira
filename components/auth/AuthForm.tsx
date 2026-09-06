@@ -153,6 +153,7 @@ export function AuthForm({
   // headings on the hydrated page — the same defect, moved. Rendering it in THIS branch is safe
   // precisely because the canonical replaces the branch rather than joining it.
   const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => setMounted(true), []);
   if (!mounted || !supabaseClient) {
     return (
