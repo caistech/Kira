@@ -155,26 +155,6 @@ export default async function DashboardPage({
 
   const pct = Math.round((profile?.completeness ?? 0) * 100);
 
-  // The always-on entry point: their first active business Kira, else the create flow.
-  const businessAgent = list.find((a) => a.journey_type === 'business' && a.status === 'active') ?? list[0];
-  // The fallback is now NAMED, not silent. An owner with no agent used to get a button reading
-  // "Talk to Kira" that quietly went to /start — a page that looks like a different product,
-  // because there was no Kira to talk to. The paid path leads into /start directly now
-  // (app/onboarding/page.tsx), so this branch is the recovery route rather than the main one, and
-  // `hasMetKira` below already switches the copy to "Start talking to Kira" when it fires.
-  //
-  // ⚠️ `from=app`, NOT `from=paid`, and the distinction is not cosmetic. `from=paid` makes /start
-  // announce "Last step — let's set up your Kira. About three minutes." That is right for a man who
-  // has just handed over a card and wrong for one who has been using the product for months and
-  // pressed Talk. This branch is the RECOVERY route — this comment already said so while the link
-  // said the opposite, which is how the two files came to contradict each other. `from=app` is the
-  // convention the valuation result page already uses for "he is already a customer": it keeps the
-  // back-link pointed at his dashboard rather than the marketing home page, without the onboarding
-  // framing.
-  const talkHref = businessAgent
-    ? `/chat/${businessAgent.elevenlabs_agent_id}`
-    : '/start?journey=business&from=app';
-
   const val = valuation as Valuation | null;
   // APPROXIMATE, like the result page — see formatMoneyApprox.
   //
@@ -314,7 +294,7 @@ export default async function DashboardPage({
       {!gateStep && !val && showBaselineInvite && <NoBaselineYet />}
 
       {val && val.gap > 0 && (
-        <GapDashboard valuation={val} money={money} talkHref={talkHref} isWelcome={isWelcome} hasMetKira={list.length > 0} firstName={undefined} />
+        <GapDashboard valuation={val} money={money} isWelcome={isWelcome} firstName={undefined} />
       )}
 
       {/* KIRA HERSELF, ON THE PAGE HE LANDS ON — not a button that goes to her.
@@ -359,14 +339,14 @@ export default async function DashboardPage({
 
       {/* NO SECOND "MEET KIRA" HERE.
           There used to be a dashed empty-state card in this slot saying "You haven't met Kira yet /
-          A short conversation is all it takes / Start talking to Kira" — and the violet card further
-          down the page says the same thing, warmer, with her face on it and the same talkHref
-          behind the same button. An owner who finished the eleven questions got both, one under the
-          other: two invitations to meet the same person, which reads as the page not knowing what
-          he has already done.
-          The one below wins on every count, so this slot now renders only the agent grid and stays
-          empty when there is nothing to grid. See the conditional copy on that card — it also has to
-          stop saying "Meet Kira" to someone who has been talking to her for months. */}
+          A short conversation is all it takes / Start talking to Kira" — and Kira herself, embedded
+          further up the page through KiraShapeSection, already carries that entry point. An owner
+          who finished the eleven questions got both, one under the other: two invitations to meet
+          the same person, which reads as the page not knowing what he has already done.
+          The embedded shape wins on every count, so this slot now renders only the agent grid and
+          stays empty when there is nothing to grid. The standalone "Talk to Kira" CTA that used to
+          sit under the value gap was also removed for the same reason — Kira is present on the page,
+          not a link to her. */}
       {list.length === 0 ? null : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {list.map((a: Record<string, unknown>) => (
@@ -504,18 +484,13 @@ function NoBaselineYet() {
 function GapDashboard({
   valuation,
   money,
-  talkHref,
   isWelcome,
   firstName,
-  hasMetKira,
 }: {
   valuation: Valuation;
   money: (n: number) => string;
-  talkHref: string;
   isWelcome: boolean;
   firstName?: string;
-  /** An agent already exists. The card must not say "Meet Kira" to someone who has met her. */
-  hasMetKira: boolean;
 }) {
   const readinessPct = Math.round((valuation.readiness ?? 0) * 100);
   // Every valuation figure on this screen comes from here, rounded once and mutually consistent.
@@ -619,37 +594,6 @@ function GapDashboard({
         ))}
       </div>
       <p className="mt-3 text-sm text-gray-500">…and beyond: Kira keeps building your Operating Manual for as long as you keep talking to her.</p>
-
-      {/* Meet Kira + always-on entry */}
-      <div className="mt-8 rounded-3xl border-2 border-violet-200 bg-violet-50 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-6">
-        <div className="flex-shrink-0">
-          <div className="rounded-full bg-gradient-to-br from-amber-300 via-pink-400 to-violet-500 p-1">
-            <div className="w-16 h-16 rounded-full overflow-hidden bg-white">
-              <img src="/female_avatar.jpeg" alt="Kira" className="w-full h-full object-cover" />
-            </div>
-          </div>
-        </div>
-        <div className="flex-1">
-          {/* THIS CARD RENDERS ALWAYS, so its copy cannot assume he has never met her.
-              Unconditional "Meet Kira — she's ready when you are" was shown to an owner with thirty
-              conversations behind him — the product forgetting him on the one screen whose entire
-              promise is that it doesn't. */}
-          <h2 className="text-xl font-bold text-gray-900">
-            {!hasMetKira ? 'Meet Kira — she’s ready when you are' : 'Kira’s ready when you are'}
-          </h2>
-          <p className="mt-1.5 text-gray-600 leading-relaxed">
-            {!hasMetKira
-              ? 'No forms, no setup. Just start talking — about a job, a headache, or how something works. Kira listens, works out what’s needed, and quietly gets it built and remembered.'
-              : 'Pick up where you left off — she remembers the business and what was still outstanding. A job, a headache, or something you want drafted.'}
-          </p>
-          <Link
-            href={talkHref}
-            className="mt-4 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-fuchsia-600 to-pink-500 px-7 py-3.5 text-base font-bold text-white shadow-md hover:opacity-95 min-h-[52px]"
-          >
-            {!hasMetKira ? 'Start talking to Kira →' : 'Talk to Kira →'}
-          </Link>
-        </div>
-      </div>
     </section>
   );
 }
