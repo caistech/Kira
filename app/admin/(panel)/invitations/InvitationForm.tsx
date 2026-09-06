@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-export default async function InvitationForm({ orgId, isCAISBetaOrg }) {
+export default function InvitationForm({ orgId, isCAISBetaOrg }) {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
