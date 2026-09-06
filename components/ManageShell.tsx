@@ -32,6 +32,7 @@ const MANAGE_NAV: NavItem[] = [
   { href: '/manage', label: 'Overview' },
   { href: '/manage/kira', label: 'Kira' },
   { href: '/manage/members', label: 'Members' },
+  { href: '/manage/invitations', label: 'Invitations' },
   { href: '/manage/settings', label: 'Settings' },
 ];
 

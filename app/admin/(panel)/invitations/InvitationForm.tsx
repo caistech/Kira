@@ -1,12 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-
-export default function InvitationForm() {
+export default async function InvitationForm({ orgId, isCAISBetaOrg }) {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
-  const [betaType, setBetaType] = useState<'superadmin' | 'user'>('user');
+  const [betaType, setBetaType] = useState<'superadmin' | 'user'>(isCAISBetaOrg ? 'user' : 'user');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +20,13 @@ export default function InvitationForm() {
       const res = await fetch('/api/admin/invitations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ firstName, lastName, email, betaType }),
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          email,
+          betaType: isCAISBetaOrg ? betaType : 'user', // Force 'user' for non-CAIS orgs
+          orgId,
+        }),
       });
 
       const body = await res.json();
@@ -52,7 +57,9 @@ export default function InvitationForm() {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">First name</label>
+          <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
+            First name
+          </label>
           <input
             id="firstName"
             type="text"
@@ -63,7 +70,9 @@ export default function InvitationForm() {
           />
         </div>
         <div>
-          <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">Last name</label>
+          <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
+            Last name
+          </label>
           <input
             id="lastName"
             type="text"
@@ -76,7 +85,9 @@ export default function InvitationForm() {
       </div>
 
       <div>
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+          Email *
+        </label>
         <input
           id="email"
           type="email"
@@ -88,24 +99,32 @@ export default function InvitationForm() {
         />
       </div>
 
-      <div>
-        <label htmlFor="betaType" className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-        <select
-          id="betaType"
-          value={betaType}
-          onChange={(e) => setBetaType(e.target.value as 'superadmin' | 'user')}
-          className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:border-violet-500 focus:ring-2 focus:ring-violet-100 outline-none bg-white"
-        >
-          <option value="user">Member</option>
-          <option value="superadmin">Owner (CEO)</option>
-        </select>
-      </div>
+      {isCAISBetaOrg && (
+        <div>
+          <label htmlFor="betaType" className="block text-sm font-medium text-gray-700 mb-1">
+            Role
+          </label>
+          <select
+            id="betaType"
+            value={betaType}
+            onChange={(e) => setBetaType(e.target.value as 'superadmin' | 'user')}
+            className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:border-violet-500 focus:ring-2 focus:ring-violet-100 outline-none bg-white"
+          >
+            <option value="user">Member</option>
+            <option value="superadmin">Owner (CEO)</option>
+          </select>
+        </div>
+      )}
 
       {error && (
-        <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>
+        <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
       )}
       {result && (
-        <div className="rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">{result}</div>
+        <div className="rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
+          {result}
+        </div>
       )}
 
       <button
