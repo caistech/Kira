@@ -105,6 +105,7 @@ export async function POST(req: NextRequest) {
       }
     );
 
+
     if (!response.ok) {
       const err = await response.text();
       console.error('[kira/chat/start] ElevenLabs error:', err);
@@ -114,6 +115,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+
     const data = await response.json();
 
     if (!data.signed_url) {
@@ -122,6 +124,16 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
+
+    console.log('[kira/chat/start] signed URL issued', {
+      agentId: kiraAgent.elevenlabs_agent_id,
+      signedUrlHost: new URL(data.signed_url).host,
+      signedUrlPath: new URL(data.signed_url).pathname,
+      hasConversationSignature:
+        new URL(data.signed_url).searchParams.has('conversation_signature'),
+      hasToken:
+        new URL(data.signed_url).searchParams.has('token'),
+    });
 
     /* ------------------------------------------------------------ */
     /* 3. Return signed URL                                        */
@@ -138,3 +150,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
