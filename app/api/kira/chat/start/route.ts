@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
 
     const { data: kiraAgent, error } = await supabase
       .from('kira_agents')
-      .select('elevenlabs_agent_id, status, person_id')
+      .select('elevenlabs_agent_id, status, person_id, organisation_id')
       .eq('elevenlabs_agent_id', agentId)
       .single();
 
@@ -65,14 +65,27 @@ export async function POST(req: NextRequest) {
 
     const admin = await isCurrentUserAdmin();
     // Per-person agent: the caller must be the agent's owner OR an org admin.
+    // Debugging 403: Return auth state in response body for immediate visibility (temporarily 400 to ensure visibility)
     if (!admin && kiraAgent.person_id !== organisationContext.personId) {
-      return NextResponse.json({ error: 'Not authorized for this agent' }, { status: 403 });
+      return NextResponse.json({
+        error: 'Not authorized for this agent',
+        debug: {
+          agentPersonId: kiraAgent.person_id,
+          contextPersonId: organisationContext.personId,
+          agentOrganisationId: kiraAgent.organisation_id,
+          contextOrganisationId: organisationContext.organisationId,
+          // Explicitly check for what the request thinks it is
+        }
+      }, { status: 400 });
     }
 
     if (kiraAgent.status !== 'active') {
       return NextResponse.json(
-        { error: 'Kira agent is not active' },
-        { status: 403 }
+        {
+          error: 'Kira agent is not active',
+          debug: { status: kiraAgent.status }
+        },
+        { status: 400 }
       );
     }
 
