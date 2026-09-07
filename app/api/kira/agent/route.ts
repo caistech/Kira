@@ -43,8 +43,11 @@ export async function GET(request: NextRequest) {
 
     // Verify agent belongs to this organisation
     const admin = await isCurrentUserAdmin();
-    // Per-person agent: the caller must be the agent's owner OR an org admin.
-    if (!admin && agent.person_id !== organisationContext.personId) {
+    // Allow if caller is org admin, OR agent belongs to caller's organisation
+    const isOrgMember = agent.organisation_id === organisationContext.organisationId;
+    const isOwner = agent.person_id === organisationContext.personId;
+
+    if (!admin && !isOrgMember && !isOwner) {
       return NextResponse.json({ error: 'Not authorized for this agent' }, { status: 403 });
     }
 

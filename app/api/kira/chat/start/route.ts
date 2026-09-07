@@ -64,28 +64,18 @@ export async function POST(req: NextRequest) {
     }
 
     const admin = await isCurrentUserAdmin();
-    // Per-person agent: the caller must be the agent's owner OR an org admin.
-    // Debugging 403: Return auth state in response body for immediate visibility (temporarily 400 to ensure visibility)
-    if (!admin && kiraAgent.person_id !== organisationContext.personId) {
-      return NextResponse.json({
-        error: 'Not authorized for this agent',
-        debug: {
-          agentPersonId: kiraAgent.person_id,
-          contextPersonId: organisationContext.personId,
-          agentOrganisationId: kiraAgent.organisation_id,
-          contextOrganisationId: organisationContext.organisationId,
-          // Explicitly check for what the request thinks it is
-        }
-      }, { status: 400 });
+    // Allow start if caller is org admin, OR agent belongs to caller's organisation
+    const isOrgMember = kiraAgent.organisation_id === organisationContext.organisationId;
+    const isOwner = kiraAgent.person_id === organisationContext.personId;
+
+    if (!admin && !isOrgMember && !isOwner) {
+      return NextResponse.json({ error: 'Not authorized for this agent' }, { status: 403 });
     }
 
     if (kiraAgent.status !== 'active') {
       return NextResponse.json(
-        {
-          error: 'Kira agent is not active',
-          debug: { status: kiraAgent.status }
-        },
-        { status: 400 }
+        { error: 'Kira agent is not active' },
+        { status: 403 }
       );
     }
 
