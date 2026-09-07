@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { BETA_CODE_STORAGE_KEY } from '@/components/BetaCodeCarrier';
 
 interface Member {
   membershipId: string;
@@ -20,6 +21,14 @@ interface TeamSectionClientProps {
   organisationId: string;
 }
 
+interface BetaPeekResponse {
+  ok: boolean;
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string;
+  organisation_id?: string;
+}
+
 export function TeamSectionClient({ initialMembers = [], organisationId }: TeamSectionClientProps) {
   const [members, setMembers] = useState<Member[]>(initialMembers);
   const [loading, setLoading] = useState(!initialMembers.length);
@@ -28,14 +37,40 @@ export function TeamSectionClient({ initialMembers = [], organisationId }: TeamS
   const [inviteFirstName, setInviteFirstName] = useState('');
   const [inviteLastName, setInviteLastName] = useState('');
 
+  // Pre-fill invite form from beta invitation (if any)
   useEffect(() => {
-    if (!initialMembers.length) {
-      fetch('/api/members')
-        .then((res) => res.json())
-        .then((data) => setMembers(data.members || []))
-        .finally(() => setLoading(false));
-    }
-  }, [initialMembers.length]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const fromUrl = new URLSearchParams(window.location.search).get('code')?.trim() ?? '';
+        const parkedCode = window.sessionStorage.getItem(BETA_CODE_STORAGE_KEY)?.trim() ?? '';
+        const codeToPeek = fromUrl || parkedCode;
+        if (!codeToPeek) return;
+        const response = await fetch('/api/beta/peek', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store',
+          body: JSON.stringify({ code: codeToPeek }),
+        });
+        if (!response.ok) return;
+        const data = (await response.json().catch(() => null)) as BetaPeekResponse | null;
+        if (cancelled) return;
+        if (!data?.ok) return;
+        if (data.first_name && !inviteFirstName) {
+          setInviteFirstName(data.first_name.trim().slice(0, 100));
+        }
+        if (data.last_name && !inviteLastName) {
+          setInviteLastName(data.last_name.trim().slice(0, 100));
+        }
+        if (data.email && !inviteEmail) {
+          setInviteEmail(data.email.toLowerCase());
+        }
+      } catch {
+        // Non-fatal: the form simply stays empty and the operator types.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const reloadMembers = async () => {
     const updated = await fetch('/api/members').then((res) => res.json());

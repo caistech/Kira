@@ -17,6 +17,7 @@ releaseBetaCode,
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import { TERMS_VERSION } from '@/lib/terms';
+import { v4 as uuidv4 } from 'uuid';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -384,45 +385,46 @@ createServiceClientV2();
  * No consumption yet.
  */
 let invitationEmail: string;
+let peekResult: Awaited<ReturnType<typeof peekBetaCode>>;
 
 try {
-const peek =
-await peekBetaCode(rawCode);
+  peekResult =
+  await peekBetaCode(rawCode);
 
-if (!peek.ok) {
-console.warn(
-'[api/beta/redeem] rejected beta code: reason=${peek.reason}',
-);
+  if (!peekResult.ok) {
+    console.warn(
+      '[api/beta/redeem] rejected beta code: reason=${peekResult.reason}',
+    );
 
-return NextResponse.json(
-{
-ok: false,
-error: REJECTION_MESSAGE,
-code: 'BETA_CODE_REJECTED',
-},
-{status: 400},
-);
-}
+    return NextResponse.json(
+      {
+        ok: false,
+        error: REJECTION_MESSAGE,
+        code: 'BETA_CODE_REJECTED',
+      },
+      {status: 400},
+    );
+  }
 
-invitationEmail =
-peek.email
-.trim()
-.toLowerCase();
+  invitationEmail =
+  peekResult.email
+  .trim()
+  .toLowerCase();
 
 } catch (error) {
-console.error(
-'[api/beta/redeem] invitation validation failed:',
-error,
-);
+  console.error(
+    '[api/beta/redeem] invitation validation failed:',
+    error,
+  );
 
-return NextResponse.json(
-{
-ok: false,
-error: REJECTION_MESSAGE,
-code: 'BETA_CODE_REJECTED',
-},
-{status: 400},
-);
+  return NextResponse.json(
+    {
+      ok: false,
+      error: REJECTION_MESSAGE,
+      code: 'BETA_CODE_REJECTED',
+    },
+    {status: 400},
+  );
 }
 
 /*
@@ -442,8 +444,49 @@ invitationEmail,
 );
 
 if (existingAuthUser) {
-const tokenHash =
-await mintMagicLinkToken(
+  // Ensure canonical Person + auth_credentials exist for this Auth user
+  // so getCurrentOrganisationContext() resolves the right name.
+  const { data: existingPerson } = await svc
+    .from('persons')
+    .select('person_id')
+    .eq('email', invitationEmail)
+    .maybeSingle();
+
+  let personId: string;
+  if (existingPerson?.person_id) {
+    personId = existingPerson.person_id;
+  } else {
+    personId = crypto.randomUUID();
+    const { error: personInsertErr } = await svc.from('persons').insert({
+      person_id: personId,
+      email: invitationEmail,
+      first_name: peekResult.first_name ?? null,
+      last_name: peekResult.last_name ?? null,
+    });
+    if (personInsertErr) {
+      console.warn(
+        '[api/beta/redeem] person insert failed for existing account:',
+        personInsertErr.message,
+      );
+    }
+  }
+
+  const { error: credInsertErr } = await svc.from('auth_credentials').insert({
+    auth_user_id: existingAuthUser.id,
+    person_id: personId,
+    status: 'active',
+    selected_org_id: peekResult.organisation_id,
+  });
+
+  if (credInsertErr) {
+    console.warn(
+      '[api/beta/redeem] auth_credentials insert failed for existing account:',
+      credInsertErr.message,
+    );
+  }
+
+  const tokenHash =
+  await mintMagicLinkToken(
 svc,
 invitationEmail,
 );
@@ -512,8 +555,48 @@ authenticatedUser.email
 .toLowerCase() ===
 invitationEmail
 ) {
-const tokenHash =
-await mintMagicLinkToken(
+  // Ensure canonical Person + auth_credentials exist for this Auth user.
+  const { data: existingPerson } = await svc
+    .from('persons')
+    .select('person_id')
+    .eq('email', invitationEmail)
+    .maybeSingle();
+
+  let personId: string;
+  if (existingPerson?.person_id) {
+    personId = existingPerson.person_id;
+  } else {
+    personId = crypto.randomUUID();
+    const { error: personInsertErr } = await svc.from('persons').insert({
+      person_id: personId,
+      email: invitationEmail,
+      first_name: peekResult.first_name ?? null,
+      last_name: peekResult.last_name ?? null,
+    });
+    if (personInsertErr) {
+      console.warn(
+        '[api/beta/redeem] person insert failed for session account:',
+        personInsertErr.message,
+      );
+    }
+  }
+
+  const { error: credInsertErr } = await svc.from('auth_credentials').insert({
+    auth_user_id: authenticatedUser.id,
+    person_id: personId,
+    status: 'active',
+    selected_org_id: peekResult.organisation_id,
+  });
+
+  if (credInsertErr) {
+    console.warn(
+      '[api/beta/redeem] auth_credentials insert failed for session account:',
+      credInsertErr.message,
+    );
+  }
+
+  const tokenHash =
+  await mintMagicLinkToken(
 svc,
 invitationEmail,
 );
@@ -574,7 +657,7 @@ if (
 email !== invitationEmail
 ) {
 console.error(
-'[api/beta/redeem] invitation email changed between peek and claim',
+'[api/beta/redeem] invitation email changed between peekResult and claim',
 {
 invitationEmail,
 claimedEmail: email,
@@ -698,7 +781,59 @@ createdAuth.user.id;
 
 /*
  * ---
- * 7. LEGACY PROVENANCE BRIDGE
+ * 7. CANONICAL IDENTITY: create Person + auth_credentials bridge
+ * ---
+ * The beta invitation carries the person's name (first_name/last_name from
+ * peekBetaCode). We create the canonical Person record and link it to the
+ * Auth user via auth_credentials so getCurrentOrganisationContext() can
+ * resolve the correct name for voice greetings, team lists, etc.
+ * Race-safe: on UNIQUE(email) violation, re-read the winner.
+ */
+let personId = crypto.randomUUID();
+const { error: personInsertErr } = await svc.from('persons').insert({
+  person_id: personId,
+  email,
+  first_name: peekResult.first_name ?? null,
+  last_name: peekResult.last_name ?? null,
+});
+
+if (personInsertErr) {
+  const duplicate =
+    personInsertErr.code === '23505' ||
+    /duplicate key/i.test(personInsertErr.message);
+  if (!duplicate) throw personInsertErr;
+
+  const { data: winner, error: winnerErr } = await svc
+    .from('persons')
+    .select('person_id')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (winnerErr) throw winnerErr;
+  personId = winner?.person_id ?? personId;
+}
+
+/*
+ * Create the auth_credentials bridge linking Auth user to Person.
+ * This is the ONLY canonical path for getCurrentOrganisationContext().
+ */
+const { error: credInsertErr } = await svc.from('auth_credentials').insert({
+  auth_user_id: authUserId,
+  person_id: personId,
+  status: 'active',
+  selected_org_id: peekResult.organisation_id,
+});
+
+if (credInsertErr) {
+  console.warn(
+    '[api/beta/redeem] auth_credentials insert failed (may race with existing):',
+    credInsertErr.message,
+  );
+}
+
+/*
+ * ---
+ * 8. LEGACY PROVENANCE BRIDGE
  * ---
  * Compatibility only. Does NOT create canonical identity.
  */
@@ -798,3 +933,4 @@ email,
 tokenHash,
 });
 }
+
