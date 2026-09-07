@@ -69,6 +69,9 @@ export async function POST(request: NextRequest) {
       .from('voice_connect_events')
       .insert({
         user_id: ctx?.personId ?? null,
+        // Canonical organisation context, never an invented id. Anonymous callers (landing /
+        // valuation pre-signin) have no organisation — null is correct and the column accepts it.
+        organisation_id: ctx?.organisationId ?? null,
         surface,
         outcome,
         detail,
