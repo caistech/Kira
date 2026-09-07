@@ -1,4 +1,4 @@
-// lib/auth.ts
+﻿// lib/auth.ts
 //
 // Server-side authentication and canonical organisational identity helpers.
 //
@@ -6,26 +6,26 @@
 // ------------------------
 //
 //   Supabase Auth
-//        ↓
+//        â†“
 //   auth_credentials
-//        ↓
+//        â†“
 //   persons
-//        ↓
+//        â†“
 //   organisation_memberships
-//        ↓
+//        â†“
 //   organisations
 //
 // OWNERSHIP IS SEPARATE:
 //
 //   persons
-//        ↓
+//        â†“
 //   ownership_periods
 //
 // HARD RULES
 // ----------
 //
 // 1. Supabase Auth user.id is an Auth identity, NOT a Person ID.
-// 2. auth_credentials is the ONLY canonical Auth → Person bridge.
+// 2. auth_credentials is the ONLY canonical Auth â†’ Person bridge.
 // 3. persons.auth_user_id is NOT used.
 // 4. users.id is NOT used for canonical identity resolution.
 // 5. users.id is NOT used for organisation resolution.
@@ -58,7 +58,7 @@
 //   persons.auth_user_id
 //
 // The deprecated getCurrentAppUser() compatibility helper resolves through
-// the canonical Auth → Person relationship and does NOT consult users.
+// the canonical Auth â†’ Person relationship and does NOT consult users.
 //
 
 import 'server-only';
@@ -239,11 +239,11 @@ function applyActiveMembershipFilter<T extends {
 }
 
 // ---------------------------------------------------------------------------
-// CANONICAL AUTH → PERSON
+// CANONICAL AUTH â†’ PERSON
 // ---------------------------------------------------------------------------
 
 /**
- * Read the canonical Auth → Person credential.
+ * Read the canonical Auth â†’ Person credential.
  *
  * auth_credentials is the ONLY bridge between Supabase Auth and persons.
  *
@@ -280,7 +280,7 @@ async function getAuthCredential(
 }
 
 /**
- * Resolve a Person from the canonical Auth → Person credential.
+ * Resolve a Person from the canonical Auth â†’ Person credential.
  *
  * This function NEVER:
  *
@@ -351,16 +351,16 @@ async function resolvePersonFromAuth(
  * It resolves the canonical Person through:
  *
  *   Supabase Auth
- *        ↓
+ *        â†“
  *   auth_credentials
- *        ↓
+ *        â†“
  *   persons
  *
  * It NEVER:
  *
  *   users.id
  *   users.auth_user_id
- *   email → users row
+ *   email â†’ users row
  *   legacy adoption
  *   organisation resolution
  */
@@ -559,13 +559,13 @@ async function resolveActiveMembership(
  * Canonical chain:
  *
  *   Supabase Auth
- *        ↓
+ *        â†“
  *   auth_credentials
- *        ↓
+ *        â†“
  *   persons
- *        ↓
+ *        â†“
  *   organisation_memberships
- *        ↓
+ *        â†“
  *   organisations
  *
  * No legacy users-table fallback exists.
@@ -573,7 +573,7 @@ async function resolveActiveMembership(
  * Returns null when:
  *
  * - there is no authenticated user
- * - no canonical Auth → Person credential exists
+ * - no canonical Auth â†’ Person credential exists
  * - the credential has no Person
  * - the Person does not exist
  * - the Person has no active/time-valid membership
@@ -589,7 +589,7 @@ export async function getCurrentOrganisationContext(role?: string): Promise<Orga
     const supabase = createServiceClientV2();
 
     // -----------------------------------------------------------------------
-    // AUTH → PERSON
+    // AUTH â†’ PERSON
     // -----------------------------------------------------------------------
 
     const credential = await getAuthCredential(
@@ -635,53 +635,35 @@ export async function getCurrentOrganisationContext(role?: string): Promise<Orga
       );
       return null;
     }
+// -----------------------------------------------------------------------
+// PERSON â†’ MEMBERSHIP
+// -----------------------------------------------------------------------
 
-    // -----------------------------------------------------------------------
-    // PERSON → MEMBERSHIP
-    // -----------------------------------------------------------------------
+const membership = await resolveMembershipForPerson(
+  personId,
+  credential.selected_org_id ?? null,
+  supabase,
+);
 
-    const memberships = await supabase
-      .from('organisation_memberships')
-      .select(MEMBERSHIP_SELECT)
-      .eq('person_id', personId)
-      .in('role', role ? [role, 'superadmin'] : ['superadmin', 'admin', 'member']);
-    const membership = memberships.data?.[0];
+if (!membership) {
+  return null;
+}
 
-    if (!membership) {
-      return null;
-    }
+// Optional role constraint.
+// The resolved membership remains the canonical membership;
+// this parameter only determines whether the caller accepts it.
+if (role && membership.role !== role && membership.role !== 'superadmin') {
+  return null;
+}
 
-    return membershipToContext(membership);
+return membershipToContext(membership);
   } catch (error) {
     console.error(
-      '[lib/auth] Error resolving organisational context:',
+      '[lib/auth] Error resolving current organisation context:',
       error,
     );
-
     return null;
   }
-}
-
-// ---------------------------------------------------------------------------
-// CURRENT ORGANISATION / PERSON CONVENIENCE HELPERS
-// ---------------------------------------------------------------------------
-
-/**
- * Return the canonical organisation_id for the current session.
- */
-export async function getCurrentOrganisationId(): Promise<string | null> {
-  const context = await getCurrentOrganisationContext();
-
-  return context?.organisationId ?? null;
-}
-
-/**
- * Return the canonical person_id for the current session.
- */
-export async function getCurrentPersonId(): Promise<string | null> {
-  const context = await getCurrentOrganisationContext();
-
-  return context?.personId ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -870,11 +852,11 @@ export async function currentUserIsAdmin(): Promise<boolean> {
  * Canonical chain:
  *
  *   auth_user_id
- *        ↓
+ *        â†“
  *   auth_credentials
- *        ↓
+ *        â†“
  *   persons
- *        ↓
+ *        â†“
  *   organisation_memberships
  *
  * users.id is never consulted.
@@ -941,7 +923,7 @@ export async function resolveOrganisationFromUser(
  * It resolves:
  *
  *   person_id
- *        ↓
+ *        â†“
  *   organisation_memberships
  *
  * No users-table authority is involved.
@@ -1003,7 +985,7 @@ export async function resolveOrganisationForPerson(
  * Requirements:
  *
  * - authenticated Supabase user
- * - canonical active Auth → Person credential
+ * - canonical active Auth â†’ Person credential
  * - active/time-valid membership
  * - role = superadmin
  * - portal_access = admin OR both

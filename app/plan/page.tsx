@@ -78,7 +78,7 @@ type IdentityResponse = {
   boundOrganisation?: {
     organisationId?: string | null;
     organisationName?: string | null;
-    boundRole?: 'owner' | 'member' | null;
+    boundRole?: 'admin' | 'member' | 'superadmin' | null;
     boundBetaType?: string | null;
     boundFirstName?: string | null;
     boundLastName?: string | null;
@@ -117,7 +117,7 @@ export default function PlanPage() {
   const [boundOrganisation, setBoundOrganisation] = useState<{
     organisationId: string | null;
     organisationName: string | null;
-    boundRole: 'owner' | 'member' | null;
+    boundRole: 'admin' | 'member' | 'superadmin' | null;
     boundBetaType: string | null;
     boundFirstName: string | null;
     boundLastName: string | null;
@@ -233,7 +233,7 @@ export default function PlanPage() {
           setBoundOrganisation({
             organisationId: normaliseString(bound.organisationId),
             organisationName: normaliseString(bound.organisationName),
-            boundRole: bound.boundRole === 'owner' ? 'owner' : 'member',
+            boundRole: bound.boundRole === 'superadmin' ? 'superadmin' : bound.boundRole === 'admin' ? 'admin' : 'member',
             boundBetaType: normaliseString(bound.boundBetaType),
             boundFirstName: normaliseString(bound.boundFirstName),
             boundLastName: normaliseString(bound.boundLastName),
@@ -616,9 +616,7 @@ export default function PlanPage() {
                   </p>
 
                   <p className="mt-1 text-sm text-stone-600 leading-relaxed">
-                    {boundOrganisation.boundRole === 'owner'
-                      ? 'Your invitation grants you owner access to this organisation.'
-                      : 'Your invitation grants you membership of this organisation.'}
+                    {boundOrganisation.boundRole === 'admin' ? 'Your invitation grants you administrative access to this organisation.' : boundOrganisation.boundRole === 'superadmin' ? 'Your invitation grants you platform administrator access.' : 'Your invitation grants you membership of this organisation.'}
                   </p>
                 </div>
               </div>
@@ -725,4 +723,8 @@ export default function PlanPage() {
     </main>
   );
 }
+
+
+
+
 

@@ -942,7 +942,7 @@ export async function GET(request: Request) {
     let boundOrganisationInfo: {
       organisationId: string | null;
       organisationName: string | null;
-      boundRole: 'owner' | 'member' | null;
+      boundRole: 'admin' | 'member' | 'superadmin' | null;
       boundBetaType: string | null;
       boundFirstName: string | null;
       boundLastName: string | null;
@@ -964,8 +964,7 @@ export async function GET(request: Request) {
       boundOrganisationInfo = {
         organisationId: org?.organisation_id ?? null,
         organisationName: org?.legal_name ?? null,
-        boundRole:
-          boundOrganisation.betaType === 'superadmin' ? 'owner' : 'member',
+        boundRole: boundOrganisation.betaType === 'superadmin' ? 'superadmin' : 'member',
         boundBetaType: boundOrganisation.betaType,
         boundFirstName: boundOrganisation.firstName ?? null,
         boundLastName: boundOrganisation.lastName ?? null,
@@ -1246,8 +1245,8 @@ export async function POST(request: Request) {
 
       const invitedRole =
         boundOrganisation.betaType === 'superadmin'
-            ? 'owner'
-            : 'member';
+          ? 'superadmin'
+          : 'member';
 
       const membership =
         existingMembership ??
@@ -1497,5 +1496,8 @@ export async function POST(request: Request) {
     return response;
   }
 }
+
+
+
 
 

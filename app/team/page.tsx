@@ -1,8 +1,8 @@
-import { getCurrentOrganisationContext } from '@/lib/auth';
+﻿import { getCurrentOrganisationContext } from '@/lib/auth';
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import { TeamSectionClient } from '@/components/TeamSectionClient';
 
-export const metadata = { title: 'Team · Kira' };
+export const metadata = { title: 'Team Â· Kira' };
 export const dynamic = 'force-dynamic';
 
 export default async function TeamPage() {
@@ -16,7 +16,7 @@ export default async function TeamPage() {
     );
   }
 
-  if (!['owner', 'admin'].includes(org.role)) {
+  if (!['admin', 'superadmin'].includes(org.role)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-gray-500">You don't have permission to manage the team.</p>

@@ -1,8 +1,8 @@
-// app/api/absences/route.ts
+﻿// app/api/absences/route.ts
 //
 // The write path for the small-win evidence: an owner (or an org admin) records that they
 // were away and the business kept running through Kira. Only the dashboard's read side
-// shows it back — a period with an ended status is what makes "you can take two months off"
+// shows it back â€” a period with an ended status is what makes "you can take two months off"
 // a statement with receipts.
 //
 // Authorisation (mirrors the absences RLS policy exactly, because the service client bypasses
@@ -16,7 +16,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import { getCurrentOrganisationContext } from '@/lib/auth';
 
-const ADMIN_ROLES = ['owner', 'admin'];
+const ADMIN_ROLES = ['admin'];
 
 function isIsoDateTime(value: unknown): value is string {
   return typeof value === 'string' && !Number.isNaN(Date.parse(value));
@@ -83,3 +83,4 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true, absence: data }, { status: 201 });
 }
+

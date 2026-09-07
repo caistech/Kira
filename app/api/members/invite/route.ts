@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentOrganisationContext } from '@/lib/auth';
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import { TERMS_VERSION } from '@/lib/terms';
 
-const VALID_ROLES = ['owner', 'admin', 'consultant', 'employee', 'advisor', 'member'];
+const VALID_ROLES = ['admin', 'consultant', 'employee', 'advisor', 'member'];
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
 
   const authCtx = await getCurrentOrganisationContext();
-  if (!authCtx || !['owner', 'admin'].includes(authCtx.role)) {
+  if (!authCtx || !['admin', 'superadmin'].includes(authCtx.role)) {
     return NextResponse.json({ error: 'Only the owner or an admin can add team members.' }, { status: 403 });
   }
 
@@ -98,3 +98,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Could not complete invite.' }, { status: 500 });
   }
 }
+

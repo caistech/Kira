@@ -1,10 +1,10 @@
-'use server';
+﻿'use server';
 
 // Saving the business identity, and pushing it to the system that sends.
 //
 // Two writes, in a deliberate order: Kira's own row first, then the orchestrator. If the push fails
-// the identity is still saved — losing what the owner just typed because someone else's service was
-// down would be its own small insult — but the row is left UNSYNCED and every surface says so. The
+// the identity is still saved â€” losing what the owner just typed because someone else's service was
+// down would be its own small insult â€” but the row is left UNSYNCED and every surface says so. The
 // state "Kira knows who you are, the sender does not" is real, and pretending otherwise is the
 // failure this whole feature exists to end.
 
@@ -12,7 +12,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { validateAbn } from '@caistech/abn-lookup';
 
-import { getCurrentAppUser, getCurrentOrganisationId } from '@/lib/auth';
+import { getCurrentAppUser, getCurrentOrganisationContext } from '@/lib/auth';
 import { validateBusinessIdentity, type IdentityErrors } from '@/lib/business-identity';
 import { getBusinessIdentity, upsertBusinessIdentity, markSynced, clearSynced } from '@/lib/business-identity/store';
 import { pushIdentityToOrchestrator } from '@/lib/business-identity/sync';
@@ -29,10 +29,11 @@ export async function saveBusinessIdentity(
 ): Promise<IdentityFormState> {
   // The identity row is owned by the ORGANISATION. Resolve it once here and pass the
   // organisation_id through to every store call; the user attaches to the org via membership.
-  const [user, organisationId] = await Promise.all([
+  const [user, organisationContext] = await Promise.all([
     getCurrentAppUser(),
-    getCurrentOrganisationId(),
+    getCurrentOrganisationContext(),
   ]);
+  const organisationId = organisationContext?.organisation_id;
   if (!user?.id) return { message: 'You are not signed in.' };
   if (!organisationId) return { message: 'No organisation found for this user.' };
 
@@ -43,7 +44,7 @@ export async function saveBusinessIdentity(
   // `abn_lookup` is the hidden field AbnLookupField fills when the owner PICKS his business off the
   // register, so it came from the ABR rather than memory. `abn` is the visible input he can type
   // into when the register is down, unconfigured, or simply hasn't got him. Preferring the lookup is
-  // safe because that component clears its own selection the moment the name is edited — so a stale
+  // safe because that component clears its own selection the moment the name is edited â€” so a stale
   // selection cannot outrank something typed afterwards.
   const result = validateBusinessIdentity({
     legalName: s('legal_name'),
@@ -65,21 +66,21 @@ export async function saveBusinessIdentity(
 
   // `authorised` is intentionally stripped from result.value (ValidationResult.value is
   // Omit<BusinessIdentityInput, 'authorised'>), so it is NOT reachable via `v`. Read it from
-  // the form directly — the checkbox is exactly what gates the consent stamp in upsert.
+  // the form directly â€” the checkbox is exactly what gates the consent stamp in upsert.
   const authorised = formData.get('authorised') === 'on';
 
   // THE ABN IS CHECKED, NOT JUST COLLECTED.
   //
-  // A tester's account was sitting on 99 999 999 999 — eleven digits, right shape, not a real ABN —
+  // A tester's account was sitting on 99 999 999 999 â€” eleven digits, right shape, not a real ABN â€”
   // and nothing stopped it. That number then travels: it prints on the handover document he hands an
   // advisor, and it is the identification half of the Spam Act footer on every email Kira sends for
   // him. An invalid ABN in a compliance footer is worse than a missing one, because it looks
   // discharged.
   //
-  // `validateAbn` is the ABR's own weighted-modulus check from @caistech/abn-lookup — arithmetic, no
+  // `validateAbn` is the ABR's own weighted-modulus check from @caistech/abn-lookup â€” arithmetic, no
   // network, so it cannot fail open on an outage. It catches a typo and a made-up number; it does
   // not prove the business exists, which is what the ABR lookup beside the field is for.
-  // ⚠️ validateAbn RETURNS AN ERROR MESSAGE, OR null WHEN VALID. It is not a predicate, and reading
+  // âš ï¸ validateAbn RETURNS AN ERROR MESSAGE, OR null WHEN VALID. It is not a predicate, and reading
   // it as one inverts the check completely:
   //
   //     validateAbn('54672395685')  -> null                     (valid)
@@ -91,7 +92,7 @@ export async function saveBusinessIdentity(
   // It was not also a hole, and it is worth being precise about that: normaliseAbn already does
   // `validateAbn(digits) === null`, the correct reading, so a bad checksum is null before this line
   // runs and validateBusinessIdentity has already refused it. This gate never saw a bad ABN. It was
-  // pure harm — it only ever refused good ones, which is why it survived: an owner told his own ABN
+  // pure harm â€” it only ever refused good ones, which is why it survived: an owner told his own ABN
   // is wrong concludes the FORM is broken, and reports it as that, if at all.
   //
   // Kept as a backstop rather than deleted, because it is now correct and it is the line that would
@@ -107,7 +108,7 @@ export async function saveBusinessIdentity(
   }
 
   // Preserve the sending domain verification across edits. The form collects the domain
-  // but the verified_at timestamp is set by Resend — losing it on an unrelated identity
+  // but the verified_at timestamp is set by Resend â€” losing it on an unrelated identity
   // edit would force the owner through the DNS dance again.
   let sendingDomain = v.sendingDomain ?? null;
   let sendingDomainVerifiedAt: string | null = null;
@@ -135,7 +136,7 @@ export async function saveBusinessIdentity(
       sign_off_name: v.signOffName ?? null,
       sending_domain: sendingDomain,
       // NEVER set here. It is set only when Resend reports the domain verified, because an
-      // unverified domain is rejected at send time — the precondition orchestrator/src/contract.ts
+      // unverified domain is rejected at send time â€” the precondition orchestrator/src/contract.ts
       // states and that was broken by hand on updates.factory2key.com.au, where DNS was published,
       // the domain was never added to Resend, from_email was set anyway, and every send 403'd after
       // the agent had already told the owner it was sent.
@@ -179,15 +180,16 @@ export async function saveBusinessIdentity(
 /**
  * Retry the push on its own, without re-typing anything.
  *
- * Exists because the common failure is transient and on our side — the orchestrator restarting, a
- * secret mid-rotation — and asking the owner to re-enter his ABN to work around our outage would be
+ * Exists because the common failure is transient and on our side â€” the orchestrator restarting, a
+ * secret mid-rotation â€” and asking the owner to re-enter his ABN to work around our outage would be
  * absurd.
  */
 export async function retryIdentitySync(): Promise<void> {
-  const [user, organisationId] = await Promise.all([
+  const [user, organisationContext] = await Promise.all([
     getCurrentAppUser(),
-    getCurrentOrganisationId(),
+    getCurrentOrganisationContext(),
   ]);
+  const organisationId = organisationContext?.organisation_id;
   if (!user?.id || !organisationId) return;
 
   const identity = await getBusinessIdentity(organisationId);
@@ -199,3 +201,4 @@ export async function retryIdentitySync(): Promise<void> {
   revalidatePath('/dashboard');
   revalidatePath('/settings');
 }
+

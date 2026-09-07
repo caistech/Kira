@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import {
 FormEvent,
@@ -287,9 +287,7 @@ try {
     );
 
     window.setTimeout(() => {
-      window.location.assign(
-        `/login?next=${encodeURIComponent('/plan')}`,
-      );
+      window.location.assign(`/login?next=${encodeURIComponent(`/plan?code=${encodeURIComponent(normalisedCode)}`)}`);
     }, 1800);
 
     return;
@@ -352,7 +350,9 @@ try {
    * BetaRedeem does none of those things.
    */
   window.setTimeout(() => {
-    window.location.assign('/plan');
+    window.location.assign(
+      `/plan?code=${encodeURIComponent(normalisedCode)}`,
+    );
   }, 350);
 } catch (err) {
   setError(
@@ -364,8 +364,6 @@ try {
   setBusy(false);
 }
 
-
-}
 
 /**
 
@@ -554,4 +552,9 @@ Create your Kira account </h3>
 </div>
 
 );
+}
+
+
+
+
 }
