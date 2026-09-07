@@ -22,6 +22,50 @@ const uidFrom = (req: Request) => new URL(req.url).searchParams.get('uid') || ''
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
+// Caller-carried person_id from the tool webhook body (Scope D / two-identifier design). The
+// start_conversation tool schema declares a platform-filled `user_id` param bound to the session's
+// `user_id` dynamic variable, so ElevenLabs injects the person actually talking into the body —
+// bypassing the baked `?uid` (the provisioner) that shared-organisation agents would otherwise
+// collapse everyone onto. Reads via a clone so any later canonical handler still sees the body.
+const callerUidFromBody = async (req: Request): Promise<string> => {
+  try {
+    const body = (await req.clone().json()) as Record<string, unknown>;
+    return String(body.user_id || '').trim();
+  } catch {
+    return '';
+  }
+};
+
+// True when a caller-carried person_id names an active seat on the agent the tool call belongs to.
+// The webhook has no auth cookie, so the only trustworthy check is the same membership gate the
+// start/agent routes enforce: an active membership row on the agent's organisation. Agents with no
+// organisation (legacy one-agent-per-user) have no org ladder to validate against and are accepted
+// — matching resolveSession's contract, which never rejects a carried id on an unowned agent.
+const callerHasSeatOnAgent = async (req: Request, personId: string): Promise<boolean> => {
+  try {
+    const body = (await req.clone().json()) as Record<string, unknown>;
+    const elevenlabsAgentId = String(body.elevenlabs_agent_id || '');
+    if (!elevenlabsAgentId) return false;
+    const { data: agent } = await createServiceClientV2()
+      .from('kira_agents')
+      .select('organisation_id')
+      .eq('elevenlabs_agent_id', elevenlabsAgentId)
+      .maybeSingle();
+    const organisationId = agent?.organisation_id as string | undefined;
+    if (!organisationId) return true; // legacy personal agent — no org scope to validate against
+    const { data: membership } = await createServiceClientV2()
+      .from('organisation_memberships')
+      .select('membership_id')
+      .eq('organisation_id', organisationId)
+      .eq('person_id', personId)
+      .eq('status', 'active')
+      .maybeSingle();
+    return Boolean(membership);
+  } catch {
+    return false;
+  }
+};
+
 // MUST MATCH the kira_memory.memory_type CHECK constraint exactly (20260119000000_kira_complete.sql).
 //
 // It did not. This list allowed 'fact' — which the constraint REJECTS — so an agent that classified
@@ -419,8 +463,21 @@ export async function handleKiraSaveMemory(req: Request): Promise<Response> {
  * they had TALKED about and nothing told her what she had been ASKED for.
  */
 export async function handleKiraContext(req: Request): Promise<Response> {
-  const uid = uidFrom(req);
+  // Caller-carried person_id wins over the baked `?uid` (Scope D / two-identifier design). The
+  // start_conversation tool now declares a platform-filled `user_id` param, so `body.user_id` is
+  // the person actually talking — without this, every caller of a shared organisation agent would
+  // resolve to the provisioner baked into the tool URL at provision time. `?uid` survives only as
+  // the fallback for callers that carry no `user_id` (legacy direct-tool calls).
+  const callerUid = await callerUidFromBody(req);
+  const uid = callerUid || uidFrom(req);
   if (!uid) return json(200, { has_history: false });
+  // A caller-carried id is accepted only when it names a real seat on the agent's organisation —
+  // the webhook has no auth cookie, so an injected person_id must not be able to read another
+  // member's turn-zero context. On a failed check we return an empty greeting rather than silently
+  // falling to the baked `?uid`, which would leak the provisioner's context to a non-member.
+  if (callerUid && !(await callerHasSeatOnAgent(req, callerUid))) {
+    return json(200, { has_history: false });
+  }
   // INV-020: the ledger and conversations are organisation-owned — resolve the owner's org once so
   // both the open-task count and the history lookups are scoped by the organisation (a person's seat
   // can move; the task and the conversation belong to the organisation).
@@ -439,22 +496,24 @@ export async function handleKiraContext(req: Request): Promise<Response> {
 
   // Find the user's genuinely most-recent conversation ACROSS all their agents (a user can have more
   // than one), and take context from that conversation's agent — otherwise "newest agent" ≠ "agent
-  // that holds the last conversation" and we'd report no history when there is some.
+  // that holds the last conversation" and we'd report no history when there is some. Scoped to the
+  // CALLER (uid is now the caller's person_id, not the baked provisioner) and, when the caller has
+  // an org, to that org — a shared organisation agent must never read another member's most-recent
+  // conversation as its own.
   let lastConvQuery = supabase
     .from('conversations')
     .select('kira_agent_id, created_at, last_message_at, started_at')
     .in('status', ['active', 'completed'])
+    .eq('user_id', uid)
     .order('created_at', { ascending: false })
     .limit(1);
   if (organisationId) lastConvQuery = lastConvQuery.eq('organisation_id', organisationId);
-  else lastConvQuery = lastConvQuery.eq('user_id', uid);
 
   const { data: lastConv } = await lastConvQuery.maybeSingle();
   if (!lastConv?.kira_agent_id) return json(200, { has_history: false, ...openTasks });
 
   const { data: ctx } = await supabase.rpc('get_conversation_context', {
     p_agent_id: lastConv.kira_agent_id,
-    p_organisation_id: organisationId ?? null,
     p_user_id: uid,
     p_message_limit: 10,
   });

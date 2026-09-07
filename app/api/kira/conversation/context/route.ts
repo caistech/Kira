@@ -44,11 +44,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Call the database function to get context - organisation-scoped
+    // Call the database function to get context - organisation-scoped auth, personally-scoped data.
+    // The live RPC is get_conversation_context(p_agent_id, p_user_id, p_message_limit) — there is
+    // NO p_organisation_id parameter, and passing one made every call fail (has_history always
+    // false). The caller is the authenticated person; their id, not the agent owner's, is what the
+    // function scopes history and memories to.
     const { data: context, error: contextError } = await supabase
       .rpc('get_conversation_context', {
         p_agent_id: agent.id,
-        p_organisation_id: organisationId,
+        p_user_id: organisationContext.personId,
         p_message_limit: messageLimit
       });
 

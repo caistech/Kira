@@ -247,19 +247,46 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
       // warn, don't hard-cut). Fail-soft inside accrueVoiceCost.
       if (userId) await accrueVoiceCost(userId, durationSeconds);
     },
-    // Identity is SERVER-DERIVED from the agent binding, never from an agent-supplied
-    // user_id. Kira provisions one agent per user, so the agent's owner IS the session
-    // user. Only start_conversation calls this; save/recall derive identity from the
-    // conversation row it binds.
+    // Identity resolution, two identifiers (Scope D). The caller's person_id — carried
+    // per-session as a platform-filled `user_id` dynamic variable by the start_conversation
+    // tool — determines WHO the conversation binds to. The agent's `user_id` is ownership
+    // provenance only, consulted solely as a fallback when no per-session caller is carried
+    // (legacy direct tool calls). A shared organisation agent must never collapse every
+    // caller onto the provisioner.
     resolveSession: async (_req, body) => {
       const elevenlabsAgentId = String(body.elevenlabs_agent_id || '');
       if (!elevenlabsAgentId) return null;
       const { data: agent } = await supabase
         .from(KIRA_CONVAI_TABLES.agents)
-        .select('user_id')
+        .select('user_id, organisation_id')
         .eq('elevenlabs_agent_id', elevenlabsAgentId)
         .single();
       if (!agent?.user_id) return null;
+
+      // Caller-carried person_id, filled by the platform from the session's `user_id` dynamic
+      // variable (set by the page from the authenticated caller — see widget-logic
+      // `buildStartOptions` and the tool-schema declaration in toolDefsFor).
+      const callerPersonId = String(body.user_id || '').trim();
+      if (callerPersonId) {
+        // The webhook has no auth cookie, so a carried id is accepted only when it resolves to
+        // a real seat on the agent's organisation — mirroring the /api/kira/agent and
+        // /api/kira/chat/start gates. A carried id that names a person with no seat is rejected,
+        // not silently rerouted to the owner (which is the collapse this two-identifier design
+        // exists to prevent).
+        const organisationId = agent.organisation_id as string | undefined;
+        if (organisationId) {
+          const { data: membership } = await supabase
+            .from('organisation_memberships')
+            .select('membership_id')
+            .eq('organisation_id', organisationId)
+            .eq('person_id', callerPersonId)
+            .eq('status', 'active')
+            .maybeSingle();
+          if (!membership) return null;
+        }
+        return { userId: callerPersonId };
+      }
+
       return { userId: agent.user_id as string };
     },
   });

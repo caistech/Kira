@@ -76,6 +76,9 @@ export async function GET(request: NextRequest) {
       id: agent.id,
       // user_id is retained as provenance; organisation_id is the ownership/tenant scope (INV-020).
       user_id: agent.user_id,
+      // The CALLER's person_id (Scope D / two-identifier seam). The greeting and the VoiceWidget
+      // both need who is talking, which is never kira_agents.user_id on a shared org agent.
+      person_id: organisationContext.personId,
       organisation_id: agent.organisation_id ?? organisationId,
       agent_name: agent.agent_name,
       journey_type: agent.journey_type,

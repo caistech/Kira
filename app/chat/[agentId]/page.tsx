@@ -100,6 +100,9 @@ interface ConversationContext {
 interface AgentInfo {
   id: string;
   user_id: string;
+  // The CALLER's canonical person_id (Scope D / two-identifier seam). The greeting and the
+  // VoiceWidget need who is talking — never kira_agents.user_id on a shared org agent.
+  person_id: string;
   agent_name: string;
   journey_type: string;
   status: string;
@@ -576,6 +579,7 @@ export default function ChatPage({
                     ? { agent: { firstMessage: welcomeBack } }
                     : undefined
               }
+              userId={agentInfo?.person_id}
               getSignedUrl={getSignedUrl}
               onConnect={() => {
                 setIsConnected(true);
