@@ -117,7 +117,7 @@ export async function POST() {
     const { data: existing } = await supabase
       .from('kira_agents')
       .select('id, elevenlabs_agent_id')
-      .eq('organisation_id', orgContext.organisationId)
+      .eq('person_id', orgContext.personId)
       .eq('journey_type', JOURNEY)
       .eq('status', 'active')
       .maybeSingle();
@@ -433,6 +433,7 @@ export async function POST() {
     const { data: saved, error: insertError } = await supabase
       .from('kira_agents')
       .insert({
+        person_id: orgContext.personId,
         organisation_id: orgContext.organisationId,
         // Provenance against the legacy FK users(id), NOT NULL, still carried.
         user_id: legacyUserId,
@@ -458,7 +459,7 @@ export async function POST() {
         const { data: winner } = await supabase
           .from('kira_agents')
           .select('id, elevenlabs_agent_id')
-          .eq('organisation_id', orgContext.organisationId)
+          .eq('person_id', orgContext.personId)
           .eq('journey_type', JOURNEY)
           .eq('status', 'active')
           .maybeSingle();

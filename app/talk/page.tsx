@@ -62,7 +62,7 @@ export default async function TalkPage({
     ? await svc
         .from('kira_agents')
         .select('elevenlabs_agent_id, journey_type')
-        .eq('organisation_id', orgContext.organisationId)
+        .eq('person_id', orgContext.personId)
         .eq('status', 'active')
         .order('last_conversation_at', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false })

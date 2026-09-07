@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
 
     const { data: kiraAgent, error } = await supabase
       .from('kira_agents')
-      .select('elevenlabs_agent_id, status, user_id, organisation_id')
+      .select('elevenlabs_agent_id, status, person_id')
       .eq('elevenlabs_agent_id', agentId)
       .single();
 
@@ -62,25 +62,10 @@ export async function POST(req: NextRequest) {
     if (!organisationContext) {
       return NextResponse.json({ error: 'Not signed in or no organisation access' }, { status: 401 });
     }
-    const organisationId = organisationContext.organisationId;
-
-    // Verify agent belongs to this organisation (or user owns it for backward compatibility)
-    const { data: membership } = await supabase
-      .from('organisation_memberships')
-      .select('membership_id')
-      .eq('organisation_id', organisationId)
-      .eq('person_id', organisationContext.personId)
-      .eq('status', 'active')
-      .maybeSingle();
 
     const admin = await isCurrentUserAdmin();
-    // INV-020: the agent is organisation-owned. When the agent already carries `organisation_id`,
-    // it must match the caller's active organisation; otherwise fall back to membership/admin.
-    const agentOwnsOrg =
-      !kiraAgent.organisation_id || kiraAgent.organisation_id === organisationId;
-
-    // Allow access if admin, organisation member, or legacy fallback (if we had users table loaded, but we don't need it if membership is present)
-    if (!admin && (!membership || !agentOwnsOrg)) {
+    // Per-person agent: the caller must be the agent's owner OR an org admin.
+    if (!admin && kiraAgent.person_id !== organisationContext.personId) {
       return NextResponse.json({ error: 'Not authorized for this agent' }, { status: 403 });
     }
 

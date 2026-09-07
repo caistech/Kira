@@ -22,17 +22,16 @@ describe('/api/kira/ensure invariants', () => {
     expect(ROUTE).toMatch(/getCurrentOrganisationContext\(\)/);
   });
 
-  it('looks up the ORGANISATION\'s existing active business agent before creating one', () => {
+  it('looks up the CALLER\'s existing active business agent before creating one', () => {
     expect(ROUTE).toMatch(/from\('kira_agents'\)/);
-    expect(ROUTE).toMatch(/\.eq\('organisation_id', orgContext\.organisationId\)/);
+    expect(ROUTE).toMatch(/\.eq\('person_id', orgContext\.personId\)/);
     expect(ROUTE).toMatch(/\.eq\('journey_type', JOURNEY\)/);
     expect(ROUTE).toMatch(/\.eq\('status', 'active'\)/);
   });
 
-  it('stores the legacy user_id FK (users.id) not the canonical person_id', () => {
-    // The live kira_agents.user_id still carries the NOT NULL FK to users(id). A canonical
-    // person_id written here would violate the constraint on insert and orphan the ElevenLabs
-    // agent (the exact failure mode the 08-05 incident documented).
+  it('inserts person_id as the owning identity, plus legacy user_id for provenance', () => {
+    // The kira_agents row must carry the caller's canonical person_id and the legacy user_id FK.
+    expect(ROUTE).toMatch(/person_id:\s*orgContext\.personId/);
     expect(ROUTE).toMatch(/legacyUserId/);
     expect(ROUTE).not.toMatch(/user_id: user\.(person_id|id),/);
   });
@@ -45,7 +44,7 @@ describe('/api/kira/ensure invariants', () => {
   });
 
   it('handles concurrent insert (23505) by reconciling to the winner', () => {
-    // The partial unique index kira_one_active_agent_per_org_journey can reject an insert if a
+    // The partial unique index kira_one_active_agent_per_person_journey can reject an insert if a
     // concurrent ensure or draft approval won the race. The route must keep the winner and
     // best-effort delete the just-minted ElevenLabs agent to avoid an orphaned paid resource.
     expect(ROUTE).toMatch(/23505/);

@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     // Look up agent by ElevenLabs agent ID
     const { data: agent, error } = await supabase
       .from('kira_agents')
-      .select('id, user_id, organisation_id, agent_name, journey_type, status, elevenlabs_agent_id')
+      .select('id, user_id, organisation_id, agent_name, journey_type, status, elevenlabs_agent_id, person_id')
       .eq('elevenlabs_agent_id', agentId)
       .single();
 
@@ -43,22 +43,8 @@ export async function GET(request: NextRequest) {
 
     // Verify agent belongs to this organisation
     const admin = await isCurrentUserAdmin();
-    
-    const { data: membership } = await supabase
-      .from('organisation_memberships')
-      .select('membership_id')
-      .eq('organisation_id', organisationId)
-      .eq('person_id', organisationContext.personId)
-      .eq('status', 'active')
-      .maybeSingle();
-
-    // INV-020: the agent is organisation-owned. When it already carries `organisation_id` it must
-    // match the caller's active organisation; otherwise fall back to membership/direct-owner checks.
-    const agentOwnsOrg =
-      !agent.organisation_id || agent.organisation_id === organisationId;
-
-    // Allow access if admin or organisation member
-    if (!admin && (!membership || !agentOwnsOrg)) {
+    // Per-person agent: the caller must be the agent's owner OR an org admin.
+    if (!admin && agent.person_id !== organisationContext.personId) {
       return NextResponse.json({ error: 'Not authorized for this agent' }, { status: 403 });
     }
 
@@ -74,11 +60,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       id: agent.id,
-      // user_id is retained as provenance; organisation_id is the ownership/tenant scope (INV-020).
+      // user_id is retained as provenance; organisation_id is the ownership/tenant scope.
       user_id: agent.user_id,
-      // The CALLER's person_id (Scope D / two-identifier seam). The greeting and the VoiceWidget
-      // both need who is talking, which is never kira_agents.user_id on a shared org agent.
-      person_id: organisationContext.personId,
+      // The CALLER's person_id — with per-person agents this IS the agent's own person_id.
+      person_id: agent.person_id,
       organisation_id: agent.organisation_id ?? organisationId,
       agent_name: agent.agent_name,
       journey_type: agent.journey_type,

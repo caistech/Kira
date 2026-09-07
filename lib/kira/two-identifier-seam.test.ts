@@ -20,12 +20,14 @@ const root = path.resolve(__dirname, '../..');
 
 const read = (rel: string) => readFileSync(path.join(root, rel), 'utf8');
 
-const manifest   = read('lib/kira/tool-manifest.mjs');
-const convai     = read('lib/kira/convai.ts');
-const uidTools   = read('lib/kira/uid-tools.ts');
-const ctxRoute   = read('app/api/kira/conversation/context/route.ts');
-const agentRoute = read('app/api/kira/agent/route.ts');
-const chatPage   = read('app/chat/[agentId]/page.tsx');
+const manifest     = read('lib/kira/tool-manifest.mjs');
+const convai       = read('lib/kira/convai.ts');
+const uidTools     = read('lib/kira/uid-tools.ts');
+const ctxRoute     = read('app/api/kira/conversation/context/route.ts');
+const agentRoute   = read('app/api/kira/agent/route.ts');
+const chatPage     = read('app/chat/[agentId]/page.tsx');
+const ensureRoute  = read('app/api/kira/ensure/route.ts');
+const chatStart    = read('app/api/kira/chat/start/route.ts');
 
 // Strip comments so comment-only regressions don't trick the scanner.
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
@@ -117,11 +119,11 @@ describe('the conversation/context route honours the caller person, not the agen
 });
 
 describe('the agent route returns the caller person_id', () => {
-  it('response includes person_id derived from the authenticated caller', () => {
-    // The chat page needs the caller's person_id for the VoiceWidget's userId prop (which
-    // sends the platform-filled dynamic variable). The agent's user_id is provenance only.
+  it('response includes person_id derived from the agent row, not the agent owner', () => {
+    // With per-person agents the agent's own person_id IS the caller's person_id. The
+    // response must carry the agent's person_id, never the caller's org context person_id.
     const body = strip(agentRoute);
-    expect(body).toMatch(/person_id:\s*organisationContext\.personId/);
+    expect(body).toMatch(/person_id:\s*agent\.person_id/);
   });
 });
 
@@ -134,5 +136,26 @@ describe('the chat page passes the caller person to the VoiceWidget', () => {
 
   it('AgentInfo interface declares person_id as string', () => {
     expect(chatPage).toMatch(/person_id:\s*string/);
+  });
+});
+
+describe('per-person agent isolation', () => {
+  it('agent lookup is by person_id, not organisation_id', () => {
+    // The ensure route must scope the fast-path reuse by the caller's person, so
+    // two people in the same org each provision their own ElevenLabs agent.
+    expect(manifest).not.toMatch(/\.eq\('organisation_id',\s*orgContext\.organisationId\)/);
+  });
+
+  it('ensure insert carries the caller person_id', () => {
+    // The kira_agents row must record who owns it at person level.
+    const body = strip(ensureRoute);
+    expect(body).toMatch(/person_id:\s*orgContext\.personId/);
+  });
+
+  it('chat/start authorises by person_id ownership, not org membership', () => {
+    // Starting a voice session on someone else's agent must be rejected
+    // unless the caller is an org admin.
+    const body = strip(chatStart);
+    expect(body).toMatch(/kiraAgent\.person_id\s*!==\s*organisationContext\.personId/);
   });
 });
