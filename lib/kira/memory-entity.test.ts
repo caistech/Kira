@@ -81,6 +81,8 @@ vi.mock('@/lib/supabase/server', () => ({
           return chain;
         },
         neq: () => chain,
+        lte: () => chain,
+        gte: () => chain,
         in: () => chain,
         not: (col: string) => {
           if (col === 'parked_entity') chain.__entityQuery = true;
