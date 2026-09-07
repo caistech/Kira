@@ -10,7 +10,7 @@
 //
 //   Not signed in
 //       ↓
-//   BetaRedeem (peek → password → redeem → Auth session)
+//   BetaRedeem (peek → confirm → redeem → Auth session via magic-link)
 //       ↓
 //   Authenticated Person
 //       ↓
@@ -26,9 +26,11 @@
 //
 // BetaRedeem handles the complete redemption flow:
 //   1. Validate invitation code (peek — read-only)
-//   2. Create password
-//   3. Redeem invitation (creates Auth account)
-//   4. Establish Auth session
+//   2. Confirm terms and redeem (the code IS the credential — no password)
+//   3. Server mints a magic-link token for the invited identity
+//   4. Client redirects to /auth/callback which establishes the session
+//      server-side via verifyOtp, guaranteeing the invitation wins over
+//      any ambient browser session
 //   5. Redirect to /plan (this page)
 //
 // This page then handles canonical identity establishment via

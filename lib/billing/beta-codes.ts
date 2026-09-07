@@ -120,6 +120,16 @@ export interface BetaCodeRow {
   email: string;
 
   /**
+   * The invited person's name, carried on the invitation.
+   *
+   * These are presented to the invited person (e.g. pre-filling their first name in the valuation
+   * flow) and are NOT identity authority — Person identity is established later through the
+   * canonical chain. They are invitation-bound presentation data.
+   */
+  first_name: string | null;
+  last_name: string | null;
+
+  /**
    * Canonical organisational anchor for the invitation.
    *
    * This is deliberately present on the beta code because redemption occurs before authentication.
@@ -156,9 +166,10 @@ export function checkBetaCode(row: BetaCodeRow | null, now: Date): BetaCodeRejec
 /**
  * Look a code up without consuming it, for the `?code=` landing.
  *
- * Returns BOTH:
- *   - the bound email; and
- *   - the canonical organisation_id bound to the invitation.
+ * Returns:
+ *   - the bound email;
+ *   - the canonical organisation_id bound to the invitation; and
+ *   - the invitation-bound first/last name (presentation only, see `BetaCodeRow`).
  *
  * The tester never types his own address or organisation. Both come from the invitation code.
  *
@@ -172,7 +183,13 @@ export function checkBetaCode(row: BetaCodeRow | null, now: Date): BetaCodeRejec
 export async function peekBetaCode(
   raw: string,
 ): Promise<
-  | { ok: true; email: string; organisation_id: string }
+  | {
+      ok: true;
+      email: string;
+      organisation_id: string;
+      first_name: string | null;
+      last_name: string | null;
+    }
   | { ok: false; reason: BetaCodeRejection }
 > {
   const code = normaliseBetaCode(raw);
@@ -185,7 +202,9 @@ export async function peekBetaCode(
 
   const { data, error } = await svc
     .from('beta_codes')
-    .select('code, email, organisation_id, expires_at, redeemed_at, revoked_at')
+    .select(
+      'code, email, organisation_id, first_name, last_name, expires_at, redeemed_at, revoked_at',
+    )
     .eq('code', code)
     .maybeSingle();
 
@@ -204,6 +223,8 @@ export async function peekBetaCode(
     ok: true,
     email: String(row!.email).toLowerCase(),
     organisation_id: String(row!.organisation_id),
+    first_name: row!.first_name ?? null,
+    last_name: row!.last_name ?? null,
   };
 }
 
@@ -364,5 +385,75 @@ export async function releaseBetaCode(raw: string): Promise<void> {
       '[beta-codes] could not release code after a failed redemption:',
       error,
     );
+  }
+}
+
+/**
+ * The canonical organisational anchor of the CAIS Beta sandbox.
+ *
+ * This is the organisation the beta-testing cohort is minted against (see `app/manage/invitations`,
+ * which uses the same literal). Invitations minted here are sandbox invitations: the invited
+ * person's account is attached to this Organisation so a cohort of testers can exercise the
+ * product against a shared, non-customer surface.
+ *
+ * Kept in ONE canonical place so every consumer (the redeem route, the valuation-claim guard, the
+ * UserShell claim gate) agrees on the identifier without each re-typing the literal.
+ */
+export const CAIS_BETA_ORGANISATION_ID =
+  '11f7dfa8-14fd-4994-9738-42927c0555b6';
+
+/**
+ * Is this Organisation a beta/sandbox surface?
+ *
+ * This is the authoritative, server-side test for "is this a CAIS beta sandbox organisation?".
+ *
+ * IMPORTANT — WHY NOT CLIENT STRINGS:
+ *
+ * A device-valuation replacement prompt (ClaimStoredValuation) must NOT appear inside the beta
+ * sandbox, where every tester on a shared organisation could be offered "replace your baseline" for
+ * a value that started as a seeded baseline. Determining that from a client-side organisation name
+ * (e.g. `name.includes('CAIS Beta')`) is fragile and spoofable. Instead the guard resolves the
+ * organisation authoritatively: an Organisation is a beta sandbox iff it hosts beta invitations
+ * (rows in `beta_codes` bound to that organisation).
+ *
+ * The named CAIS Beta organisation always qualifies (it is where beta invitations are minted). Any
+ * other organisation that a beta invitation happens to be bound to — even one minted in error — is
+ * equally suppressed, because the invariant is about the SURFACE not the literal id.
+ *
+ * Non-fatal: if the authoritative lookup fails we return `false` (treat as a normal organisation) so
+ * a beta-detection failure can never brick the portal; it only fails open into the ordinary path.
+ */
+export async function isBetaSandboxOrganisation(
+  organisationId: string,
+): Promise<boolean> {
+  if (organisationId === CAIS_BETA_ORGANISATION_ID) {
+    return true;
+  }
+
+  try {
+    const svc = createServiceClientV2();
+
+    const { data, error } = await svc
+      .from('beta_codes')
+      .select('code')
+      .eq('organisation_id', organisationId)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error(
+        '[beta-codes] beta-sandbox organisation check failed (fail-open):',
+        error.message,
+      );
+      return false;
+    }
+
+    return Boolean(data);
+  } catch (error) {
+    console.error(
+      '[beta-codes] unexpected beta-sandbox organisation check error (fail-open):',
+      error,
+    );
+    return false;
   }
 }

@@ -44,6 +44,7 @@ import {
   type AnswerKey,
   type IconKey,
 } from '@/lib/valuation/questions';
+import { BETA_CODE_STORAGE_KEY } from '@/components/BetaCodeCarrier';
 import {
   EXIT_TIMEFRAME_OPTIONS,
   exitAdvice,
@@ -227,6 +228,49 @@ export default function BusinessValuationPage() {
       /* private browsing or a bad blob — start clean rather than break the page */
     }
     setRestored(true);
+  }, []);
+
+  // BETA INVITATION NAME PREFILL.
+  //
+  // An invited tester arrives at the valuation with ?code= in the URL (carried into sessionStorage
+  // by BetaCodeCarrier). The invitation carries their name, so the "What should we call you?" intro
+  // field can be pre-filled — the tester should not have to type a name the invitation already told
+  // us. This is presentation only (see BetaCodeRow): the name is NOT identity authority.
+  //
+  // It must run as an effect AFTER restore (line above) so it never overwrites a name the tester
+  // already typed or that was restored from progress — it only fills the field when it is still
+  // empty. The invitation peek is read-only and never consumes the code.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const parkedCode =
+          window.sessionStorage.getItem(BETA_CODE_STORAGE_KEY) ?? '';
+        if (!parkedCode.trim()) return;
+        const response = await fetch('/api/beta/peek', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store',
+          body: JSON.stringify({ code: parkedCode.trim() }),
+        });
+        if (!response.ok) return;
+        const data = (await response.json().catch(() => null)) as {
+          ok?: boolean;
+          firstName?: string | null;
+        } | null;
+        if (cancelled) return;
+        if (!data?.ok || !data.firstName) return;
+        // Only pre-fill if the visitor has not already supplied/restored a name.
+        setFirstName((current) =>
+          current.trim() ? current : data.firstName!.trim().slice(0, 40),
+        );
+      } catch {
+        // Non-fatal: the field simply stays empty and the tester types a name.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {

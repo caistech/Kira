@@ -28,6 +28,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { getCurrentOrganisationContext } from '@/lib/auth';
 import { createServiceClientV2 } from '@/lib/supabase/server';
+import { isBetaSandboxOrganisation } from '@/lib/billing/beta-codes';
 import { computeValuation, type ValuationInputs } from '@/lib/valuation/model';
 import { recordValuationSnapshot } from '@/lib/valuation/snapshots';
 import { DEFAULT_CURRENCY } from '@/lib/valuation/currency';
@@ -52,6 +53,13 @@ export async function POST(request: NextRequest) {
   const orgContext = await getCurrentOrganisationContext();
   if (!orgContext) {
     return NextResponse.json({ error: 'Not authorised to claim valuation' }, { status: 401 });
+  }
+
+  // BETA SANDBOX GUARD. A beta/sandbox organisation's baseline is seeded and shared across the
+  // tester cohort; a device valuation must never replace it (server-side authority, mirroring the
+  // client-side gate in UserShell). Refused before any read or write.
+  if (await isBetaSandboxOrganisation(orgContext.organisationId)) {
+    return NextResponse.json({ claimed: false, reason: 'beta_sandbox_org' }, { status: 200 });
   }
 
   let body: { inputs?: unknown; currency?: unknown; confirmed?: unknown; action?: 'adopt' | 'replace' };

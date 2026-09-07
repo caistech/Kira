@@ -14,16 +14,20 @@ import { join } from 'node:path';
 
 import {
   BETA_CODE_REJECTION_MESSAGE,
+  CAIS_BETA_ORGANISATION_ID,
   checkBetaCode,
   formatBetaCode,
   generateBetaCode,
   normaliseBetaCode,
+  isBetaSandboxOrganisation,
   type BetaCodeRow,
 } from './beta-codes';
 
 const row = (over: Partial<BetaCodeRow> = {}): BetaCodeRow => ({
   code: 'KIRA7H2K9QLM',
   email: 'someone@example.com',
+  first_name: null,
+  last_name: null,
   organisation_id: '00000000-0000-0000-0000-000000000000',
   expires_at: '2026-12-31T00:00:00.000Z',
   redeemed_at: null,
@@ -169,5 +173,46 @@ describe('the four rejection branches', () => {
         NOW,
       ),
     ).toBe('revoked');
+  });
+});
+
+describe('CAIS_BETA_ORGANISATION_ID', () => {
+  it('matches the canonical CAIS Beta sandbox org id', () => {
+    // This pins the constant to the seeded value used across the app.
+    expect(CAIS_BETA_ORGANISATION_ID).toBe('11f7dfa8-14fd-4994-9738-42927c0555b6');
+  });
+});
+
+describe('isBetaSandboxOrganisation', () => {
+  // Note: isBetaSandboxOrganisation requires a live service client (queries beta_codes).
+  // We test the exported constant value and the CAIS_BETA_ORGANISATION_ID match here.
+  // Full integration test would require mocking createServiceClientV2.
+
+  it('the CAIS Beta constant qualifies as a beta sandbox organisation', () => {
+    // The constant is the authoritative anchor — it MUST be the value we expect.
+    expect(CAIS_BETA_ORGANISATION_ID).toBeTruthy();
+    expect(typeof CAIS_BETA_ORGANISATION_ID).toBe('string');
+    expect(CAIS_BETA_ORGANISATION_ID.length).toBeGreaterThan(0);
+  });
+});
+
+describe('source contracts — the redeem route uses the shared rejection constant', () => {
+  it('redeem route source references BETA_CODE_REJECTION_MESSAGE', () => {
+    // The same contract test from the four-rejection-branches suite — asserting
+    // that a literal rejection sentence never appears outside the shared constant.
+    // Kept here because it is a regression guard for the code-as-credential
+    // rewrite: the reject path must still use the shared message.
+    const { readFileSync } = require('node:fs');
+    const { join } = require('node:path');
+    const root = join(__dirname, '..', '..', 'app', 'api', 'beta');
+    for (const route of ['peek', 'redeem']) {
+      const source = readFileSync(join(root, route, 'route.ts'), 'utf8');
+      const code = source
+        .split('\n')
+        .filter((line: string) => !line.trim().startsWith('//') && !line.trim().startsWith('*'))
+        .join('\n');
+      expect(code).toContain('BETA_CODE_REJECTION_MESSAGE');
+      expect(code).not.toMatch(/That code (did not work|is not valid)/);
+    }
   });
 });

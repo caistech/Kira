@@ -62,6 +62,7 @@ import {
 import { getAuthorisedPortals } from '@/lib/portal';
 
 import { createServiceClientV2 } from '@/lib/supabase/server';
+import { isBetaSandboxOrganisation } from '@/lib/billing/beta-codes';
 import { PortalShell, type NavItem } from '@/components/PortalShell';
 import { ClaimStoredValuation } from '@/components/ClaimStoredValuation';
 import { BetaFeedbackButton } from '@/components/BetaFeedbackButton';
@@ -330,6 +331,15 @@ export async function UserShell({
     ? await resolveExistingBaseline(organisationId)
     : null;
 
+  // The device-valuation replacement prompt must NOT appear in the beta sandbox: a shared, seeded
+  // baseline there would otherwise offer every tester "replace your baseline". This is resolved
+  // authoritatively from the organisation's beta-invitation binding (see isBetaSandboxOrganisation),
+  // never from a client-supplied organisation name. Non-fatal: a lookup failure simply keeps the
+  // normal path.
+  const betaSandbox = claimValuation
+    ? await isBetaSandboxOrganisation(organisationId)
+    : false;
+
   // ===========================================================================
   // 5. PORTAL / PERSONA CONTEXTS
   // ===========================================================================
@@ -356,7 +366,7 @@ export async function UserShell({
       portals={portals}
       currentPortalId="user"
     >
-      {claimValuation && (
+      {claimValuation && !betaSandbox && (
         <ClaimStoredValuation
           existing={existingBaseline}
         />

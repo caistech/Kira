@@ -32,7 +32,7 @@ function normaliseCode(value: unknown): string {
  * The beta invitation is access/provenance information only.
  *
  * Response contract:
- *   { ok: true, email: string }
+ *   { ok: true, email: string, firstName: string | null, lastName: string | null }
  *   { ok: false, error: string, code: string }
  */
 async function handlePeek(code: string) {
@@ -70,6 +70,8 @@ async function handlePeek(code: string) {
     return NextResponse.json({
       ok: true,
       email: result.email.toLowerCase(),
+      firstName: result.first_name,
+      lastName: result.last_name,
     });
   } catch (error) {
     console.error(
