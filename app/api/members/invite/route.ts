@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentOrganisationContext } from '@/lib/auth';
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import { TERMS_VERSION } from '@/lib/terms';
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
 
   const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-4).toUpperCase();
 
-  const { error: createErr } = await svc.auth.admin.createUser({
+  const { data: createdUser, error: createErr } = await svc.auth.admin.createUser({
     email,
     password: tempPassword,
     email_confirm: true,
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     const { data: credential } = await svc
       .from('auth_credentials')
       .select('person_id')
-      .eq('auth_user_id', email)
+      .eq('auth_user_id', createdUser.user.id)
       .maybeSingle();
 
     let personId: string;
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       await svc.from('auth_credentials').insert({
         person_id: personId,
         auth_provider: 'email',
-        auth_user_id: email,
+        auth_user_id: createdUser.user.id,
       });
     }
 
@@ -98,4 +98,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Could not complete invite.' }, { status: 500 });
   }
 }
+
+
 

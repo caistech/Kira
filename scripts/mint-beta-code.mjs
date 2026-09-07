@@ -145,7 +145,7 @@ async function mint() {
   const prettyName = [firstName, lastName].filter(Boolean).join(' ') || null;
   const tier =
     type === 'superadmin'
-      ? 'Superadmin tester — on redemption they join the org as an owner (CEO).'
+      ? 'Superadmin tester — on redemption they join the organisation as a superadmin.'
       : 'User tester — on redemption they join the org as a member.';
   console.log(`\n  Code:    ${pretty}`);
   console.log(`  For:     ${prettyName ? `${prettyName} <${email}>` : email}`);
