@@ -33,6 +33,8 @@ export default function KiraBootstrap({ firstName, focusArea }: Props) {
     };
   }, []);
 
+  const provisionRef = useRef<() => void>(() => {});
+
   const provision = useCallback(async () => {
     setBusy(true);
     setError(null);
@@ -58,13 +60,17 @@ export default function KiraBootstrap({ firstName, focusArea }: Props) {
       if (retries < MAX_RETRIES) {
         setRetries((r) => r + 1);
         setError(`${msg} — retrying…`);
-        setTimeout(provision, 2000);
+        setTimeout(() => provisionRef.current(), 2000);
       } else {
         setError(msg);
         setBusy(false);
       }
     }
   }, [retries, router]);
+
+  useEffect(() => {
+    provisionRef.current = provision;
+  }, [provision]);
 
   // Fire on mount (or after retry changes).
   useEffect(() => {

@@ -28,15 +28,6 @@ export function PortalSelector({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Hidden entirely for single-portal people — the selector only answers a
-  // question they never had.
-  if (portals.length < 2) {
-    return null;
-  }
-
-  const current =
-    portals.find((portal) => portal.id === currentId) ?? portals[0];
-
   // Close on outside click / Escape.
   useEffect(() => {
     if (!open) return;
@@ -55,6 +46,15 @@ export function PortalSelector({
       document.removeEventListener('keydown', onKey);
     };
   }, [open]);
+
+  // Hidden entirely for single-portal people — the selector only answers a
+  // question they never had.
+  if (portals.length < 2) {
+    return null;
+  }
+
+  const current =
+    portals.find((portal) => portal.id === currentId) ?? portals[0];
 
   function select(portal: PortalOption) {
     setOpen(false);
