@@ -244,14 +244,22 @@ export default function BusinessValuationPage() {
     let cancelled = false;
     (async () => {
       try {
+        // The code can arrive two ways: BetaCodeCarrier parks it in sessionStorage when the tester
+        // enters via the landing page, or the tester lands here directly with ?code= in the URL
+        // (a new tab or an invitation email link that skipped the landing page). Resolve both so the
+        // name pre-fill works whatever the entry path. The URL is the source of truth when both are
+        // present, because it is the freshest signal.
+        const fromUrl =
+          new URLSearchParams(window.location.search).get('code')?.trim() ?? '';
         const parkedCode =
-          window.sessionStorage.getItem(BETA_CODE_STORAGE_KEY) ?? '';
-        if (!parkedCode.trim()) return;
+          window.sessionStorage.getItem(BETA_CODE_STORAGE_KEY)?.trim() ?? '';
+        const codeToPeek = fromUrl || parkedCode;
+        if (!codeToPeek) return;
         const response = await fetch('/api/beta/peek', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           cache: 'no-store',
-          body: JSON.stringify({ code: parkedCode.trim() }),
+          body: JSON.stringify({ code: codeToPeek }),
         });
         if (!response.ok) return;
         const data = (await response.json().catch(() => null)) as {

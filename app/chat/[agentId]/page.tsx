@@ -267,6 +267,10 @@ export default function ChatPage({
     agentInfo?.first_name || agentInfo?.agent_name?.split('_')[1] || '',
     context,
   );
+  // Fallback: first-time caller with a known name (e.g., org member who is not the owner).
+  // If neither area-focus nor welcome-back applies, greet the actual authenticated caller
+  // instead of the baked-in agent first_message (which was frozen with the owner's name).
+  const callerGreeting = firstName?.trim() ? `Hey ${firstName.trim()} — good to hear from you. Let me see where we got to.` : null;
 
   /**
    * What happens when he types instead of speaking.
@@ -577,7 +581,9 @@ export default function ChatPage({
                   ? { agent: { firstMessage: areaFocusMessage } }
                   : welcomeBack
                     ? { agent: { firstMessage: welcomeBack } }
-                    : undefined
+                    : callerGreeting
+                      ? { agent: { firstMessage: callerGreeting } }
+                      : undefined
               }
               userId={agentInfo?.person_id}
               getSignedUrl={getSignedUrl}

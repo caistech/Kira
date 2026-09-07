@@ -26,6 +26,7 @@ export function TeamSectionClient({ initialMembers = [], organisationId }: TeamS
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('member');
   const [inviteFirstName, setInviteFirstName] = useState('');
+  const [inviteLastName, setInviteLastName] = useState('');
 
   useEffect(() => {
     if (!initialMembers.length) {
@@ -49,6 +50,7 @@ export function TeamSectionClient({ initialMembers = [], organisationId }: TeamS
       body: JSON.stringify({ 
         email: inviteEmail, 
         firstName: inviteFirstName || 'New', 
+        lastName: inviteLastName, 
         role: inviteRole, 
         canSpend: false 
       }),
@@ -155,7 +157,7 @@ export function TeamSectionClient({ initialMembers = [], organisationId }: TeamS
 
       <form onSubmit={inviteMember} className="border-t border-gray-200 pt-6 space-y-4">
         <h3 className="text-base font-medium text-gray-900">Invite new member</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-500">First name</label>
             <input
@@ -163,6 +165,16 @@ export function TeamSectionClient({ initialMembers = [], organisationId }: TeamS
               value={inviteFirstName}
               onChange={(e) => setInviteFirstName(e.target.value)}
               placeholder="Jane"
+              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500">Last name</label>
+            <input
+              type="text"
+              value={inviteLastName}
+              onChange={(e) => setInviteLastName(e.target.value)}
+              placeholder="Doe"
               className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
             />
           </div>
