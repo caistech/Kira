@@ -118,53 +118,67 @@ if (data?.id) {
 return data.id;
 }
 
-/*
- * Compatibility adoption: only adopt an existing legacy row that does
- * not already have an auth_user_id.
- */
-const {
-data: byEmail,
-error: emailError,
-} = await svc
-.from('users')
-.select('id')
-.ilike('email', email)
-.maybeSingle();
+  /*
+   * Compatibility adoption: create legacy row if none exists.
+   */
+  const { data: byEmail, error: emailError } = await svc
+    .from('users')
+    .select('id')
+    .ilike('email', email)
+    .maybeSingle();
 
-if (emailError) {
-console.warn(
-'[api/beta/redeem] legacy users email lookup failed:',
-emailError.message,
-);
-return null;
-}
+  if (emailError) {
+    console.warn(
+      '[api/beta/redeem] legacy users email lookup failed:',
+      emailError.message,
+    );
+  }
 
-if (!byEmail?.id) {
-return null;
-}
+  if (byEmail?.id) {
+    const {
+      data: adopted,
+      error: adoptError,
+    } = await svc
+      .from('users')
+      .update({
+        auth_user_id: authUserId,
+      })
+      .eq('id', byEmail.id)
+      .is('auth_user_id', null)
+      .select('id')
+      .maybeSingle();
 
-const {
-data: adopted,
-error: adoptError,
-} = await svc
-.from('users')
-.update({
-auth_user_id: authUserId,
-})
-.eq('id', byEmail.id)
-.is('auth_user_id', null)
-.select('id')
-.maybeSingle();
+    if (adoptError) {
+      console.warn(
+        '[api/beta/redeem] legacy users bridge adoption failed:',
+        adoptError.message,
+      );
+    } else if (adopted?.id) {
+      return adopted.id;
+    }
+  }
 
-if (adoptError) {
-console.warn(
-'[api/beta/redeem] legacy users bridge adoption failed:',
-adoptError.message,
-);
-return null;
-}
+  // Create new user row if no existing one was found or adopted
+  const { data: createdUser, error: createError } = await svc
+    .from('users')
+    .insert({
+      email,
+      auth_user_id: authUserId,
+      status: 'active',
+      email_verified: true,
+    })
+    .select('id')
+    .single();
 
-return adopted?.id ?? null;
+  if (createError) {
+    console.warn(
+      '[api/beta/redeem] legacy users row creation failed:',
+      createError.message,
+    );
+    return null;
+  }
+
+  return createdUser?.id ?? null;
 }
 
 /**
