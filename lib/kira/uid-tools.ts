@@ -483,6 +483,31 @@ export async function handleKiraContext(req: Request): Promise<Response> {
   // can move; the task and the conversation belong to the organisation).
   const orgContext = await resolveOrganisationForPerson(uid);
   const organisationId = orgContext?.organisationId || null;
+  // THE CALLER'S IDENTITY, spliced in at turn zero. The persona sweep stripped every baked "Dennis"
+  // from live org agents, so the agent has NO name or business to greet with unless this tool
+  // hands it one. Live tester 2026-09-08: on "no, you should be able to see all the settings",
+  // the agent answered "I don't have access to your business or personal name from any settings"
+  // — because get_conversation_context returned neither. Both facts were in the DB. They are
+  // carried here so the same question gets a name instead of a denial.
+  const svc2 = createServiceClientV2();
+  const callerIdentity: { me?: string; business_name?: string } = {};
+  try {
+    const [personRow, orgRow] = await Promise.all([
+      svc2.from('persons').select('first_name').eq('person_id', uid).maybeSingle(),
+      organisationId
+        ? svc2.from('organisations').select('legal_name, trading_name').eq('organisation_id', organisationId).maybeSingle()
+        : Promise.resolve(null),
+    ]);
+    if (personRow?.data?.first_name) callerIdentity.me = String(personRow.data.first_name);
+    if (orgRow?.data) {
+      callerIdentity.business_name =
+        (orgRow.data.trading_name as string | null) ||
+        (orgRow.data.legal_name as string | null) ||
+        undefined;
+    }
+  } catch (error) {
+    console.error('[kira/context] identity unavailable:', error);
+  }
   // Read the ledger regardless of whether there is conversation history: a first-session owner can
   // still have an open task, and the early-return below would otherwise hide it.
   const ledger = await readTaskLedger(uid);
@@ -565,6 +590,7 @@ export async function handleKiraContext(req: Request): Promise<Response> {
   return json(200, {
     ...(ctx || { has_history: false }),
     ...openTasks,
+    ...callerIdentity,
     ...(baseline ? { baseline } : {}),
     ...(await confirmationOffer(uid)),
   });

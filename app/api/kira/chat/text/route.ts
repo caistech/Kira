@@ -184,7 +184,7 @@ async function recalledFacts(
  * swap one unsupported claim for another.
  */
 async function taskLedgerContext(userId: string, organisationId?: string | null): Promise<string> {
-  const ledger = await readTaskLedger(userId, organisationId ?? undefined);
+  const ledger = await readTaskLedger(userId);
   const lines: string[] = [];
 
   for (const task of ledger.open) {

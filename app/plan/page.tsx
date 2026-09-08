@@ -500,7 +500,7 @@ export default function PlanPage() {
 
           <h1 className="font-display text-3xl font-bold text-stone-900">
             {boundOrganisation
-              ? 'You&apos;re joining the Kira beta'
+              ? "You're joining the Kira beta"
               : 'Set up your business'}
           </h1>
 
