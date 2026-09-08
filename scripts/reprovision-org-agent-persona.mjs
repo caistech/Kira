@@ -31,14 +31,21 @@ if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SECRET_KEY) throw new Error('Supabase
 const supabase = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY);
 const auth = { 'xi-api-key': ELEVENLABS_API_KEY };
 
-// Fetch active agents with a framework that references a person name (not org)
+// Fetch active agents with their owner's person_id (the person name lives in the persons table)
 const { data: agents, error } = await supabase
   .from('kira_agents')
-  .select('id, elevenlabs_agent_id, agent_name, status, framework, organisation_id')
+  .select('id, elevenlabs_agent_id, agent_name, status, person_id, organisation_id')
   .in('status', ['active', 'paused'])
   .neq('agent_name', 'Kira Discovery');
 
 if (error) throw error;
+
+// Resolve person names from the persons table
+const personIds = [...new Set(agents.map(a => a.person_id).filter(Boolean))];
+const { data: persons } = personIds.length
+  ? await supabase.from('persons').select('person_id, first_name, last_name').in('person_id', personIds)
+  : { data: [] };
+const personMap = new Map((persons ?? []).map(p => [p.person_id, p]));
 
 console.log(`${DRY_RUN ? '[DRY RUN] ' : ''}Auditing ${agents.length} agent(s) for person-scoped persona\n`);
 
@@ -64,13 +71,15 @@ for (const a of agents) {
     const currentPrompt = promptCfg.prompt || '';
     const currentFirst = agentCfg.first_message || '';
 
-    // The person name from the framework (e.g. "Dennis")
-    const personName = a.framework?.firstName
-      || String(a.framework?.userName || '').split(' ')[0]
-      || '';
+    // The person name from the persons table (e.g. "Dennis")
+    const person = personMap.get(a.person_id);
+    const firstName = person?.first_name || '';
+    const lastName = person?.last_name || '';
+    const personName = firstName || '';
+    const userName = [firstName, lastName].filter(Boolean).join(' ') || personName;
 
-    if (!personName || personName === 'there') {
-      console.log(`  = ${a.agent_name} — no person name in framework, skipping`);
+    if (!personName) {
+      console.log(`  = ${a.agent_name} — no person name, skipping`);
       skipped++;
       continue;
     }
@@ -80,7 +89,7 @@ for (const a of agents) {
       || currentPrompt.includes(`${personName}'s fractional executive`)
       || currentPrompt.includes(`back-office for ${personName}`)
       || currentPrompt.includes(`WHAT YOU KNOW ABOUT ${personName.toUpperCase()}`)
-      || currentPrompt.includes(`**Name:** ${a.framework?.userName || personName}`);
+      || currentPrompt.includes(`**Name:** ${userName}`);
 
     if (!hasPersonRef) {
       console.log(`  = ${a.agent_name} — already org-scoped (no "${personName}" refs)`);
@@ -89,7 +98,6 @@ for (const a of agents) {
     }
 
     const orgLabel = 'this business';
-    const userName = a.framework?.userName || personName;
 
     // Build replacement map: person-specific → org-neutral
     // System prompt references
