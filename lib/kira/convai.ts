@@ -353,6 +353,7 @@ export function toolSecretOk(req: Request): boolean {
   const presented = req.headers.get(TOOL_SECRET_HEADER);
   console.log('[tools] presented header value present:', presented ? 'yes' : 'no');
   const current = requireToolSecret();
+  console.log('[tools] secret length:', current.length);
   if (presented === current) return true;
 
   // ROTATION WINDOW. A secret lives in two places that cannot change at the same instant: this
