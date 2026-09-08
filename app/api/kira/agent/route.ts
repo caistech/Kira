@@ -65,8 +65,10 @@ export async function GET(request: NextRequest) {
       id: agent.id,
       // user_id is retained as provenance; organisation_id is the ownership/tenant scope.
       user_id: agent.user_id,
-      // The CALLER's person_id — with per-person agents this IS the agent's own person_id.
-      person_id: agent.person_id,
+      // The CALLER's person_id — used by VoiceWidget as ?uid for runtime identity
+      // (get_conversation_context, recall_memory, save_memory). Must be the caller,
+      // NOT the agent owner, so the conversation operates under the right identity.
+      person_id: organisationContext.personId,
       organisation_id: agent.organisation_id ?? organisationId,
       agent_name: agent.agent_name,
       journey_type: agent.journey_type,

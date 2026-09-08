@@ -20,10 +20,13 @@ describe('ChatPage voice greeting fallback for caller name', () => {
     expect(PAGE).toContain('VoiceWidget');
   });
 
-  it('computes a callerGreeting using the firstName prop', () => {
+  it('computes a callerGreeting using the caller canonical name first, then the prop', () => {
+    // agentInfo.first_name is the caller's canonical person name from /api/kira/agent,
+    // which is authoritative even on direct /chat/[agentId] loads where the prop is null.
     expect(PAGE).toContain('callerGreeting');
+    expect(PAGE).toContain("agentInfo?.first_name?.trim()");
     expect(PAGE).toContain('firstName?.trim()');
-    expect(PAGE).toContain('Hey ${firstName.trim()}');
+    expect(PAGE).toContain('Hey ${callerName}');
   });
 
   it('uses callerGreeting in the overrides chain after welcomeBack', () => {
