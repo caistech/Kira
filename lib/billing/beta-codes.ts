@@ -186,7 +186,7 @@ export async function peekBetaCode(
   | {
       ok: true;
       email: string;
-      organisation_id: string;
+      organisation_id: string | null;
       first_name: string | null;
       last_name: string | null;
     }
@@ -222,7 +222,7 @@ export async function peekBetaCode(
   return {
     ok: true,
     email: String(row!.email).toLowerCase(),
-    organisation_id: String(row!.organisation_id),
+    organisation_id: row!.organisation_id ? String(row!.organisation_id) : null,
     first_name: row!.first_name ?? null,
     last_name: row!.last_name ?? null,
   };

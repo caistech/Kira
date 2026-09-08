@@ -93,9 +93,11 @@ return data.properties.hashed_token;
  * authority, membership authority, or ownership authority.
  */
 async function linkLegacyApplicationUser(
-svc: ReturnType<typeof createServiceClientV2>,
-authUserId: string,
-email: string,
+  svc: ReturnType<typeof createServiceClientV2>,
+  authUserId: string,
+  email: string,
+  firstName: string | null,
+  lastName: string | null,
 ): Promise<string | null> {
 const {
 data,
@@ -142,6 +144,8 @@ return data.id;
       .from('users')
       .update({
         auth_user_id: authUserId,
+        first_name: firstName ?? undefined,
+        last_name: lastName ?? undefined,
       })
       .eq('id', byEmail.id)
       .is('auth_user_id', null)
@@ -164,6 +168,8 @@ return data.id;
     .insert({
       email,
       auth_user_id: authUserId,
+      first_name: firstName ?? undefined,
+      last_name: lastName ?? undefined,
       status: 'active',
       email_verified: true,
     })
@@ -852,11 +858,13 @@ if (credInsertErr) {
  * Compatibility only. Does NOT create canonical identity.
  */
 const legacyUserId =
-await linkLegacyApplicationUser(
-svc,
-authUserId,
-email,
-);
+  await linkLegacyApplicationUser(
+    svc,
+    authUserId,
+    email,
+    peekResult.ok ? peekResult.first_name : null,
+    peekResult.ok ? peekResult.last_name : null,
+  );
 
 /*
  * Preserve beta provenance against the Auth/legacy identity.

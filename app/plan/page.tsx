@@ -49,6 +49,7 @@ import {
 
 import { BetaRedeem } from '@/components/BetaRedeem';
 import { BETA_CODE_STORAGE_KEY } from '@/components/BetaCodeCarrier';
+import { createClientV2 } from '@/lib/supabase/browser';
 
 type IdentityResponse = {
   ok?: boolean;
@@ -94,6 +95,15 @@ function normaliseString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function normaliseEmail(value: unknown): string {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
+type IdentityMismatch = {
+  authenticatedEmail: string;
+  invitationEmail: string;
+};
+
 export default function PlanPage() {
   // ---------------------------------------------------------------------------
   // IDENTITY STATE
@@ -102,6 +112,8 @@ export default function PlanPage() {
   const [identityLoading, setIdentityLoading] = useState(true);
   const [identitySaving, setIdentitySaving] = useState(false);
   const [identityError, setIdentityError] = useState<string | null>(null);
+
+  const [initialBetaCode, setInitialBetaCode] = useState<string | null>(null);
 
   const [signedIn, setSignedIn] = useState(false);
 
@@ -126,10 +138,23 @@ export default function PlanPage() {
   } | null>(null);
 
   // ---------------------------------------------------------------------------
-  // BETA CODE (for passing to BetaRedeem as initialCode)
+  // GATE 2 — IDENTITY BOUNDARY
+  // A signed-in session must NEVER silently absorb an invitation addressed to a
+  // different person. When a code is present and the caller is authenticated, we
+  // compare the invitation's email against the authenticated email. If they
+  // differ, rendering is HELD (no portal redirect, no BetaRedeem) until the owner
+  // makes the explicit decision: CANCEL (abandon the invitation, keep the session)
+  // or CONTINUE (terminate the session and restart the invitation unauthenticated).
   // ---------------------------------------------------------------------------
 
-  const [initialBetaCode, setInitialBetaCode] = useState('');
+  const [identityMismatch, setIdentityMismatch] =
+    useState<IdentityMismatch | null>(null);
+  // Starts true so the render-hold gates the portal redirect from the very first
+  // render after `signedIn` resolves — closing the one-frame race where an
+  // already-onboarded Dennis could be redirected into his dashboard before the
+  // invitation check has run.
+  const [mismatchChecking, setMismatchChecking] = useState(true);
+  const [mismatchBusy, setMismatchBusy] = useState(false);
 
   // ---------------------------------------------------------------------------
   // LOAD BETA CODE FROM URL / SESSION
@@ -166,6 +191,12 @@ export default function PlanPage() {
 
   useEffect(() => {
     let cancelled = false;
+
+    // Block until the URL-read effect has set the initial value from the URL or
+    // session storage. `null` means "not yet read" — preventing a stale codeless
+    // fetch that would race the identity-boundary hold for an already-onboarded
+    // user (Dennis) and silently redirect past the mismatch dialog.
+    if (initialBetaCode === null) return;
 
     setIdentityLoading(true);
 
@@ -219,6 +250,15 @@ export default function PlanPage() {
 
         setSignedIn(body.signedIn === true);
 
+        // Same-batch hold: if this identity resolution revealed a signed-in session
+        // AND a beta code is in play, turn the mismatch-checking hold ON in the same
+        // render that turns `signedIn` on. A dedicated effect could only do this a
+        // frame later — and in that frame an already-onboarded owner (Dennis) would
+        // have hit the portal redirect below and silently abandoned the invitation.
+        setMismatchChecking(
+          body.signedIn === true && Boolean(normaliseString(codeToUse)),
+        );
+
         setFirstName(normaliseString(body.firstName));
         setLastName(normaliseString(body.lastName));
 
@@ -271,6 +311,69 @@ export default function PlanPage() {
       cancelled = true;
     };
   }, [initialBetaCode]);
+
+  // ---------------------------------------------------------------------------
+  // GATE 2 — IDENTITY MISMATCH DETECTION
+  //
+  // Runs only when the caller is authenticated AND holds a beta code. Compares
+  // the invitation's intended email (read-only `/api/beta/peek`) against the
+  // authenticated session email. `mismatchChecking` holds rendering so the
+  // "already onboarded → portal redirect" branch cannot fire before the check
+  // finishes — that redirect is exactly what silently swallowed a mismatched
+  // invitation for an established owner.
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!signedIn || !normaliseString(initialBetaCode)) {
+      setIdentityMismatch(null);
+      setMismatchChecking(false);
+      return;
+    }
+
+    setMismatchChecking(true);
+
+    (async () => {
+      try {
+        const { data: authUserData } = await createClientV2().auth.getUser();
+        const authenticatedEmail = normaliseEmail(
+          authUserData?.user?.email,
+        );
+
+        const peekResponse = await fetch('/api/beta/peek', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store',
+          body: JSON.stringify({ code: initialBetaCode }),
+        });
+
+        const peekBody = (await peekResponse.json().catch(() => null)) as {
+          ok?: boolean;
+          email?: string;
+        } | null;
+
+        const invitationEmail = normaliseEmail(peekBody?.ok ? peekBody.email : undefined);
+
+        if (cancelled) return;
+
+        if (authenticatedEmail && invitationEmail && authenticatedEmail !== invitationEmail) {
+          setIdentityMismatch({ authenticatedEmail, invitationEmail });
+        } else {
+          setIdentityMismatch(null);
+        }
+      } catch {
+        // Fail-open: if identity or invitation email cannot be resolved, do not
+        // trap the caller — fall through to the existing flow unchanged.
+        if (!cancelled) setIdentityMismatch(null);
+      } finally {
+        if (!cancelled) setMismatchChecking(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [signedIn, initialBetaCode]);
 
   // ---------------------------------------------------------------------------
   // IDENTITY BOUNDARY
@@ -380,6 +483,58 @@ export default function PlanPage() {
   }
 
   // ---------------------------------------------------------------------------
+  // GATE 2 — MISMATCH DECISIONS
+  // ---------------------------------------------------------------------------
+
+  // CANCEL — abandon the invitation, leave every byte of the signed-in session
+  // untouched. Strips the code from the URL and session storage so a refresh
+  // cannot silently re-introduce the invitation into Dennis's onboarding.
+  function cancelMismatch() {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('code');
+      window.history.replaceState({}, '', url.toString());
+    } catch {
+      // URL rewrite is best-effort; the state clear below is what matters.
+    }
+
+    try {
+      window.sessionStorage.removeItem(BETA_CODE_STORAGE_KEY);
+    } catch {
+      // Browser storage is best-effort only.
+    }
+
+    setInitialBetaCode('');
+    setIdentityMismatch(null);
+    setMismatchChecking(false);
+  }
+
+  // CONTINUE — the invitation belongs to someone else, so get out of its way.
+  // Terminate the ambient session explicitly (the same browser-client signOut the
+  // account UI uses), clear the parked code, and restart the invitation URL as an
+  // unauthenticated user. BetaRedeem then runs untouched, for the invited email.
+  async function continueMismatch() {
+    setMismatchBusy(true);
+    const code = normaliseString(initialBetaCode);
+
+    try {
+      await createClientV2().auth.signOut();
+    } catch {
+      // Proceed even if the sign-out call itself errors; the reload below is the
+      // authoritative boundary — a fresh page load re-verifies the session.
+    }
+
+    try {
+      window.sessionStorage.removeItem(BETA_CODE_STORAGE_KEY);
+    } catch {
+      // Browser storage is best-effort only.
+    }
+
+    const target = `/plan?code=${encodeURIComponent(code)}`;
+    window.location.assign(target);
+  }
+
+  // ---------------------------------------------------------------------------
   // LOADING
   // ---------------------------------------------------------------------------
 
@@ -436,7 +591,116 @@ export default function PlanPage() {
             </p>
           </div>
 
-          <BetaRedeem initialCode={initialBetaCode} />
+          <BetaRedeem initialCode={initialBetaCode ?? undefined} />
+        </main>
+      </main>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // GATE 2 — IDENTITY BOUNDARY HOLD
+  //
+  // Holds rendering (NOT the portal redirect) while the mismatch check is still
+  // in flight. Without this, an established owner (Dennis) opening someone
+  // else's invitation would be redirected into his own dashboard before the check
+  // resolved — which is exactly the silent absorption this boundary exists to
+  // stop. The hold also defeats the `hasCanonicalOrganisation → redirect` branch,
+  // because the code check gates it below.
+  // ---------------------------------------------------------------------------
+
+  if (normaliseString(initialBetaCode) && mismatchChecking) {
+    return (
+      <main className="min-h-screen bg-stone-50 flex items-center justify-center px-5">
+        <div className="flex items-center gap-3 text-stone-600">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Checking your invitation…</span>
+        </div>
+      </main>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // GATE 2 — IDENTITY MISMATCH DIALOG
+  //
+  // The authenticated session and the invitation are addressed to different
+  // people. This is the ONLY place a decision is forced before the invitation can
+  // act on this browser. Two explicit exits:
+  //
+  //   CANCEL — abandon the invitation, change nothing about the signed-in session.
+  //   CONTINUE — sign out the current session and restart the invitation clean.
+  //
+  // No silent substitution is possible from here: neither button performs an
+  // identity transition on its own beyond the explicit sign-out in CONTINUE.
+  // ---------------------------------------------------------------------------
+
+  if (identityMismatch) {
+    return (
+      <main className="min-h-screen bg-stone-50">
+        <header className="border-b border-stone-200 bg-white/80 backdrop-blur">
+          <div className="max-w-4xl mx-auto px-5 py-4 flex items-center justify-between">
+            <a
+              href="/"
+              className="font-display font-bold text-xl bg-gradient-to-r from-amber-500 via-pink-500 to-violet-500 bg-clip-text text-transparent"
+            >
+              Kira
+            </a>
+          </div>
+        </header>
+
+        <main className="max-w-lg mx-auto px-5 py-14">
+          <div className="rounded-3xl border border-stone-200 bg-white p-6 shadow-sm sm:p-8">
+            <div className="h-10 w-10 rounded-xl bg-pink-50 flex items-center justify-center">
+              <CircleAlert className="h-5 w-5 text-pink-600" />
+            </div>
+
+            <h1 className="mt-5 font-display text-2xl font-bold text-stone-900">
+              This invitation is for a different account
+            </h1>
+
+            <p className="mt-3 text-base leading-relaxed text-stone-600">
+              You&apos;re signed in as{' '}
+              <span className="font-semibold text-stone-800">
+                {identityMismatch.authenticatedEmail}
+              </span>
+              , but this invitation was sent to{' '}
+              <span className="font-semibold text-stone-800">
+                {identityMismatch.invitationEmail}
+              </span>
+              .
+            </p>
+
+            <p className="mt-4 text-sm leading-relaxed text-stone-500">
+              Keeping your current account leaves this signed-in session and
+              everything it owns exactly as it is, and sets this invitation
+              aside. Switching signs you out and restarts this invitation for
+              the account it belongs to.
+            </p>
+
+            <div className="mt-8 grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={cancelMismatch}
+                disabled={mismatchBusy}
+                className="min-h-[44px] rounded-2xl border border-stone-200 bg-white px-5 font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-60"
+              >
+                Keep my account
+              </button>
+
+              <button
+                type="button"
+                onClick={continueMismatch}
+                disabled={mismatchBusy}
+                className="min-h-[44px] inline-flex items-center justify-center gap-2 rounded-2xl bg-stone-900 px-5 font-semibold text-white hover:bg-stone-800 disabled:opacity-60"
+              >
+                {mismatchBusy ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ArrowRight className="h-4 w-4" />
+                )}
+                Switch to this invitation
+              </button>
+            </div>
+          </div>
         </main>
       </main>
     );
