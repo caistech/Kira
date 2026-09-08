@@ -185,11 +185,11 @@ function toSummary(row: {
  * — an invented "you're all clear" — is the one answer that must never be guessed. A silent nothing
  * reads as "she didn't mention it"; a wrong all-clear reads as a promise.
  *
- * SCOPED BY ORGANISATION (INV-020) when the owning organisation is known — `organisation_id` is the
- * tenant/ownership column on `kira_tasks`, and `user_id` is the provenance of who asked. When the org
- * cannot be resolved it degrades to user-only scoping rather than refusing the owner his own ledger.
+ * SCOPED TO THE CALLER, always. A shared org agent serves multiple callers; org-scoped task queries
+ * leaked the owner's private tasks (e.g. beta-invite drafts) to every other org member. The task
+ * ledger is keyed by user_id — the person who asked — so each caller sees only their own work.
  */
-export async function readTaskLedger(userId: string, organisationId?: string): Promise<TaskLedger> {
+export async function readTaskLedger(userId: string): Promise<TaskLedger> {
   const empty: TaskLedger = {
     openCount: 0,
     open: [],
@@ -203,25 +203,12 @@ export async function readTaskLedger(userId: string, organisationId?: string): P
 
   try {
     const since = new Date(Date.now() - RECENT_DAYS * 86_400_000).toISOString();
-    let query = createServiceClientV2()
+    const query = createServiceClientV2()
       .from('kira_tasks')
-      .select('id, kind, status, summary, utterance, preview, artifact, created_at');
+      .select('id, kind, status, summary, utterance, preview, artifact, created_at')
+      .eq('user_id', userId)
+      .or(`status.in.(${OPEN_STATES.join(',')}),and(status.eq.done,created_at.gte.${since})`);
 
-    if (organisationId) {
-      query = query.eq('organisation_id', organisationId);
-    } else {
-      // Fallback: resolve organisation from user_id
-      const { resolveOrganisationForPerson } = await import('@/lib/auth');
-      const ctx = await resolveOrganisationForPerson(userId);
-      if (ctx?.organisationId) {
-        query = query.eq('organisation_id', ctx.organisationId);
-      } else {
-        // Final fallback - user_id scoping (degraded)
-        query = query.eq('user_id', userId);
-      }
-    }
-
-    query = query.or(`status.in.(${OPEN_STATES.join(',')}),and(status.eq.done,created_at.gte.${since})`);
     const { data, error } = await query
       .order('created_at', { ascending: true })
       .limit(50);

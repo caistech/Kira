@@ -355,7 +355,7 @@ export async function handleCheckTasks(req: Request): Promise<Response> {
   if (refusedLedger) return refusedLedger;
 
   const orgContext = await resolveOrganisationForPerson(userId);
-  const ledger = await readTaskLedger(userId, orgContext?.organisationId ?? undefined);
+  const ledger = await readTaskLedger(userId);
   return json(200, {
     success: true,
     open_count: ledger.openCount,

@@ -485,7 +485,7 @@ export async function handleKiraContext(req: Request): Promise<Response> {
   const organisationId = orgContext?.organisationId || null;
   // Read the ledger regardless of whether there is conversation history: a first-session owner can
   // still have an open task, and the early-return below would otherwise hide it.
-  const ledger = await readTaskLedger(uid, organisationId ?? undefined);
+  const ledger = await readTaskLedger(uid);
   const openTasks = {
     open_count: ledger.openCount,
     open: ledger.open,
