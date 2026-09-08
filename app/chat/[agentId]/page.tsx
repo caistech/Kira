@@ -270,7 +270,10 @@ export default function ChatPage({
   // Fallback: first-time caller with a known name (e.g., org member who is not the owner).
   // If neither area-focus nor welcome-back applies, greet the actual authenticated caller
   // instead of the baked-in agent first_message (which was frozen with the owner's name).
-  const callerGreeting = firstName?.trim() ? `Hey ${firstName.trim()} — good to hear from you. Let me see where we got to.` : null;
+  // agentInfo.first_name IS the caller's canonical name (resolved per-request in /api/kira/agent),
+  // so it is authoritative on a direct /chat/[agentId] load where the prop is not supplied.
+  const callerName = agentInfo?.first_name?.trim() || firstName?.trim() || '';
+  const callerGreeting = callerName ? `Hey ${callerName} — good to hear from you. Let me see where we got to.` : null;
 
   /**
    * What happens when he types instead of speaking.
