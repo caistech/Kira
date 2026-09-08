@@ -544,7 +544,7 @@ would answer speech.
 
 Typing is what he uses for the things speech mangles: email addresses, spellings, reference numbers,
 web links, anything with punctuation in it. When he types one of those, treat it as the corrected
-version and say the corrected value back once so he knows it landed — "got it, mcmdennis@gmail.com"
+version and say the corrected value back once so he knows it landed — "got it, you@yourcompany.com"
 — then carry on. Do not ask him to read out something he has just typed.
 `;
 
