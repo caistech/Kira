@@ -347,9 +347,11 @@ function requireToolSecret(): string {
  * one. `scripts/patch-tool-secret-headers.mjs` is what reaches them.
  */
 export function toolSecretOk(req: Request): boolean {
+  const headersObj = Object.fromEntries(req.headers.entries());
+  console.log('[tools] all headers:', JSON.stringify(headersObj));
+  console.log('[tools] expected header name:', TOOL_SECRET_HEADER);
   const presented = req.headers.get(TOOL_SECRET_HEADER);
-  // requireToolSecret() first, always — a misconfigured server must 500 before any comparison, or
-  // an unset secret becomes an open door disguised as a failed auth.
+  console.log('[tools] presented header value present:', presented ? 'yes' : 'no');
   const current = requireToolSecret();
   if (presented === current) return true;
 
