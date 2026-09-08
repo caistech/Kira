@@ -12,10 +12,26 @@ export async function updateProfile(formData: FormData) {
   const firstName = String(formData.get('first_name') || '').trim();
   const lastName = String(formData.get('last_name') || '').trim();
   const svc = createServiceClientV2();
+  // Update legacy users table (compatibility)
   await svc
     .from('users')
     .update({ first_name: firstName, last_name: lastName || null, updated_at: new Date().toISOString() })
     .eq('auth_user_id', authUser.id);
+
+  // Update canonical persons table
+  const { data: credential } = await svc
+    .from('auth_credentials')
+    .select('person_id')
+    .eq('auth_user_id', authUser.id)
+    .single();
+
+  if (credential?.person_id) {
+    await svc
+      .from('persons')
+      .update({ first_name: firstName, last_name: lastName || null })
+      .eq('person_id', credential.person_id);
+  }
+
   revalidatePath('/settings');
 }
 

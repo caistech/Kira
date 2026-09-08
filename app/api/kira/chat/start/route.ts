@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     }
 
     const admin = await isCurrentUserAdmin();
-    // Allow start if caller is org admin, OR agent belongs to caller's organisation
+    // Allow if caller is org admin, OR agent belongs to caller's organisation
     const isOrgMember = kiraAgent.organisation_id === organisationContext.organisationId;
     const isOwner = kiraAgent.person_id === organisationContext.personId;
 
