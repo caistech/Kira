@@ -18,6 +18,7 @@
 
 import { getCurrentAppUser, getCurrentOrganisationContext } from '@/lib/auth';
 import { createServiceClientV2 } from '@/lib/supabase/server';
+import { resolveCanonicalKiraAgent } from '@/lib/kira/resolve-agent';
 import { KiraShape } from '@/components/KiraShape';
 import type { VoiceSurface } from '@/lib/voice/connect-telemetry';
 
@@ -42,26 +43,26 @@ export async function KiraShapeSection({
   const user = await getCurrentAppUser();
 
   const svc = createServiceClientV2();
-  const { data: agents } = await svc
-    .from('kira_agents')
-    .select('id, elevenlabs_agent_id, journey_type, status')
-    .eq('organisation_id', organisationContext.organisationId)
-    .neq('status', 'deleted');
-
-  const businessAgent =
-    (agents ?? []).find((a) => a.journey_type === 'business' && a.status === 'active') ?? (agents ?? [])[0];
-  const agentId = (businessAgent?.elevenlabs_agent_id as string | undefined) ?? null;
+  // Canonical resolution — caller's own business agent first, own other agent second, explicit
+  // organisation fallback only when the caller has no active agent of their own. Every Kira
+  // surface consumes the same resolver, so /dashboard and /talk can never present different
+  // agents for the same caller again.
+  const { agent } = await resolveCanonicalKiraAgent(svc, {
+    personId: organisationContext.personId,
+    organisationId: organisationContext.organisationId,
+  });
+  const agentId = (agent?.elevenlabs_agent_id as string | undefined) ?? null;
 
   // ⚠️ THE COUNT IS DERIVED, NOT READ OFF kira_agents.total_conversations — that column is read in
   // three places and incremented in none, so it sits at 0 forever. An owner with a real history was
   // shown "0 conversations" beside a transcript he had just had.
   let hasHistory = false;
-  if (businessAgent?.id) {
+  if (agent?.id) {
     const { count } = await svc
       .from('conversations')
       .select('id', { count: 'exact', head: true })
       .eq('organisation_id', organisationContext.organisationId)
-      .eq('kira_agent_id', businessAgent.id);
+      .eq('kira_agent_id', agent.id);
     hasHistory = (count ?? 0) > 0;
   }
 

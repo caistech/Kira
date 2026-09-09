@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getAuthUser, getCurrentOrganisationContext } from '@/lib/auth';
 import { createServiceClientV2 } from '@/lib/supabase/server';
+import { resolveCanonicalKiraAgent } from '@/lib/kira/resolve-agent';
 import ChatPage from '@/app/chat/[agentId]/page';
 import { isAreaKey } from '@/lib/kira/area-focus';
 import KiraBootstrap from './kira-bootstrap';
@@ -41,35 +42,20 @@ export default async function TalkPage({
     ? await svc.from('persons').select('first_name').eq('person_id', orgContext.personId).maybeSingle()
     : { data: null };
 
-  // A BUSINESS KIRA WINS, ALWAYS — even over a more recently used personal one.
-  //
-  // This used to take the most-recently-used active agent of any kind, while /dashboard picked
-  // `journey_type === 'business'` first. The two disagreed, and the disagreement was not academic:
-  // an owner whose account still held an old personal-journey agent was handed it by /talk, and a
-  // personal Kira carries six memory tools and NONE of the business ones — no email, no Drive, no
-  // contacts.
-  //
-  // What that looks like from his side is the product denying it can do the things he is paying for.
-  // Observed 2026-08-05: she opened "Hey Tom" (a stale first_message from someone else's walkthrough),
-  // then told the owner, correctly for that agent and disastrously for him, that she had no
-  // connection to his Gmail, his Drive or his Xero. She then distilled that denial into his memory
-  // as a fact about his business, where it would have been recalled and repeated indefinitely.
-  //
-  // Ordering, not filtering: an owner who genuinely only has a personal Kira should still reach it.
-  // Guarded on orgContext so a signed-in-but-mid-setup owner (no org/membership yet) produces an
-  // empty list rather than a null-dereference, and falls through to the "isn't set up yet" render.
-  const { data: agents } = orgContext
-    ? await svc
-        .from('kira_agents')
-        .select('elevenlabs_agent_id, journey_type')
-        .eq('person_id', orgContext.personId)
-        .eq('status', 'active')
-        .order('last_conversation_at', { ascending: false, nullsFirst: false })
-        .order('created_at', { ascending: false })
-    : { data: [] };
-
-  const list = agents ?? [];
-  const agent = list.find((a) => a.journey_type === 'business') ?? list[0];
+// THE SAME CANONICAL AGENT EVERY SURFACE USES. This used to be its own person-scoped query that
+  // could disagree with KiraShapeSection's org-wide query — the measured /talk-vs-dashboard
+  // divergence. Both now consume resolveCanonicalKiraAgent, so the caller's Kira is the caller's
+  // Kira everywhere: own business agent first, own other agent second (a personal Kira is still
+  // his), org fallback only when he has none. Guarded on orgContext so a signed-in-but-mid-setup
+  // owner produces no agent rather than a null-dereference, and falls through to the honest
+  // "isn't set up yet" render.
+  const resolution = orgContext
+    ? await resolveCanonicalKiraAgent(svc, {
+        personId: orgContext.personId,
+        organisationId: orgContext.organisationId,
+      })
+    : null;
+  const agent = resolution?.agent ?? null;
 
   // RENDERED HERE, not redirected to /chat/<agent id>.
   //

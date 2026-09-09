@@ -242,6 +242,7 @@ export default function ChatPage({
   // ownership boundary is preserved while the coach runs on the shared portfolio voice surface —
   // no bespoke useConversation fork (which is what broke under @elevenlabs/react 1.10).
   const getSignedUrl = useCallback(async (): Promise<string> => {
+    console.log('[voice] getSignedUrl called for agent:', agentInfo?.elevenlabs_agent_id);
     const res = await fetch('/api/kira/chat/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -249,9 +250,11 @@ export default function ChatPage({
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
+      console.error('[voice] getSignedUrl failed:', data.error);
       throw new Error(data.error || 'Failed to start voice session');
     }
     const { signedUrl } = await res.json();
+    console.log('[voice] getSignedUrl successful');
     return signedUrl as string;
   }, [agentInfo]);
 

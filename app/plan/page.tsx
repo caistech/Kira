@@ -468,7 +468,12 @@ export default function PlanPage() {
       if (boundOrganisation) {
         window.location.assign('/dashboard');
       } else {
-        window.location.assign(becameSuperadmin ? '/manage' : '/dashboard');
+        // FRESH-USER FIRST SURFACE IS /talk, NOT /dashboard. A brand-new owner has no kira_agents
+        // row — and only /talk provisions one (KiraBootstrap → /api/kira/ensure mints the agent on
+        // first visit). Landing on /dashboard first left them with zero agents and a Kira that could
+        // not be minted, which is why the only working path was manually walking to /talk. /talk is
+        // one conversation, then every surface — /dashboard included — resolves that same agent.
+        window.location.assign(becameSuperadmin ? '/manage' : '/talk');
       }
 
     } catch (error: unknown) {
