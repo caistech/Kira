@@ -72,6 +72,11 @@ export async function KiraShapeSection({
       surface={surface}
       firstMessage={firstMessage}
       firstName={(user as { first_name?: string } | null)?.first_name}
+      // The caller's Kira user id, the same identifier /talk sends. The agent's
+      // tools declare `user_id` as a required dynamic variable; without it the
+      // ElevenLabs session is rejected at start, which is exactly what
+      // /dashboard and /my-genome showed while /talk worked.
+      userId={organisationContext.personId}
       // ⚠️ ONLY WHEN THERE IS SOMETHING TO PICK UP. "Kira remembers where you left off" told to a man
       // with no history is the cheapest possible way to lose him: the claim is checkable, he checks
       // it, and it is false on the first screen he ever sees.

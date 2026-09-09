@@ -45,12 +45,21 @@ export function KiraShape({
   firstName,
   welcomeBack,
   firstMessage,
+  userId,
 }: {
   /** The owner's own ElevenLabs agent. Null when he has not been set up yet. */
   agentId: string | null;
   /** Which page this instance is on — telemetry only, so a failure can be located. */
   surface: VoiceSurface;
   firstName?: string;
+  /**
+   * The caller's Kira user id — the SAME identifier /talk sends. The agent's
+   * tools declare `user_id` as a required dynamic variable; without it the
+   * ElevenLabs session is rejected at start ("Missing required dynamic
+   * variables in tools"), which is exactly what /dashboard and /my-genome did
+   * while /talk worked.
+   */
+  userId?: string;
   /** Shown only when there is something genuinely recalled to pick up from. */
   welcomeBack?: string;
   /**
@@ -185,6 +194,7 @@ export function KiraShape({
         overrides={firstMessage ? { agent: { firstMessage } } : undefined}
         onConnect={() => void reportVoiceConnect({ surface, outcome: 'connected' })}
         onError={(error) => void reportVoiceConnect({ surface, outcome: 'error', detail: error })}
+        userId={userId}
       />
     </section>
   );
