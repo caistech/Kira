@@ -45,8 +45,13 @@ export async function GET(request: NextRequest) {
   const target = ok ? `${origin}${next}` : `${origin}/login?error=auth_callback`;
   const res = NextResponse.redirect(target);
 
-  for (const { name, value, options } of cookieStore.getAll()) {
-    res.cookies.set(name, value, options as Parameters<typeof res.cookies.set>[2]);
+  for (const { name, value } of cookieStore.getAll()) {
+    res.cookies.set(name, value, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      path: '/',
+    });
   }
 
   return res;

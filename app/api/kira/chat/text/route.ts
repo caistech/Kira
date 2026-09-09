@@ -29,7 +29,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { completeConversationMemory } from '@caistech/elevenlabs-convai';
 
-import { getCurrentOrganisationContext, isCurrentUserAdmin } from '@/lib/auth';
+import { getAuthUser, getCurrentOrganisationContext, isCurrentUserAdmin } from '@/lib/auth';
 import { haltState } from '@/lib/kill-switch';
 import { KIRA_CONVAI_TABLES } from '@/lib/kira/convai';
 import { createMemoryExtractor } from '@/lib/kira/memory-extract';
@@ -266,10 +266,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No organisation access to this agent' }, { status: 403 });
   }
   
-  // Legacy enforcement: for agents without an organisation_id, still require creator ownership.
+  // LEGACY COMPATIBILITY BOUNDARY:
+  // agent.user_id is the legacy users.id, not auth.users.id or persons.person_id.
+  // This block only fires for agents created before organisation_id was added —
+  // once all agents carry organisation_id, this entire block can be deleted.
   if (!agent.organisation_id) {
-    const appUser = await getCurrentAppUser();
-    if (agent.user_id !== appUser?.id && !(await isCurrentUserAdmin())) {
+    const authUser = await getAuthUser();
+    if (authUser) {
+      const { data: legacyRow } = await supabase
+        .from('users')
+        .select('id')
+        .eq('auth_user_id', authUser.id)
+        .maybeSingle();
+      if (agent.user_id !== legacyRow?.id && !(await isCurrentUserAdmin())) {
+        return NextResponse.json({ error: 'Not your Kira' }, { status: 403 });
+      }
+    } else if (!(await isCurrentUserAdmin())) {
       return NextResponse.json({ error: 'Not your Kira' }, { status: 403 });
     }
   }

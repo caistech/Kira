@@ -45,10 +45,11 @@ export default async function TalkPage({
 // THE SAME CANONICAL AGENT EVERY SURFACE USES. This used to be its own person-scoped query that
   // could disagree with KiraShapeSection's org-wide query — the measured /talk-vs-dashboard
   // divergence. Both now consume resolveCanonicalKiraAgent, so the caller's Kira is the caller's
-  // Kira everywhere: own business agent first, own other agent second (a personal Kira is still
-  // his), org fallback only when he has none. Guarded on orgContext so a signed-in-but-mid-setup
-  // owner produces no agent rather than a null-dereference, and falls through to the honest
-  // "isn't set up yet" render.
+  // Kira everywhere: own business agent first, own other agent second, and NO org-level fallback —
+  // an agency belonging to another member can never satisfy this caller's lookup, so a tester with
+  // no personal agent resolves to none and must be provisioned (KiraBootstrap → /api/kira/ensure).
+  // Guarded on orgContext so a signed-in-but-mid-setup owner produces no agent rather than a
+  // null-dereference, and falls through to the honest "isn't set up yet" render.
   const resolution = orgContext
     ? await resolveCanonicalKiraAgent(svc, {
         personId: orgContext.personId,

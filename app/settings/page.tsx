@@ -2,6 +2,7 @@
 // worth asking out loud, and a voice surface on it would be decoration competing with the fields.
 import Link from 'next/link';
 import { getAuthUser, getCurrentAppUser, getCurrentOrganisationContext } from '@/lib/auth';
+import { createServiceClientV2 } from '@/lib/supabase/server';
 import { composePostalAddress, displayName, formatAbn } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
 import { fetchConnections, DRIVE_ACCESS_LABEL } from '@/lib/connectors/status';
@@ -26,6 +27,28 @@ export default async function SettingsPage() {
   const appUser = await getCurrentAppUser();
   const org = await getCurrentOrganisationContext();
 
+  // LEGACY COMPATIBILITY BOUNDARY:
+  // The settings page still reads billing and connector data from the legacy users table.
+  // This lookup is isolated here — not scattered across the codebase — and should be
+  // replaced when billing migrates to organisation-scoped subscriptions.
+  // CanonicalPerson intentionally does NOT carry these fields.
+  let legacyUser: {
+    id: string;
+    stripe_customer_id: string | null;
+    stripe_subscription_id: string | null;
+    subscription_status: string | null;
+    email_notifications_opt_in: boolean;
+  } | null = null;
+  if (authUser) {
+    const svc = createServiceClientV2();
+    const { data } = await svc
+      .from('users')
+      .select('id, stripe_customer_id, stripe_subscription_id, subscription_status, email_notifications_opt_in')
+      .eq('auth_user_id', authUser.id)
+      .maybeSingle();
+    legacyUser = data as { id: string; stripe_customer_id: string | null; stripe_subscription_id: string | null; subscription_status: string | null; email_notifications_opt_in: boolean } | null;
+  }
+
   // Degrade, don't fake: a read failure omits the section rather than rendering an empty one that
   // reads as "you have no business details" and invites a pointless re-entry.
   let identity = null;
@@ -37,7 +60,7 @@ export default async function SettingsPage() {
 
   // null means "we could not find out", which is NOT the same as "nothing is connected" — telling
   // an owner his Drive is disconnected when it is working would send him to reconnect it for nothing.
-  const connections = appUser?.id ? await fetchConnections(appUser.id as string) : null;
+  const connections = legacyUser?.id ? await fetchConnections(legacyUser.id) : null;
   const google = connections?.find((c) => c.provider === 'google' && !c.revoked) ?? null;
 
   // Read the free-month meter server-side. Degrade, don't fake: if the gate can't be read we omit
@@ -48,12 +71,12 @@ export default async function SettingsPage() {
   // its free month had ended (naive-tester, 2026-07-27).
   let usage: Awaited<ReturnType<ReturnType<typeof getBetaGate>['check']>> | null = null;
   let trialStatus: Awaited<ReturnType<ReturnType<typeof getBetaGate>['status']>> | null = null;
-  if (appUser?.id) {
+  if (legacyUser?.id) {
     try {
       const gate = getBetaGate();
       [trialStatus, usage] = await Promise.all([
-        gate.status(appUser.id),
-        gate.check(appUser.id, VOICE_ACTION),
+        gate.status(legacyUser.id),
+        gate.check(legacyUser.id, VOICE_ACTION),
       ]);
     } catch (error) {
       console.error('[settings] usage meter unavailable:', error);
@@ -62,15 +85,15 @@ export default async function SettingsPage() {
 
   const plan = derivePlanState({
     trialStatus,
-    hasCard: Boolean(appUser?.stripe_customer_id),
-    subscriptionStatus: appUser?.subscription_status ?? null,
+    hasCard: Boolean(legacyUser?.stripe_customer_id),
+    subscriptionStatus: legacyUser?.subscription_status ?? null,
   });
 
   // What he is actually charged, from Stripe. Settings showed no figure at all, so an owner
   // wondering what he pays had to leave for the billing portal to find out — and the GST qualifier,
   // mandatory on every displayed price, had nowhere to render on an authenticated surface. Null
   // when it cannot be read honestly; the block below simply does not appear.
-  const price = await getSubscriptionPrice(appUser?.stripe_subscription_id);
+  const price = await getSubscriptionPrice(legacyUser?.stripe_subscription_id);
 
   return (
     <div className="max-w-2xl">
@@ -299,16 +322,16 @@ export default async function SettingsPage() {
         )}
 
         <div className="mt-5 space-y-4">
-          <ManageBillingButton disabled={!appUser?.stripe_customer_id} />
-          {!appUser?.stripe_customer_id && (
+          <ManageBillingButton disabled={!legacyUser?.stripe_customer_id} />
+          {!legacyUser?.stripe_customer_id && (
             <p className="mt-2 text-sm text-gray-500">
               You don&apos;t have a subscription yet, so there&apos;s nothing to manage.
             </p>
           )}
           {/* Cancelling is OURS, not the portal's. Kira bills in arrears and waives the month in
               progress; Stripe's portal cancel would invoice it. See lib/billing/arrears.ts. */}
-          {appUser?.stripe_subscription_id &&
-            appUser?.subscription_status !== 'cancelled' && <CancelPlanButton />}
+          {legacyUser?.stripe_subscription_id &&
+            legacyUser?.subscription_status !== 'cancelled' && <CancelPlanButton />}
         </div>
       </section>
 
@@ -332,7 +355,7 @@ export default async function SettingsPage() {
             <input
               type="checkbox"
               name="email_notifications_opt_in"
-              defaultChecked={appUser?.email_notifications_opt_in ?? true}
+              defaultChecked={legacyUser?.email_notifications_opt_in ?? true}
               className="mt-1 h-5 w-5 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
             />
             <span>

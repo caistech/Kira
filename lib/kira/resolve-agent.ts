@@ -92,7 +92,7 @@ export async function resolveCanonicalKiraAgent(
 ): Promise<AgentResolution> {
   const own = await fetchAgents(svc, 'person_id', caller.personId);
 
-  const ownAgent = firstBusiness(own);
+const ownAgent = firstBusiness(own);
   if (ownAgent) {
     return {
       agent: resolve(ownAgent),
@@ -100,17 +100,9 @@ export async function resolveCanonicalKiraAgent(
     };
   }
 
-  if (caller.organisationId) {
-    const orgAgents = await fetchAgents(
-      svc,
-      'organisation_id',
-      caller.organisationId,
-    );
-    const orgAgent = firstBusiness(orgAgents);
-    if (orgAgent) {
-      return { agent: resolve(orgAgent), reason: 'org-fallback' };
-    }
-  }
-
+  // No organisation-level fallback. Each caller has their own Kira agent: an
+  // org-level agent belonging to another Person can never satisfy this caller's
+  // lookup. The caller's only resolutions are their own agents — otherwise Kira
+  // must be provisioned for them (KiraBootstrap → /api/kira/ensure).
   return { agent: null, reason: 'none' };
 }
