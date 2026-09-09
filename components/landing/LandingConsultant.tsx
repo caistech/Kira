@@ -13,8 +13,8 @@ import { HEADLINE_NUMBERS } from '@/lib/valuation/headline-numbers';
 const LANDING_EXAMPLE_FIGURES = ['$220k', '$626k', '$821k'] as const;
 
 const NAV = [
+  { href: '#the-opportunity', label: 'The opportunity' },
   { href: '#how-it-works', label: 'How it works' },
-  { href: '/sample-genome', label: 'See a sample genome' },
   { href: '#pricing', label: 'Pricing' },
   { href: '/about', label: 'About' },
 ];
@@ -28,22 +28,41 @@ const FOOTER_LINKS = [
   { href: '/terms', label: 'Terms' },
 ];
 
-const STEPS = [
+const PROBLEMS = [
   {
-    n: '01',
-    title: 'Reveal the value gap',
-    body: "A 3-minute valuation shows your client what their business is worth today — and the gap they're leaving on the table.",
+    title: 'Owner dependence',
+    body: 'The owner remains the person everyone goes to. Important knowledge exists primarily in their head. The business may perform well, but it is difficult to operate independently of them.',
   },
   {
-    n: '02',
-    title: 'Capture their knowledge',
-    body: 'Kira interviews them like a buyer would, turning the systems and relationships in their head into a living Operating Manual of their business.',
+    title: 'Knowledge disappears between engagements',
+    body: 'You identify important issues during a meeting, but much of the context, decisions and operational knowledge remain informal. Without a mechanism to capture them, they drift.',
   },
   {
-    n: '03',
-    title: 'Build a transferable asset',
-    body: 'A documented, transferable business commands a real multiple — and transitions smoothly to a buyer, successor, or management team.',
+    title: 'You don\'t see everything',
+    body: 'You may only see the business periodically. Between engagements, the owner deals with problems you never hear about — and opportunities that quietly pass.',
   },
+  {
+    title: 'Improvement needs to be demonstrated',
+    body: 'It is not enough to say the business improved. The BBBO framework demands evidence: Assess → Improve → Measure → Prove. You contribute to the improvement — and potentially the proof.',
+  },
+];
+
+const BENEFITS = [
+  { title: 'Extend your reach', body: 'Kira captures information and prompts thinking between your consulting engagements, so your influence continues even when you are not in the room.' },
+  { title: 'Deepen your understanding', body: 'Arrive at consulting conversations with a richer understanding of the issues the owner is facing — not just what they told you last month.' },
+  { title: 'Increase the value of your intervention', body: 'Use persistent business knowledge to focus your expertise on the issues that matter most, rather than spending time reconstructing context.' },
+  { title: 'Demonstrate progress', body: 'Create a stronger longitudinal record of what has changed, rather than relying entirely on anecdotal recollection at the next review.' },
+  { title: 'Strengthen client relationships', body: 'Become part of a longer-term transformation journey rather than being associated with a one-off project that ends when the invoice is paid.' },
+  { title: 'Address bigger problems', body: 'The BBBO ecosystem is designed around the wider value gap. You do not need to solve all of those problems yourself — that is precisely why the ecosystem exists.' },
+];
+
+const CONSULTANT_JOURNEY = [
+  { n: '01', title: 'You identify the opportunity', body: 'You see the gaps — owner dependence, undocumented knowledge, operational risk. You know where the business needs to improve.' },
+  { n: '02', title: 'Kira continuously captures the business', body: 'She interviews the owner, asks the diagnostic questions, and turns what she learns into structured organisational knowledge — between your engagements.' },
+  { n: '03', title: 'You see the issues more clearly', body: 'Kira surfaces what the owner is dealing with when you are not there. You arrive at each conversation with evidence, not guesses.' },
+  { n: '04', title: 'You apply your expertise', body: 'Your strategic advice lands on real, captured data — not vague recollection. The business gets better because your work is focused and persistent.' },
+  { n: '05', title: 'Improvement is measured', body: 'The BBBO framework tracks what changed. You contribute measurable interventions rather than simply providing advice.' },
+  { n: '06', title: 'The business becomes more transferable', body: 'A documented, owner-independent business commands a higher multiple and transitions cleanly to a buyer, successor or management team.' },
 ];
 
 export function LandingConsultant() {
@@ -92,7 +111,7 @@ export function LandingConsultant() {
               href="/business-valuation"
               className="ln-link flex min-h-[44px] items-center whitespace-nowrap rounded-md bg-kira-600 px-4 text-[16px] sm:text-[15px] font-medium text-white hover:bg-kira-700"
             >
-              Value a business
+              Explore Kira
             </a>
           </nav>
 
@@ -125,42 +144,40 @@ export function LandingConsultant() {
         )}
       </header>
 
-      <section className="mx-auto max-w-5xl xl:max-w-6xl px-6 pb-16 pt-16 lg:pt-24">
+      {/* THE OPPORTUNITY — §16 #1 */}
+      <section id="the-opportunity" className="mx-auto max-w-5xl xl:max-w-6xl px-6 pb-16 pt-16 lg:pt-24">
         <div>
           <div className="mb-8 flex items-center gap-4">
             <span className="block h-16 w-16 shrink-0 overflow-hidden rounded-full ring-1 ring-kira-line lg:hidden">
               <img src="/female_avatar.jpeg" alt="Kira" className="h-full w-full object-cover" />
             </span>
             <p className="text-[16px] sm:text-[15px] uppercase tracking-[0.14em] text-kira-soft">
-              For business advisers, exit planners and consultants
+              A generation of valuable businesses is approaching ownership transition.
             </p>
           </div>
 
-          <h1 className="max-w-[18ch] text-[40px] font-semibold leading-[1.08] tracking-[-0.02em] text-kira-dark lg:text-[56px]">
-            Give your clients a better path to a stronger business.
+          <h1 className="max-w-[20ch] text-[40px] font-semibold leading-[1.08] tracking-[-0.02em] text-kira-dark lg:text-[56px]">
+            There is a major market opportunity in the BBBO generation.
           </h1>
           <p className="mt-4 max-w-[24ch] text-[27px] leading-[1.2] text-kira-charcoal lg:text-[34px]">
-            And give yourself a powerful ongoing AI capability to help them get there.
+            Your expertise has a meaningful place in solving it.
           </p>
 
           <p className="ln-measure mt-8 text-[17px] leading-[1.65] text-kira-charcoal">
-            This is for professional advisers who work with owner-operators in construction, manufacturing, 
-            logistics, and services. You know the problem: the business's greatest value is also its greatest 
-            weakness — it completely depends on the owner. Everything is in their head, not on paper, so 
-            a buyer discounts them heavily. Kira works alongside you and your client in conversation, continuously 
-            capturing the undocumented systems and relationships in the owner's head and turning them into a 
-            structured,{' '}
-            <a href="/sample-genome" className="ln-link font-medium text-kira-600 underline underline-offset-4 hover:text-kira-700">
-              transferable Operating Manual
-            </a>{' '}
-            — written down so the business can be managed, scaled, or sold cleanly.
+            Many Baby Boomer business owners have spent decades building valuable companies 
+            without deliberately preparing those businesses for eventual transfer. 
+            The issues that constrain performance today can also constrain value and saleability later — 
+            and the window to address them is finite.{' '}
+            <strong className="font-semibold text-kira-dark">The BBBO mission exists to help them get 
+            everything those businesses are capable of being worth.</strong>
           </p>
 
           <p className="ln-measure mt-6 text-[17px] leading-[1.65] text-kira-charcoal">
-            Kira's promise to your clients: <strong className="font-semibold text-kira-dark">they take two months off and the 
-            business doesn't skip a beat</strong> — she plays their part while they are away. 
-            Kira's promise to you: <strong className="font-semibold text-kira-dark">she maintains the momentum of business 
-            development between your advisory sessions</strong>, keeping the owner focused on enterprise value.
+            Kira is one capability inside that larger mission. She is not the ecosystem itself — 
+            she is a technology capability that helps capture organisational knowledge, reduce owner 
+            dependence and create persistent business intelligence.{' '}
+            <strong className="font-semibold text-kira-dark">Your expertise is another.</strong>{' '}
+            Together with the broader BBBO ecosystem, that is how these businesses improve.
           </p>
 
           <div className="mt-10 flex flex-wrap items-center gap-4">
@@ -168,7 +185,7 @@ export function LandingConsultant() {
               href="/business-valuation"
               className="ln-link inline-flex min-h-[52px] items-center rounded-md bg-kira-600 px-7 text-[17px] font-medium text-white hover:bg-kira-700"
             >
-              Value a client's business
+              Explore how Kira works
             </a>
             <a
               href="/sample-genome"
@@ -183,14 +200,208 @@ export function LandingConsultant() {
         </div>
       </section>
 
+      {/* THE PROBLEM — §16 #2, §5 */}
+      <section className="border-y border-kira-line bg-white">
+        <div className="mx-auto max-w-5xl px-6 py-16">
+          <h2 className="max-w-[28ch] text-[27px] font-semibold tracking-tight text-kira-dark lg:text-[34px]">
+            The problems are real, and consultants feel them first.
+          </h2>
+          <p className="ln-measure mt-4 text-[17px] leading-[1.65] text-kira-charcoal">
+            You already know what owner-dependent businesses look like from the inside. 
+            These are the recurring issues that make your work harder and the business less transferable.
+          </p>
+
+          <div className="mt-10 grid gap-10 md:grid-cols-2">
+            {PROBLEMS.map((p) => (
+              <div key={p.title}>
+                <h3 className="text-[21px] font-semibold text-kira-dark">{p.title}</h3>
+                <p className="ln-measure mt-3 text-[17px] leading-[1.65] text-kira-charcoal">{p.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* THE BBBO MISSION — §16 #3, §8 */}
+      <section className="border-t border-kira-line bg-kira-mist">
+        <div className="mx-auto max-w-5xl px-6 py-16">
+          <h2 className="max-w-[22ch] text-[27px] font-semibold tracking-tight text-kira-dark lg:text-[34px]">
+            10,000 Baby Boomer Businesses.
+          </h2>
+          <p className="ln-measure mt-4 text-[17px] leading-[1.65] text-kira-charcoal">
+            The BBBO mission is to help <strong className="font-semibold text-kira-dark">10,000 Baby Boomer-owned 
+            businesses maximise the proven True-Value of what they have built</strong> and prepare those businesses 
+            for eventual ownership transition.
+          </p>
+
+          <div className="mt-8 grid gap-8 sm:grid-cols-2">
+            <div className="rounded-lg border border-kira-line bg-white px-6 py-5">
+              <p className="text-[16px] sm:text-[15px] uppercase tracking-[0.1em] text-kira-soft">First milestone</p>
+              <p className="mt-2 text-[27px] font-semibold tracking-tight text-kira-dark">1,000 businesses</p>
+              <p className="mt-1 text-[17px] text-kira-charcoal">by 31 December 2026</p>
+            </div>
+            <div className="rounded-lg border border-kira-line bg-white px-6 py-5">
+              <p className="text-[16px] sm:text-[15px] uppercase tracking-[0.1em] text-kira-soft">Scale objective</p>
+              <p className="mt-2 text-[27px] font-semibold tracking-tight text-kira-dark">10,000 businesses</p>
+              <p className="mt-1 text-[17px] text-kira-charcoal">by 31 December 2027</p>
+            </div>
+          </div>
+
+          <p className="ln-measure mt-8 text-[17px] leading-[1.65] text-kira-charcoal">
+            The first 1,000 are intended to prove the methodology, partner model, evidence model, 
+            marketplace proposition and commercial economics before scaling. This is not simply a 
+            registration target — the ultimate objective is businesses that are better, more transferable, 
+            supported by evidence, and genuinely prepared for ownership transition.
+          </p>
+        </div>
+      </section>
+
+      {/* KIRA'S ROLE — §16 #4, §10 */}
+      <section className="border-t border-kira-line bg-white">
+        <div className="mx-auto max-w-5xl px-6 py-16">
+          <h2 className="max-w-[22ch] text-[27px] font-semibold tracking-tight text-kira-dark lg:text-[34px]">
+            Kira provides the persistent business intelligence.
+          </h2>
+          <p className="ln-measure mt-4 text-[17px] leading-[1.65] text-kira-charcoal">
+            Kira is a technology capability that can help reduce owner dependence by capturing 
+            organisational knowledge, coordinating operational activity and creating persistent 
+            organisational memory. She is not an exit adviser, a business broker, a valuation engine 
+            or a replacement for your expertise.
+          </p>
+
+          <div className="ln-measure mt-6 space-y-4 text-[17px] leading-[1.65] text-kira-charcoal">
+            <p>
+              She interviews the owner in conversation, turning the undocumented systems and relationships 
+              in their head into a structured, transferable{' '}
+              <a href="/sample-genome" className="ln-link font-medium text-kira-600 underline underline-offset-4 hover:text-kira-700">
+                Operating Manual
+              </a>{' '}
+              — written down so the business can be managed, scaled, or sold cleanly.
+            </p>
+            <p>
+              Between your engagements, she maintains momentum — capturing decisions, filing procedures, 
+              and surfacing what actually needs attention. When they return to you, they bring real, 
+              captured data rather than vague updates.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-10 md:grid-cols-2">
+            <div>
+              <h3 className="text-[21px] font-semibold text-kira-dark">Between sessions — she captures</h3>
+              <p className="ln-measure mt-3 text-[17px] leading-[1.65] text-kira-charcoal">
+                Kira interviews the owner and key staff, turning daily operations and knowledge 
+                into an exportable, verifiable manual of the business.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-[21px] font-semibold text-kira-dark">Between sessions — she maintains</h3>
+              <p className="ln-measure mt-3 text-[17px] leading-[1.65] text-kira-charcoal">
+                Key personnel can consult Kira to resolve operational questions exactly the way the 
+                owner would, reducing the owner&apos;s immediate daily workload and preserving consistency.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* YOUR ROLE — §16 #5, §6 */}
       <section className="border-y border-kira-line bg-kira-mist">
+        <div className="mx-auto max-w-5xl px-6 py-16">
+          <h2 className="max-w-[28ch] text-[27px] font-semibold tracking-tight text-kira-dark lg:text-[34px]">
+            Your expertise remains central. Here is what changes.
+          </h2>
+          <p className="ln-measure mt-4 text-[17px] leading-[1.65] text-kira-charcoal">
+            Kira does not replace the kind of work you do. She makes your capability more continuous, 
+            informed and scalable — and she connects your work to a much larger ecosystem.
+          </p>
+
+          <div className="mt-10 grid gap-10 md:grid-cols-2">
+            {BENEFITS.map((b) => (
+              <div key={b.title}>
+                <h3 className="text-[21px] font-semibold text-kira-dark">{b.title}</h3>
+                <p className="ln-measure mt-3 text-[17px] leading-[1.65] text-kira-charcoal">{b.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* THE ECOSYSTEM — §16 #6, §7 */}
+      <section className="border-t border-kira-line bg-white">
+        <div className="mx-auto max-w-5xl px-6 py-16">
+          <h2 className="max-w-[24ch] text-[27px] font-semibold tracking-tight text-kira-dark lg:text-[34px]">
+            You don&apos;t have to solve every value gap.
+          </h2>
+          <p className="ln-measure mt-4 text-[17px] leading-[1.65] text-kira-charcoal">
+            You bring the expertise. Kira provides the persistent business intelligence. 
+            The BBBO ecosystem provides the broader capabilities.
+          </p>
+
+          <div className="ln-measure mt-6 space-y-4 text-[17px] leading-[1.65] text-kira-charcoal">
+            <p>
+              The mission explicitly identifies business consultants as contributors providing 
+              operational improvement, strategy and performance. That is your place in the ecosystem.
+            </p>
+            <p>
+              Other ecosystem participants address other gaps — accountants and CFOs on financial 
+              quality, brokers and M&amp;A advisers on transaction preparation, lawyers on legal structure 
+              and succession, HR specialists on management depth, technology providers on systems and 
+              knowledge capture, and coaches on accountability and execution.
+            </p>
+          </div>
+
+          <p className="ln-measure mt-6 text-[17px] leading-[1.65] text-kira-charcoal">
+            That is precisely why the ecosystem exists. Each contributor addresses specific value gaps 
+            according to their existing capabilities.{' '}
+            <strong className="font-semibold text-kira-dark">You don&apos;t need to solve every problem — 
+            you have a place in a system that can.</strong>
+          </p>
+        </div>
+      </section>
+
+      {/* THE OUTCOME — §16 #7, §9 + §12 */}
+      <section id="how-it-works" className="border-y border-kira-line bg-kira-mist">
+        <div className="mx-auto max-w-5xl px-6 py-20">
+          <h2 className="max-w-[22ch] text-[27px] font-semibold tracking-tight text-kira-dark lg:text-[34px]">
+            The consultant journey, from identification to transfer.
+          </h2>
+          <p className="ln-measure mt-4 text-[17px] leading-[1.65] text-kira-charcoal">
+            The BBBO framework is: <strong className="font-semibold text-kira-dark">Assess → Improve → 
+            Measure → Prove → Sell.</strong> Your expertise remains central throughout.
+          </p>
+
+          <ol className="mt-12">
+            {CONSULTANT_JOURNEY.map((s, i) => (
+              <li key={s.n} className={`grid gap-x-8 gap-y-3 py-8 sm:grid-cols-[4rem_1fr] ${i > 0 ? 'border-t border-kira-line' : ''}`}>
+                <span className="text-[21px] font-semibold tabular-nums text-kira-600">{s.n}</span>
+                <div>
+                  <h3 className="text-[21px] font-semibold text-kira-dark">{s.title}</h3>
+                  <p className="ln-measure mt-2 text-[17px] leading-[1.65] text-kira-charcoal">{s.body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+
+          <div className="mt-8">
+            <p className="ln-measure text-[17px] leading-[1.65] text-kira-charcoal">
+              The ultimate proposition to the owner is <strong className="font-semibold text-kira-dark">Maximum 
+              Proven True-Value</strong> — not an inflated valuation, but a business whose improved value can be 
+              demonstrated with evidence. You contribute to the improvement. The ecosystem provides the other capabilities.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* TALK TO HER — voice widget, positioned after the strategic story */}
+      <section className="border-y border-kira-line bg-white">
         <div className="mx-auto max-w-5xl px-6 py-14">
           <h2 className="text-[27px] font-semibold tracking-tight text-kira-dark lg:text-[34px]">
             Talk to her yourself before introducing a client
           </h2>
           <p className="ln-measure mt-3 text-[17px] leading-[1.65] text-kira-charcoal">
-            No account, no card, nothing saved. Ask her how she works alongside advisers, how she protects 
-            client data, or how the valuation works. Type it, or talk to her — both work.
+            No account, no card, nothing saved. Ask her how she works alongside advisers, 
+            how she fits within the BBBO ecosystem, or how the valuation works. 
+            Type it, or talk to her — both work.
           </p>
 
           <form
@@ -224,7 +435,7 @@ export function LandingConsultant() {
                 id="ask-kira"
                 value={askText}
                 onChange={(e) => setAskText(e.target.value)}
-                placeholder="How does Kira work alongside a business coach?"
+                placeholder="How does Kira work alongside a business consultant?"
                 className="min-h-[52px] w-full rounded-md border border-kira-line px-4 py-3 text-[17px] text-kira-dark"
               />
               <button
@@ -304,6 +515,7 @@ export function LandingConsultant() {
         </div>
       </section>
 
+      {/* THE NUMBERS — proof that the gap exists */}
       <section className="border-y border-kira-line bg-white">
         <div className="mx-auto max-w-5xl px-6 py-14">
           <p className="text-[16px] sm:text-[15px] text-kira-soft">A real plumbing business, run through the actual calculator</p>
@@ -325,19 +537,20 @@ export function LandingConsultant() {
           </div>
 
           <p className="ln-measure mt-8 text-[17px] leading-[1.65] text-kira-charcoal">
-            The <strong className="font-semibold text-kira-dark">$195k gap</strong> is the knowledge locked in your client's head. 
-            Kira helps you capture and unlock it together.
+            The <strong className="font-semibold text-kira-dark">$195k gap</strong> is the knowledge locked 
+            in your client&apos;s head. Kira helps you capture and unlock it together.
           </p>
 
           <p className="ln-measure mt-4 text-[17px] leading-[1.65] text-kira-soft">
-            This plumber has all of it in his head — nothing written down, no contracts, one big customer. 
-            That is the <strong className="font-semibold">widest the gap gets</strong>. An owner who has already documented 
-            half of it sees roughly half as much, because Kira only claims what is left to capture. Working out a larger gap 
-            can never earn us (or you) more.
+            This plumber has all of it in his head — nothing written down, no contracts, one big 
+            customer. That is the <strong className="font-semibold">widest the gap gets</strong>. An 
+            owner who has already documented half of it sees roughly half as much, because Kira only 
+            claims what is left to capture. Working out a larger gap can never earn us (or you) more.
           </p>
         </div>
       </section>
 
+      {/* DEMO */}
       <section className="mx-auto max-w-5xl px-6 py-16">
         <h2 className="text-[27px] font-semibold tracking-tight text-kira-dark lg:text-[34px]">
           Watch what your client experiences over six months
@@ -350,146 +563,32 @@ export function LandingConsultant() {
         </div>
       </section>
 
-      <section className="border-t border-kira-line bg-white">
-        <div className="mx-auto max-w-5xl px-6 py-16">
-          <h2 className="max-w-[20ch] text-[27px] font-semibold tracking-tight text-kira-dark lg:text-[34px]">
-            Every Kira is unique, because every business is.
-          </h2>
-
-          <div className="mt-10 grid gap-10 md:grid-cols-2">
-            <div>
-              <h3 className="text-[21px] font-semibold text-kira-dark">Generic AI tools</h3>
-              <p className="mt-3 text-[17px] leading-[1.65] text-kira-charcoal">
-                The same generic assistant for everyone. They repeat their context every conversation, 
-                it tries to answer everything instantly, and it remembers none of what matters to their business.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-[21px] font-semibold text-kira-dark">Kira — a custom continuous GM</h3>
-              <p className="mt-3 text-[17px] leading-[1.65] text-kira-charcoal">
-                Built around your client's exact context and history. She understands their structure, 
-                relationships, and challenges from day one, and every conversation builds on the last one.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="how-it-works" className="mx-auto max-w-5xl px-6 py-20">
-        <h2 className="max-w-[22ch] text-[27px] font-semibold tracking-tight text-kira-dark lg:text-[34px]">
-          Consultant + Kira + Business Owner: The Journey
-        </h2>
-        <p className="ln-measure mt-4 text-[17px] leading-[1.65] text-kira-charcoal">
-          Kira does not replace your advisory work. She makes your capability more continuous, informed, 
-          and scalable.
-        </p>
-
-        <ol className="mt-12">
-          {STEPS.map((s, i) => (
-            <li key={s.n} className={`grid gap-x-8 gap-y-3 py-8 sm:grid-cols-[4rem_1fr] ${i > 0 ? 'border-t border-kira-line' : ''}`}>
-              <span className="text-[21px] font-semibold tabular-nums text-kira-600">{s.n}</span>
-              <div>
-                <h3 className="text-[21px] font-semibold text-kira-dark">{s.title}</h3>
-                <p className="ln-measure mt-2 text-[17px] leading-[1.65] text-kira-charcoal">{s.body}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-
-        <div className="mt-6">
-          <a
-            href="/business-valuation"
-            className="ln-link inline-flex min-h-[52px] items-center rounded-md bg-kira-600 px-7 text-[17px] font-medium text-white hover:bg-kira-700"
-          >
-            Experience the valuation journey
-          </a>
-          <p className="mt-3 text-[16px] sm:text-[15px] text-kira-soft">
-            Retiring, selling, or scaling succession — start with the numbers.
-          </p>
-        </div>
-      </section>
-
-      <section className="border-y border-kira-line bg-kira-mist">
-        <div className="mx-auto max-w-5xl px-6 py-16">
-          <h2 className="max-w-[24ch] text-[27px] font-semibold tracking-tight text-kira-dark lg:text-[34px]">
-            Your advisory, made continuous and scalable.
-          </h2>
-          <p className="ln-measure mt-3 text-[17px] leading-[1.65] text-kira-charcoal">
-            You see clients periodically, but their business operates every day. Kira acts as your continuous 
-            on-site capability, maintaining momentum and documenting truth.
-          </p>
-
-          <div className="ln-measure mt-6 space-y-4 text-[17px] leading-[1.65] text-kira-charcoal">
-            <p>
-              Most owner-operators struggle to execute business development between advisory sessions. 
-              The day-to-day fires pull them back on the tools, and knowledge documentation stalls.
-            </p>
-            <p>
-              Kira bridges this gap: <span className="font-semibold text-kira-dark">she makes strategic execution safe and structured.</span>{' '}
-              She captures their decisions, files their procedures, and maintains the momentum you establish in your sessions. 
-              When they return to you, they bring real, captured data rather than vague updates.
-            </p>
-          </div>
-
-          <div className="mt-10 grid gap-10 md:grid-cols-2">
-            <div>
-              <h3 className="text-[21px] font-semibold text-kira-dark">Between sessions — she documents</h3>
-              <p className="ln-measure mt-3 text-[17px] leading-[1.65] text-kira-charcoal">
-                Kira interviews the owner and key staff, turning daily operations and knowledge into an exportable, 
-                verifiable manual.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-[21px] font-semibold text-kira-dark">Between sessions — she runs</h3>
-              <p className="ln-measure mt-3 text-[17px] leading-[1.65] text-kira-charcoal">
-                Key personnel can consult Kira to resolve operational questions exactly the way the owner would, 
-                reducing the owner's immediate daily workload.
-              </p>
-            </div>
-          </div>
-
-          <p className="ln-measure mt-10 text-[17px] leading-[1.65] text-kira-charcoal">
-            This means you get to offer a <strong className="font-semibold text-kira-dark">differentiated, modern capability</strong>{' '}
-            that turns your strategic guidance into durably documented equity value.
-          </p>
-
-          <div className="mt-8">
-            <a
-              href="/business-valuation"
-              className="ln-link inline-flex min-h-[52px] items-center rounded-md bg-kira-600 px-7 text-[17px] font-medium text-white hover:bg-kira-700"
-            >
-              See the valuation process
-            </a>
-            <p className="mt-3 text-[16px] sm:text-[15px] text-kira-soft">
-              A 3-minute valuation — no sign-up, no card.
-            </p>
-          </div>
-        </div>
-      </section>
-
+      {/* WHERE IT ENDS UP — the Operating Manual */}
       <section className="border-t border-kira-line bg-white">
         <div className="mx-auto max-w-5xl px-6 py-16">
           <h2 className="max-w-[24ch] text-[27px] font-semibold tracking-tight text-kira-dark lg:text-[34px]">
-            And it ends up in their filing cabinet, not ours.
+            It ends up in their filing cabinet, not ours.
           </h2>
           <div className="ln-measure mt-4 space-y-4 text-[17px] leading-[1.65] text-kira-charcoal">
             <p>
-              What Kira captures becomes an Operating Manual — structured document-by-document, written 
-              directly into your client's own Google Drive.
+              What Kira captures becomes an Operating Manual — structured document-by-document, 
+              written directly into your client&apos;s own Google Drive.
             </p>
             <p>
-              There are two distinct versions. Their internal copy has everything in it. The handover version 
-              automatically excludes sensitive plans and figures — making it safe to send to accountants, 
-              brokers, or potential buyers as dated, verified evidence of their enterprise systems.
+              There are two distinct versions. Their internal copy has everything in it. The 
+              handover version automatically excludes sensitive plans and figures — making it safe 
+              to send to accountants, brokers, or potential buyers as dated, verified evidence 
+              of their enterprise systems.
             </p>
             <p>
-              They can download it cleanly. It opens in any browser, prints, and works without an account or login. 
-              If they stop paying us tomorrow, they keep a document that works forever.
+              They can download it cleanly. It opens in any browser, prints, and works without 
+              an account or login. If they stop paying us tomorrow, they keep a document that works forever.
             </p>
           </div>
         </div>
       </section>
 
+      {/* PARTNERSHIP */}
       <section className="border-y border-kira-line bg-white">
         <div className="mx-auto max-w-5xl px-6 py-16">
           <h2 className="text-[27px] font-semibold tracking-tight text-kira-dark lg:text-[34px]">This is a partnership.</h2>
@@ -501,18 +600,18 @@ export function LandingConsultant() {
             <div>
               <h3 className="text-[21px] font-semibold text-kira-dark">What Kira brings</h3>
               <ul className="mt-4 space-y-2.5 text-[17px] leading-[1.6] text-kira-charcoal">
-                <li>Asks the diagnostic questions they haven't considered</li>
-                <li>Pushes back when procedures are vague or missing</li>
-                <li>Maintains absolute, row-isolated privacy boundaries</li>
-                <li>Admits when she doesn't know operational specifics</li>
+                <li>Diagnostic questions the owner hasn&apos;t considered</li>
+                <li>Pushback when procedures are vague or missing</li>
+                <li>Absolute, row-isolated privacy boundaries between clients</li>
+                <li>Honesty when she doesn&apos;t know operational specifics</li>
               </ul>
             </div>
             <div>
               <h3 className="text-[21px] font-semibold text-kira-dark">What Kira needs</h3>
               <ul className="mt-4 space-y-2.5 text-[17px] leading-[1.6] text-kira-charcoal">
                 <li>Honest disclosures from the owner on key dependencies</li>
-                <li>Correction when her summarized workflows are off track</li>
-                <li>Your strategic lens to review their readiness genome</li>
+                <li>Correction when her summarised workflows are off track</li>
+                <li>Your strategic lens to review their readiness</li>
                 <li>Cooperative goal setting to address newly surfaced gaps</li>
               </ul>
             </div>
@@ -520,6 +619,7 @@ export function LandingConsultant() {
         </div>
       </section>
 
+      {/* PRICING */}
       <section id="pricing" className="mx-auto max-w-5xl px-6 py-20">
         <h2 className="text-[27px] font-semibold tracking-tight text-kira-dark lg:text-[34px]">
           See the number. Then decide.
@@ -533,22 +633,25 @@ export function LandingConsultant() {
 
         <div className="ln-measure mt-8 space-y-4 text-[17px] leading-[1.65] text-kira-charcoal">
           <p>
-            Which band your client lands in depends on the size of their business — the annual profit they tell 
-            us, not the gap we calculate. That distinction is non-negotiable: the tool that works out what 
-            the business is worth has nothing to gain from the number being bigger. They see their 
-            figure after the free valuation, before any card is saved.
+            Which band your client lands in depends on the size of their business — the annual profit 
+            they tell us, not the gap we calculate. That distinction is non-negotiable: the tool that 
+            works out what the business is worth has nothing to gain from the number being bigger.
           </p>
           <p>The valuation is completely free — no sign-up, no card, no obligation.</p>
           <p>
-            Kira's fee is set to a small fraction of what they stand to unlock. They are <strong className="font-semibold text-kira-dark">never invoiced for the month they are in</strong> — each month is billed once it has finished, and if they cancel, that month is on us.
+            Kira&apos;s fee is set to a small fraction of what they stand to unlock. They are{' '}
+            <strong className="font-semibold text-kira-dark">never invoiced for the month they are 
+            in</strong> — each month is billed once it has finished, and if they cancel, that month is on us.
           </p>
           <p>
-            <strong className="font-semibold text-kira-dark">It is meant to end.</strong> Kira's job is to get what 
-            is in their head onto paper. Once that is done, keeping it current costs only <strong className="font-semibold text-kira-dark">a third of their band</strong>.
+            <strong className="font-semibold text-kira-dark">It is meant to end.</strong> Kira&apos;s job 
+            is to get what is in their head onto paper. Once that is done, keeping it current costs only{' '}
+            <strong className="font-semibold text-kira-dark">a third of their band</strong>.
           </p>
           <p>
             <strong className="font-semibold text-kira-dark">
-              And there is a ceiling: after {FULL_RATE_PERIOD_CAP} months they move to the lower rate whether or not we think the work is done.
+              And there is a ceiling: after {FULL_RATE_PERIOD_CAP} months they move to the lower rate 
+              whether or not we think the work is done.
             </strong>{' '}
             We would rather cap what you and your client can be charged than guess or drag out the timeline.
           </p>
@@ -559,14 +662,15 @@ export function LandingConsultant() {
             href="/business-valuation"
             className="ln-link inline-flex min-h-[52px] items-center rounded-md bg-kira-600 px-7 text-[17px] font-medium text-white hover:bg-kira-700"
           >
-            Try the valuation tool
+            Experience the valuation
           </a>
           <p className="mt-3 text-[16px] sm:text-[15px] text-kira-soft">
-            Free · no sign-up · run the numbers in 3 minutes.
+            Free · no sign-up · see the numbers in 3 minutes.
           </p>
         </div>
       </section>
 
+      {/* ABOUT */}
       <section className="border-t border-kira-line bg-white">
         <div className="mx-auto max-w-3xl px-6 py-16">
           <h2 className="text-[27px] font-semibold tracking-tight text-kira-dark lg:text-[34px]">
@@ -589,12 +693,13 @@ export function LandingConsultant() {
             <p>
               It is a small operation and I would rather you knew that than found out later. What you 
               get is direct access to the person who built it, and a product that is still changing 
-              in response to what advisers and owners tell me. What you do not get is a support desk in another 
-              time zone.
+              in response to what advisers and owners tell me. What you do not get is a support desk 
+              in another time zone.
             </p>
             <p>
-              Your client's business details stay in their account. They are used to build their Operating 
-              Manual and nothing else — not sold, not pooled, not used to train anyone's model. The{' '}
+              Your client&apos;s business details stay in their account. They are used to build their 
+              Operating Manual and nothing else — not sold, not pooled, not used to train anyone&apos;s 
+              model. The{' '}
               <a href="/privacy" className="text-kira-600 underline underline-offset-2 hover:text-kira-700">
                 privacy policy
               </a>{' '}
@@ -608,6 +713,7 @@ export function LandingConsultant() {
         </div>
       </section>
 
+      {/* QUESTIONS */}
       <section className="border-t border-kira-line bg-white">
         <div className="mx-auto max-w-3xl px-6 py-16">
           <h2 className="text-[27px] font-semibold tracking-tight text-kira-dark lg:text-[34px]">Questions</h2>
@@ -625,20 +731,52 @@ export function LandingConsultant() {
         </div>
       </section>
 
+      {/* THE NEXT STEP — §16 #8, §15 */}
+      <section className="border-t border-kira-line bg-kira-mist">
+        <div className="mx-auto max-w-3xl px-6 py-20 text-center">
+          <h2 className="text-[27px] font-semibold tracking-tight text-kira-dark lg:text-[34px]">
+            See how Kira could work with your clients.
+          </h2>
+          <p className="ln-measure mx-auto mt-4 text-[17px] leading-[1.65] text-kira-charcoal">
+            There is a large, specific and time-sensitive market of mature Baby Boomer-owned businesses 
+            that need help becoming more valuable, more transferable and more demonstrably ready for 
+            their next owner. Your expertise is one of the capabilities that can help make that happen.
+          </p>
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+            <a
+              href="/business-valuation"
+              className="ln-link inline-flex min-h-[52px] items-center rounded-md bg-kira-600 px-7 text-[17px] font-medium text-white hover:bg-kira-700"
+            >
+              Explore becoming a BBBO ecosystem consultant
+            </a>
+            <a
+              href="/sample-genome"
+              className="ln-link inline-flex min-h-[52px] items-center rounded-md border border-kira-line bg-white px-7 text-[17px] font-medium text-kira-dark hover:border-kira-600 hover:text-kira-600"
+            >
+              See a sample manual
+            </a>
+          </div>
+          <p className="mt-4 text-[16px] sm:text-[15px] text-kira-soft">
+            No account required. The journey begins with a 3-minute valuation.
+          </p>
+        </div>
+      </section>
+
+      {/* FOOTER */}
       <footer className="bg-kira-dark">
         <div className="mx-auto max-w-5xl px-6 py-14">
           <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
             <div>
               <p className="text-[21px] font-semibold text-white">Kira</p>
               <p className="ln-measure mt-3 text-[17px] leading-[1.6] text-kira-on-dark">
-                One assistant. She learns how your client's business actually runs, and turns it into 
-                something a buyer can read.
+                Part of the BBBO mission to help 10,000 Baby Boomer-owned businesses achieve their 
+                maximum proven value. One technology capability inside a much larger ecosystem.
               </p>
               <a
                 href="/business-valuation"
                 className="ln-link mt-6 inline-flex min-h-[48px] items-center rounded-md bg-kira-600 px-6 text-[17px] font-medium text-white hover:bg-kira-700"
               >
-                Value a business
+                Explore Kira
               </a>
             </div>
 
