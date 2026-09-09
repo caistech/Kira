@@ -36,15 +36,22 @@
 
 import { BetaCodeCarrier } from '@/components/BetaCodeCarrier';
 import { LandingClassic } from '@/components/landing/LandingClassic';
+import { LandingConsultant } from '@/components/landing/LandingConsultant';
 import { LandingNew } from '@/components/landing/LandingNew';
 
-const USE_NEW_STYLE = process.env.NEXT_PUBLIC_STYLE_NEW === 'true';
+// The consultant-facing landing is now the PRIMARY front door for every visitor.
+// To roll back, set NEXT_PUBLIC_LANDING_VARIANT="classic" or "new" in Vercel and redeploy —
+// the code stays one static branch away from either alternative.
+const LANDING_VARIANT = process.env.NEXT_PUBLIC_LANDING_VARIANT ?? 'consultant';
 
 export default function KiraLandingPage() {
+  const Landing =
+    LANDING_VARIANT === 'classic' ? LandingClassic : LANDING_VARIANT === 'new' ? LandingNew : LandingConsultant;
+
   return (
     <>
       <BetaCodeCarrier />
-      {USE_NEW_STYLE ? <LandingNew /> : <LandingClassic />}
+      <Landing />
     </>
   );
 }
