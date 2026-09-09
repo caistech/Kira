@@ -103,7 +103,7 @@ export default function OnboardingPage() {
       // rather than by routing around it — it gates on state and offers the brief as a step. Sending
       // the two entry paths to different places is what made the ROUTE decide what he saw instead of
       // his state, which is precisely backwards.
-      window.location.assign('/dashboard?welcome=1');
+      window.location.assign('/talk?welcome=1');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
       setBusy(false);

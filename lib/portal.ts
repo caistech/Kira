@@ -58,9 +58,9 @@ export interface PortalOption {
 
 export const PORTAL_OPTIONS: Record<PortalId, Omit<PortalOption, 'id'>> = {
   user: {
-    label: 'User / CEO',
+    label: 'CEO User',
     description: 'Your business — overview, genome, drafts, requests.',
-    href: '/dashboard',
+    href: '/talk',
   },
   'org-admin': {
     label: 'Organisation Admin',
