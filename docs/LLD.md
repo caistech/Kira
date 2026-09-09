@@ -7,7 +7,7 @@ breaking it, or a technical reviewer checking that the claims in the HLD are act
 that must survive any future change. An invariant is not a style preference. Each one is here
 because breaking it causes a specific, named failure.
 
-**Status:** `main` as at 2026-08-18.
+**Status:** `main` as at 2026-09-10.
 
 ---
 
@@ -18,7 +18,9 @@ Vercel.
 
 ```
 app/
-  (public)          landing · business-valuation · plan · advisors · privacy · terms · unsubscribe
+  (public)          landing (app/page.tsx — the 3-variant front door, §1A)
+                    · business-valuation · plan · advisors · privacy · terms · unsubscribe
+                    · consultant-preview (landing-variant preview)
   talk chat dashboard knowledge settings      the owner's product
   admin/            operator console          gated by middleware + ADMIN_EMAILS
   introducer/       channel portal            gated by a signed cookie
@@ -44,6 +46,66 @@ supabase/migrations/   the ONLY migrations that run
 **Invariant:** a missing `SUPABASE_SECRET_KEY` (API route) or `SUPABASE_PUBLISHABLE_KEY` (browser/server-session) **throws**. It must never silently fall back to legacy JWT credentials (`SUPABASE_SECRET_KEY`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) — a write path that quietly degrades to legacy credentials fails in a way that looks like a data bug months later, far from the cause.
 
 **Invariant (API Key Model — Target Architecture):** New code MUST use V2 clients (`createClientV2`, `createServiceClientV2`, `createSessionClientV2`). Legacy clients (`createClient`, `createServiceClient`, `createSessionClient`) are retained ONLY for unmigrated callers and MUST NOT be used in new code. The API Key Model (`sb_secret_` / `sb_publishable_`) is the target architecture. Phase 0 validation complete (Preview only); Production remains on legacy JWT pending explicit authorisation for full migration.
+
+---
+
+## 1A. The landing surface — the front door
+
+`app/page.tsx` is a thin dispatcher. It decides which of three maintained landing components to
+render, carries the beta-code arrival, and otherwise adds nothing — the landing itself is the
+component.
+
+```
+NEXT_PUBLIC_LANDING_VARIANT  (unset) → "consultant"   LandingConsultant   PRIMARY since 2026-09-10
+                                  "new" →              LandingNew         owner-facing rebuild
+                               "classic" →            LandingClassic     previous safe default
+```
+
+Module-scope constant in `app/page.tsx`; compared as a string, so a misspelled value falls through
+to the consultant default rather than half-enabling anything. Must be `NEXT_PUBLIC_` — the value is
+read in the browser.
+
+**Invariants**
+
+1. **All three variants share the same link surface.** Each routes to exactly
+   `/business-valuation`, `/sample-genome`, `/login`, `/signup`, `/privacy`, `/terms` (plus the
+   in-page anchors they declare). A variant must NOT invent a route or a fake phase in the journey —
+   the valuation is the converge point for every hero.
+2. **The beta code is carried, never consumed, on the landing.** `BetaCodeCarrier`
+   (`components/BetaCodeCarrier.tsx`) reads `?code=` and parks it in `sessionStorage` under
+   `kira_beta_code`; redemption happens only at `/plan` at the BetaRedeem step. Parking is
+   context, not redemption — nothing on the landing validates it. A code is bound to one email and
+   single-use, so holding it in the tab is safe.
+3. **The landing voice widget writes nothing to a person's Genome.** It answers from
+   `/api/kira/ask` and is safe to submit junk into. Do NOT add the `@accepts-input`
+   marker to `/signup` or the auth pages — the portfolio audit really submits against production
+   on every push.
+4. **The headline figures are pinned, not remembered.** `lib/valuation/landing-example.test.ts`
+   and `lib/valuation/headline-numbers.test.ts` compute the example from the model and assert each
+   landing shows `$220k · $626k · $821k` and the $195k gap, and reference
+   `HEADLINE_NUMBERS` rather than restating the labels. Changing the model is allowed; changing a
+   landing and leaving it behind is not (this is the guard the 2026-08-04 2.25× gap overstatement
+   exists for). A new landing variant MUST be added to both test surfaces.
+5. **The consultant page is a variant, not a divergence.** It reuses the exact link set, the same
+   voice assembly, the same pricing primitives (`PRICE_TIERS`, `FULL_RATE_PERIOD_CAP`,
+   `formatPrice`) and the same `ADVISOR_FAQ`. Positioning copy differs; structure and shop-window
+   facts do not.
+
+### 1A.1 Guest vs invited experience
+
+An invited tester arrives at `/?code=…`. BetaCodeCarrier parks the code; the chosen variant renders;
+the tester walks valuation → confirm name → the sandbox org as CEO. Under the consultant default,
+the door speaks to the adviser (the BBBO mission, the ecosystem, "what's in it for me") and the
+journey behind it is the owner's. That split — consultant-flavoured door, owner-flavoured product —
+is deliberate and is what the beta invitation emails describe. `/consultant-preview` exists only as
+a deployable preview of the consultant variant; it is not part of the main visitor journey.
+
+### 1A.2 Testing and verification
+
+The `@public-route` marker on `app/page.tsx` feeds the portfolio-gate's public-route and
+first-paint audits; the `@accepts-input open=".convai-btn"` marker feeds the landing-audit that
+really submits against production every push. Both apply to whatever variant is selected at deploy
+time, because the marker lives in the dispatcher file, not in any component.
 
 ---
 

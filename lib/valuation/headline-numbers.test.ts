@@ -20,6 +20,7 @@ import { stripComments } from '@/lib/source-scan';
 const SURFACES = [
   'components/landing/LandingClassic.tsx',
   'components/landing/LandingNew.tsx',
+  'components/landing/LandingConsultant.tsx',
   'app/business-valuation/page.tsx',
 ];
 

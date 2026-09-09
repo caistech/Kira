@@ -561,6 +561,7 @@ Spam Act footer) sits at P0 despite being an hour of work.
 | **H3** | Ray's Opportunity items | DEC | 3 | 12th question · selling the refusal on the landing page · example Genome beside the hero · private mode · broker paragraph. ⚠️ On the 12th question: **do not assume exit intent.** If retirement or sale comes up it is a learning; inferring it from a valuation run is not. |
 | **H4** | Over-promise attack: 5/5 held, no fix written | — | 4 | Either Ray hit a flake or the attack does not reproduce his case (his trigger was a document *name*; ours is a generic Drive ask). Writing a fix now would guard nothing. |
 | **H5** | Range asymmetry — resolved by explanation, deliberately | — | 4 | The sector table has one median and no within-sector dispersion, so any ± would be invented. **If someone "fixes" this later by adding a band, they are fabricating.** |
+| **H6** | Consultant landing is the global primary front door | DEC | 1 | **2026-09-10.** `app/page.tsx` now dispatches on `NEXT_PUBLIC_LANDING_VARIANT` (`consultant` default / `new` / `classic`). The consultant page positions Kira inside the BBBO ecosystem; the owner journey is unchanged behind it. Rollback is a Vercel env change. `LandingConsultant.tsx` was created per a directive and enhanced per the *Enhance Consultant Proposition* directive (opportunity → problems → mission → role → benefits → ecosystem → journey → CTA). Guards widened to cover it (`landing-example`, `headline-numbers`). |
 
 ---
 

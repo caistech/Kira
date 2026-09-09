@@ -1,7 +1,25 @@
 # PROJECT STATUS — Kira
 
-**Last session:** 2026-08-29
-**Session focus:** Maturity Model Alignment (ADMIN DECISIONS RECEIVED) + P2.3 Gate Closure
+**Last session:** 2026-09-10
+**Session focus:** Consultant landing = global primary front door (deployed) · HLD/LLD landing sections · guard surfaces widened
+
+## FRONT DOOR (CURRENT SNAPSHOT)
+
+Kira's landing (`app/page.tsx`) is a 3-variant dispatch; the **consultant-facing builder**
+(`components/landing/LandingConsultant.tsx`) is the primary default since 2026-09-10.
+
+- **Dispatch:** `NEXT_PUBLIC_LANDING_VARIANT` (`consultant` default · `new` · `classic`); unset
+  or misspelled → consultant. Rollback: Vercel env change + redeploy.
+- **Positioning:** BBBO hierarchy — owner is beneficiary, ecosystem provides the capability, Kira
+  is one technology capability, consultants are capability providers. Mission: 10,000 BBBO
+  businesses by 2027 (1,000 by Dec 2026), maximising proven True-Value.
+- **Beta testers / `?code=`:** `BetaCodeCarrier` parks the code in sessionStorage; redemption at
+  `/plan`. Door = consultant copy, product behind it = the owner's journey (deliberate).
+- **Design docs updated:** HLD §8 (landing, renumbered §10–12 after it), LLD §1A.
+- **Guards widened (24/24 green):** `landing-example.test.ts` + `headline-numbers.test.ts` now
+  cover `LandingConsultant.tsx`.
+
+## GENOME WORK — PREVIOUS SESSION (P2.3 Gates CLOSED)
 
 ## CURRENT PHASE STATUS
 

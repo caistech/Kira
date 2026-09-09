@@ -46,7 +46,11 @@ function short(n: number): string {
   return n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(2)}M` : `$${Math.round(n / 1000)}k`;
 }
 
-const PAGES = ['components/landing/LandingNew.tsx', 'components/landing/LandingClassic.tsx'];
+const PAGES = [
+  'components/landing/LandingNew.tsx',
+  'components/landing/LandingClassic.tsx',
+  'components/landing/LandingConsultant.tsx',
+];
 const read = (p: string) => fs.readFileSync(path.join(process.cwd(), p), 'utf8');
 
 describe('the landing example matches the calculator', () => {

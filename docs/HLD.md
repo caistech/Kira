@@ -7,7 +7,7 @@ diligence contact, or a new engineer on day one.
 **Companion:** `docs/LLD.md` holds the contracts, schemas and invariants. This document stops at
 the boundary of "what talks to what, and why."
 
-**Status:** describes `main` as at 2026-08-24. Where something is deliberately *not* built, it says
+**Status:** describes `main` as at 2026-09-10. Where something is deliberately *not* built, it says
 so — an HLD that quietly omits the gaps is worse than none.
 
 ---
@@ -198,7 +198,59 @@ Attribution is signed (`@caistech/attribution`) and survives cookie deletion.
 
 ---
 
-## 8. Shared-packages first
+## 8. The landing pages (the front door)
+
+The commercial front door is `app/page.tsx`, a thin dispatcher over **three real, maintained landing
+variants** in `components/landing/`:
+
+| Variant | File | Audience |
+|---|---|---|
+| Consultant | `LandingConsultant.tsx` | **PRIMARY since 2026-09-10** — positions Kira for business advisers/consultants and the BBBO ecosystem |
+| Owner ("New") | `LandingNew.tsx` | owner-facing rebuild, used as the owner-flavoured door for code-carrying journeys where configured |
+| Owner ("Classic") | `LandingClassic.tsx` | onwards-safe fallback, the previous default |
+
+**Selection** happens once at module scope in `app/page.tsx`:
+
+```
+NEXT_PUBLIC_LANDING_VARIANT = "consultant" (default) | "new" | "classic"
+```
+
+Unset defaults to the consultant variant. The prefix is load-bearing (must be `NEXT_PUBLIC_` or it
+resolves to undefined in the browser). Rollback is a Vercel env change plus redeploy — the switch is
+one static branch, and both owner variants remain maintained.
+
+**Why the consultant variant is primary.** The BBBO model is *"the business owner is the
+beneficiary; the ecosystem provides the capability."* Kira is one technology capability inside that
+ecosystem, not the whole answer — and business consultants are one of the capability providers. The
+consultant page answers the consultant's "what's in it for me", states the BBBO mission (1,000
+businesses by 31 Dec 2026, 10,000 by 31 Dec 2027, maximising proven True-Value), and positions
+Kira's role as *persistent business intelligence between the consultant's engagements* — capture,
+organisational memory, surfacing gaps, continuity — never a replacement for the human adviser.
+
+**All three variants share:**
+
+- The **own link set**: valuation, sample genome, sign-in, sign-up, privacy, terms. No variant
+  invents routes or offline flows; the valuation is the shared converge point from the hero.
+- The **`BetaCodeCarrier`** mounted in `app/page.tsx`: it parks a `?code=` from the URL into
+  sessionStorage so an invited beta tester keeps their code through the valuation into `/plan`
+  where redemption happens. The beta code is context, not redemption; nothing on the landing
+  validates or consumes it (see `components/BetaCodeCarrier.tsx`).
+- The **voice agent surface** (`VoiceWidget` + a text-fallback `/api/kira/ask` form). The landing
+  agent answers from `/api/kira/ask` and writes nothing to a person's Genome.
+- The **guard-tested figures**: the three headline numbers and the example gap are pinned by
+  `lib/valuation/landing-example.test.ts` and `lib/valuation/headline-numbers.test.ts` so a landing
+  can never drift from the calculator (the 2.25× overstatement of 2026-08-04 is the failure this
+  guard exists for).
+
+**Guest vs invited experience.** An invited beta tester arrives with `?code=` and — depending on the
+configured variant — lands on the consultant page and *then* walks the owner journey through the
+valuation and into the sandbox org. The page copy speaks to the adviser at the door; the product
+they reach is the owner's experience. That split is deliberate and is what the beta programme
+emails describe.
+
+---
+
+## 9. Shared-packages first
 
 Kira consumes shared packages from `@caistech/*` rather than forking. The standing rule: **if a
 shared package covers it, Kira consumes it — a local copy is a defect.** Two fixes made during the
@@ -221,7 +273,7 @@ most recent build (the branded unsubscribe page and the resend action on the log
 
 ---
 
-## 9. Email Suppression and Compliance
+## 10. Email Suppression and Compliance
 
 Email suppression persistence has been migrated behind the Orchestrator authenticated boundary. Kira
 no longer directly uses a Supabase service-role key for this capability.
@@ -238,7 +290,7 @@ no longer directly uses a Supabase service-role key for this capability.
 
 ---
 
-## 10. Deployment
+## 11. Deployment
 
 | Concern | Choice |
 |---|---|
@@ -254,7 +306,7 @@ no longer directly uses a Supabase service-role key for this capability.
 
 ---
 
-## 11. Known gaps
+## 12. Known gaps
 
 Stated rather than omitted.
 
