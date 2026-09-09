@@ -270,13 +270,24 @@ export default function ChatPage({
     agentInfo?.first_name || agentInfo?.agent_name?.split('_')[1] || '',
     context,
   );
-  // Fallback: first-time caller with a known name (e.g., org member who is not the owner).
-  // If neither area-focus nor welcome-back applies, greet the actual authenticated caller
-  // instead of the baked-in agent first_message (which was frozen with the owner's name).
-  // agentInfo.first_name IS the caller's canonical name (resolved per-request in /api/kira/agent),
-  // so it is authoritative on a direct /chat/[agentId] load where the prop is not supplied.
+  // Fallback: caller with a known name who is not the owner (e.g., org member). If neither
+  // area-focus nor welcome-back applies, greet the actual authenticated caller instead of the
+  // baked-in agent first_message (which was frozen with the owner's name). agentInfo.first_name IS
+  // the caller's canonical name (resolved per-request in /api/kira/agent), so it is authoritative
+  // on a direct /chat/[agentId] load where the prop is not supplied.
+  //
+  // ⚠️ FIRST CONVERSATION, NOT A CONTINUATION — but only when we KNOW there is no history. The whole
+  // product rests on never lying about what Kira remembers, in either direction: a newly provisioned
+  // beta user must be met with "this is our first conversation", and a returning user whose context
+  // simply failed to load must not suddenly be told we have never met. `has_history` is the one
+  // ground truth we have, so "first time" is claimed only when it is actually false; when the context
+  // is null (load failed) the greeting makes no claim about history at all.
   const callerName = agentInfo?.first_name?.trim() || firstName?.trim() || '';
-  const callerGreeting = callerName ? `Hey ${callerName} — good to hear from you. Let me see where we got to.` : null;
+  const callerGreeting = callerName
+    ? context && !context.has_history
+      ? `Hey ${callerName} — this is our first conversation, so let's get started. What would you like to work on first?`
+      : `Hey ${callerName} — what would you like to work on?`
+    : null;
 
   /**
    * What happens when he types instead of speaking.
@@ -566,7 +577,9 @@ export default function ChatPage({
               title={
                 context?.has_history && (lastTopic || (context.message_count ?? 0) > 0)
                   ? 'Welcome back — Kira remembers where you left off. Tap the mic to continue.'
-                  : undefined
+                  : context && !context.has_history
+                    ? 'Your first conversation with Kira. Tap the mic (or type) to begin — we start from scratch together.'
+                    : undefined
               }
               // Speak the recall instead of hoping the agent fetches it. This page already holds the
               // context (loaded above from the same RPC the agent's get_conversation_context tool
