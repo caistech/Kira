@@ -23,7 +23,12 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code');
   const tokenHash = searchParams.get('token_hash');
   const type = searchParams.get('type') as EmailOtpType | null;
-  const next = searchParams.get('next') || '/dashboard';
+  // Destination default. The canonical auth form ALWAYS carries an explicit `?next=` into every
+  // magic-link / confirmation email (see buildRedirectUrl in @caistech/corporate-components), so
+  // this fallback only fires when someone reaches the callback without one — e.g. pasted a raw
+  // token_link. /talk is the intended default (it resolves the owner's agent and provisions one for
+  // a fresh user); deliberately aligned with the /login page's own default so the two never disagree.
+  const next = searchParams.get('next') || '/talk';
 
   const supabase = await createSessionClientV2();
 

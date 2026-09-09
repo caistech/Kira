@@ -465,16 +465,17 @@ export default function PlanPage() {
         body.identity?.isSuperadmin === true ||
         body.isSuperadmin === true;
 
-      if (boundOrganisation) {
-        window.location.assign('/dashboard');
-      } else {
-        // FRESH-USER FIRST SURFACE IS /talk, NOT /dashboard. A brand-new owner has no kira_agents
-        // row — and only /talk provisions one (KiraBootstrap → /api/kira/ensure mints the agent on
-        // first visit). Landing on /dashboard first left them with zero agents and a Kira that could
-        // not be minted, which is why the only working path was manually walking to /talk. /talk is
-        // one conversation, then every surface — /dashboard included — resolves that same agent.
-        window.location.assign(becameSuperadmin ? '/manage' : '/talk');
-      }
+      // FRESH-USER FIRST SURFACE IS /talk, NOT /dashboard. A brand-new owner has no kira_agents
+      // row — and only /talk provisions one (KiraBootstrap → /api/kira/ensure mints the agent on
+      // first visit). Landing on /dashboard first left them with zero agents and a Kira that could
+      // not be minted, which is why the only working path was manually walking to /talk. /talk is
+      // one conversation, then every surface — /dashboard included — resolves that same agent.
+      //
+      // This applies to BOTH fresh-user paths: a redeem via an org-bound invitation code
+      // (boundOrganisation set — the beta-tester case) and a plain self-signup (boundOrganisation
+      // null). Returning users never reach this fork — they are caught earlier by
+      // hasCanonicalOrganisation and sent to /dashboard.
+      window.location.assign(becameSuperadmin ? '/manage' : '/talk');
 
     } catch (error: unknown) {
       setIdentityError(
