@@ -34,10 +34,15 @@ import { displayedFigures } from './displayed';
 const repoRoot = path.resolve(__dirname, '..', '..');
 
 /** Every screen that shows the owner his own valuation figures. */
+// ⚠️ NOT `app/plan/page.tsx` — `/plan` was re-scoped in the Gate 2 / consultant-landing
+// consolidation (3c772fb, 23d7385) from "the valuation plan page" to the universal identity gate
+// (BetaRedeem → person → organisation → membership → ownership). It renders no valuation figures,
+// so it cannot round one; the screens that DO are the three below. Forcing it to consume
+// `displayedFigures` for a regex's sake would be the convention-dodge the repository was written
+// to avoid — the list exists to guard call sites that SHOW figures.
 const SCREENS = [
   'app/business-valuation/page.tsx',
   'app/dashboard/page.tsx',
-  'app/plan/page.tsx',
   'app/my-genome/page.tsx',
 ];
 
