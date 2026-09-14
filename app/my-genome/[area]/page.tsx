@@ -17,7 +17,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { getAuthUser, resolveOrganisationForPerson } from '@/lib/auth';
+import { getCurrentOrganisationContext } from '@/lib/auth';
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import { GENOME_AREAS, type AreaKey } from '@/lib/genome/areas';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
@@ -54,8 +54,8 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
   const def = GENOME_AREAS.find((a) => a.key === area);
   if (!def) notFound();
 
-  const authUser = await getAuthUser();
-  if (!authUser?.id) {
+  const orgContext = await getCurrentOrganisationContext();
+  if (!orgContext) {
     return (
       <div className="mx-auto w-full max-w-2xl px-5 py-10">
         <p className="text-base text-stone-700">
@@ -65,16 +65,6 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
           to see your Operating Manual.
         </p>
       </div>
-    );
-  }
-
-  const orgContext = await resolveOrganisationForPerson(authUser.id);
-  if (!orgContext) {
-    return (
-      <main className="max-w-3xl mx-auto px-5 py-16">
-        <h1 className="font-display text-2xl font-bold">Your Operating Manual</h1>
-        <p className="text-stone-600 mt-3">No organisation membership found.</p>
-      </main>
     );
   }
   const genome = await deriveOwnerGenome(orgContext);

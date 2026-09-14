@@ -71,7 +71,7 @@ export async function sweepDuplicateMemories(
       .in('id', drop);
     if (updateError) throw new Error(updateError.message);
 
-    console.info(`[dedupe-sweep] parked ${drop.length} swallowed memories for ${userId}`);
+    console.info(`[dedupe-sweep] parked ${drop.length} swallowed memories for ${organisationId}`);
     return drop.length;
   } catch (e) {
     console.error('[dedupe-sweep] sweep failed:', e);

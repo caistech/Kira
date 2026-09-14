@@ -38,13 +38,13 @@ export default async function ExecAdminPage() {
               r.agents.find((a) => a.journeyType === 'business' && a.status === 'active') ?? r.agents[0];
             const totalConvos = r.agents.reduce((s, a) => s + a.totalConversations, 0);
             return (
-              <section key={r.userId} className="rounded-2xl border border-gray-200 bg-white p-5">
+              <section key={r.organisationId} className="rounded-2xl border border-gray-200 bg-white p-5">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   {/* identity + valuation */}
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <h2 className="truncate text-lg font-semibold text-gray-900">
-                        {r.firstName || r.email}
+                        {r.organisationName || r.ownerFirstName || r.ownerEmail}
                       </h2>
                       {r.subscriptionStatus && (
                         <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium capitalize text-gray-600">
@@ -52,7 +52,7 @@ export default async function ExecAdminPage() {
                         </span>
                       )}
                     </div>
-                    <p className="truncate text-sm text-gray-500">{r.email}</p>
+                    <p className="truncate text-sm text-gray-500">{r.ownerEmail}</p>
                     <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm">
                       <span className="text-gray-700">
                         Value gap: <strong className="text-violet-700">{money(r.gap)}</strong>
@@ -80,7 +80,7 @@ export default async function ExecAdminPage() {
                       <span className="text-xs text-gray-400">No agent yet</span>
                     )}
                     <Link
-                      href={`/admin/exec/${r.userId}`}
+                      href={`/admin/exec/${r.ownerPersonId}`}
                       className="rounded-lg border border-gray-300 px-4 py-2 text-center text-sm font-medium text-gray-700 hover:bg-gray-50"
                     >
                       Manage
