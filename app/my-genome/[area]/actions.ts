@@ -19,6 +19,7 @@ import { createServiceClientV2 } from '@/lib/supabase/server';
 import { GENOME_AREAS, type AreaKey } from '@/lib/genome/areas';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { assessAreaEntries } from '@/lib/genome/checklist-assess';
+import { fetchAdmittedChecklist } from '@/lib/genome/checklist';
 import { recomputeEvidencedReadiness } from '@/lib/valuation/recompute-readiness';
 
 const AREA_KEYS = new Set(GENOME_AREAS.map((a) => a.key));
@@ -47,7 +48,14 @@ export async function assessArea(area: string): Promise<AssessState> {
     content: e.content,
   }));
 
-  const verdicts = await assessAreaEntries(area as AreaKey, entries);
+  // The supabase client is shared by the ledger fetch and the verdict write below.
+  const supabase = createServiceClientV2();
+
+  // The admission gate's live set (T3): a question the operator admitted for this area is assessed
+  // alongside the founding cohort — until there is a verdict it returns 'open', which is precisely
+  // the monotonic honesty guarantee (a new question lowers the band until it is answered).
+  const admitted = await fetchAdmittedChecklist(supabase);
+  const verdicts = await assessAreaEntries(area as AreaKey, entries, {}, admitted);
 
   // Everything open means nothing was established — either there is nothing on the record, or the
   // model was unreachable. Writing a full set of `open` rows would make an outage indistinguishable
@@ -57,7 +65,6 @@ export async function assessArea(area: string): Promise<AssessState> {
     return { assessed: 0 };
   }
 
-  const supabase = createServiceClientV2();
   const { error } = await supabase.from('genome_item_status').upsert(
     verdicts.map((v) => ({
       // INV-020: organisation_id is the ownership anchor; user_id is provenance only.

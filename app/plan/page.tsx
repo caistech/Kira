@@ -163,21 +163,36 @@ export default function PlanPage() {
   useEffect(() => {
     let cancelled = false;
 
+    // URL is the authoritative source and must never be blocked by a storage
+    // failure. sessionStorage is a may-throw dependency (privacy mode, in-app
+    // webviews, disabled storage) — a SecurityError there must not prevent the
+    // code we already have in the URL from resolving, or onboarding stalls on
+    // the loading spinner forever (the report from two beta testers: they sit
+    // on "Loading your onboarding session…", desktop self-run sails through).
+
+    let fromUrl = '';
     try {
       const params = new URLSearchParams(window.location.search);
-      const fromUrl = normaliseString(params.get('code'));
+      fromUrl = normaliseString(params.get('code'));
+    } catch {
+      // URL parsing is best-effort only.
+    }
 
-      const fromSession = normaliseString(
+    let fromSession = '';
+    try {
+      fromSession = normaliseString(
         window.sessionStorage.getItem(BETA_CODE_STORAGE_KEY),
       );
-
-      const existing = fromUrl || fromSession;
-
-      if (existing && !cancelled) {
-        setInitialBetaCode(existing);
-      }
     } catch {
-      // Browser storage is best-effort only.
+      // Browser storage is best-effort only; never let it block identity.
+    }
+
+    // Always resolve the code — to an empty string when nothing is found. `null`
+    // stays reserved for "URL not yet read", which is the ONLY value the identity
+    // effect bails on. Previously a code-less arrival left the state at `null`
+    // forever and the onboarding spinner never cleared.
+    if (!cancelled) {
+      setInitialBetaCode(fromUrl || fromSession);
     }
 
     return () => {
@@ -217,9 +232,17 @@ export default function PlanPage() {
       query = `?code=${encodeURIComponent(codeToUse)}`;
     }
 
+    // The identity boundary is a chain of several server-side awaits. A hung call
+    // must settle into the error path rather than leave the loading spinner up
+    // forever — without this, a stuck request is indistinguishable from onboarding
+    // and beta testers sit on "Loading your onboarding session…" indefinitely.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
     fetch(`/api/identity/plan${query}`, {
       method: 'GET',
       cache: 'no-store',
+      signal: controller.signal,
     })
       .then(async (response) => {
         const body = (await response.json()) as IdentityResponse;
@@ -301,14 +324,19 @@ export default function PlanPage() {
 
         setIdentityLoading(false);
         setIdentityError(
-          error instanceof Error
+          error instanceof Error && error.name !== 'AbortError'
             ? error.message
-            : 'Unable to load your identity.',
+            : 'The identity check took too long and was stopped. Please try again.',
         );
+      })
+      .finally(() => {
+        clearTimeout(timeoutId);
       });
 
     return () => {
       cancelled = true;
+      clearTimeout(timeoutId);
+      controller.abort();
     };
   }, [initialBetaCode]);
 

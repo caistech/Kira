@@ -21,6 +21,7 @@ import { getAuthUser, resolveOrganisationForPerson } from '@/lib/auth';
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import { GENOME_AREAS, type AreaKey } from '@/lib/genome/areas';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
+import { fetchAdmittedChecklist } from '@/lib/genome/checklist';
 import { assessArea as assessAreaItems, type AssessedItem, type ItemStatus } from '@/lib/genome/checklist-bands';
 import { outstandingSplit } from '@/lib/genome/checklist-bands';
 import { pathwayAvailableFor } from '@/lib/genome/pathway';
@@ -79,6 +80,10 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
     .eq('organisation_id', orgContext.organisationId)
     .eq('area', area);
 
+  // The admission gate's live set (T3): admitted items join the band's denominator here, so a newly
+  // admitted question reads as open and honestly drops the area until it is answered.
+  const admitted = await fetchAdmittedChecklist(supabase);
+
   const assessed: AssessedItem[] = (rows ?? []).map((r) => ({
     itemKey: r.item_key as string,
     status: r.status as ItemStatus,
@@ -90,7 +95,7 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
   // this page would most easily commit: telling a man nothing in his record answers anything, when
   // in truth nobody has looked yet.
   const neverAssessed = assessed.length === 0;
-  const result = assessAreaItems(area as AreaKey, assessed);
+  const result = assessAreaItems(area as AreaKey, assessed, admitted);
   const split = outstandingSplit(result);
   const entryCount = section?.entries.length ?? 0;
 

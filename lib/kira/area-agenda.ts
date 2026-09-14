@@ -26,7 +26,7 @@ import { createServiceClientV2 } from '@/lib/supabase/server';
 import { resolveOrganisationForPerson } from '@/lib/auth';
 
 import { GENOME_AREAS, type AreaKey } from '@/lib/genome/areas';
-import { itemsForArea, type ChecklistItem } from '@/lib/genome/checklist';
+import { itemsForArea, fetchAdmittedChecklist, type ChecklistItem } from '@/lib/genome/checklist';
 import type { ItemStatus } from '@/lib/genome/checklist-bands';
 
 function json(status: number, body: unknown): Response {
@@ -112,7 +112,6 @@ export async function handleAreaAgenda(req: Request): Promise<Response> {
   }
 
   const def = GENOME_AREAS.find((a) => a.key === area)!;
-  const items = itemsForArea(area);
 
   const supabase = createServiceClientV2();
   // INV-020: genome item status is organisation-owned — resolve the org from the person and scope
@@ -124,6 +123,11 @@ export async function handleAreaAgenda(req: Request): Promise<Response> {
       reason: 'I could not identify which account this belongs to just now.',
     });
   }
+
+  // The admission gate's live set (T3): a question the operator admitted for this area is on Kira's
+  // agenda until it is answered, exactly like a founding-cohort item. Fail-soft on a ledger read.
+  const admitted = await fetchAdmittedChecklist(supabase);
+  const items = itemsForArea(area, admitted);
   const { data, error } = await supabase
     .from('genome_item_status')
     .select('item_key, status, why')

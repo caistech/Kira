@@ -100,8 +100,9 @@ export async function assessAreaEntries(
   area: AreaKey,
   entries: AssessableEntry[],
   opts: { apiKey?: string; model?: string } = {},
+  extraItems: ChecklistItem[] = [],
 ): Promise<AssessedItem[]> {
-  const items = itemsForArea(area);
+  const items = itemsForArea(area, extraItems);
   const allOpen = (): AssessedItem[] =>
     items.map((i) => ({ itemKey: i.key, status: 'open' as ItemStatus, why: null, evidence: [] }));
 

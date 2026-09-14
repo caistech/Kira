@@ -1,0 +1,25 @@
+graph TD
+    Owner["Owner / CEO"]:::person
+    Owner -->|"interacts via"| WebUI["Web application<br/>Next.js on Vercel"]:::ui
+    Owner -->|"voice"| Voice["Voice interface<br/>ElevenLabs agent"]:::ui
+    WebUI --> App["Kira application<br/>kiraexec.com"]:::core
+    Voice --> App
+    App -->|"privileged / stateful ops"| Orch["Orchestrator<br/>connect.kiraexec.com"]:::boundary
+    Orch -->|"governed writes"| Gov["Memory Governance"]:::core
+    Gov --> SB["Supabase<br/>authoritative business state"]:::data
+    Gov -->|"indexing / retrieval only"| Mnemo["Mnemo<br/>retrieval index"]:::data
+    App --> Genome["Genome / Operating Manual<br/>(evidence-backed operating reality)"]:::core
+    Genome --> Assess["Assessment · Maturity · Pathways"]:::core
+    Assess --> Out["Tasks · Documents<br/>Adviser collaboration · Valuation evidence"]:::core
+    Owner -->|"strategy and change"| Adviser["Consultant / Adviser"]:::person
+    Adviser -->|"continuous evidence base"| Genome
+    Voice <-->|"agent webhooks"| ElevenLabs["ElevenLabs"]:::external
+    App -.->|"email"| Resend["Resend"]:::external
+    App -.->|"commercial billing"| Stripe["Stripe"]:::external
+
+    classDef person fill:#eef4ff,stroke:#2b6cb0,color:#1a365d
+    classDef ui fill:#f0fff4,stroke:#2f855a,color:#22543d
+    classDef core fill:#fffaf0,stroke:#dd6b20,color:#7b341e
+    classDef boundary fill:#faf5ff,stroke:#805ad5,color:#44337a
+    classDef data fill:#e6fffa,stroke:#319795,color:#234e52
+    classDef external fill:#fff5f7,stroke:#d53f8c,color:#702459

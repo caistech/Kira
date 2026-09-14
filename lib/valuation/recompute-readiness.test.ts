@@ -59,6 +59,11 @@ function mockDb({
             }),
           };
         }
+        if (table === 'genome_admission_ledger') {
+          // The admission gate's live set (T3). These tests exercise the static cohort only, so the
+          // mock returns an empty ledger; the fetch's fail-soft returns [] on any read problem too.
+          return { select: () => ({ eq: () => ({ is: async () => ({ data: [], error: null }) }) }) };
+        }
         return { select: () => ({ eq: async () => ({ data: status, error: null }) }) };
       },
     }),

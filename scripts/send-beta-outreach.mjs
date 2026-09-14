@@ -214,7 +214,7 @@ One honest note: the CAIS Beta org's Genome, valuation and report are not built 
 Let me know once you have logged in so I can hear how it is going for you.
 
 Dennis`;
-  return { subject: 'Kira Beta — invited as a beta tester', html: paragraphs(body) + await footer(email) };
+  return { subject: `${firstName}, Kira Beta — invited as a beta tester`, html: paragraphs(body) + await footer(email) };
 }
 
 /**
@@ -296,7 +296,7 @@ if (!ONLY) throw new Error('--only <email> is required. This script sends to one
  */
 // Countries cleared for the person-by-person beta invitation flow (verbal-consent basis) as of
 // 2026-09-03. Kept local to this script on purpose: see the override note above.
-const BETA_OUTREACH_CLEARED_JURISDICTIONS = ['AU', 'US', 'CA', 'GB', 'EU', 'IN'];
+const BETA_OUTREACH_CLEARED_JURISDICTIONS = ['AU', 'US', 'CA', 'GB', 'EU', 'IN', 'NZ', 'PK', 'VN'];
 const COUNTRY = (arg('country') || '').trim().toUpperCase() || undefined;
 try {
   assertJurisdictionAllowed(COUNTRY, { supported: BETA_OUTREACH_CLEARED_JURISDICTIONS });

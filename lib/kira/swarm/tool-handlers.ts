@@ -113,6 +113,9 @@ export async function handleDispatchTask(req: Request): Promise<Response> {
 
   // Idempotency key: prefer an agent-supplied intent id, else derive a stable one from the utterance
   // so a repeated tool call in the same turn doesn't double-draft. (The agent rarely supplies one.)
+  //
+  // T1: the ANSWERING round of a clarify loop MUST echo the `intent_id` the orchestrator returned,
+  // or the answers open a brand-new task instead of closing the loop. That echo outranks wavelength.
   const intentId = String(body.intent_id || `u:${hash(utterance)}`);
 
   try {
@@ -120,6 +123,11 @@ export async function handleDispatchTask(req: Request): Promise<Response> {
       tenantId: userId,
       intentId,
       utterance,
+      // T1: the clarify round-trip. A REQUEST (agent heard the task is under-specified) carries
+      // `clarification.required`; an ANSWER carries `clarification.answers` + the echoed intent_id.
+      clarification: body.clarification as
+        | { required?: string[]; answers?: Record<string, string>; reason?: string }
+        | undefined,
     });
     // A send needs a recipient email the classifier can't invent. Tell the agent when it's missing so
     // it asks the owner ("what's Dave's email?") before approving, instead of dead-ending on send.
@@ -159,8 +167,27 @@ export async function handleDispatchTask(req: Request): Promise<Response> {
       utterance,
       status: result.status,
       kind: result.draft?.kind ?? null,
-      summary: result.draft?.summary ?? result.message ?? null,
+      summary: result.clarifying?.prompt ?? result.draft?.summary ?? result.message ?? null,
     });
+
+    // T1 — CLARIFYING. No draft exists and nothing is owned yet: the owner owes answers. The
+    // returned `intent_id` must be echoed on the answering call (as the tool's `intent_id`), or the
+    // answers would open a NEW task instead of closing THIS loop. The ask block carries the
+    // question, and the round's enforcement numbers, back to the agent to read aloud.
+    if (result.status === 'clarifying') {
+      const ask = result.clarifying;
+      return json(200, {
+        success: true,
+        task_id: result.taskGroupId,
+        intent_id: result.intentId ?? '',
+        status: 'clarifying',
+        summary: ask?.prompt ?? result.message ?? '',
+        message: ask?.prompt ?? result.message ?? '',
+        clarify: ask,
+        needs_approval: false,
+        needs_recipient_email: false,
+      });
+    }
 
     const art = (result.draft?.artifact ?? {}) as Record<string, unknown>;
     const isSend = result.draft?.kind === 'email' || result.draft?.kind === 'quote';

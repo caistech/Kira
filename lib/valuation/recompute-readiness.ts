@@ -21,6 +21,7 @@ import { createServiceClientV2 } from '@/lib/supabase/server';
 
 import { computeValuation, MODEL_VERSION, type ValuationInputs } from './model';
 import { computeEvidencedReadiness } from './evidenced-readiness';
+import { fetchAdmittedChecklist, type ChecklistItem } from '@/lib/genome/checklist';
 import type { FactorKey } from '@/lib/genome/checklist';
 import type { AssessedItem, ItemStatus } from '@/lib/genome/checklist-bands';
 
@@ -76,6 +77,12 @@ export async function recomputeEvidencedReadiness(organisationId: string): Promi
     evidence: [],
   }));
 
+  // The admission gate's live set (T3): items the operator admitted join the static census in the
+  // factor rollup. A ledger read failure degrades to the static set alone — the number never stops
+  // moving just because the ledger metadata is briefly unreadable, and fetchAdmittedChecklist is
+  // already fail-soft.
+  const admitted: ChecklistItem[] = await fetchAdmittedChecklist(supabase);
+
   let result;
   try {
     const recomputed = computeValuation(valuation.inputs as ValuationInputs);
@@ -110,7 +117,7 @@ export async function recomputeEvidencedReadiness(organisationId: string): Promi
       recomputed.factors.map((f) => [f.key, f.score]),
     ) as Record<FactorKey, number>;
 
-    result = computeEvidencedReadiness(baselineFactors, assessed);
+    result = computeEvidencedReadiness(baselineFactors, assessed, admitted);
   } catch (error) {
     console.error('[recompute-readiness] compute failed:', error);
     return { readinessNow: null, baseline: null, reason: 'no-valuation' };

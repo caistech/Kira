@@ -35,7 +35,7 @@
 //    this shipped) and not defaulted to one. Silence is silence.
 
 import type { AssessedItem } from '@/lib/genome/checklist-bands';
-import { CHECKLIST, type FactorKey } from '@/lib/genome/checklist';
+import { itemsForFactor, type ChecklistItem, type FactorKey } from '@/lib/genome/checklist';
 
 /** Must match `WEIGHTS` in model.ts. `evidenced-readiness.test.ts` asserts it against that source. */
 export const FACTOR_WEIGHTS: Record<FactorKey, number> = {
@@ -97,11 +97,12 @@ function blend(baseline: number, evidenced: number, coverage: number): number {
 export function evidenceForFactor(
   factor: FactorKey,
   assessed: Map<string, AssessedItem>,
+  extraItems: ChecklistItem[] = [],
 ): { answered: number; total: number } {
   // Required items only. Supporting items add depth to the DOCUMENT; letting them move the price
   // would mean a man could lift his valuation by answering the easy questions, which is the
   // rewards-talking failure in a subtler form.
-  const items = CHECKLIST.filter((i) => i.factor === factor && i.required);
+  const items = itemsForFactor(factor, extraItems).filter((i) => i.required && !i.retiredForCoverage);
   const answered = items.filter((i) => assessed.get(i.key)?.status === 'answered').length;
   return { answered, total: items.length };
 }
@@ -109,6 +110,7 @@ export function evidenceForFactor(
 export function computeEvidencedReadiness(
   baselineFactors: Record<FactorKey, number>,
   assessedItems: AssessedItem[],
+  extraItems: ChecklistItem[] = [],
 ): EvidencedReadiness {
   const assessed = new Map(assessedItems.map((a) => [a.itemKey, a]));
 
@@ -119,7 +121,7 @@ export function computeEvidencedReadiness(
   const anyVerdict = assessedItems.some((a) => a.status !== 'open');
 
   const factors: FactorEvidence[] = (Object.keys(FACTOR_WEIGHTS) as FactorKey[]).map((factor) => {
-    const { answered, total } = evidenceForFactor(factor, assessed);
+    const { answered, total } = evidenceForFactor(factor, assessed, extraItems);
     const baselineScore = baselineFactors[factor] ?? 0;
 
     if (!anyVerdict || total === 0) {

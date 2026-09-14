@@ -325,7 +325,8 @@
   {
     "email": "ryan@b2bleads.com",
     "firstName": "Ryan",
-    "lastName": "Caswell"
+    "lastName": "Caswell",
+    "status": "unsubscribed"
   },
   {
     "email": "saadkhalid.uhy@gmail.com",

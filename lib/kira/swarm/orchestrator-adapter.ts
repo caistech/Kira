@@ -46,6 +46,16 @@ interface WireResponse {
   needsRecipient?: boolean;
   /** 'contacts' when the address was looked up in the owner's contact book rather than spoken. */
   recipientSource?: 'contacts';
+  /** The caller's own idempotency key, echoed for the clarify loop's answering round (T1). */
+  intentId?: string;
+  /** The orchestrator's gate question, when status is 'clarifying'. */
+  clarifying?: {
+    required: string[];
+    prompt: string;
+    count: number;
+    max: number;
+    ttlAt: string;
+  };
   error?: string;
 }
 
@@ -138,6 +148,9 @@ export class OrchestratorAdapter implements SwarmCoordinator {
       ingress: 'SAY',
       utterance: intent.utterance,
       context: { ...(intent.context ?? {}), ownerName },
+      // T1: the clarify round-trip travels verbatim — asking questions opens the loop, answering
+      // them (with the echoed intentId) closes it. Absent entirely on an ordinary dispatch.
+      clarification: intent.clarification,
     });
 
     if (!wire?.taskGroupId) {
@@ -163,6 +176,16 @@ export class OrchestratorAdapter implements SwarmCoordinator {
         : undefined,
       message: wire.message,
       recipientSource: wire.recipientSource ?? null,
+      intentId: wire.intentId,
+      clarifying: wire.clarifying
+        ? {
+            required: wire.clarifying.required,
+            prompt: wire.clarifying.prompt,
+            count: wire.clarifying.count,
+            max: wire.clarifying.max,
+            ttlAt: wire.clarifying.ttlAt,
+          }
+        : undefined,
     };
   }
 
@@ -182,6 +205,15 @@ export class OrchestratorAdapter implements SwarmCoordinator {
         status: this.state(wire.status, 'failed', `tasks/${taskGroupId}`),
         draft: wire.draft ? { ...wire.draft, artifact: wire.draft.artifact ?? {} } : undefined,
         message: wire.message,
+        clarifying: wire.clarifying
+          ? {
+              required: wire.clarifying.required,
+              prompt: wire.clarifying.prompt,
+              count: wire.clarifying.count,
+              max: wire.clarifying.max,
+              ttlAt: wire.clarifying.ttlAt,
+            }
+          : undefined,
       };
     } catch {
       return { taskGroupId, status: 'failed', message: 'Could not check that just now.' };

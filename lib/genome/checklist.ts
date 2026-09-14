@@ -33,6 +33,8 @@
 // valuation rubric, and docs/GENOME_BUCKET_CHECKLIST.md for the drafting of the items themselves.
 
 import type { AreaKey } from './areas';
+import { isAreaKey } from './areas';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * The five factors in `lib/valuation/model.ts`. Named here rather than imported so this file stays
@@ -104,6 +106,16 @@ export interface ChecklistItem {
    */
   factor: FactorKey | null;
   closes: CloseMode;
+  /**
+   * A flag only admitted items carry: when the operator marks an item "no longer discriminative"
+   * (retirement for coverage, D12), the static census never carries it and the flag is absent, which
+   * is the correct default: a static item was never retired.
+   *
+   * The live factor score excludes items carrying this flag; the coverage band still includes them
+   * — they stay in the denominator because the owner still owes the answer, and only cohort
+   * evidence (v2) removes the obligation.
+   */
+  retiredForCoverage?: boolean;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -890,21 +902,23 @@ export const CHECKLIST: readonly ChecklistItem[] = [
 
 // --- Lookups ---------------------------------------------------------------------------------
 
-export function itemsForArea(area: AreaKey): ChecklistItem[] {
-  return CHECKLIST.filter((i) => i.area === area);
+export function itemsForArea(area: AreaKey, extra: ChecklistItem[] = []): ChecklistItem[] {
+  return CHECKLIST.filter((i) => i.area === area).concat(extra.filter((i) => i.area === area));
 }
 
-export function requiredItemsForArea(area: AreaKey): ChecklistItem[] {
-  return CHECKLIST.filter((i) => i.area === area && i.required);
+export function requiredItemsForArea(area: AreaKey, extra: ChecklistItem[] = []): ChecklistItem[] {
+  return CHECKLIST.filter((i) => i.area === area && i.required).concat(
+    extra.filter((i) => i.area === area && i.required),
+  );
 }
 
-export function itemByKey(key: string): ChecklistItem | null {
-  return CHECKLIST.find((i) => i.key === key) ?? null;
+export function itemByKey(key: string, extra: ChecklistItem[] = []): ChecklistItem | null {
+  return CHECKLIST.find((i) => i.key === key) ?? extra.find((i) => i.key === key) ?? null;
 }
 
 /** Items that evidence a given valuation factor. The rollup in `evidenced-readiness.ts` reads this. */
-export function itemsForFactor(factor: FactorKey): ChecklistItem[] {
-  return CHECKLIST.filter((i) => i.factor === factor);
+export function itemsForFactor(factor: FactorKey, extra: ChecklistItem[] = []): ChecklistItem[] {
+  return CHECKLIST.filter((i) => i.factor === factor).concat(extra.filter((i) => i.factor === factor));
 }
 
 /**
@@ -917,4 +931,120 @@ export function itemsForFactor(factor: FactorKey): ChecklistItem[] {
  */
 export function pathwayItems(): ChecklistItem[] {
   return CHECKLIST.filter((i) => i.closes === 'change');
+}
+
+// --- The monotonic admission gate: reading the ledger at score time (T3) ------------------
+//
+// The static CHECKLIST is the founding cohort. The admission ledger adds items the operator has
+// approved, and the score reads them HERE, at read time — so a new question enters every business's
+// factor set with one journaled admission and no code deploy. The merge contract:
+//   * an admitted item is REQUIRED (it sets the bar), and lives in one of the nine census areas
+//   * a retraction-for-cause row is excluded from reads (it is journaled, never deleted)
+//   * a retirement-for-coverage row stays in the read BUT carries `retiredForCoverage`, so the
+//     coverage denominator keeps it while the live factor score ignores it
+
+/** Where a checklist item came from — the static census, or the admission ledger. */
+export type ChecklistItemSource = 'static' | 'admitted';
+
+/** An item that entered through the admission gate rather than the static census. */
+export interface AdmittedChecklistItem extends ChecklistItem {
+  source: 'admitted';
+  /** The ledger row id. Every admitted item has exactly one. */
+  ledgerId: string;
+  /** When the operator admitted it. */
+  admittedAt: string | null;
+  /**
+   * True when the operator flagged it "no longer discriminative" (retirement FOR COVERAGE). NOT a
+   * removal: it stays in the coverage denominator and goes on being asked; only the live factor
+   * score stops loading from it.
+   */
+  retiredForCoverage?: boolean;
+}
+
+const FACTOR_KEYS: readonly string[] = [
+  'ownerDependence',
+  'systems',
+  'recurringRevenue',
+  'clientConcentration',
+  'growth',
+];
+
+function isFactorKey(value: unknown): value is FactorKey {
+  return typeof value === 'string' && FACTOR_KEYS.includes(value);
+}
+
+export interface AdmissionLedgerRow {
+  id: string;
+  area_key: string;
+  item_key: string;
+  buyer_item: string;
+  owner_prompt: string;
+  factor: string | null;
+  status: 'watchlisted' | 'admitted';
+  admitted_at: string | null;
+  no_longer_discriminative: boolean;
+  retracted_at: string | null;
+}
+
+/**
+ * Ledger rows → live checklist items. Pure, so the two read rules can be asserted without a
+ * database:
+ *   * only ADMITTED, not-retracted rows are live — a retraction-for-cause row is journaled, and
+ *     journalism is not a read
+ *   * a row with a stranger area key is skipped, not trusted
+ * The SQL above this (`eq('status','admitted').is('retracted_at', null)`) is an optimisation; this
+ * filter is the rule and guards against the query ever being loosened.
+ */
+export function admittedRowsToItems(rows: AdmissionLedgerRow[]): AdmittedChecklistItem[] {
+  const items: AdmittedChecklistItem[] = [];
+  for (const row of rows) {
+    if (row.status !== 'admitted' || row.retracted_at) continue;
+    if (!isAreaKey(row.area_key)) {
+      console.warn(`[admission] skipping ledger row ${row.id}: unknown area key "${row.area_key}"`);
+      continue;
+    }
+    items.push({
+      key: row.item_key,
+      area: row.area_key,
+      // Admitted items set the bar: they are REQUIRED until the operator authors a substance
+      // test. A required-but-unanswered admission is exactly what makes an area read honestly.
+      required: true,
+      buyerItem: row.buyer_item,
+      ownerPrompt: row.owner_prompt,
+      // Judged by presence until the operator authors a substance test on the row (v2 surface).
+      substance: null,
+      factor: isFactorKey(row.factor) ? row.factor : null,
+      // An admitted question is answered by the owner telling us: kira can always ask it.
+      closes: 'fact',
+      source: 'admitted',
+      ledgerId: row.id,
+      admittedAt: row.admitted_at,
+      ...(row.no_longer_discriminative ? { retiredForCoverage: true as const } : {}),
+    });
+  }
+  return items;
+}
+
+/**
+ * The live factor set beyond the founding cohort: every ADMITTED, not-retracted ledger row, in
+ * checklist shape — the thing `bandFor`, `evidenceForFactor` and the agenda then filter.
+ *
+ * Fail-soft exactly like the rest of the read path: a ledger read that fails logs and returns the
+ * static census alone, rather than breaking the Genome.
+ *
+ * The `retracted_at IS NULL` filter is the retraction-for-cause read side; the journaled row itself
+ * is what the admin UI shows. A retired-for-coverage row is NOT filtered out here — see the
+ * `retiredForCoverage` flag and how the band keeps it while the factor rollup ignores it.
+ */
+export async function fetchAdmittedChecklist(supabase: SupabaseClient): Promise<AdmittedChecklistItem[]> {
+  const { data, error } = await supabase
+    .from('genome_admission_ledger')
+    .select('id, area_key, item_key, buyer_item, owner_prompt, factor, status, admitted_at, no_longer_discriminative, retracted_at')
+    .eq('status', 'admitted')
+    .is('retracted_at', null);
+  if (error) {
+    console.error('[admission] ledger read failed:', error);
+    return [];
+  }
+  return admittedRowsToItems((data ?? []) as AdmissionLedgerRow[]);
 }

@@ -237,6 +237,18 @@ export type AreaKey = (typeof GENOME_AREAS)[number]['key'];
 export const AREA_KEYS: readonly string[] = GENOME_AREAS.map((a) => a.key);
 
 /**
+ * Type guard for values that arrived over a wire (the admission ledger's `area_key` is TEXT).
+ *
+ * The census is dynamic in the sense that matters here: the admission gate can grow the FACTOR SET
+ * with no code deploy, and the area its items attach to is resolved at read time — so a key has to
+ * be PROVEN to be one of the nine before it is ever treated as an area. This is the one guard the
+ * whole admission path is filtered through; `areaFor` already returns null for strangers.
+ */
+export function isAreaKey(key: unknown): key is AreaKey {
+  return typeof key === 'string' && AREA_KEYS.includes(key);
+}
+
+/**
  * The old six sections, mapped forward.
  *
  * §3 calls the nine "a widening, not a rewrite" — five of the six map straight across, which is what

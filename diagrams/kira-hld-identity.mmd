@@ -1,0 +1,12 @@
+graph LR
+    SA["Supabase Auth"]:::data
+    SA -->|"bridge"| AC["auth_credentials"]:::identity
+    AC --> P["persons"]:::identity
+    P -->|"role / access attributes"| OM["organisation_memberships"]:::identity
+    OM --> O["organisations"]:::identity
+    P -.->|"time-aware ownership"| OP["ownership-period data"]:::identity
+    P -.->|"selected organisation context<br/>held separately"| Sel["current organisation context"]:::context
+
+    classDef identity fill:#faf5ff,stroke:#805ad5,color:#44337a
+    classDef data fill:#e6fffa,stroke:#319795,color:#234e52
+    classDef context fill:#fffaf0,stroke:#dd6b20,color:#7b341e

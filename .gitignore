@@ -119,3 +119,19 @@ supabase/migrations/archive/
 # Session-local project state (PROJECT_STATE / INCIDENT capture) - per-project save-game,
 # not part of the committed codebase.
 .context/
+
+# Debug litter from QA/beta sessions - logs, screenshots, ad-hoc probes, dumps and worktrees.
+# These are session artifacts, not repo content; the real work (scripts, docs, reports) is
+# committed. Ignored so a bare `git add .` never sweeps them up.
+.claude/
+*.log
+/_*.png
+/_*.jpg
+/_*.jpeg
+/_*.mjs
+/agent_dump.json
+/FORENSIC_ORPHANS.txt
+scripts/_tmp-*
+scripts/_probe-*
+docs/kiraonboardstuck.jpeg
+docs/relationship-email-send-log.json

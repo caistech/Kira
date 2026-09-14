@@ -22,6 +22,16 @@ export interface DispatchedIntent {
   classified?: { kind: string; [k: string]: unknown };
   /** Relevant recent memory Kira already holds (so the coordinator doesn't re-derive it). */
   context?: Record<string, unknown>;
+  /**
+   * The T1 clarify round-trip. OPEN: `required` lists the fields Kira still needs (the agent heard
+   * the request is under-specified). ANSWER: `answers` supplies them, echoing the `intentId` the
+   * orchestrator returned so the SAME loop closes rather than minting a new task.
+   */
+  clarification?: {
+    required?: string[];
+    answers?: Record<string, string>;
+    reason?: string;
+  };
 }
 
 export type TaskState =
@@ -30,9 +40,10 @@ export type TaskState =
   | 'scheduled'          // approved, waiting for its due time — NOT yet done (see kira_tasks.due_at)
   | 'done'               // executed (and the owner notified)
   | 'failed'
-  | 'unsupported';       // no owned handler + no swarm yet — captured, not silently dropped
+  | 'unsupported'        // no owned handler + no swarm yet — captured, not silently dropped
+  | 'clarifying';        // the orchestrator's pre-gate: a question is being asked (T1)
 
-/** The six states, at runtime. The type alone cannot check a value that arrived over HTTP. */
+/** The seven states, at runtime. The type alone cannot check a value that arrived over HTTP. */
 export const TASK_STATES = [
   'queued',
   'awaiting_approval',
@@ -40,6 +51,7 @@ export const TASK_STATES = [
   'done',
   'failed',
   'unsupported',
+  'clarifying',
 ] as const satisfies readonly TaskState[];
 
 /**
@@ -82,6 +94,20 @@ export interface DispatchResult {
    * contact book and he never said it aloud, which changes how it must be read back to him.
    */
   recipientSource?: 'contacts' | null;
+  /**
+   * The orchestrator echoes the caller's OWN idempotency key (T1). The answering round of a
+   * clarify loop re-dispatches with THIS, so it lands on the same task — taskGroupId is the
+   * orchestrator's internal id and cannot recreate the caller's key.
+   */
+  intentId?: string;
+  /** Present when status = 'clarifying': the question being asked, and its enforcement numbers. */
+  clarifying?: {
+    required: string[];
+    prompt: string;
+    count: number;
+    max: number;
+    ttlAt: string;
+  };
 }
 
 export interface TaskStatus {
@@ -89,6 +115,14 @@ export interface TaskStatus {
   status: TaskState;
   draft?: TaskDraft;
   message?: string;
+  /** Present when status = 'clarifying' — the poll leg mirrors the ask from dispatch. */
+  clarifying?: {
+    required: string[];
+    prompt: string;
+    count: number;
+    max: number;
+    ttlAt: string;
+  };
 }
 
 /**

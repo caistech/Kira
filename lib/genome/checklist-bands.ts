@@ -60,9 +60,9 @@ export interface AreaAssessment {
  * showing him red for it is the kind of scoring that makes a person stop talking. It cannot reach
  * `building` without required items, so nothing is overclaimed.
  */
-export function bandFor(area: AreaKey, statuses: Map<string, ItemStatus>): Band {
-  const required = requiredItemsForArea(area);
-  const all = itemsForArea(area);
+export function bandFor(area: AreaKey, statuses: Map<string, ItemStatus>, extraItems: ChecklistItem[] = []): Band {
+  const required = requiredItemsForArea(area, extraItems);
+  const all = itemsForArea(area, extraItems);
 
   const answeredAll = all.filter((i) => statuses.get(i.key) === 'answered');
   if (answeredAll.length === 0) return 'empty';
@@ -73,18 +73,18 @@ export function bandFor(area: AreaKey, statuses: Map<string, ItemStatus>): Band 
   return 'thin';
 }
 
-export function assessArea(area: AreaKey, assessed: AssessedItem[]): AreaAssessment {
+export function assessArea(area: AreaKey, assessed: AssessedItem[], extraItems: ChecklistItem[] = []): AreaAssessment {
   const byKey = new Map(assessed.map((a) => [a.itemKey, a]));
   const statuses = new Map<string, ItemStatus>(
     // An item the assessor never returned is OPEN, never silently answered. Same rule as the
     // confirmations: unsure means Kira has something to ask, which is the good outcome.
-    itemsForArea(area).map((i) => [i.key, byKey.get(i.key)?.status ?? 'open']),
+    itemsForArea(area, extraItems).map((i) => [i.key, byKey.get(i.key)?.status ?? 'open']),
   );
 
-  const items = itemsForArea(area);
+  const items = itemsForArea(area, extraItems);
   return {
     area,
-    band: bandFor(area, statuses),
+    band: bandFor(area, statuses, extraItems),
     answered: items.filter((i) => statuses.get(i.key) === 'answered'),
     weak: items
       .filter((i) => statuses.get(i.key) === 'weak')
