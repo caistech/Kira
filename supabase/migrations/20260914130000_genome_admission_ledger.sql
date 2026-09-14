@@ -71,8 +71,11 @@ comment on table public.genome_admission_ledger is
 create index if not exists idx_genome_ledger_area_status on public.genome_admission_ledger(area_key, status);
 
 -- The score read and the operator actions run through the service client; RLS is enabled and the
--- policy mirrors that reality, matching the sibling genome tables.
+-- policy mirrors that reality, matching the sibling genome tables. The ledgable rows are never anon
+-- or user-visible: the admin UI and the score both go through the service role.
 alter table public.genome_admission_ledger enable row level security;
 
-create policy if not exists "Service role full access" on public.genome_admission_ledger
-  for all using (true) with check (true);
+-- Repo policy pattern (no IF NOT EXISTS on CREATE POLICY here — this Postgres version lacks it).
+drop policy if exists "Service role full access" on public.genome_admission_ledger;
+create policy "Service role full access" on public.genome_admission_ledger
+  for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
