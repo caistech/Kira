@@ -36,6 +36,13 @@ const BAND_LABEL: Record<string, string> = {
   covered: 'Well covered',
 };
 
+/** The honesty chip for an item that joined through the admission gate. */
+const NewQuestionChip = () => (
+  <span className="inline-block rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-semibold text-violet-700">
+    New question
+  </span>
+);
+
 export async function generateMetadata({ params }: { params: Promise<{ area: string }> }) {
   const { area } = await params;
   const def = GENOME_AREAS.find((a) => a.key === area);
@@ -83,6 +90,13 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
   // The admission gate's live set (T3): admitted items join the band's denominator here, so a newly
   // admitted question reads as open and honestly drops the area until it is answered.
   const admitted = await fetchAdmittedChecklist(supabase);
+
+  // OWNER-SIDE VISIBILITY FOR THE GATE. An admission changes this owner's number — a required
+  // question joins his set and reads as open until answered — so it must not be a silent change.
+  // Items that joined through the gate ('source: admitted') are flagged "New question" wherever he
+  // meets them until he has answered them; the chip explains a drop that would otherwise read as
+  // "Kira moved the goalposts".
+  const admittedKeys = new Set(admitted.filter((a) => a.area === area).map((a) => a.key));
 
   const assessed: AssessedItem[] = (rows ?? []).map((r) => ({
     itemKey: r.item_key as string,
@@ -225,7 +239,10 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
               <ul className="mt-3 space-y-3">
                 {result.weak.map((item) => (
                   <li key={item.key} className="rounded-xl border border-amber-300 bg-amber-50 p-4">
-                    <p className="text-base font-medium text-stone-900">{item.ownerPrompt}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-base font-medium text-stone-900">{item.ownerPrompt}</p>
+                      {admittedKeys.has(item.key) && <NewQuestionChip />}
+                    </div>
                     {item.why && <p className="mt-1.5 text-base text-stone-700">{item.why}</p>}
                     {pathwayAvailableFor(item.key) && (
                       /* ⚠️ THE HONEST LINE. For these items no answer he gives closes the gap —
@@ -248,7 +265,10 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
               <ul className="mt-3 space-y-2">
                 {result.open.map((item) => (
                   <li key={item.key} className="rounded-xl border border-stone-200 bg-white p-4">
-                    <p className="text-base text-stone-800">{item.ownerPrompt}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-base text-stone-800">{item.ownerPrompt}</p>
+                      {admittedKeys.has(item.key) && <NewQuestionChip />}
+                    </div>
                     {!item.required && (
                       <p className="mt-1 text-sm text-stone-500">
                         Worth having, but a buyer will not stop over it.

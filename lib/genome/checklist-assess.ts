@@ -70,15 +70,33 @@ Rules that matter more than completeness:
   mark a bad-but-true state as open or weak — it is the most valuable thing in the record.
 - Cite the entry ids you relied on in "evidence".`;
 
-function promptFor(area: AreaKey, items: ChecklistItem[], entries: AssessableEntry[]): string {
+/**
+ * How one item is described to the assessor — pure so the substance-judgment contract is testable
+ * without a model.
+ *
+ * * A substance test present → the tests ARE the verdict: ALL must hold, with the weak/strong
+ *   exemplars. This is what "judged against the test, not by presence" means for admitted items.
+ * * No substance test on a REQUIRED item (an admitted document-completing item, or a presence-judged
+ *   admission) → a relevant fact on the record is enough, stated plainly rather than as "supporting".
+ * * No substance test on a supporting item → presence of a relevant fact is enough.
+ */
+export function itemPromptBlock(i: ChecklistItem): string {
+  if (i.substance) {
+    return (
+      `\n    tests (ALL must hold): ${i.substance.tests.join(' · ')}` +
+      `\n    a weak answer sounds like: "${i.substance.weakExample}"` +
+      `\n    a substantive one sounds like: "${i.substance.strongExample}"`
+    );
+  }
+  return i.required
+    ? '\n    (no substance test — a relevant fact on the record is enough)'
+    : '\n    (supporting item — presence of a relevant fact is enough)';
+}
+
+export function promptFor(area: AreaKey, items: ChecklistItem[], entries: AssessableEntry[]): string {
   const itemBlock = items
     .map((i) => {
-      const tests = i.substance
-        ? `\n    tests (ALL must hold): ${i.substance.tests.join(' · ')}` +
-          `\n    a weak answer sounds like: "${i.substance.weakExample}"` +
-          `\n    a substantive one sounds like: "${i.substance.strongExample}"`
-        : '\n    (supporting item — presence of a relevant fact is enough)';
-      return `- ${i.key}: ${i.buyerItem}${tests}`;
+      return `- ${i.key}: ${i.buyerItem}${itemPromptBlock(i)}`;
     })
     .join('\n');
 

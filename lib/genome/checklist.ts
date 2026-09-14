@@ -1054,7 +1054,7 @@ export function admittedRowsToItems(rows: AdmissionLedgerRow[]): AdmittedCheckli
 export async function fetchAdmittedChecklist(supabase: SupabaseClient): Promise<AdmittedChecklistItem[]> {
   const { data, error } = await supabase
     .from('genome_admission_ledger')
-    .select('id, area_key, item_key, buyer_item, owner_prompt, factor, status, admitted_at, no_longer_discriminative, retracted_at')
+    .select('id, area_key, item_key, buyer_item, owner_prompt, factor, substance, status, admitted_at, no_longer_discriminative, retracted_at')
     .eq('status', 'admitted')
     .is('retracted_at', null);
   if (error) {

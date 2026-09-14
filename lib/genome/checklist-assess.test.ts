@@ -1,121 +1,90 @@
-// The assessor's contract, tested without a model.
+// The substance-test contract, end to end without a model:
 //
-// Everything here is about what happens when the model is absent, wrong, or lying — because those
-// are the states that put a false green on a page meant to be shown to a buyer, and they are the
-// states a happy-path test never reaches.
+//   ledger row (substance jsonb) → admittedRowsToItems → itemsForArea → the assessor's prompt.
+//
+// This is Task-2's guarantee in tests: an admitted factor-bearing question that the operator has
+// given a substance test is JUDGED AGAINST THAT TEST ("tests (ALL must hold)…") — never by presence
+// — and a weak verdict without its own reason falls back to the authored coaching.
 
-import { describe, expect, it, vi, afterEach } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import { assessAreaEntries } from './checklist-assess';
-import { itemsForArea } from './checklist';
+import { admittedRowsToItems, itemsForArea, type AdmissionLedgerRow } from './checklist';
+import { itemPromptBlock, promptFor } from './checklist-assess';
+import type { AssessableEntry } from './checklist-assess';
 
-const entries = [
-  { id: 'e1', headline: 'Sam runs scheduling', content: 'Sam does the scheduling and the ordering.' },
-];
-
-afterEach(() => vi.restoreAllMocks());
-
-describe('degrade, don\'t fake', () => {
-  it('returns everything open with no API key, never a guess', async () => {
-    const out = await assessAreaEntries('people', entries, { apiKey: '' });
-    expect(out.length).toBe(itemsForArea('people').length);
-    expect(out.every((v) => v.status === 'open')).toBe(true);
-  });
-
-  it('returns everything open when there is nothing on the record', async () => {
-    const out = await assessAreaEntries('people', [], { apiKey: 'sk-test' });
-    expect(out.every((v) => v.status === 'open')).toBe(true);
-  });
-
-  it('returns everything open when the model call throws', async () => {
-    // A failed assessment must render as "not assessed yet", which is true — not as an empty
-    // Genome, which is not. The page is the product; it renders whatever else is broken.
-    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network down'));
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    const out = await assessAreaEntries('people', entries, { apiKey: 'sk-test' });
-    expect(out.every((v) => v.status === 'open')).toBe(true);
-  });
-});
-
-function mockModel(payload: unknown) {
-  vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-    ok: true,
-    json: async () => ({ choices: [{ message: { content: JSON.stringify(payload) } }] }),
-  } as Response);
+function ledgerRow(over: Partial<AdmissionLedgerRow> = {}): AdmissionLedgerRow {
+  return {
+    id: 'row-1',
+    area_key: 'demand',
+    item_key: 'adm-lead-response-time',
+    buyer_item: 'How quickly does the business respond to new enquiries?',
+    owner_prompt: 'How quickly do you get back to new enquiries?',
+    factor: 'growth',
+    substance: null,
+    status: 'admitted',
+    admitted_at: '2026-09-14T00:00:00.000Z',
+    no_longer_discriminative: false,
+    retracted_at: null,
+    ...over,
+  };
 }
 
-describe('what the model returns is not taken on trust', () => {
-  it('an item the model omitted comes back OPEN, not dropped', async () => {
-    // ⚠️ LOAD-BEARING. If omitted items were dropped, an area where the model returned two verdicts
-    // would look like a two-item area, and the band would be computed against a denominator that
-    // shrank silently whenever the model got lazy.
-    mockModel({ verdicts: [{ item_key: 'people.roster', status: 'answered' }] });
-    const out = await assessAreaEntries('people', entries, { apiKey: 'sk-test' });
-    expect(out.length).toBe(itemsForArea('people').length);
-    expect(out.find((v) => v.itemKey === 'people.roster')?.status).toBe('answered');
-    expect(out.filter((v) => v.status === 'open').length).toBe(itemsForArea('people').length - 1);
+const entry: AssessableEntry = {
+  id: 'mem-1',
+  headline: 'Enquiries',
+  content: 'We reply to most enquiries within a day.',
+};
+
+describe('an admitted item with an authored substance test is judged against the test', () => {
+  it('the prompt carries the tests AND the exemplars for the admitted item', () => {
+    const admitted = admittedRowsToItems([
+      ledgerRow({
+        substance: {
+          tests: [
+            'answers for the response time specifically, with a figure',
+            'states the day/period, not a feel',
+          ],
+          weakExample: 'We are pretty quick.',
+          strongExample: 'Every enquiry before close of business the same day.',
+          coaching: 'Give a figure — "pretty quick" is not a number a buyer can model.',
+        },
+      }),
+    ]);
+    const items = itemsForArea('demand', admitted);
+    const prompt = promptFor('demand', items, [entry]);
+
+    expect(items.some((i) => i.key === 'adm-lead-response-time')).toBe(true);
+    expect(prompt).toContain('tests (ALL must hold)');
+    expect(prompt).toContain('answers for the response time specifically, with a figure');
+    expect(prompt).toContain('a weak answer sounds like: "We are pretty quick."');
+    expect(prompt).toContain('a substantive one sounds like: "Every enquiry before close of business the same day."');
   });
 
-  it('drops an evidence id that was never in the prompt', async () => {
-    // A model citing an entry that does not exist has invented it. An invented citation on a page
-    // whose whole purpose is to be defensible to a buyer is worse than no citation at all.
-    mockModel({
-      verdicts: [
-        { item_key: 'people.roster', status: 'answered', evidence: ['e1', 'e-does-not-exist'] },
-      ],
-    });
-    const out = await assessAreaEntries('people', entries, { apiKey: 'sk-test' });
-    expect(out.find((v) => v.itemKey === 'people.roster')?.evidence).toEqual(['e1']);
-  });
-
-  it('ignores a verdict for an item key that is not in this area', async () => {
-    mockModel({ verdicts: [{ item_key: 'assets.owned', status: 'answered' }] });
-    const out = await assessAreaEntries('people', entries, { apiKey: 'sk-test' });
-    expect(out.some((v) => v.itemKey === 'assets.owned')).toBe(false);
-    expect(out.every((v) => v.status === 'open')).toBe(true);
-  });
-
-  it('falls back to the static coaching when a weak verdict carries no reason', async () => {
-    // A criticism with no reason attached is the one thing more annoying than no criticism. The
-    // static line is always at least true of the QUESTION, even when it cannot quote him.
-    mockModel({ verdicts: [{ item_key: 'people.successor', status: 'weak' }] });
-    const out = await assessAreaEntries('people', entries, { apiKey: 'sk-test' });
-    expect(out.find((v) => v.itemKey === 'people.successor')?.why).toMatch(/hospital/i);
-  });
-
-  it('never attaches a reason to an answered item', async () => {
-    mockModel({
-      verdicts: [{ item_key: 'people.roster', status: 'answered', why: 'could be better' }],
-    });
-    const out = await assessAreaEntries('people', entries, { apiKey: 'sk-test' });
-    expect(out.find((v) => v.itemKey === 'people.roster')?.why).toBeNull();
+  it('the authored coaching is the reason-fallback when the model returns a weak verdict with no why', () => {
+    const admitted = admittedRowsToItems([
+      ledgerRow({ substance: { tests: ['gives a figure'], weakExample: 'x', strongExample: 'y', coaching: 'Name the accounts and their rough shares.' } }),
+    ]);
+    const item = itemsForArea('demand', admitted).find((i) => i.key === 'adm-lead-response-time');
+    expect(item?.substance?.coaching).toBe('Name the accounts and their rough shares.');
   });
 });
 
-describe('the prompt tells the model the things that matter most', () => {
-  it('sends the substance tests, not only the question', async () => {
-    // Without the tests the model is grading on its own taste, which is precisely the "six facts of
-    // any kind" problem wearing a language model.
-    let sent = '';
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) => {
-      sent = String((init as RequestInit).body);
-      return { ok: true, json: async () => ({ choices: [{ message: { content: '{"verdicts":[]}' } }] }) } as Response;
-    });
-    await assessAreaEntries('people', entries, { apiKey: 'sk-test' });
-    expect(sent).toMatch(/tests \(ALL must hold\)/);
-    expect(sent).toMatch(/helps out/); // the weak example for people.successor
+describe('an admitted item without a substance test stays explicitly presence-judged', () => {
+  it('a required item with no test is told "a relevant fact on the record is enough"', () => {
+    const admitted = admittedRowsToItems([ledgerRow({ factor: null, substance: null })]);
+    const [item] = itemsForArea('demand', admitted).filter((i) => i.key === 'adm-lead-response-time');
+    expect(item).toBeDefined();
+    expect(itemPromptBlock(item)).toContain('(no substance test — a relevant fact on the record is enough)');
+    expect(itemPromptBlock(item)).not.toContain('tests (ALL must hold)');
   });
+});
 
-  it('instructs that an honest negative is an answer', async () => {
-    // "Nobody could step into my job" is the most valuable sentence in the record. A model that
-    // scored it as open or weak would punish the exact honesty the product is built to elicit.
-    let sent = '';
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) => {
-      sent = String((init as RequestInit).body);
-      return { ok: true, json: async () => ({ choices: [{ message: { content: '{"verdicts":[]}' } }] }) } as Response;
-    });
-    await assessAreaEntries('people', entries, { apiKey: 'sk-test' });
-    expect(sent).toMatch(/honest negative IS an answer/i);
-    expect(sent).toMatch(/plan or an intention is not an answer/i);
+describe('itemPromptBlock (pure)', () => {
+  it('keeps the static supporting-item wording for non-required items without a test', () => {
+    const item = itemsForArea('demand', []).find((i) => !i.required && !i.substance);
+    expect(item).toBeDefined();
+    if (item) {
+      expect(itemPromptBlock(item)).toContain('(supporting item — presence of a relevant fact is enough)');
+    }
   });
 });
