@@ -20,6 +20,7 @@ import {
 } from '@/lib/kira/swarm/recipient';
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import { refuseThirdPartyDisclosure } from '@/lib/kira/speaking-to';
+import { maybeSelfNominateUnsupportedTask } from '@/lib/genome/self-nominate';
 
 /** True when dispatch is going to the orchestrator rather than Kira's own local stub. */
 function usingRemoteBrain(): boolean {
@@ -147,6 +148,14 @@ export async function handleDispatchTask(req: Request): Promise<Response> {
         ownerUserId: userId,
         status: result.status,
       });
+
+      // T2 — THE DOING-LAYER ESCAPE HATCH. A task that genuinely fits nowhere in the doing
+      // layer is a structural gap: the business needs this practice but the census does not ask
+      // about it. On 'unsupported' the system self-admits the question so the next cohort gets
+      // asked. Fail-soft by design: a ledger failure must never delay or break a live voice call.
+      if (result.status === 'unsupported') {
+        void maybeSelfNominateUnsupportedTask(utterance, userId);
+      }
     }
 
     // Mirror EVERY dispatch, not only the ones that ended badly — awaiting_approval above all,
