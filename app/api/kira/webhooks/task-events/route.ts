@@ -13,15 +13,37 @@
 // @machine-callable — called by another SYSTEM, never a browser. The middleware matcher excludes
 // api/, which is load-bearing: a session redirect here is a 307 the caller follows to an HTML page,
 // so nothing throws, nothing logs, and the return leg silently never runs.
+//
+// T8: Backwards-compatible handler.
+// - Old orchestrator (no genomeMetadata) → kira_tasks mirror only
+// - New orchestrator (with genomeMetadata) → kira_tasks mirror + pending kira_memory entry
+//   (source:'record', genome_section:null, leg assigned at classify-time by sweep)
 
 import { NextResponse } from 'next/server';
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import { resolveOrganisationForPerson } from '@/lib/auth';
+import { legForArea } from '@/lib/genome/leg-assignment';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const CALLBACK_HEADER = 'x-orchestrator-callback-secret';
+
+interface CallbackBody {
+  version?: string;
+  tenantId?: string;
+  taskGroupId?: string;
+  status?: string;
+  event?: string;
+  summary?: string;
+  detail?: Record<string, unknown>;
+  at?: string;
+  genomeMetadata?: {
+    flowGroup?: string;
+    genomeSection?: string;
+    outcome?: string;
+  };
+}
 
 export async function POST(request: Request) {
   const secret = process.env.ORCHESTRATOR_CALLBACK_SECRET;
@@ -33,16 +55,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  let body: {
-    version?: string;
-    tenantId?: string;
-    taskGroupId?: string;
-    status?: string;
-    event?: string;
-    summary?: string;
-    detail?: Record<string, unknown>;
-    at?: string;
-  };
+  let body: CallbackBody;
   try {
     body = await request.json();
   } catch {
@@ -63,7 +76,8 @@ export async function POST(request: Request) {
   if (!orgContext) {
     return NextResponse.json({ error: 'No owning organisation could be resolved for this task' }, { status: 422 });
   }
-  const { error } = await supabase
+
+  const { error: taskError } = await supabase
     .from('kira_tasks')
     .upsert(
       {
@@ -80,11 +94,50 @@ export async function POST(request: Request) {
       { onConflict: 'organisation_id,intent_id' },
     );
 
-  if (error) {
-    // 500 so the orchestrator RETRIES. Swallowing this would lose the completion silently, and the
-    // owner would be told nothing at all rather than told late.
-    console.error('[task-events] mirror failed:', error);
+  if (taskError) {
+    console.error('[task-events] mirror failed:', taskError);
     return NextResponse.json({ error: 'Could not record the event' }, { status: 500 });
+  }
+
+  // T8: if genomeMetadata present, also create a pending genome entry (source:'record').
+  // Classification happens async via the existing sweep (D8: no classification in callback).
+  if (body.genomeMetadata?.genomeSection) {
+    // Resolve the agent row for this person/org. kira_memory keys on kira_agent_id.
+    const { data: agent } = await supabase
+      .from('kira_agents')
+      .select('id')
+      .eq('person_id', orgContext.personId)
+      .eq('organisation_id', orgContext.organisationId)
+      .single();
+
+    if (agent) {
+      // The genomeSection maps to an area. Leg is assigned by existence test (§2.2).
+      const areaKey = resolveAreaFromSection(body.genomeMetadata.genomeSection);
+      const leg = areaKey ? legForArea(areaKey) : null;
+
+      const { error: memError } = await supabase
+        .from('kira_memory')
+        .insert({
+          organisation_id: orgContext.organisationId,
+          user_id: orgContext.personId, // provenance: canonical person_id
+          kira_agent_id: agent.id,
+          agent_id: agent.id,
+          memory_type: 'decision',
+          content: body.summary ?? '(task completed by the orchestrator)',
+          importance: 7,
+          source: 'record',
+          genome_section: null, // pending — sweep classifies
+          leg,
+          tags: ['orchestrator', ...(areaKey ? [areaKey] : [])],
+        });
+
+      if (memError) {
+        // Non-fatal: the task mirror succeeded. Log and continue — the owner still sees the task completion.
+        console.error('[task-events] genome entry insert failed (non-fatal):', memError);
+      }
+    } else {
+      console.warn('[task-events] no kira_agent for person_id=', orgContext.personId, 'org=', orgContext.organisationId);
+    }
   }
 
   return NextResponse.json({ ok: true });
@@ -93,10 +146,22 @@ export async function POST(request: Request) {
 /** The orchestrator's vocabulary is a superset of Kira's; map rather than store a status Kira cannot render. */
 function mapStatus(s?: string): string {
   switch (s) {
-    case 'done': return 'done';
-    case 'failed': return 'failed';
-    case 'awaiting_approval': return 'awaiting_approval';
-    case 'scheduled': return 'scheduled';
-    default: return 'queued';
+    case 'done':
+      return 'done';
+    case 'failed':
+      return 'failed';
+    case 'awaiting_approval':
+      return 'awaiting_approval';
+    case 'scheduled':
+      return 'scheduled';
+    default:
+      return 'queued';
   }
+}
+
+/** Map the orchestrator's genomeSection (area key) to our AreaKey type.
+    The design says the orchestrator resolves genomeSection at emit time via flowGroup. */
+function resolveAreaFromSection(section: string): 'demand' | 'pricing' | 'operations' | 'cash' | 'customers' | 'people' | 'assets' | 'compliance' | 'systems' | null {
+  const valid = ['demand', 'pricing', 'operations', 'cash', 'customers', 'people', 'assets', 'compliance', 'systems'] as const;
+  return valid.includes(section as typeof valid[number]) ? section as typeof valid[number] : null;
 }
