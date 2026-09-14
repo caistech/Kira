@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     let userName = 'there';
     let userEmail: string | null = null;
-    let journeyType = 'personal';
+    let journeyType: 'business' | 'personal' = 'personal';
 
     if (credential?.person_id) {
       const { data: person } = await supabase

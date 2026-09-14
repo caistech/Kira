@@ -12,6 +12,7 @@ import { createServiceClientV2 } from '@/lib/supabase/server';
 import { resolveOrganisationForPerson } from '@/lib/auth';
 import { mnemoAdd } from '@/lib/kira/mnemo';
 import { readTaskLedger } from '@/lib/kira/swarm/open-tasks';
+import type { OrganisationContext } from '@/lib/auth';
 import { unconfirmedFacts } from '@/lib/kira/confirm';
 import { keyRiskFollowUp } from '@/lib/kira/key-risk';
 import { displayedFigures } from '@/lib/valuation/displayed';
@@ -592,7 +593,7 @@ export async function handleKiraContext(req: Request): Promise<Response> {
     ...openTasks,
     ...callerIdentity,
     ...(baseline ? { baseline } : {}),
-    ...(await confirmationOffer(uid)),
+    ...(await confirmationOffer(orgContext)),
   });
 }
 
@@ -629,9 +630,9 @@ export async function handleKiraContext(req: Request): Promise<Response> {
  * Never fatal. A failure here must not cost him his continuity — arriving with no memory because the
  * confirmation lookup threw would trade the product's core promise for a nice-to-have.
  */
-async function confirmationOffer(uid: string): Promise<Record<string, unknown>> {
+async function confirmationOffer(orgContext: OrganisationContext | null): Promise<Record<string, unknown>> {
   try {
-    const [fact] = await unconfirmedFacts(uid, { limit: 1 });
+    const [fact] = await unconfirmedFacts(orgContext!, { limit: 1 });
     if (!fact) return {};
     return {
       to_confirm: fact,

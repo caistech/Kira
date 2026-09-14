@@ -60,7 +60,6 @@ export async function POST(req: Request) {
   // P0.6: Resolve canonical organisation context from session, never from client input.
   const organisationContext = await getCurrentOrganisationContext();
   if (!organisationContext) return NextResponse.json({ error: 'Not signed in or no organisation access' }, { status: 401 });
-  const user = { id: organisationContext.personId } as { id: string };
   if (!process.env.OPENAI_API_KEY) {
     return NextResponse.json({ error: 'Ingestion not configured (OPENAI_API_KEY unset).' }, { status: 503 });
   }
@@ -140,7 +139,7 @@ export async function POST(req: Request) {
   const supabase = createServiceClientV2();
   const { completeness, discovery_complete } = await applyProfileExtraction(
     supabase,
-    user.id,
+    organisationContext,
     extracted,
     { source: 'ingest', bumpSession: false },
   );

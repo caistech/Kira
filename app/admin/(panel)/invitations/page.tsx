@@ -79,7 +79,7 @@ export default async function InvitationsPage() {
     throw new Error(`Failed to load invitations: ${codesError.message}`);
   }
 
-  const invitations = (codes ?? []) as Invitation[];
+  const invitations = (codes ?? []) as unknown as Invitation[];
 
   const pending = invitations.filter(
     (i) => !i.redeemed_at && !i.revoked_at

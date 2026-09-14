@@ -28,7 +28,7 @@ export async function connectDrive(
   formData: FormData,
 ): Promise<DriveFormState> {
   const user = await getCurrentAppUser();
-  if (!user?.id) return { error: 'You are not signed in.' };
+  if (!user?.person_id) return { error: 'You are not signed in.' };
 
   const choice = String(formData.get('access') || '');
   if (!ACCESS.includes(choice as DriveAccess)) {
@@ -53,7 +53,7 @@ export async function connectDrive(
 
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
   const link = googleConnectLink({
-    tenantId: user.id as string,
+    tenantId: user.person_id,
     access: choice as DriveAccess,
     gmail,
     email,

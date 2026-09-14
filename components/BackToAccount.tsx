@@ -24,7 +24,7 @@ import { realFirstName } from '@/lib/user-name';
 
 export async function BackToAccount() {
   const user = await getCurrentAppUser();
-  if (!user?.id) return null;
+  if (!user?.person_id) return null;
 
   // GREET HIM BY NAME, OR DO NOT GREET HIM BY NAME.
   //

@@ -24,6 +24,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { rejectUnauthorisedCron } from '@/lib/cron-auth';
+import { resolveOrganisationForPerson } from '@/lib/auth';
 import { getSwarmCoordinator } from '@/lib/kira/swarm';
 import { backfillMissingTasks, type MirrorRow } from '@/lib/kira/swarm/backfill';
 import { asTaskState } from '@/lib/kira/swarm/coordinator';

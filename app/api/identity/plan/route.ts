@@ -1245,7 +1245,7 @@ export async function POST(request: Request) {
 
       const invitedRole =
         boundOrganisation.betaType === 'superadmin'
-          ? 'superadmin'
+          ? 'owner'
           : 'member';
 
       const membership =

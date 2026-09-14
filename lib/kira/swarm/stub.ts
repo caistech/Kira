@@ -141,7 +141,7 @@ export class LocalSwarmStub implements SwarmCoordinator {
     // user_id stays provenance of who asked.
     const organisationId = await this.ownerOrganisationId(intent.tenantId);
     if (!organisationId) {
-      return { status: 'failed', message: 'No owning organisation could be resolved for this task.' };
+      return { taskGroupId: '', status: 'failed', message: 'No owning organisation could be resolved for this task.' };
     }
     const existing = await this.supabase
       .from('kira_tasks')

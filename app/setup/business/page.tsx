@@ -31,10 +31,10 @@ export default async function BusinessSetupPage({
   if (!authUser) redirect('/login');
 
   const user = await getCurrentAppUser();
-  if (!user?.id) redirect('/login');
+  if (!user?.person_id) redirect('/login');
 
   const organisationContext = await getCurrentOrganisationContext();
-  const organisationId = organisationContext?.organisation_id;
+  const organisationId = organisationContext?.organisationId;
   const identity = organisationId ? await getBusinessIdentity(organisationId) : null;
   const editing = sp?.edit === '1';
 

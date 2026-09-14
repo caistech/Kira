@@ -55,7 +55,7 @@ export default async function ConnectDrivePage() {
         </ul>
       </section>
 
-      {user?.id ? (
+      {user?.person_id ? (
         <DriveConnectForm defaultEmail={(user.email as string) ?? ''} />
       ) : (
         <p className="text-base text-gray-700">

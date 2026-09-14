@@ -58,7 +58,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = await fileManual(userId, audience);
+    const result = await fileManual(audience);
     return NextResponse.json(result);
   } catch (error) {
     // Degrade, don't fake. She reads `message` out, so it must never imply the filing happened.

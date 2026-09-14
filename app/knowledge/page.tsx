@@ -54,7 +54,15 @@ export default async function KnowledgePage() {
   // and until now the answer required leaving it.
   return (
     <>
-      <KnowledgeManager personId={ctx?.personId ?? ''} initial={items} />
+      {ctx ? (
+        <KnowledgeManager personId={ctx.personId} initial={items} />
+      ) : (
+        <div className="mx-auto max-w-3xl px-5 py-10">
+          <p className="text-base text-stone-700">
+            <a href="/login" className="underline">Sign in</a> to see your Knowledge.
+          </p>
+        </div>
+      )}
       <div className="mx-auto max-w-3xl px-5 pb-28">
         <KiraShapeSection surface="knowledge" />
       </div>

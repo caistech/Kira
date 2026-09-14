@@ -40,27 +40,6 @@ vi.mock('@/lib/supabase/server', () => ({
       return chain;
     },
   }),
-  createServiceClientV2: () => ({
-    from: (table: string) => {
-      const chain: Record<string, unknown> = {
-        select: () => chain,
-        or: () => chain,
-        eq: () => chain,
-        neq: () => chain,
-        order: () => chain,
-        limit: () =>
-          table === 'kira_memory'
-            ? Promise.resolve({ data: db.existing })
-            : chain,
-        maybeSingle: () => Promise.resolve({ data: null }),
-        insert: (row: Record<string, unknown>) => {
-          db.inserted.push(row);
-          return Promise.resolve({ error: null });
-        },
-      };
-      return chain;
-    },
-  }),
 }));
 
 vi.mock('@/lib/auth', () => ({

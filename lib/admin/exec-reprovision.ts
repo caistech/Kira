@@ -88,7 +88,7 @@ export async function reprovisionBusinessAgentsForExec(opts: { apply: boolean })
 
   let query = supabase
     .from('kira_agents')
-    .select('id, elevenlabs_agent_id, agent_name, status, journey_type, user_id')
+    .select('id, elevenlabs_agent_id, agent_name, status, journey_type, user_id, framework')
     .eq('journey_type', 'business')
     .in('status', ['active', 'paused'])
     .neq('agent_name', 'Kira Discovery');

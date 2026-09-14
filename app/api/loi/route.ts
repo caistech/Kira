@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     signature: body.signature ? String(body.signature).slice(0, 200) : null,
     consent: true,
     source: body.source ? String(body.source).slice(0, 40) : 'commit_page',
-    user_id: appUser?.id ?? null,
+    user_id: appUser?.person_id ?? null,
     agent_id: body.agent_id ? String(body.agent_id).slice(0, 120) : null,
   });
 

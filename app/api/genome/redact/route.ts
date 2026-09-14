@@ -43,11 +43,11 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   const user = await getCurrentAppUser();
-  if (!user?.id) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  if (!user?.person_id) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
 
   // P0.4: ownership is organisational. The person is provenance; the org context (resolved from the
   // canonical membership chain) is what scopes the write.
-  const orgContext = await resolveOrganisationForPerson(user.id);
+  const orgContext = await resolveOrganisationForPerson(user.person_id);
   if (!orgContext) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   const orgId = orgContext.organisationId;
 
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
       else alsoParked += 1;
       // The semantic copy of each restatement goes too, for the same reason the primary one does.
       try {
-        await mnemoForget(user.id, String(dup.content ?? ''));
+        await mnemoForget(user.person_id, String(dup.content ?? ''));
       } catch (mnemoError) {
         console.error('[genome/redact] semantic forget threw for restatement:', mnemoError);
       }
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
   let semanticRemoved = false;
   if (parkedRow?.content && body.restore !== true) {
     try {
-      const { matched, forgotten } = await mnemoForget(user.id, String(parkedRow.content));
+      const { matched, forgotten } = await mnemoForget(user.person_id, String(parkedRow.content));
       semanticRemoved = matched > 0 && forgotten === matched;
       if (matched > forgotten) {
         console.warn(`[genome/redact] ${matched - forgotten} semantic copy(ies) survived for ${id}`);

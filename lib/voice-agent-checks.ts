@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 
 // Load environment variables
@@ -14,7 +14,7 @@ if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
 }
 
 // Create Supabase client with error handling
-let supabase;
+let supabase: SupabaseClient;
 try {
   supabase = createClient(
     process.env.SUPABASE_URL!,

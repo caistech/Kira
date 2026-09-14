@@ -33,8 +33,8 @@ export async function saveBusinessIdentity(
     getCurrentAppUser(),
     getCurrentOrganisationContext(),
   ]);
-  const organisationId = organisationContext?.organisation_id;
-  if (!user?.id) return { message: 'You are not signed in.' };
+const organisationId = organisationContext?.organisationId;
+  if (!user?.person_id) return { message: 'You are not signed in.' };
   if (!organisationId) return { message: 'No organisation found for this user.' };
 
   const s = (key: string) => String(formData.get(key) || '');
@@ -147,7 +147,7 @@ export async function saveBusinessIdentity(
     return { message: error instanceof Error ? error.message : 'Could not save your business details.' };
   }
 
-  const sync = await pushIdentityToOrchestrator(user.id, {
+  const sync = await pushIdentityToOrchestrator(user.person_id, {
     legal_name: saved.legal_name,
     abn: saved.abn,
     trading_name: saved.trading_name,
@@ -189,13 +189,13 @@ export async function retryIdentitySync(): Promise<void> {
     getCurrentAppUser(),
     getCurrentOrganisationContext(),
   ]);
-  const organisationId = organisationContext?.organisation_id;
-  if (!user?.id || !organisationId) return;
+const organisationId = organisationContext?.organisationId;
+  if (!user?.person_id || !organisationId) return;
 
   const identity = await getBusinessIdentity(organisationId);
   if (!identity) return;
 
-  const sync = await pushIdentityToOrchestrator(user.id, identity);
+  const sync = await pushIdentityToOrchestrator(user.person_id, identity);
   if (sync.ok) await markSynced(organisationId);
 
   revalidatePath('/dashboard');

@@ -86,6 +86,7 @@ export async function POST(request: NextRequest) {
       sessionId?: string;
       agentId?: string;
       conversationId?: string;
+      organisationId?: string;
     } = await request.json();
 
     const {

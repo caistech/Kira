@@ -236,7 +236,7 @@ export async function GET(request: Request) {
     // FORMATTED, like every other surface. This printed `ABN 99999999999` — an eleven-digit blob on
     // line two of the document a solicitor reads — while Settings rendered the same value correctly.
     identity?.abn ? `${identity.legal_name} · ABN ${formatAbn(identity.abn)}` : '',
-    `Recorded by ${owner}. Exported ${docExportDate}.`,
+    `Recorded by ${owner}. Exported ${isoDateIn(timeZone, latestFactDate)}.`,
     '',
     'This document records how this business actually runs, organised by the questions a buyer&rsquo;s'.replace('&rsquo;', "'") +
       ' advisor asks in due diligence. It was built from ordinary conversations with the owner.',

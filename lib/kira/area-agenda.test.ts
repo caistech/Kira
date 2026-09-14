@@ -50,41 +50,46 @@ describe('resolving what she said into one of the nine areas', () => {
 // The handler needs a Supabase client, so it is exercised through a stubbed module rather than a
 // live table — what is being tested here is the ORDERING and the SHAPE, both of which are pure
 // decisions about what she gets handed.
-describe('what comes back', () => {
-  async function agendaFor(rows: { item_key: string; status: string; why: string | null }[], area = 'people') {
-    vi.resetModules();
-    vi.doMock('@/lib/supabase/server', () => ({
-      createServiceClientV2: () => ({
-        from: () => ({
-          select: () => ({ eq: () => ({ eq: async () => ({ data: rows, error: null }) }) }),
-        }),
-      }),
-      createServiceClientV2: () => ({
-        from: () => ({
-          select: () => ({
-            eq: () => ({
-              eq: () => ({
-                or: () => ({
-                  order: () => ({
-                    limit: () => ({
-                      maybeSingle: async () => ({
-                        data: {
-                          membership_id: 'm1',
-                          organisation_id: 'test-org-id',
-                          role: 'owner',
-                          status: 'active',
-                          valid_from: '2020-01-01',
-                          valid_to: null,
-                        },
-                        error: null,
-                      }),
-                    }),
+function membershipChain() {
+  return {
+    select: () => ({
+      eq: () => ({
+        eq: () => ({
+          lte: () => ({
+            or: () => ({
+              order: () => ({
+                limit: () => ({
+                  maybeSingle: async () => ({
+                    data: {
+                      membership_id: 'm1',
+                      organisation_id: 'test-org-id',
+                      role: 'owner',
+                      status: 'active',
+                      valid_from: '2020-01-01',
+                      valid_to: null,
+                    },
+                    error: null,
                   }),
                 }),
               }),
             }),
           }),
         }),
+      }),
+    }),
+  };
+}
+describe('what comes back', () => {
+  async function agendaFor(rows: { item_key: string; status: string; why: string | null }[], area = 'people') {
+    vi.resetModules();
+    vi.doMock('@/lib/supabase/server', () => ({
+      createServiceClientV2: () => ({
+        from: (table: string) => {
+          if (table === 'organisation_memberships') return membershipChain();
+          if (table === 'genome_admission_ledger') return { select: () => ({ eq: () => ({ is: () => Promise.resolve({ data: [], error: null }) }) }) };
+          // genome_item_status → return rows
+          return { select: () => ({ eq: () => ({ eq: async () => ({ data: rows, error: null }) }) }) };
+        },
       }),
     }));
     vi.resetModules();
@@ -158,36 +163,11 @@ describe('when it cannot answer', () => {
     // comes to look absent — which this product has already done once, over Gmail.
     vi.doMock('@/lib/supabase/server', () => ({
       createServiceClientV2: () => ({
-        from: () => ({
-          select: () => ({ eq: () => ({ eq: async () => ({ data: null, error: { message: 'boom' } }) }) }),
-        }),
-      }),
-      createServiceClientV2: () => ({
-        from: () => ({
-          select: () => ({
-            eq: () => ({
-              eq: () => ({
-                or: () => ({
-                  order: () => ({
-                    limit: () => ({
-                      maybeSingle: async () => ({
-                        data: {
-                          membership_id: 'm1',
-                          organisation_id: 'test-org-id',
-                          role: 'owner',
-                          status: 'active',
-                          valid_from: '2020-01-01',
-                          valid_to: null,
-                        },
-                        error: null,
-                      }),
-                    }),
-                  }),
-                }),
-              }),
-            }),
-          }),
-        }),
+        from: (table: string) => {
+          if (table === 'organisation_memberships') return membershipChain();
+          if (table === 'genome_admission_ledger') return { select: () => ({ eq: () => ({ is: () => Promise.resolve({ data: [], error: null }) }) }) };
+          return { select: () => ({ eq: () => ({ eq: async () => ({ data: null, error: { message: 'boom' } }) }) }) };
+        },
       }),
     }));
     vi.spyOn(console, 'error').mockImplementation(() => {});

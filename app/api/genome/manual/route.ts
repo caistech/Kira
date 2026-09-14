@@ -75,7 +75,7 @@ export async function GET(request: Request) {
   // would mean inventing it.
   let identity = null;
   try {
-    identity = await getBusinessIdentity(appUser.id);
+    identity = await getBusinessIdentity(orgContext.organisationId);
   } catch (error) {
     // Never fatal. A manual titled with his name is a lesser document; no manual is a broken promise.
     console.error('[genome-manual] business identity unavailable:', error);
@@ -110,6 +110,7 @@ export async function GET(request: Request) {
   // is `kira_agents.draft_id`, which is the only thing joining an owner to the draft he approved.
   let draftedName = '';
   try {
+    const svc = createServiceClientV2();
     const { data: agents } = await svc
       .from('kira_agents')
       .select('draft_id')
