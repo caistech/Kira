@@ -40,6 +40,19 @@ export default async function AdminAdmissionPage() {
     <span className={`inline-block rounded-md px-2 py-0.5 text-sm font-medium ${cls}`}>{text}</span>
   );
 
+  // T2 ESCAPE-HATCH OBSERVABILITY. The doing-layer self-nominates tasks that genuinely fit nowhere
+  // into the ledger (admitted_by = 'system'). A quick summary here surfaces whether the hatch is
+  // firing at all (rows exist → the census has structural gaps it is growing through lived
+  // observation), and whether any were later retracted or retired for coverage.
+  const systemRows = rows.filter((r) => r.admitted_by === 'system');
+  const systemLive = systemRows.filter((r) => r.status === 'admitted' && !r.retracted_at && !r.no_longer_discriminative);
+  const systemRetired = systemRows.filter((r) => r.no_longer_discriminative);
+  const systemRetracted = systemRows.filter((r) => r.retracted_at);
+  const recentSystem = systemRows
+    .filter((r) => r.admitted_at)
+    .sort((a, b) => new Date(b.admitted_at!).getTime() - new Date(a.admitted_at!).getTime())
+    .slice(0, 5);
+
   return (
     <div>
       <header className="mb-6">
@@ -50,6 +63,60 @@ export default async function AdminAdmissionPage() {
           it discriminate? An admitted question enters every business&apos;s live factor set.
         </p>
       </header>
+
+      {/* T2 escape-hatch observability — quiet signal, not a gate. The census grows through lived
+          observation; these rows are evidence that the doing layer surfaced structural gaps that the
+          static list did not cover. Zero rows = the hatch is dormant (not a problem). */}
+      {systemRows.length > 0 && (
+        <section className="mb-8 rounded-2xl border border-violet-200 bg-violet-50 p-6">
+          <h2 className="text-lg font-semibold text-violet-900">
+            T2 self-admissions ({systemRows.length})
+          </h2>
+          <p className="mt-1 text-sm text-violet-700">
+            The doing layer surfaced these because no census question covered them and no handler
+            existed. The operator can retract for cause or retire for coverage — the system never
+            acts alone.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-3 text-sm text-violet-800">
+            <span>
+              <span className="font-semibold">{systemLive.length}</span> live in the factor set
+            </span>
+            {systemRetired.length > 0 && (
+              <span className="text-amber-700">
+                <span className="font-semibold">{systemRetired.length}</span> retired for coverage
+              </span>
+            )}
+            {systemRetracted.length > 0 && (
+              <span className="text-red-700">
+                <span className="font-semibold">{systemRetracted.length}</span> retracted
+              </span>
+            )}
+          </div>
+          {recentSystem.length > 0 && (
+            <ul className="mt-3 space-y-1">
+              {recentSystem.map((r) => (
+                <li key={r.id} className="flex flex-wrap items-center gap-2 text-sm text-violet-800">
+                  {statusChip(r.area_key, 'bg-violet-100 text-violet-700')}
+                  <code className="text-xs text-violet-600">{r.item_key}</code>
+                  <span className="text-xs text-violet-500">
+                    {new Date(r.admitted_at!).toLocaleDateString()}
+                  </span>
+                  {r.no_longer_discriminative && (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                      retired
+                    </span>
+                  )}
+                  {r.retracted_at && (
+                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                      retracted
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
 
       <section className="mb-8 rounded-2xl border border-gray-200 bg-white p-6">
         <h2 className="text-lg font-semibold text-gray-900">Nominate a new question</h2>
