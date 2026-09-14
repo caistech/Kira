@@ -55,14 +55,12 @@ describe('the code arrives at the landing page and is carried as context', () =>
   });
 
   it('the plan page opens the redeem step from the carried code', () => {
-    // When the key is present on /plan, BetaRedeem becomes the door the code travels as —
-    // not a link back to a form he has to fill again.
-    expect(planStripped).toMatch(/BETA_CODE_KEY/);
-    expect(planStripped).toMatch(/setBetaOpen\(true\)/);
-    expect(planStripped).toMatch(/BetaRedeem/);
-    expect(planStripped).toMatch(/initialCode=\{betaCode/);
-    expect(planStripped).toMatch(/organisationId=\{organisationId\.trim\(\)\}/);
-    expect(planStripped).toMatch(/isOwner=\{isOwner\}/);
+    // The repurposed /plan is the identity gate: it reads the carried code out of sessionStorage,
+    // seeds BetaRedeem with it as `initialCode`, and renders BetaRedeem as the redeem step. The
+    // code is checked for the first time at /plan and nowhere earlier.
+    expect(planStripped).toMatch(/BETA_CODE_STORAGE_KEY/);
+    expect(planStripped).toMatch(/sessionStorage\.getItem\(BETA_CODE_STORAGE_KEY\)/);
+    expect(planStripped).toMatch(/<BetaRedeem initialCode=\{initialBetaCode \?\? undefined\} \/>/);
   });
 
   it('the code survives the trip to the valuator and back', () => {
