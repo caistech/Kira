@@ -23,6 +23,7 @@ function ledgerRow(over: Partial<AdmissionLedgerRow> = {}): AdmissionLedgerRow {
     buyer_item: 'Who can step into the owner’s role without a transition?',
     owner_prompt: 'Who could run this business if you were away for three months?',
     factor: null,
+    substance: null,
     status: 'admitted',
     admitted_at: '2026-09-14T00:00:00.000Z',
     no_longer_discriminative: false,
@@ -87,6 +88,31 @@ describe('the ledger read (score time)', () => {
       ledgerRow({ factor: 'growth', area_key: 'demand', item_key: 'adm-lead-time' }),
     ]);
     expect(item.factor).toBe('growth');
+  });
+
+  it('carries the authored substance test into the live item', () => {
+    const [item] = admittedRowsToItems([
+      ledgerRow({
+        factor: 'growth',
+        substance: {
+          tests: ['names the two biggest accounts', 'gives a rough share for each'],
+          weakExample: 'We have a couple of big ones.',
+          strongExample: 'Two accounts over $100k each; the biggest is 35% of revenue.',
+          coaching: 'Name the accounts and their rough shares.',
+        },
+      }),
+    ]);
+    expect(item.substance).toEqual({
+      tests: ['names the two biggest accounts', 'gives a rough share for each'],
+      weakExample: 'We have a couple of big ones.',
+      strongExample: 'Two accounts over $100k each; the biggest is 35% of revenue.',
+      coaching: 'Name the accounts and their rough shares.',
+    });
+  });
+
+  it('a factor-bearing item without a substance test stays presence-judged (substance null)', () => {
+    const [item] = admittedRowsToItems([ledgerRow({ factor: 'growth' })]);
+    expect(item.substance).toBeNull();
   });
 });
 

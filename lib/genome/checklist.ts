@@ -969,7 +969,7 @@ const FACTOR_KEYS: readonly string[] = [
   'growth',
 ];
 
-function isFactorKey(value: unknown): value is FactorKey {
+export function isFactorKey(value: unknown): value is FactorKey {
   return typeof value === 'string' && FACTOR_KEYS.includes(value);
 }
 
@@ -980,6 +980,18 @@ export interface AdmissionLedgerRow {
   buyer_item: string;
   owner_prompt: string;
   factor: string | null;
+  /**
+   * The substance test authored for this admitted question, or null. Null is the honest default
+   * (judged by presence) but is only LEAVABLE for a factor-null item — the admission action
+   * refuses a factor-bearing item without one ("the bar has no silent members"). Mirrors
+   * ChecklistItem.substance.
+   */
+  substance: {
+    tests: string[];
+    weakExample: string;
+    strongExample: string;
+    coaching: string;
+  } | null;
   status: 'watchlisted' | 'admitted';
   admitted_at: string | null;
   no_longer_discriminative: boolean;
@@ -1006,13 +1018,16 @@ export function admittedRowsToItems(rows: AdmissionLedgerRow[]): AdmittedCheckli
     items.push({
       key: row.item_key,
       area: row.area_key,
-      // Admitted items set the bar: they are REQUIRED until the operator authors a substance
-      // test. A required-but-unanswered admission is exactly what makes an area read honestly.
+      // Admitted items set the bar: they are REQUIRED (an admission without a question would be a
+      // silent factor-set member). A required-but-unanswered admission is exactly what makes an
+      // area read honestly.
       required: true,
       buyerItem: row.buyer_item,
       ownerPrompt: row.owner_prompt,
-      // Judged by presence until the operator authors a substance test on the row (v2 surface).
-      substance: null,
+      // The authored substance test wins when present. Null stays an honest state for a factor-null
+      // item (presence judgment is the document's bar); the admission action refuses a live
+      // factor-bearing item without one, so a null test here never rides a factor silently.
+      substance: row.substance,
       factor: isFactorKey(row.factor) ? row.factor : null,
       // An admitted question is answered by the owner telling us: kira can always ask it.
       closes: 'fact',

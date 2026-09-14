@@ -14,10 +14,11 @@ import { revalidatePath } from 'next/cache';
 
 import { isCurrentUserAdmin } from '@/lib/auth';
 import { isAreaKey } from '@/lib/genome/areas';
-import { itemByKey } from '@/lib/genome/checklist';
+import { isFactorKey, itemByKey } from '@/lib/genome/checklist';
+import { cohortEvidenceFor, cohortSnapshotText } from '@/lib/genome/cohort-evidence';
 import { createServiceClientV2 } from '@/lib/supabase/server';
 
-const FACTOR_KEYS = [
+export const FACTOR_KEYS = [
   'ownerDependence',
   'systems',
   'recurringRevenue',
@@ -48,6 +49,12 @@ interface LedgerRow {
   buyer_item: string;
   owner_prompt: string;
   factor: string | null;
+  substance: {
+    tests: string[];
+    weakExample: string;
+    strongExample: string;
+    coaching: string;
+  } | null;
   status: 'watchlisted' | 'admitted';
   reason: string | null;
   admitted_by: string | null;
@@ -177,6 +184,17 @@ export async function admitAdmission(id: string, reason: string): Promise<Action
   if (row.status === 'admitted') return fail('That item is already admitted.');
   if (row.retracted_at) return fail('That nomination was already retracted.');
 
+  // THE BAR HAS NO SILENT MEMBERS. A factor-bearing item moves every business's number; judged by
+  // presence alone it is weaker than the static census items its factor claims to rank alongside.
+  // The substance test is not optional for a factor item — and the YOLKLESS escape is always open:
+  // admit it without a factor (document-completing) and presence judgment is exactly right.
+  if (row.factor && !row.substance) {
+    return fail(
+      'This item carries a factor but no substance test. Write the substance test first, or ' +
+        'clear the factor and admit it as a document-completing item (judged by presence).',
+    );
+  }
+
   const { error } = await supabase
     .from('genome_admission_ledger')
     .update({
@@ -195,6 +213,108 @@ export async function admitAdmission(id: string, reason: string): Promise<Action
 
   revalidatePath('/admin/admission');
   return { ok: true, message: `"${row.item_key}" admitted — it is now on every factor set.` };
+}
+
+export interface SubstanceInput {
+  factor: string;
+  tests: string;
+  weakExample: string;
+  strongExample: string;
+  coaching: string;
+}
+
+/** The substance/factor editor's validation, pure so it can be asserted without a database. */
+export function validateSubstanceInput(input: SubstanceInput): {
+  ok: true;
+  factor: string | null;
+  substance: { tests: string[]; weakExample: string; strongExample: string; coaching: string } | null;
+} | { ok: false; message: string } {
+  const factor = input.factor.trim();
+  const resolvedFactor = factor ? (isFactorKey(factor) ? factor : null) : null;
+  if (factor && !resolvedFactor) return { ok: false, message: 'That is not a known factor.' };
+
+  const tests = input.tests
+    .split('\n')
+    .map((t) => t.trim())
+    .filter(Boolean);
+  const weakExample = input.weakExample.trim();
+  const strongExample = input.strongExample.trim();
+  const coaching = input.coaching.trim();
+
+  if (resolvedFactor) {
+    // A factor-bearing item's substance test is the whole test — no silent members.
+    if (!tests.length || !weakExample || !strongExample || !coaching) {
+      return {
+        ok: false,
+        message:
+          'A factor-bearing item needs its whole substance test: at least one observable test, a ' +
+          'weak example, a strong example, and the coaching.',
+      };
+    }
+    return {
+      ok: true,
+      factor: resolvedFactor,
+      substance: { tests, weakExample, strongExample, coaching },
+    };
+  }
+
+  // The yolkless escape: no factor, judged by presence. The substance test is optional, but if any
+  // of it is written the whole test is preferred (a half-authored test is a half-formed bar).
+  const anyPart = tests.length || weakExample || strongExample || coaching;
+  const substance =
+    !anyPart || !weakExample || !strongExample || !coaching || !tests.length
+      ? null
+      : { tests, weakExample, strongExample, coaching };
+  return { ok: true, factor: null, substance };
+}
+
+/**
+ * Author (or clear) the substance test + factor on a row — the v2 surface the T3 migration
+ * reserved, and the OTHER side of the admit gate above: a watchlisted factor item can write its
+ * test here and then be admitted; an admitted item authored this way upgrades from presence
+ * judgment to real scoring.
+ */
+export async function setSubstance(
+  id: string,
+  input: SubstanceInput,
+): Promise<ActionResult> {
+  await assertAdmin();
+
+  const parsed = validateSubstanceInput(input);
+  if (!parsed.ok) return fail(parsed.message);
+
+  const supabase = createServiceClientV2();
+
+  const { data: row } = await supabase
+    .from('genome_admission_ledger')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (!row) return fail('That row could not be found.');
+  if (row.retracted_at) return fail('That row is already retracted.');
+
+  const { error } = await supabase
+    .from('genome_admission_ledger')
+    .update({
+      factor: parsed.factor,
+      substance: parsed.substance,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id);
+
+  if (error) {
+    console.error('[admission] setSubstance failed:', error);
+    return fail('Could not save the substance test. Check the server logs.');
+  }
+
+  const verb = parsed.substance
+    ? `substance test set for`
+    : parsed.factor
+      ? `factor set for`
+      : `factor cleared for`;
+  revalidatePath('/admin/admission');
+  return { ok: true, message: `${verb} "${row.item_key}".` };
 }
 
 /**
@@ -265,11 +385,17 @@ export async function flagRetired(id: string, evidence: string): Promise<ActionR
   if (row.status !== 'admitted') return fail('Only an admitted item can be retired for coverage.');
   if (row.no_longer_discriminative) return fail('Already flagged no-longer-discriminative.');
 
+  // SNAPSHOT THE COHORT BEFORE THE FLAG MOVES. "Everyone now answers it" must not be a quiet way to
+  // move a number — so the claim, with its numbers, is what the journal records. Computed at flag
+  // time from genome_item_status, fail-soft: if the read fails the operator's note still lands.
+  const snapshot = await cohortEvidenceFor(supabase, row.item_key);
+  const storedNote = snapshot ? `${note}\n\n${cohortSnapshotText(snapshot)}` : note;
+
   const { error } = await supabase
     .from('genome_admission_ledger')
     .update({
       no_longer_discriminative: true,
-      evidence_note: note,
+      evidence_note: storedNote,
       updated_at: new Date().toISOString(),
     })
     .eq('id', id);
