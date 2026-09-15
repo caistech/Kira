@@ -1,7 +1,21 @@
 # PROJECT STATUS — Kira
 
-**Last session:** 2026-09-10
-**Session focus:** Consultant landing = global primary front door (deployed) · HLD/LLD landing sections · guard surfaces widened
+**Last session:** 2026-09-15
+**Session focus (added):** Tier 2 distributor model (4-tier) · direct beta-tester invites · cockpit methodology rename · STAR stub across the Orchestrator
+
+> **New this session (2026-09-15):**
+> - **Distributor portfolio** — `distributor_portfolio` table + RLS authority
+>   (`auth_user_is_distributor_for`, extended `auth_user_has_organisation_access`) +
+>   seed (Brian Kerrigan / Excelerating over the "Corporate AI Solutions" beta
+>   tenant). Admin surface: `/admin/distributors`. ✅ live (migrations pushed, deployed).
+> - **Direct beta invites** — `/admin/beta-testers`: create an account with name +
+>   email, generated password, welcome email; lands in the shared beta tenant org.
+>   Tester signs in at `/login` → `/talk` (business Kira provisions lazily). ✅ live.
+>   ⚠️ welcome email deliberately NOT sent yet — Dennis reviewing the draft first.
+> - **Cockpit rename** — `/admin/methodology` → `/admin/reference/methodology`
+>   (Corporate-AI-Solutions repo). ✅ live.
+> - **STAR** — connector stub wired in Orchestrator dispatch + task registry
+>   (real endpoint to be finalised). ✅ 218/218 Orchestrator tests green.
 
 ## FRONT DOOR (CURRENT SNAPSHOT)
 
