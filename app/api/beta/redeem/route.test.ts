@@ -130,7 +130,7 @@ vi.mock('@/lib/supabase/server', () => ({
           });
           return updateChain;
         },
-        insert: async (vals: Record<string, unknown>) => {
+        insert: (vals: Record<string, unknown>) => {
           if (table === 'users') {
             redeemScope.legacyUsers.push({
               id: `legacy-${redeemScope.legacyUsers.length + 1}`,
@@ -138,7 +138,29 @@ vi.mock('@/lib/supabase/server', () => ({
               email: String(vals.email ?? ''),
             });
           }
-          return { data: null, error: null };
+          const insertChain: Record<string, unknown> = {};
+          Object.assign(insertChain, {
+            select: (_cols?: string) => insertChain,
+            single: async () => {
+              if (table === 'users') {
+                const match = redeemScope.legacyUsers.find(
+                  (u) => u.email.toLowerCase() === String(vals.email ?? '').toLowerCase(),
+                );
+                return { data: match ?? null, error: null };
+              }
+              return { data: null, error: null };
+            },
+            maybeSingle: async () => {
+              if (table === 'users') {
+                const match = redeemScope.legacyUsers.find(
+                  (u) => u.email.toLowerCase() === String(vals.email ?? '').toLowerCase(),
+                );
+                return { data: match ?? null, error: null };
+              }
+              return { data: null, error: null };
+            },
+          });
+          return insertChain;
         },
       });
       return chain;
