@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="840" viewBox="0 0 1180 840" font-family="'Segoe UI', Arial, Helvetica, sans-serif">
+  <rect width="1180" height="840" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="40" y="42" font-size="26" font-weight="700" fill="#111827">KiraExec — System in One Page</text>
+  <text x="40" y="66" font-size="14" fill="#6b7280">Technical overview for engineering assessment �of an existing, running AI application</text>
+  <text x="1140" y="42" text-anchor="end" font-size="12" fill="#9ca3af">Corporate AI Solutions · 15 Sep 2026</text>
+
+  <!-- ============ LAYER 1: KIRAEXEC ============ -->
+  <rect x="40" y="90" width="1100" height="210" rx="14" fill="#faf5ff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="62" y="118" font-size="17" font-weight="700" fill="#7c3aed">KiraExec — the application</text>
+  <text x="62" y="138" font-size="13" fill="#6d28d9">Next.js + React · TypeScript · live at kiraexec.com (owner-facing) · consultant / dev preview</text>
+
+  <!-- capability tiles 8x -->
+  <g font-size="12.5" fill="#1f2937">
+    <rect x="62" y="158" width="250" height="54" rx="8" fill="#ffffff" stroke="#ddd6fe"/>
+    <text x="187" y="180" text-anchor="middle" font-weight="600">Voice-first interface</text>
+    <text x="187" y="198" text-anchor="middle" fill="#6b7280">ElevenLabs conversational AI</text>
+
+    <rect x="324" y="158" width="250" height="54" rx="8" fill="#ffffff" stroke="#ddd6fe"/>
+    <text x="449" y="180" text-anchor="middle" font-weight="600">Business Genome</text>
+    <text x="449" y="198" text-anchor="middle" fill="#6b7280">structured business knowledge</text>
+
+    <rect x="586" y="158" width="250" height="54" rx="8" fill="#ffffff" stroke="#ddd6fe"/>
+    <text x="711" y="180" text-anchor="middle" font-weight="600">Persistent memory</text>
+    <text x="711" y="198" text-anchor="middle" fill="#6b7280">long-term organisational recall</text>
+
+    <rect x="848" y="158" width="272" height="54" rx="8" fill="#ffffff" stroke="#ddd6fe"/>
+    <text x="984" y="180" text-anchor="middle" font-weight="600">Workflow &amp; task support</text>
+    <text x="984" y="198" text-anchor="middle" fill="#6b7280">SOP capture, tasks, follow-through</text>
+  </g>
+
+  <g font-size="12.5" fill="#1f2937">
+    <rect x="62" y="224" width="250" height="54" rx="8" fill="#ffffff" stroke="#ddd6fe"/>
+    <text x="187" y="246" text-anchor="middle" font-weight="600">Value assessment</text>
+    <text x="187" y="264" text-anchor="middle" fill="#6b7280">value &amp; owner-dependence scoring</text>
+
+    <rect x="324" y="224" width="250" height="54" rx="8" fill="#ffffff" stroke="#ddd6fe"/>
+    <text x="449" y="246" text-anchor="middle" font-weight="600">Knowledge capture</text>
+    <text x="449" y="264" text-anchor="middle" fill="#6b7280">keeping what sits in the owner's head</text>
+
+    <rect x="586" y="224" width="250" height="54" rx="8" fill="#ffffff" stroke="#ddd6fe"/>
+    <text x="711" y="246" text-anchor="middle" font-weight="600">Organisation &amp; users</text>
+    <text x="711" y="264" text-anchor="middle" fill="#6b7280">membership + role-based access</text>
+
+    <rect x="848" y="224" width="272" height="54" rx="8" fill="#ffffff" stroke="#ddd6fe"/>
+    <text x="984" y="246" text-anchor="middle" font-weight="600">CEO / consultant portal</text>
+    <text x="984" y="264" text-anchor="middle" fill="#6b7280">admin surfaces incl. distributor management</text>
+  </g>
+
+  <!-- arrow L1 -> L2 -->
+  <path d="M 590 302 L 590 330" stroke="#7c3aed" stroke-width="2"/>
+  <path d="M 585 322 L 590 332 L 595 322" fill="none" stroke="#7c3aed" stroke-width="2"/>
+  <text x="610" y="322" font-size="11.5" fill="#6b7280">dispatch requests (contract-versioned API)</text>
+
+  <!-- ============ LAYER 2: ORCHESTRATOR ============ -->
+  <rect x="40" y="338" width="1100" height="150" rx="14" fill="#f8fafc" stroke="#0f766e" stroke-width="2"/>
+  <text x="62" y="366" font-size="17" font-weight="700" fill="#0f766e">Orchestration layer</text>
+  <text x="62" y="386" font-size="13" fill="#475569">decides what should happen and who must approve it — the human-in-the-loop boundary</text>
+
+  <g font-size="12.5" fill="#1f2937">
+    <rect x="62" y="404" width="205" height="62" rx="8" fill="#ffffff" stroke="#99f6e4"/>
+    <text x="164" y="428" text-anchor="middle" font-weight="600">Dispatch &amp; task registry</text>
+    <text x="164" y="446" text-anchor="middle" fill="#6b7280">scheduled work, never silently dropped</text>
+
+    <rect x="283" y="404" width="205" height="62" rx="8" fill="#ffffff" stroke="#99f6e4"/>
+    <text x="385" y="428" text-anchor="middle" font-weight="600">Delegation gate</text>
+    <text x="385" y="446" text-anchor="middle" fill="#6b7280">approve / notify / auto per action</text>
+
+    <rect x="504" y="404" width="205" height="62" rx="8" fill="#ffffff" stroke="#99f6e4"/>
+    <text x="606" y="428" text-anchor="middle" font-weight="600">Clarify round-trip</text>
+    <text x="606" y="446" text-anchor="middle" fill="#6b7280">asks for what a task needs, bounded</text>
+
+    <rect x="725" y="404" width="205" height="62" rx="8" fill="#ffffff" stroke="#99f6e4"/>
+    <text x="827" y="428" text-anchor="middle" font-weight="600">Connectors</text>
+    <text x="827" y="446" text-anchor="middle" fill="#6b7280">Xero, email, contacts, calls (below)</text>
+
+    <rect x="946" y="404" width="174" height="62" rx="8" fill="#ecfeff" stroke="#22d3ee"/>
+    <text x="1033" y="422" text-anchor="middle" font-weight="700" fill="#155e75">STAR</text>
+    <text x="1033" y="440" text-anchor="middle" fill="#155e75">specialist advisory layer</text>
+    <text x="1033" y="456" text-anchor="middle" fill="#155e75" font-size="11">(integration in flight)</text>
+  </g>
+
+  <!-- arrow L2 -> L3 -->
+  <path d="M 590 490 L 590 520" stroke="#0f766e" stroke-width="2"/>
+  <path d="M 585 512 L 590 522 L 595 512" fill="none" stroke="#0f766e" stroke-width="2"/>
+  <text x="470" y="514" font-size="11.5" fill="#6b7280">read / effect against tenant-owned external data</text>
+
+  <!-- ============ LAYER 3: CONNECTORS ============ -->
+  <g font-size="12.5" fill="#1f2937">
+    <rect x="40" y="526" width="1100" height="92" rx="14" fill="#f9fafb" stroke="#6b7280" stroke-width="1.5"/>
+    <text x="62" y="552" font-size="14" font-weight="700" fill="#374151">Connector integrations</text>
+
+    <rect x="62" y="566" width="240" height="36" rx="7" fill="#ffffff" stroke="#e5e7eb"/>
+    <text x="182" y="589" text-anchor="middle">Xero — invoices &amp; accounts</text>
+
+    <rect x="314" y="566" width="240" height="36" rx="7" fill="#ffffff" stroke="#e5e7eb"/>
+    <text x="434" y="589" text-anchor="middle">Google Workspace — mail, contacts</text>
+
+    <rect x="566" y="566" width="240" height="36" rx="7" fill="#ffffff" stroke="#e5e7eb"/>
+    <text x="686" y="589" text-anchor="middle">Microsoft 365 — mail, calendar, files</text>
+
+    <rect x="818" y="566" width="302" height="36" rx="7" fill="#ffffff" stroke="#e5e7eb"/>
+    <text x="969" y="589" text-anchor="middle">Custom APIs / webhooks — task events</text>
+  </g>
+
+  <!-- arrow L3 -> L4 -->
+  <path d="M 590 620 L 590 650" stroke="#6b7280" stroke-width="2" stroke-dasharray="5 4"/>
+  <path d="M 585 642 L 590 652 L 595 642" fill="none" stroke="#6b7280" stroke-width="2"/>
+  <text x="610" y="644" font-size="11.5" fill="#6b7280">built on</text>
+
+  <!-- ============ LAYER 4: INFRASTRUCTURE ============ -->
+  <rect x="40" y="658" width="1100" height="104" rx="14" fill="#ffffff" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="62" y="684" font-size="14" font-weight="700" fill="#4b5563">Infrastructure</text>
+  <g font-size="12.5" fill="#1f2937">
+    <rect x="62" y="702" width="340" height="42" rx="7" fill="#f3f4f6" stroke="#e5e7eb"/>
+    <text x="232" y="721" text-anchor="middle" font-weight="600">Supabase / PostgreSQL</text>
+    <text x="232" y="736" text-anchor="middle" fill="#6b7280" font-size="11">row-level security · org tenant boundary</text>
+
+    <rect x="414" y="702" width="200" height="42" rx="7" fill="#f3f4f6" stroke="#e5e7eb"/>
+    <text x="514" y="721" text-anchor="middle" font-weight="600">Vercel</text>
+    <text x="514" y="736" text-anchor="middle" fill="#6b7280" font-size="11">hosting &amp; deploy pipeline</text>
+
+    <rect x="626" y="702" width="200" height="42" rx="7" fill="#f3f4f6" stroke="#e5e7eb"/>
+    <text x="726" y="721" text-anchor="middle" font-weight="600">LLM / AI services</text>
+    <text x="726" y="736" text-anchor="middle" fill="#6b7280" font-size="11">classification, drafting, memory</text>
+
+    <rect x="838" y="702" width="282" height="42" rx="7" fill="#f3f4f6" stroke="#e5e7eb"/>
+    <text x="979" y="721" text-anchor="middle" font-weight="600">ElevenLabs</text>
+    <text x="979" y="736" text-anchor="middle" fill="#6b7280" font-size="11">voice conversational agent</text>
+  </g>
+
+  <!-- footer note -->
+  <text x="40" y="812" font-size="11.5" fill="#9ca3af">Practical scope for a technical partner: review &amp; harden, testing/monitoring/deploy practices, docs, small enhancements — not a rebuild.</text>
+</svg>
