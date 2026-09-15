@@ -4,10 +4,13 @@
 // Identity comes from the server-baked ?uid, exactly like every other operational tool: ElevenLabs
 // does not pass the conversation id to a server tool, so the owner is fixed at provision time.
 //
-// It ALWAYS answers 200 with success:true, even when the write fails. Deliberate: the agent has
-// already told the owner it will not do the thing, and the only effect of surfacing a logging
-// failure here is that she interrupts a refusal to talk about her own database. The refusal itself
-// is not in doubt — this only records it.
+// Refusals are organisation-owned. The person (the caller) remains the actor who declined —
+// provenance. The refusal row is scoped to the caller's organisation.
+//
+// It ALWAYS answers 200 with success:true, even when the write fails or org cannot resolve.
+// Deliberate: the agent has already told the owner it will not do the thing, and the only effect
+// of surfacing a logging failure here is that she interrupts a refusal to talk about her own
+// database. The refusal itself is not in doubt — this only records it.
 
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import { resolveOrganisationForPerson } from '@/lib/auth';
@@ -82,9 +85,11 @@ export async function handleRecordRefusal(req: Request): Promise<Response> {
     } catch { /* non-fatal — org resolution failure falls back to user_id scoping */ }
 
     // The agent is organisation-owned: resolve it through the org, never the person.
-    let agentQuery = organisationId
-      ? supabase.from('kira_agents').select('id').eq('organisation_id', organisationId)
-      : supabase.from('kira_agents').select('id').eq('user_id', userId);
+    let agentQuery = supabase
+      .from('kira_agents')
+      .select('id')
+      .eq('organisation_id', organisationId)
+      .eq('person_id', userId);
     const { data: agent } = await agentQuery.limit(1).maybeSingle();
 
     // DUPLICATE GUARD. The tool description says one call per refusal, but a description is a
@@ -93,20 +98,21 @@ export async function handleRecordRefusal(req: Request): Promise<Response> {
     // anyone looking at the log later, which overstates what happened.
     //
     // Refusals are organisation-owned (INV-020), so the dedupe is org-scoped: the same ask refused
-    // in the same org is one refusal. Falls back to the person when the org cannot be resolved.
+    // in the same org is one refusal. With person_id provenance (the caller who refused).
     const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    let recentQuery = supabase
+    const { data: recent } = await supabase
       .from('kira_refusals')
       .select('id')
+      .eq('organisation_id', organisationId)
       .eq('user_id', userId)
-      .eq('asked', asked);
-    if (organisationId) recentQuery = recentQuery.eq('organisation_id', organisationId);
-    const { data: recent } = await recentQuery.gte('created_at', since).limit(1);
+      .eq('asked', asked)
+      .gte('created_at', since)
+      .limit(1);
     if (recent?.length) return json(200, { success: true, recorded: false, already: true });
 
     const { error } = await supabase.from('kira_refusals').insert({
       user_id: userId,
-      ...(organisationId ? { organisation_id: organisationId } : {}),
+      organisation_id: organisationId,
       kira_agent_id: agent?.id ?? null,
       source: 'agent',
       asked,

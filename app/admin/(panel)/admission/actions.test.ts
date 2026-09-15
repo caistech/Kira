@@ -139,8 +139,8 @@ describe('nominateAdmission (D14 idempotency)', () => {
 });
 
 describe('validateSubstanceInput (pure)', () => {
-  it('passes a factor-bearing item with a complete substance test', () => {
-    const r = validateSubstanceInput({
+  it('passes a factor-bearing item with a complete substance test', async () => {
+    const r = await validateSubstanceInput({
       factor: 'growth',
       tests: 'names the two biggest accounts\nnames a rough share',
       weakExample: 'A couple of big ones.',
@@ -159,8 +159,8 @@ describe('validateSubstanceInput (pure)', () => {
     }
   });
 
-  it('requires a complete substance test when a factor is set', () => {
-    const r = validateSubstanceInput({
+  it('requires a complete substance test when a factor is set', async () => {
+    const r = await validateSubstanceInput({
       factor: 'growth',
       tests: '',
       weakExample: '',
@@ -170,8 +170,8 @@ describe('validateSubstanceInput (pure)', () => {
     expect(r.ok).toBe(false);
   });
 
-  it('returns the yolkless path when the factor is cleared', () => {
-    const r = validateSubstanceInput({
+  it('returns the yolkless path when the factor is cleared', async () => {
+    const r = await validateSubstanceInput({
       factor: '',
       tests: '',
       weakExample: '',
@@ -185,8 +185,8 @@ describe('validateSubstanceInput (pure)', () => {
     }
   });
 
-  it('rejects an unknown factor', () => {
-    const r = validateSubstanceInput({
+  it('rejects an unknown factor', async () => {
+    const r = await validateSubstanceInput({
       factor: 'synergy',
       tests: 'x',
       weakExample: 'x',

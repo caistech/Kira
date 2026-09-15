@@ -617,7 +617,7 @@ export async function POST(req: NextRequest) {
           const { data: cp } = await supabase
             .from('client_profiles')
             .select('profile')
-            .eq('user_id', user.person_id)
+            .eq('organisation_id', orgContext.organisationId)
             .maybeSingle();
           if (cp?.profile) {
             await saveMemory(orgContext, {

@@ -164,8 +164,7 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
         .order('created_at', { ascending: false })
         .limit(20);
       if (organisationId) refusedQuery = refusedQuery.eq('organisation_id', organisationId);
-      else if (userId) refusedQuery = refusedQuery.eq('user_id', userId);
-      const refusedRequests = (userId || organisationId)
+      const refusedRequests = organisationId
         ? ((await refusedQuery).data ?? []).map((r: { asked: unknown }) => String(r.asked ?? ''))
         : [];
 

@@ -11,6 +11,7 @@ const ADMIN_NAV: NavItem[] = [
   { href: '/admin', label: 'Overview' },
   { href: '/admin/exec', label: 'Kira Exec' },
   { href: '/admin/introducers', label: 'Introducers' },
+  { href: '/admin/distributors', label: 'Distributors' },
   { href: '/admin/loi', label: 'LOIs' },
   { href: '/admin/asked-for', label: 'Asked for' },
   { href: '/admin/trust', label: 'Trust' },

@@ -27,7 +27,7 @@ Kira's landing (`app/page.tsx`) is a 3-variant dispatch; the **consultant-facing
 |---|---|---|
 | **P2.3** | Resource Ownership Audit | ✅ COMPLETE — semantic ownership and migration targets established |
 | **P2.3 Gates** | Architecture & Business Decisions | ✅ CLOSED — Dennis approved Maturity Model + all 4 Gates |
-| **P2.4** | Resource-specific migrations | 🔓 OPEN — proceeding via "Strangler Fig" (incremental) approach |
+| **P2.4** | Resource-specific migrations | in_progress — proceeding via [P2.4-SCOPE.md](./P2.4-SCOPE.md) |
 
 ### Maturity Model Alignment (The Core Product Definition)
 

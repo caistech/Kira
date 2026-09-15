@@ -224,11 +224,11 @@ export interface SubstanceInput {
 }
 
 /** The substance/factor editor's validation, pure so it can be asserted without a database. */
-export function validateSubstanceInput(input: SubstanceInput): {
+export async function validateSubstanceInput(input: SubstanceInput): Promise<{
   ok: true;
   factor: string | null;
   substance: { tests: string[]; weakExample: string; strongExample: string; coaching: string } | null;
-} | { ok: false; message: string } {
+} | { ok: false; message: string }> {
   const factor = input.factor.trim();
   const resolvedFactor = factor ? (isFactorKey(factor) ? factor : null) : null;
   if (factor && !resolvedFactor) return { ok: false, message: 'That is not a known factor.' };
@@ -280,7 +280,7 @@ export async function setSubstance(
 ): Promise<ActionResult> {
   await assertAdmin();
 
-  const parsed = validateSubstanceInput(input);
+  const parsed = await validateSubstanceInput(input);
   if (!parsed.ok) return fail(parsed.message);
 
   const supabase = createServiceClientV2();

@@ -522,24 +522,28 @@ export async function handleKiraContext(req: Request): Promise<Response> {
 
   // Find the user's genuinely most-recent conversation ACROSS all their agents (a user can have more
   // than one), and take context from that conversation's agent — otherwise "newest agent" ≠ "agent
-  // that holds the last conversation" and we'd report no history when there is some. Scoped to the
-  // CALLER (uid is now the caller's person_id, not the baked provisioner) and, when the caller has
-  // an org, to that org — a shared organisation agent must never read another member's most-recent
-  // conversation as its own.
-  let lastConvQuery = supabase
+  // that holds the last conversation" and we'd report no history when there is some. The conversation
+  // is organisation-owned and person-belonging: organisation_id is the ownership gate (the RLS
+  // boundary), user_id is person provenance (whose conversation; uid is the caller's person_id, not
+  // the baked provisioner). A shared organisation agent must never read another member's most-recent
+  // conversation as its own — and without an org seat there is no conversation to read, so degrade
+  // to an empty greeting rather than an unscoped read through the service client.
+  if (!organisationId) return json(200, { has_history: false, ...openTasks });
+  const lastConv = await supabase
     .from('conversations')
     .select('kira_agent_id, created_at, last_message_at, started_at')
     .in('status', ['active', 'completed'])
+    .eq('organisation_id', organisationId)
     .eq('user_id', uid)
     .order('created_at', { ascending: false })
-    .limit(1);
-  if (organisationId) lastConvQuery = lastConvQuery.eq('organisation_id', organisationId);
+    .limit(1)
+    .maybeSingle();
 
-  const { data: lastConv } = await lastConvQuery.maybeSingle();
-  if (!lastConv?.kira_agent_id) return json(200, { has_history: false, ...openTasks });
+  if (!lastConv?.data?.kira_agent_id) return json(200, { has_history: false, ...openTasks });
+  const lastConversation = lastConv.data;
 
   const { data: ctx } = await supabase.rpc('get_conversation_context', {
-    p_agent_id: lastConv.kira_agent_id,
+    p_agent_id: lastConversation.kira_agent_id,
     p_user_id: uid,
     p_message_limit: 10,
   });
