@@ -22,7 +22,7 @@
 // as trustworthy as its weakest line.
 
 import { NextResponse } from 'next/server';
-import { getAuthUser, resolveOrganisationForPerson } from '@/lib/auth';
+import { getCurrentOrganisationContext } from '@/lib/auth';
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { realSignOffName } from '@/lib/user-name';
@@ -83,19 +83,18 @@ function approxFigures(g: { worthToday: number | null; gap: number | null }) {
 }
 
 export async function GET(request: Request) {
-  const authUser = await getAuthUser();
-  if (!authUser) return NextResponse.json({ error: 'Sign in first' }, { status: 401 });
+  const orgContext = await getCurrentOrganisationContext();
+  if (!orgContext) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
 
   const svc = createServiceClientV2();
   const { data: appUser } = await svc
-    .from('users')
-    .select('id, first_name, last_name')
-    .eq('auth_user_id', authUser.id)
+    .from('persons')
+    .select('person_id, first_name, last_name, email')
+    .eq('person_id', orgContext.personId)
     .maybeSingle();
   if (!appUser) return NextResponse.json({ error: 'No account record' }, { status: 404 });
 
-  const orgContext = await resolveOrganisationForPerson(String(appUser.id));
-  if (!orgContext) return NextResponse.json({ error: 'No organisation context' }, { status: 403 });
+  const authUserEmail = appUser.email;
 
   const g = await deriveOwnerGenome(orgContext);
   const format = new URL(request.url).searchParams.get('format') === 'json' ? 'json' : 'md';
@@ -105,7 +104,7 @@ export async function GET(request: Request) {
   // and that string was reaching the byline of the handover export. `realSignOffName` returns null
   // when what we hold is really an address, and the existing 'the owner' fallback — already the
   // right answer for a nameless account — takes over. See lib/user-name.ts.
-  const owner = realSignOffName(appUser, authUser.email) || "the owner";
+  const owner = realSignOffName(appUser, authUserEmail) || "the owner";
 
   // THE DOCUMENT IS ABOUT THE BUSINESS, SO IT IS TITLED TO THE BUSINESS.
   //
@@ -119,7 +118,7 @@ export async function GET(request: Request) {
   // case where naming the entity would mean inventing it.
   let identity = null;
   try {
-    identity = await getBusinessIdentity(appUser.id);
+    identity = await getBusinessIdentity(orgContext.organisationId);
   } catch (error) {
     console.error("[genome-export] business identity unavailable:", error);
   }

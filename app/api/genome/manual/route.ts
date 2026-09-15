@@ -13,7 +13,7 @@
 import { NextResponse } from 'next/server';
 import { formatAbn } from '@caistech/abn-lookup';
 
-import { getAuthUser, resolveOrganisationForPerson } from '@/lib/auth';
+import { getCurrentOrganisationContext } from '@/lib/auth';
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { renderSingleFile, type Audience } from '@/lib/genome/render';
@@ -50,8 +50,8 @@ export function filenameFor(business: string, audience: Audience, stamp: string)
 }
 
 export async function GET(request: Request) {
-  const authUser = await getAuthUser();
-  if (!authUser) return NextResponse.json({ error: 'Sign in first' }, { status: 401 });
+  const orgContext = await getCurrentOrganisationContext();
+  if (!orgContext) return NextResponse.json({ error: 'Not signed in, or no organisation access' }, { status: 401 });
 
   const audience = parseAudience(new URL(request.url).searchParams.get('audience'));
   if (!audience) {
@@ -65,8 +65,6 @@ export async function GET(request: Request) {
     );
   }
 
-  const orgContext = await resolveOrganisationForPerson(authUser.id);
-  if (!orgContext) return NextResponse.json({ error: 'No organisation context' }, { status: 403 });
   const genome = await deriveOwnerGenome(orgContext);
 
   // Titled to the BUSINESS, not the person — the whole argument of this product is that the value
