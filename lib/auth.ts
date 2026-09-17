@@ -1190,18 +1190,12 @@ export async function currentUserHasAdminPortalAccess(): Promise<boolean> {
 // ---------------------------------------------------------------------------
 // OWNERSHIP
 // ---------------------------------------------------------------------------
+//
+// Membership role and ownership are separate concepts. Ownership lives in
+// ownership_periods; role = 'owner' does not by itself prove current
+// ownership.
 
-/**
- * Determine whether the current Person is the current owner of the current
- * Organisation.
- *
- * IMPORTANT:
- *
- * Membership role and ownership are separate concepts.
- *
- * This function therefore checks ownership_periods rather than simply
- * checking membership.role === 'owner'.
- */// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // ORGANISATION LOOKUP
 // ---------------------------------------------------------------------------
 //
@@ -1210,6 +1204,88 @@ export async function currentUserHasAdminPortalAccess(): Promise<boolean> {
 // Organisation existence is NOT authority.
 // Membership establishes access.
 //
+
+/**
+ * Check if the current user has any active distributor portfolio entries.
+ */
+export async function currentUserIsDistributor(): Promise<boolean> {
+  const authUser = await getAuthUser();
+  if (!authUser) return false;
+
+  const supabase = createServiceClientV2();
+
+  // 1. Resolve Person ID from Auth user
+  const { data: credential } = await supabase
+    .from('auth_credentials')
+    .select('person_id')
+    .eq('auth_user_id', authUser.id)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (!credential?.person_id) return false;
+
+  // 2. Check for active portfolio entries
+  const { count, error } = await supabase
+    .from('distributor_portfolio')
+    .select('id', { count: 'exact', head: true })
+    .eq('distributor_person_id', credential.person_id)
+    .eq('status', 'active')
+    .is('removed_at', null);
+
+  if (error) {
+    console.error('[lib/auth] distributor lookup failed:', error);
+    return false;
+  }
+
+  return (count ?? 0) > 0;
+}
+
+/**
+ * Get context for a distributor-controlled organisation.
+ */
+export async function getDistributorContext(
+  organisationId: string,
+): Promise<OrganisationContext | null> {
+  try {
+    const authUser = await getAuthUser();
+    if (!authUser) return null;
+
+    const supabase = createServiceClientV2();
+
+    const credential = await getAuthCredential(authUser.id, supabase);
+    if (!credential?.person_id || credential.status !== 'active') return null;
+
+    // Verify distributor access
+    const { data: isDistributor } = await supabase
+      .rpc('auth_user_is_distributor_for', { p_organisation_id: organisationId });
+
+    if (!isDistributor) return null;
+
+    // Fetch org context
+    const { data: org, error } = await supabase
+      .from('organisations')
+      .select('organisation_id, legal_name')
+      .eq('organisation_id', organisationId)
+      .maybeSingle();
+
+    if (error || !org) return null;
+
+    return {
+      personId: credential.person_id,
+      organisationId: org.organisation_id,
+      membershipId: 'distributor-access',
+      role: 'distributor',
+      membershipStatus: 'active',
+      canSpend: false,
+      validFrom: new Date().toISOString(),
+      validTo: null,
+      portalAccess: 'admin',
+    };
+  } catch (error) {
+    console.error('[lib/auth] Error resolving distributor context:', error);
+    return null;
+  }
+}
 
 async function getOrganisation(
   organisationId: string,

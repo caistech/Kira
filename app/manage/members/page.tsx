@@ -1,5 +1,6 @@
 import { getSuperadminContext } from '@/lib/auth';
 import { createServiceClientV2 } from '@/lib/supabase/server';
+import { OwnerInviteForm } from './OwnerInviteForm';
 
 export const metadata = { title: 'Members · Manage' };
 export const dynamic = 'force-dynamic';
@@ -46,6 +47,17 @@ export default async function ManageMembersPage() {
           portal access.
         </p>
       </header>
+
+      <section className="rounded-3xl border border-stone-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-bold text-stone-900">Provision CEO / Owner</h2>
+        <p className="mt-1 max-w-prose text-sm text-stone-500">
+          Grant a person the owner role and a current ownership period. They
+          receive management access to this organisation's portal.
+        </p>
+        <div className="mt-4">
+          <OwnerInviteForm organisationId={ctx.organisationId} />
+        </div>
+      </section>
 
       {!memberships?.length ? (
         <div className="rounded-3xl border border-dashed border-stone-300 bg-white p-8 text-center shadow-sm">

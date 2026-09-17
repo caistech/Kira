@@ -23,6 +23,12 @@
 //                     platform-operator console, email-allowlist gated and
 //                     platform-wide."
 //
+//   distributor     → the partner / consultant-facing portfolio portal
+//                     (/distributor/*, gated by an ACTIVE entry in
+//                     distributor_portfolio — the exact gate the distributor
+//                     layout uses). A distributor oversees client organisations
+//                     they do not belong to.
+//
 // SEPARATE FROM ORGANISATION SELECTION
 // ------------------------------------
 //
@@ -43,9 +49,11 @@ import {
   getCurrentOrganisationContext,
   getSuperadminContext,
   isCurrentUserAdmin,
+  currentUserIsDistributor,
 } from '@/lib/auth';
 
-export type PortalId = 'user' | 'org-admin' | 'corporate-admin';
+
+export type PortalId = 'user' | 'org-admin' | 'corporate-admin' | 'distributor';
 
 export interface PortalOption {
   id: PortalId;
@@ -72,6 +80,11 @@ export const PORTAL_OPTIONS: Record<PortalId, Omit<PortalOption, 'id'>> = {
     description: 'Kira operator console — Exec, LOIs, introducers, testers.',
     href: '/admin',
   },
+  distributor: {
+    label: 'Distributor Portal',
+    description: 'Manage your client portfolio.',
+    href: '/distributor',
+  },
 };
 
 /**
@@ -87,10 +100,11 @@ export async function getAuthorisedPortals(): Promise<PortalOption[]> {
   const authUser = await getAuthUser();
   if (!authUser) return authorised;
 
-  const [orgContext, superadminContext, isOperator] = await Promise.all([
+  const [orgContext, superadminContext, isOperator, isDistributor] = await Promise.all([
     getCurrentOrganisationContext(),
     getSuperadminContext(),
     isCurrentUserAdmin(),
+    currentUserIsDistributor(),
   ]);
 
   // User portal: an active organisation membership is what UserShell requires.
@@ -112,6 +126,14 @@ export async function getAuthorisedPortals(): Promise<PortalOption[]> {
     });
   }
 
+  // Distributor portal: portfolio entries.
+  if (isDistributor) {
+    authorised.push({
+      id: 'distributor',
+      ...PORTAL_OPTIONS.distributor,
+    });
+  }
+
   return authorised;
 }
 
@@ -125,6 +147,9 @@ export function portalForPathname(pathname: string): PortalId | null {
   }
   if (pathname === '/manage' || pathname.startsWith('/manage/')) {
     return 'org-admin';
+  }
+  if (pathname === '/distributor' || pathname.startsWith('/distributor/')) {
+    return 'distributor';
   }
   return 'user';
 }

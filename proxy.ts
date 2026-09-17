@@ -13,7 +13,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
-const USER_PROTECTED = ['/setup', '/create-kira', '/chat', '/personal-journey', '/start', '/settings', '/discovery', '/talk'];
+const USER_PROTECTED = ['/setup', '/create-kira', '/chat', '/personal-journey', '/start', '/settings', '/discovery', '/talk', '/distributor'];
 const ADMIN_PREFIX = '/admin';
 // Public entries inside /admin (the login + its own password-reset flow).
 const ADMIN_PUBLIC = ['/admin/login', '/admin/password-reset'];

@@ -18,6 +18,7 @@ vi.mock('@/lib/auth', () => ({
   getCurrentOrganisationContext: vi.fn(),
   getSuperadminContext: vi.fn(),
   isCurrentUserAdmin: vi.fn(),
+  currentUserIsDistributor: vi.fn(),
 }));
 
 import {
@@ -25,6 +26,7 @@ import {
   getCurrentOrganisationContext,
   getSuperadminContext,
   isCurrentUserAdmin,
+  currentUserIsDistributor,
 } from '@/lib/auth';
 import {
   PORTAL_OPTIONS,
@@ -37,6 +39,7 @@ const authUser = vi.mocked(getAuthUser);
 const orgContext = vi.mocked(getCurrentOrganisationContext);
 const superadminContext = vi.mocked(getSuperadminContext);
 const isOperator = vi.mocked(isCurrentUserAdmin);
+const isDistributor = vi.mocked(currentUserIsDistributor);
 
 const ANY_AUTH_USER = { id: 'auth-user-1' } as Awaited<ReturnType<typeof getAuthUser>>;
 const ANY_ORG = { personId: 'person-1' } as Awaited<ReturnType<typeof getCurrentOrganisationContext>>;
@@ -44,6 +47,7 @@ const ANY_ORG = { personId: 'person-1' } as Awaited<ReturnType<typeof getCurrent
 beforeEach(() => {
   vi.clearAllMocks();
   authUser.mockResolvedValue(ANY_AUTH_USER);
+  isDistributor.mockResolvedValue(false);
 });
 
 describe('getAuthorisedPortals', () => {
@@ -105,11 +109,30 @@ describe('getAuthorisedPortals', () => {
     ]);
   });
 
-  it('never fabricates a portal from a missing authority', async () => {
-    // No membership, no superadmin function, not an operator.
+  it('distributor with portfolio, no other role → distributor portal only', async () => {
     orgContext.mockResolvedValue(null);
     superadminContext.mockResolvedValue(null);
     isOperator.mockResolvedValue(false);
+    isDistributor.mockResolvedValue(true);
+
+    const portals = await getAuthorisedPortals();
+    expect(portals.map((portal) => portal.id)).toEqual(['distributor']);
+  });
+
+  it('ordinary member with no portfolio → distributor portal never offered', async () => {
+    orgContext.mockResolvedValue(ANY_ORG);
+    isDistributor.mockResolvedValue(false);
+
+    const ids = (await getAuthorisedPortals()).map((portal) => portal.id);
+    expect(ids).not.toContain('distributor');
+  });
+
+  it('never fabricates a portal from a missing authority', async () => {
+    // No membership, no superadmin function, not an operator, no portfolio.
+    orgContext.mockResolvedValue(null);
+    superadminContext.mockResolvedValue(null);
+    isOperator.mockResolvedValue(false);
+    isDistributor.mockResolvedValue(false);
 
     await expect(getAuthorisedPortals()).resolves.toEqual([]);
   });
@@ -118,21 +141,26 @@ describe('getAuthorisedPortals', () => {
 describe('PORTAL_OPTIONS', () => {
   it('maps each portal to a real existing route', () => {
     const hrefs = Object.values(PORTAL_OPTIONS).map((option) => option.href);
-    expect(hrefs).toContain('/dashboard'); // User / CEO → user portal
+    expect(hrefs).toContain('/talk'); // User / CEO → user portal
     expect(hrefs).toContain('/manage'); // Organisation Admin → org management shell
     expect(hrefs).toContain('/admin'); // Kira Corporate Admin → operator console
+    expect(hrefs).toContain('/distributor'); // Distributor → portfolio portal
   });
 });
 
 describe('portalForPathname', () => {
   const cases: Array<[string, PortalId]> = [
+    ['/talk', 'user'],
     ['/dashboard', 'user'],
     ['/my-genome', 'user'],
     ['/dialog', 'user'],
     ['/admin', 'corporate-admin'],
     ['/admin/loi', 'corporate-admin'],
+    ['/admin/organisations', 'corporate-admin'],
     ['/manage', 'org-admin'],
     ['/manage/members', 'org-admin'],
+    ['/distributor', 'distributor'],
+    ['/distributor/anything', 'distributor'],
   ];
   it.each(cases)('%s → %s', (pathname, expected) => {
     expect(portalForPathname(pathname)).toBe(expected);
