@@ -341,10 +341,12 @@ normaliseString(body.code);
 const termsAccepted =
 body.termsAccepted === true;
 
+// Client may echo a version for the mismatch check below, but the version RECORDED on the
+// account is always the server-owned TERMS_VERSION (see createUser). Destructured so the
+// echoed value is never read as a member of the request body.
+const { termsVersion: rawSubmittedTermsVersion = '' } = body;
 const submittedTermsVersion =
-normaliseString(
-body.termsVersion,
-);
+normaliseString(rawSubmittedTermsVersion);
 
 /*
  * ---
@@ -716,8 +718,10 @@ email,
 email_confirm: true,
 user_metadata: {
 terms_accepted: true,
+// Server-owned: the request already REQUIRES submittedTermsVersion === TERMS_VERSION
+// (a mismatch is rejected above), so recording the constant is exactly as accurate as
+// recording the echoed value and cannot be client-named.
 terms_version:
-submittedTermsVersion ||
 TERMS_VERSION,
 beta_invitation: true,
 },

@@ -37,9 +37,9 @@ describe('/api/kira/chat/start is ORGANISATION-scoped, not person-owner-scoped',
     expect(ROUTE).toMatch(/kiraAgent\.organisation_id === organisationContext\.organisationId/);
   });
 
-  it('still denies when the caller is NOT an admin, NOT the owner, AND outside the org', () => {
+  it('still denies when the caller is NOT the owner AND NOT an admin with org scope', () => {
     // Organisation isolation MUST be preserved: a member of org A cannot start an agent of org B.
-    expect(ROUTE).toMatch(/if \(!admin && !isOrgMember && !isOwner\)/);
+    expect(ROUTE).toMatch(/kiraAgent\.person_id !== organisationContext\.personId && !\(admin && kiraAgent\.organisation_id === organisationContext\.organisationId\)/);
     expect(ROUTE).toMatch(/Not authorized for this agent/);
     expect(ROUTE).toMatch(/status: 403/);
   });

@@ -100,6 +100,8 @@ export const OWN_HEADER = [
   // Behind auth, so a 307 hides them from any anonymous count. The test found them by reading the
   // page files, which is the half of this check that does not depend on a page being reachable.
   '/introducer',
+  '/distributor',
+  '/manage',
 ];
 
 /**

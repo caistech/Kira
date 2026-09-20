@@ -63,12 +63,12 @@ describe('the turn-zero context carries the offer', () => {
   const handler = strip(uidTools).slice(strip(uidTools).indexOf('export async function handleKiraContext'));
 
   it('merges a confirmation offer into the context response', () => {
-    expect(handler).toMatch(/confirmationOffer\(uid\)/);
+    expect(handler).toMatch(/confirmationOffer\(orgContext\)/);
   });
 
   it('offers exactly ONE fact, not a queue', () => {
     // A list turns the opening of every conversation into an audit. This is an aside in a greeting.
-    expect(uidTools).toMatch(/unconfirmedFacts\(uid, \{ limit: 1 \}\)/);
+    expect(uidTools).toMatch(/unconfirmedFacts\(orgContext!, \{ limit: 1 \}\)/);
   });
 
   it('hands her words, not just a payload', () => {

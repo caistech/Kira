@@ -105,24 +105,25 @@ describe('/talk when the owner has no Kira yet', () => {
     const dashboard = stripComments(repo('app/dashboard/page.tsx'));
 
     it('agrees on the destination, whatever framing params ride along', () => {
-      // One product, one answer. The dashboard had the right one all along; /talk was the loser.
-      expect(dashboard).toMatch(/['"`]\/start\?journey=business(&[^'"`]*)?['"`]/);
+      // One product, one answer. The dashboard does not redirect an owner without a Kira to a
+      // differently-styled page any more — it renders the outstanding onboarding step in place,
+      // and /talk is the canonical entry for a provisioned owner. This pins the in-place gate.
+      expect(dashboard).toMatch(/nextOnboardingStep\(/);
+      expect(dashboard).toMatch(/<OnboardingGate/);
     });
 
     it('does not tell a long-standing owner he has just paid', () => {
       // `from=paid` makes /start announce "Last step — let's set up your Kira. About three
-      // minutes." Correct for a man who has just handed over a card; wrong for one who has been
-      // using the product for months and pressed Talk. The dashboard branch is the RECOVERY route —
-      // its own comment said so while the link said the opposite, and the two files contradicted
-      // each other in the tree for a day.
-      expect(dashboard).not.toMatch(/\/start\?journey=business&from=paid/);
+      // minutes." The dashboard no longer redirects to /start at all, so neither framing flag can
+      // leak onto a long-standing owner. Pin that the eject-to-/start is gone.
+      expect(dashboard).not.toMatch(/redirect\(\s*['"`]\/start/);
     });
 
     it('still marks him as coming from inside the product', () => {
-      // Without a `from`, /start offers "Back to home" pointing at the marketing landing page — a
-      // signed-in owner sent to the shop window. `from=app` is the convention the valuation result
-      // page already uses for "he is already a customer".
-      expect(dashboard).toMatch(/\/start\?journey=business&from=app/);
+      // `welcome=1` (on /talk) is the current carrier of "just arrived and set me up" — see the
+      // onboarding branch below. The dashboard's in-place gate has no eject, so no `from` param is
+      // needed there; the requirement lives at the onboarding entry instead, asserted below.
+      expect(dashboard).not.toMatch(/redirect\(\s*['"`]\/start\?journey=business&from=app/);
     });
   });
 
@@ -162,24 +163,21 @@ describe('/talk when the owner has no Kira yet', () => {
 
     // ⚠️ REPLACED, NOT DELETED — 2026-08-15. This asserted onboarding sent the just-paid owner to
     // `/start?journey=business&from=paid`, and it was RIGHT to pin that while the destination
-    // carried the framing. It no longer does: both paid and beta go to `/dashboard?welcome=1`, and
-    // `welcome=1` is what marks him as just-arrived. The framing moved; the requirement that he BE
-    // framed did not, so this pins the new carrier.
-    //
-    // The stronger property is the second one: two entry paths pointing at different destinations is
-    // what made the ROUTE decide what he saw rather than his state, which is the defect the gate
-    // exists to end.
+    // carried the framing. It no longer does: the paid path lands on `/talk?welcome=1` (see
+    // app/onboarding/page.tsx:106) — /talk is the canonical provisioned entry, and `welcome=1` is
+    // what marks him as just-arrived. The framing moved; the requirement that he BE framed did
+    // not, so this pins the new carrier.
     it('the paid path still marks the just-arrived owner as just-arrived', () => {
-      expect(onboarding).toMatch(/\/dashboard\?welcome=1/);
+      expect(onboarding).toMatch(/\/talk\?welcome=1/);
     });
 
     it('the beta path converges through canonical identity establishment', () => {
-      // Since 2026-09 the beta path redeems into /plan, which owns identity (person →
+      // The beta path redeems into /auth/callback → /plan?code=…, which owns identity (person →
       // organisation → membership) before routing on: superadmins to /manage, everyone else to
-      // /dashboard. Both paid and beta end at the dashboard for a normal owner; beta just earns it
-      // through the canonical identity step first. The paid path lands on /dashboard?welcome=1
-      // because onboarding already established identity, so the two converge rather than diverge.
-      expect(beta).toMatch(/location\.assign\(['"`]\/plan['"`]\)/);
+      // /dashboard. Both paid and beta end at the dashboard (or /talk) for a normal owner; beta
+      // just earns it through the canonical identity step first.
+      expect(beta).toMatch(/location\.assign\(callbackUrl\)/);
+      expect(beta).toMatch(/\/auth\/callback/);
     });
 
     it('neither entry path routes around the dashboard into /start', () => {

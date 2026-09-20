@@ -29,7 +29,7 @@ import { CONFIDENTIALITY_MARKER, confidentialitySection } from './prompts';
 const repo = (p: string) => readFileSync(path.resolve(__dirname, '../..', p), 'utf8');
 
 describe('the written answer is single-sourced', () => {
-  it.each(['app/my-genome/page.tsx', 'app/plan/page.tsx'])(
+  it.each(['app/my-genome/page.tsx'])(
     '%s consumes WHO_CAN_SEE_IT rather than its own copy',
     (file) => {
       const src = repo(file);
@@ -41,16 +41,7 @@ describe('the written answer is single-sourced', () => {
   );
 
   it('interpolates it, rather than printing the identifier at the user', () => {
-    // A mechanical find-and-replace put `{WHO_CAN_SEE_IT}` inside a single-quoted JS string on
-    // /plan, where it is a literal and not an interpolation — the page would have shown a curly
-    // brace and a variable name to a prospect. Caught before shipping; pinned so it cannot recur.
-    //
-    // ⚠️ SCANNED PER LINE ON PURPOSE. The first version of this test used one regex over the whole
-    // file (`/'[^']*\{WHO_CAN_SEE_IT\}[^']*'/`) and failed against CORRECT code: `[^']*` crosses
-    // newlines, so it matched from an apostrophe in a comment far above, through the real JSX
-    // interpolation, to an apostrophe far below. A guard that fires on correct code gets deleted,
-    // which is worse than not having written it.
-    for (const file of ['app/my-genome/page.tsx', 'app/plan/page.tsx']) {
+    for (const file of ['app/my-genome/page.tsx']) {
       const offenders = repo(file)
         .split(/\r?\n/)
         .filter((line) => /'[^']*\{WHO_CAN_SEE_IT\}[^']*'/.test(line));

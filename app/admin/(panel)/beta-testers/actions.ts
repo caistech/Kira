@@ -19,6 +19,7 @@ import { isCurrentUserAdmin } from '@/lib/auth';
 import { generateBetaPassword, validateBetaTesterInput } from '@/lib/beta-tester/password';
 import { sendBetaTesterInvite } from '@/lib/email/beta-tester-invite';
 import { createServiceClientV2 } from '@/lib/supabase/server';
+import { TERMS_VERSION } from '@/lib/terms';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://kira-rho.vercel.app';
 
@@ -66,6 +67,8 @@ export async function inviteBetaTester(formData: FormData): Promise<ActionResult
       user_metadata: {
         first_name: firstName,
         last_name: lastName,
+        terms_accepted: 'true',
+        terms_version: TERMS_VERSION,
         referral_source: 'beta-direct-invite',
       },
     });

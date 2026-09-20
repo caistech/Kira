@@ -17,20 +17,41 @@ let recentRows: { id: string }[] = [];
 
 vi.mock('@/lib/supabase/server', () => ({
   createServiceClientV2: () => ({
-    from: (table: string) => ({
-      select: () => ({
-        eq: () => ({
-          // kira_agents: .eq().limit().maybeSingle()
-          limit: () => ({ maybeSingle: async () => ({ data: { id: 'agent-row-1' } }) }),
-          // kira_refusals dedupe: .eq().eq().gte().limit()
-          eq: () => ({ gte: () => ({ limit: async () => ({ data: recentRows }) }) }),
+    from: (table: string) => {
+      const chain: Record<string, unknown> = {};
+      const finish = (resolve: (v: unknown) => void) => ({
+        data: table === 'kira_agents' ? { id: 'agent-row-1' } : table === 'kira_refusals' ? recentRows : table === 'organisation_memberships' ? { organisation_id: 'org-1', person_id: 'user-1' } : null,
+        error: null,
+      });
+      Object.assign(chain, {
+        select: () => chain,
+        eq: () => chain,
+        lte: () => chain,
+        or: () => chain,
+        gte: () => chain,
+        order: () => chain,
+        is: () => chain,
+        limit: () => ({
+          maybeSingle: async () => ({
+            data: table === 'kira_agents' ? { id: 'agent-row-1' } : table === 'organisation_memberships' ? { organisation_id: 'org-1', person_id: 'user-1' } : null,
+            error: null,
+          }),
+          then: (resolve: (v: unknown) => void) => resolve({
+            data: table === 'kira_refusals' ? recentRows : null,
+            error: null,
+          }),
         }),
-      }),
-      insert: async (row: Record<string, unknown>) => {
-        if (table === 'kira_refusals') inserted.push(row);
-        return { error: null };
-      },
-    }),
+        maybeSingle: async () => ({
+          data: table === 'organisation_memberships' ? { organisation_id: 'org-1', person_id: 'user-1' } : null,
+          error: null,
+        }),
+        insert: async (row: Record<string, unknown>) => {
+          if (table === 'kira_refusals') inserted.push(row);
+          return { error: null };
+        },
+      });
+      return chain;
+    },
   }),
 }));
 
