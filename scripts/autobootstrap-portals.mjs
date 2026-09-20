@@ -31,6 +31,16 @@ const JOURNEY_LANE_BY_ORG_TYPE = {
   distributor: 'business',   // distributor lane → lands the NEXT org below as business
 };
 
+// portals.portal_level has no valid DB default (the historical `'business'` violated its own
+// CHECK), so every INSERT must supply portal_level + journey_type explicitly.
+function portalLevelFor(orgType) {
+  return { portfolio: true, project: true, distributor: true, client_org: true }[orgType] ? orgType : 'distributor';
+}
+
+function journeyTypeFor(orgType) {
+  return JOURNEY_LANE_BY_ORG_TYPE[orgType] ?? 'business';
+}
+
 async function landPortalUrl(org) {
   const lane = JOURNEY_LANE_BY_ORG_TYPE[org.org_type] ?? 'business';
 
@@ -67,6 +77,8 @@ async function landPortalUrl(org) {
       portal_id: portal?.[0]?.portal_id,
       organisation_id: org.organisation_id,
       portal_url: inviteLaneUrl,
+      portal_level: portalLevelFor(org.org_type),
+      journey_type: journeyTypeFor(org.org_type),
     },
     { onConflict: 'organisation_id' },
   );

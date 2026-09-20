@@ -34,6 +34,25 @@ export function CreateOrganisationForm() {
         <span className="text-sm font-medium text-gray-700">Business Legal Name</span>
         <input name="legal_name" type="text" required className={field} />
       </label>
+      <label className="block">
+        <span className="text-sm font-medium text-gray-700">Organisation Type</span>
+        <select name="org_type" required defaultValue="distributor" className={field}>
+          {(
+            [
+              ['portfolio', 'Portfolio (the top-level group)'],
+              ['project', 'Project (a build inside the portfolio)'],
+              ['distributor', 'Distributor (a reseller of Kira)'],
+              ['client_org', 'Client org (an end customer of a distributor)'],
+            ] as const
+          ).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+        <span className="mt-1 block text-xs text-gray-500">
+          Determines the invite journey: client orgs mint the business lane (&quot;?journey=business&quot;),
+          all other lanes mint the consultant lane.
+        </span>
+      </label>
       <button
         type="submit"
         disabled={pending}

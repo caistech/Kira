@@ -88,6 +88,7 @@ export async function provisionClientOrganisation(formData: FormData): Promise<A
       organisation_id: org.organisation_id,
       portal_url: `${talkUrl}?journey=business`,
       portal_level: 'client_org',
+      journey_type: 'business',
     },
     { onConflict: 'organisation_id' },
   );

@@ -30,6 +30,19 @@ function inviteLaneUrl(orgType: string | null): string {
   return lane === 'business' ? TALK_URL : `${TALK_URL}?journey=${lane}`;
 }
 
+// The portal row must carry explicit portal_level + journey_type: portals.portal_level has no
+// valid database default (the historical `'business'` default violated its own CHECK), so an
+// INSERT that omits it is rejected. Every writer sets both explicitly.
+function portalLevelFor(orgType: string | null): string {
+  return orgType === 'portfolio' || orgType === 'project' || orgType === 'distributor' || orgType === 'client_org'
+    ? orgType
+    : 'distributor';
+}
+
+function journeyTypeFor(orgType: string | null): string {
+  return JOURNEY_LANE_BY_ORG_TYPE[orgType ?? ''] ?? 'business';
+}
+
 export async function GET(request: NextRequest) {
   const unauthorised = rejectUnauthorisedCron(request);
   if (unauthorised) return unauthorised;
@@ -76,6 +89,8 @@ export async function GET(request: NextRequest) {
           portal_id: portal?.[0]?.portal_id,
           organisation_id: org.organisation_id,
           portal_url: targetUrl,
+          portal_level: portalLevelFor(org.org_type),
+          journey_type: journeyTypeFor(org.org_type),
         },
         { onConflict: 'organisation_id' },
       );
