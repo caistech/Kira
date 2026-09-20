@@ -21,8 +21,6 @@
 
 ## What's Next
 <!-- Prioritised list of pending work. Updated each session. -->
-- [ ] **Apply migration `20260921130000` to live DB** (`supabase db push`) — removes the
-      invalid `portals.portal_level DEFAULT 'business'`. Needs explicit authorisation.
 - [ ] Tighten the consultant/distributor extraction prompt
       (`lib/kira/consultant-genome-extract.ts` `EXTRACTION_PROMPT`) so a distributor interview
       is not forced into a "consultant-with-methodology" shape.
@@ -32,8 +30,8 @@
 
 ## Blockers
 <!-- Anything preventing progress. Include who/what is needed to unblock. -->
-- Migration `20260921130000` commit is ready; applying to live Supabase is a DB change that
-  requires owner authorisation.
+- (none) — migration `20260921130000` applied to live Supabase 2026-09-21 (defaults dropped,
+  verified NULL). No known blockers.
 
 ## Key Decisions Made
 <!-- Important architectural or product decisions, with rationale. -->
