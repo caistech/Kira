@@ -9,7 +9,7 @@ import { join } from 'node:path';
 
 const root = process.cwd();
 
-const runner = () => readFile(join(root, 'scripts', 'capture-consultant-genomes.mjs'), 'utf8');
+const runner = () => readFile(join(root, 'app/api/cron/capture-consultant-genomes/route.ts'), 'utf8');
 const hierarchySql = () => readFile(
   join(root, 'supabase/migrations/20260921000000_chain_of_truth_hierarchy.sql'),
   'utf8',
