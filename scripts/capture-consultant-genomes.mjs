@@ -3,22 +3,19 @@
 // Stage-B runner — the consultant-GENOME capture lane of the /talk seam.
 //
 // For each active fleet agent in a consultant journey (kira_agents.journey_type =
-// 'consultant'), capture the consultant's genome from the /talk conversation data the
-// /talk bootstrap already provisions, and land it in the Stage-A-landed hierarchy:
+// 'consultant'), capture the consultant's genome from the /talk conversation data
+// the /talk bootstrap already provisions, and land it in the Stage-A-landed
+// hierarchy:
 //
 //   1. consultant_frameworks  (ID of the master consultant framework being captured)
 //   2. consultant_genomes     (this fleet agent's genome — the extraction target)
-//   3. consultant_framework_sections + consultant_genome_sections
-//      (the genome SECTIONS the /talk journey capture assemblies)
 //
-// The /talk seam that RESOLVES a consultant journey to these tables is resolve-agent.ts
-// (journey_type='consultant') — the same seam the /talk page itself consumes. This runner
-// does NOT re-resolve: it walks the fleet-provided agent rows directlyives so a consultant
-// landing in /talk gets their genome captured WITHOUT adding a new parallel provisioning
-// lane.
+// This runner does NOT re-resolve the agent: it walks the fleet-provided agent
+// rows directly so a consultant landing in /talk gets their genome captured
+// WITHOUT adding a new parallel provisioning lane.
 //
 // ADDITIVE + IDEMPOTENT + SELF-GUARDED:
-//   - only writes NEW rows when no consultant_genome row exists for the agent yet
+//   - only writes NEW rows when no consultant_genome row exists for the org yet
 //     (re-running mops up the fleet instead of duplicating).
 //   - never deletes or overwrites a captured row once landed.
 //
@@ -58,6 +55,12 @@ let already = 0      // genomes that were already captured (idempotent skip)
 let missingSeam = 0; // agents whose genome cannot be captured yet — honest zeros, not claims
 
 for (const agent of consultantAgents) {
+  if (!agent.organisation_id) {
+    console.log(`  ⚠ ${agent.id.slice(0, 8)} — no organisation_id (skip)`);
+    missingSeam++;
+    continue;
+  }
+
   // 1) framework row — the master consultant framework this agent's capture uses.
   //    Idempotent: skip if a framework for this org already exists.
   const { data: existingFw } = await db
@@ -65,25 +68,37 @@ for (const agent of consultantAgents) {
     .select('framework_id')
     .eq('organisation_id', agent.organisation_id)
     .limit(1);
-  if (!existingFw?.length) {
-    const fw = { framework_id: crypto.randomUUID(), organisation_id: agent.organisation_id };
-    const { error: fwErr } = await db.from('consultant_frameworks').insert(fw);
+
+  let frameworkId = existingFw?.[0]?.framework_id;
+
+  if (!frameworkId) {
+    frameworkId = crypto.randomUUID();
+    const { error: fwErr } = await db.from('consultant_frameworks').insert({
+      framework_id: frameworkId,
+      organisation_id: agent.organisation_id,
+      framework_name: 'Consultant Framework',
+      framework_slug: `consultant-${agent.organisation_id.slice(0, 8)}`,
+      framework_type: 'consulting',
+      status: 'draft',
+    });
     if (fwErr) { console.log(`  … framework seam for ${agent.id.slice(0, 8)} → ${fwErr.message}`); missingSeam++; continue; }
   }
 
-  // 2) genome row — the capture. Idempotent per agent: respond with skip when already landed.
+  // 2) genome row — the capture. Idempotent per org: respond with skip when already landed.
   const { data: existingGenome } = await db
     .from('consultant_genomes')
     .select('genome_id')
-    .eq('kira_agent_id', agent.id)
+    .eq('organisation_id', agent.organisation_id)
     .limit(1);
+
   if (existingGenome?.length) { already++; console.log(`  ✓ ${agent.id.slice(0, 8)} — genome already captured (skip)`); continue; }
 
   const genomeRow = {
     genome_id: crypto.randomUUID(),
-    kira_agent_id: agent.id,
-    person_id: agent.person_id,
     organisation_id: agent.organisation_id,
+    framework_id: frameworkId,
+    identity: { name: agent.person_id, agent_id: agent.id },
+    completeness: 0,
   };
 
   const { error: genomeError } = await db.from('consultant_genomes').insert(genomeRow);
