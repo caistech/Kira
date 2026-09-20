@@ -1,6 +1,6 @@
 // app/my-genome/page.tsx
 import { getAuthUser, getCurrentOrganisationContext } from '@/lib/auth';
-import { createServiceClientV2 } from '@/lib/supabase/server';
+import { createSessionClientV2 } from '@/lib/supabase/server-session';
 import { KiraShapeSection } from '@/components/KiraShapeSection';
 import { buildGenomeOverviewFirstMessage } from '@/lib/kira/area-focus';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
@@ -48,7 +48,7 @@ export default async function MyGenome() {
     );
   }
 
-  const svc = createServiceClientV2();
+  const svc = await createSessionClientV2();
   
   // Resolve person context for view-logging - getCurrentOrganisationContext() gives us personId
   const personId = orgContext.personId;

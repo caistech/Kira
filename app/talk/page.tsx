@@ -6,7 +6,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getAuthUser, getCurrentOrganisationContext } from '@/lib/auth';
-import { createServiceClientV2 } from '@/lib/supabase/server';
+import { createSessionClientV2 } from '@/lib/supabase/server-session';
 import { resolveCanonicalKiraAgent } from '@/lib/kira/resolve-agent';
 import ChatPage from '@/app/chat/[agentId]/page';
 import { isAreaKey } from '@/lib/kira/area-focus';
@@ -33,7 +33,7 @@ export default async function TalkPage({
   // silent/forcible redirect (see the 2026-08-16 note at the render site).
   const orgContext = await getCurrentOrganisationContext();
 
-  const svc = createServiceClientV2();
+  const svc = await createSessionClientV2();
 
   // Resolve person's first_name for the ChatPage component (provenance display, not ownership).
   // Guarded on orgContext the same way as the agent query below: only reachable once an owner has a

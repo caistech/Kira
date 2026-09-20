@@ -1187,6 +1187,30 @@ export async function currentUserHasAdminPortalAccess(): Promise<boolean> {
   );
 }
 
+/**
+ * Require organisation CEO/owner authority for the current session.
+ * Returns the organisation context if the caller has owner/admin role in the
+ * resolved organisation, otherwise throws a 403.
+ * 
+ * This enforces the functional authority model:
+ *   - platform admin = platform operations (separate: isCurrentUserAdmin)
+ *   - owner / admin (membership role) = org-level business operations
+ *   - subordinate staff = NOT authorised for CEO-only operations
+ */
+export async function requireOrgCeo(): Promise<OrganisationContext> {
+  const orgContext = await getCurrentOrganisationContext();
+  if (!orgContext) {
+    throw new Error('NO_ORG_CONTEXT');
+  }
+  
+  const ceoRoles = new Set(['owner', 'admin']);
+  if (!ceoRoles.has(orgContext.role)) {
+    throw new Error('FORBIDDEN');
+  }
+  
+  return orgContext;
+}
+
 // ---------------------------------------------------------------------------
 // OWNERSHIP
 // ---------------------------------------------------------------------------

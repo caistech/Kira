@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { getCurrentOrganisationContext } from '@/lib/auth';
 import { canSend, DEFAULT_TIME_ZONE as DASHBOARD_TIME_ZONE } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
-import { createServiceClientV2 } from '@/lib/supabase/server';
+import { createSessionClientV2 } from '@/lib/supabase/server-session';
 import { KiraShapeSection } from '@/components/KiraShapeSection';
 import { formatMoney, formatMoneyApprox, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { displayedFigures } from '@/lib/valuation/displayed';
@@ -56,7 +56,7 @@ export default async function DashboardPage({
   const sp = await searchParams;
   const isWelcome = sp?.welcome === '1';
   const user = await getCurrentOrganisationContext();
-  const svc = createServiceClientV2();
+  const svc = await createSessionClientV2();
 
   // WHO IS KIRA WRITING AS — asked plainly, on the way past, instead of barring the door.
   //

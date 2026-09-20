@@ -1,8 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { getAuthUser } from '@/lib/auth';
-import { createServiceClientV2 } from '@/lib/supabase/server';
+import { getAuthUser, getCurrentOrganisationContext } from '@/lib/auth';
 import { readDraft } from '@/lib/kira/swarm/drafts';
 
 export const dynamic = 'force-dynamic';
@@ -31,18 +30,14 @@ export default async function DraftPage({ params }: { params: Promise<{ draftId:
     );
   }
 
-  const svc = createServiceClientV2();
-  const { data: appUser } = await svc
-    .from('users')
-    .select('id')
-    .eq('auth_user_id', authUser.id)
-    .maybeSingle();
-  if (!appUser) notFound();
+  // Canonical organisation resolution — the authenticated membership, not a legacy users lookup.
+  // ⚠️ SCOPED TO HIM. readDraft reads only this org's rows, so a guessed id resolves to nothing
+  // rather than to another owner's workspace. The same table carries the orchestrator's dev traffic
+  // and every other tenant's work.
+  const orgContext = await getCurrentOrganisationContext();
+  if (!orgContext) notFound();
 
-  // ⚠️ SCOPED TO HIM. readDraft reads only this owner's rows, so a guessed id resolves to nothing
-  // rather than to another owner's quote. The same table carries the orchestrator's dev traffic and
-  // every other tenant's work.
-  const draft = await readDraft(String(appUser.id), draftId);
+  const draft = await readDraft(orgContext.organisationId, draftId);
   if (!draft) notFound();
 
   const asked =

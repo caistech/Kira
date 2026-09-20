@@ -1,7 +1,6 @@
 import Link from 'next/link';
 
-import { getAuthUser } from '@/lib/auth';
-import { createServiceClientV2 } from '@/lib/supabase/server';
+import { getAuthUser, getCurrentOrganisationContext } from '@/lib/auth';
 import { KiraShapeSection } from '@/components/KiraShapeSection';
 import { readDrafts, type DraftItem } from '@/lib/kira/swarm/drafts';
 
@@ -54,21 +53,12 @@ export default async function DraftsPage() {
     );
   }
 
-  const svc = createServiceClientV2();
-  const { data: appUser } = await svc
-    .from('users')
-    .select('id')
-    .eq('auth_user_id', authUser.id)
-    .maybeSingle();
+  // Canonical organisation resolution — the authenticated membership, not a legacy users lookup.
+  const orgContext = await getCurrentOrganisationContext();
 
-  const { data: membership } = await svc
-    .from('organisation_memberships')
-    .select('organisation_id')
-    .eq('person_id', appUser?.id)
-    .eq('status', 'active')
-    .maybeSingle();
-
-  const drafts = membership ? await readDrafts(String(membership.organisation_id)) : [];
+  const drafts = orgContext
+    ? await readDrafts(orgContext.organisationId)
+    : [];
 
   return (
     <main className="mx-auto max-w-3xl px-5 py-10 pb-28">

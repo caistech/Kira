@@ -19,7 +19,7 @@ import { toolsSection } from './tool-manifest.mjs';
 // A second copy of this sentence is the bug, not a convenience — see WHO_CAN_SEE_IT.
 import { WHO_CAN_SEE_IT_SPOKEN } from '@/lib/privacy';
 
-export type JourneyType = 'personal' | 'business';
+export type JourneyType = 'personal' | 'business' | 'consultant' | 'distributor' | 'custom';
 
 // The framework that comes from Setup Kira (via the approved draft)
 export interface KiraFramework {

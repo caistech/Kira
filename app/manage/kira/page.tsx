@@ -1,15 +1,17 @@
-import { getSuperadminContext } from '@/lib/auth';
+import { requireOrgCeo } from '@/lib/auth';
 import { createServiceClientV2 } from '@/lib/supabase/server';
 
 export const metadata = { title: 'Kira · Manage' };
 export const dynamic = 'force-dynamic';
 
 export default async function ManageKiraPage() {
-  const ctx = await getSuperadminContext();
-  if (!ctx) {
+  let ctx;
+  try {
+    ctx = await requireOrgCeo();
+  } catch (e) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">Superadmin access required.</p>
+        <p className="text-gray-500">Organisation CEO/owner access required.</p>
       </div>
     );
   }

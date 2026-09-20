@@ -12,11 +12,12 @@
 //
 // Ordering, deliberately:
 //   1. the caller's own business agent (active)   — "business Kira wins" applies to the CALLER
-//   2. the caller's own any other active agent     — a personal Kira is still HIS
-//   3. an explicit organisation-level fallback     — the org's shared Kira, for members with no own
-//      agent (the INV-020 org-ownership model). Business-first, then any active.
-// Within each tier ordering is deterministic (last_conversation_at desc, created_at desc), so two
-// surfaces can never disagree about which row "first" means.
+//   2. the caller's own any other active agent     — a personal/consultant Kira is still HIS
+// There is NO organisation-level fallback: an agent belonging to another person (the org-ownership
+// model for shared resources) can never satisfy this caller's lookup — the caller's only
+// resolutions are their own agents, otherwise Kira must be provisioned for them. Within each tier
+// ordering is deterministic (last_conversation_at desc, created_at desc), so two surfaces can never
+// disagree about which row "first" means.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 

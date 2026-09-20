@@ -1,4 +1,4 @@
-import { getSuperadminContext } from '@/lib/auth';
+import { requireOrgCeo } from '@/lib/auth';
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import { OwnerInviteForm } from './OwnerInviteForm';
 
@@ -6,11 +6,13 @@ export const metadata = { title: 'Members · Manage' };
 export const dynamic = 'force-dynamic';
 
 export default async function ManageMembersPage() {
-  const ctx = await getSuperadminContext();
-  if (!ctx) {
+  let ctx;
+  try {
+    ctx = await requireOrgCeo();
+  } catch (e) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">Superadmin access required.</p>
+        <p className="text-gray-500">Organisation CEO/owner access required.</p>
       </div>
     );
   }

@@ -5,7 +5,7 @@
 // AGENT CONFIGURATION
 // =============================================================================
 
-export type JourneyType = 'personal' | 'business' | 'custom';
+export type JourneyType = 'personal' | 'business' | 'consultant' | 'distributor' | 'custom';
 
 /**
  * Base configuration that all Kira verticals share

@@ -202,37 +202,31 @@ export async function POST() {
 //        });
 
         // -----------------------------------------------------------------
-        // FINAL IDENTITY GUARD — do not mint a paid ElevenLabs resource
-        // until the legacy users.id required by kira_agents.user_id is
-        // confirmed for the authenticated session.
+        // FINAL IDENTITY GUARD — canonical identity is asserted before a paid
+        // ElevenLabs resource is minted:
         //
-        // Canonical identity remains:
-        //   orgContext.personId     → canonical Person
+        //   orgContext.personId      → canonical Person (OWNER, always present)
         //   orgContext.organisationId → canonical Organisation
         //
-        // kira_agents.user_id is currently a NOT NULL compatibility/provenance
-        // column, so we must resolve it BEFORE creating the external agent.
+        // kira_agents.user_id is a legacy provenance column. It is now nullable
+        // (migration 20260921020000): a business owner whose row predates the
+        // canonical model keeps their mapped legacy id as provenance, and a NEW
+        // lane (e.g. consultant minted against a consultant person) no longer
+        // needs to fabricate a legacy users row. The canonical person_id IS the
+        // owner; a missing legacy row must NOT block provisioning.
         // -----------------------------------------------------------------
         if (!legacyUserId) {
           await log(
             supabase,
             requestId,
             'identity_validation',
-            'error',
-            'Authenticated user has no legacy users row required by kira_agents.user_id',
+            'start',
+            'No legacy users row (expected for canonical-minted lanes) — proceeding on canonical person_id',
             {
               authUserId: authSession?.id ?? null,
               personId: orgContext.personId,
               organisationId: orgContext.organisationId,
             },
-          );
-
-          return NextResponse.json(
-            {
-              error: 'Account identity is incomplete. Kira cannot be provisioned yet.',
-              requestId,
-            },
-            { status: 409 },
           );
         }
 
@@ -435,7 +429,8 @@ export async function POST() {
       .insert({
         person_id: orgContext.personId,
         organisation_id: orgContext.organisationId,
-        // Provenance against the legacy FK users(id), NOT NULL, still carried.
+        // Provenance against the legacy FK users(id) — nullable since
+        // migration 20260921020000; ownership is the canonical person_id.
         user_id: legacyUserId,
         agent_name: agentName,
         journey_type: JOURNEY,

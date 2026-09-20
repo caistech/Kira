@@ -1,25 +1,18 @@
-﻿import { getCurrentOrganisationContext } from '@/lib/auth';
+﻿import { requireOrgCeo } from '@/lib/auth';
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import { TeamSectionClient } from '@/components/TeamSectionClient';
 
-export const metadata = { title: 'Team Â· Kira' };
+export const metadata = { title: 'Team · Kira' };
 export const dynamic = 'force-dynamic';
 
 export default async function TeamPage() {
-  const org = await getCurrentOrganisationContext();
-  
-  if (!org) {
+  let org;
+  try {
+    org = await requireOrgCeo();
+  } catch (e) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">Please sign in to view your team.</p>
-      </div>
-    );
-  }
-
-  if (!['admin', 'superadmin'].includes(org.role)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">You don't have permission to manage the team.</p>
+        <p className="text-gray-500">Organisation CEO/owner access required.</p>
       </div>
     );
   }

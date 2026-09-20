@@ -64,11 +64,10 @@ export async function POST(req: NextRequest) {
     }
 
     const admin = await isCurrentUserAdmin();
-    // Allow if caller is org admin, OR agent belongs to caller's organisation
-    const isOrgMember = kiraAgent.organisation_id === organisationContext.organisationId;
-    const isOwner = kiraAgent.person_id === organisationContext.personId;
-
-    if (!admin && !isOrgMember && !isOwner) {
+    // Person-scoped authorization: the agent must belong to the caller's person_id.
+    // Org admins can also start sessions on any agent in their organisation.
+    // Reject if NOT the owner AND NOT an org admin with org scope.
+    if (kiraAgent.person_id !== organisationContext.personId && !(admin && kiraAgent.organisation_id === organisationContext.organisationId)) {
       return NextResponse.json({ error: 'Not authorized for this agent' }, { status: 403 });
     }
 

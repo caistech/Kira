@@ -21,7 +21,8 @@ import Link from 'next/link';
 
 import { getCurrentOrganisationContext } from '@/lib/auth';
 import { readTaskLedger, STALLED_AFTER_DAYS, type OpenTaskSummary } from '@/lib/kira/swarm/open-tasks';
-import { createServiceClientV2 } from '@/lib/supabase/server';
+import { createSessionClientV2 } from '@/lib/supabase/server-session';
+import { resolveCanonicalKiraAgent } from '@/lib/kira/resolve-agent';
 import { KiraShapeSection } from '@/components/KiraShapeSection';
 
 export const dynamic = 'force-dynamic';
@@ -56,19 +57,17 @@ export default async function RequestsPage() {
     : { openCount: 0, open: [], recentlyDone: [], waitingOnOwner: [], waitingOnKira: [], stalled: [], spoken: '' };
 
   // The talk link, resolved the same way the dashboard resolves it, so "talk to her about these"
-  // lands on his own Kira rather than the onboarding flow.
-  const svc = createServiceClientV2();
-  const { data: agents } = orgContext
-    ? await svc
-        .from('kira_agents')
-        .select('elevenlabs_agent_id, journey_type, status')
-        .eq('organisation_id', orgContext.organisationId)
-        .neq('status', 'deleted')
-    : { data: [] as Array<Record<string, unknown>> };
-  const businessAgent =
-    (agents ?? []).find((a) => a.journey_type === 'business' && a.status === 'active') ?? (agents ?? [])[0];
-  const talkHref = businessAgent
-    ? `/chat/${(businessAgent as { elevenlabs_agent_id: string }).elevenlabs_agent_id}`
+  // lands on his own Kira rather than the onboarding flow. Canonical resolution: the caller's own
+  // agent (own business first, own other second), NO org-level fallback to another member's Kira.
+  const svc = await createSessionClientV2();
+  const { agent } = orgContext
+    ? await resolveCanonicalKiraAgent(svc, {
+        personId: orgContext.personId,
+        organisationId: orgContext.organisationId,
+      })
+    : { agent: null };
+  const talkHref = agent?.elevenlabs_agent_id
+    ? `/chat/${agent.elevenlabs_agent_id}`
     : '/start?journey=business&from=app';
 
   return (
