@@ -16,9 +16,9 @@ consultant enters /talk
       consultant_genomes      (identity, target clients, services, engagement models)
 ```
 
-## Capture script
+## Capture runner
 
-`scripts/capture-consultant-genomes.mjs` walks the fleet's consultant-journey agents and ensures each has a framework row and a genome row in the Stage-A tables. It is idempotent — re-running does not duplicate.
+`app/api/cron/capture-consultant-genomes/route.ts` walks the fleet's consultant-journey agents and ensures each has a framework row and a genome row in the Stage-A tables. It is idempotent — re-running does not duplicate — self-guarding behind `rejectUnauthorisedCron` (fail-closed `CRON_SECRET`), and scheduled via `vercel.json`.
 
 ## Schema dependencies (Stage A — `20260921000000_chain_of_truth_hierarchy.sql`)
 

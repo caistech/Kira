@@ -245,6 +245,41 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
       // the call already happened, so it can never cut anyone off mid-sentence (Workstream B:
       // warn, don't hard-cut). Fail-soft inside accrueVoiceCost.
       if (userId) await accrueVoiceCost(userId, durationSeconds);
+
+      // ── STAGE B: consultant genome extraction ──────────────────────────────────
+      // For consultant-journey agents, the /talk interview IS the consultant genome.
+      // Extract structured methodology, frameworks, target clients, services, and
+      // engagement model into consultant_frameworks + consultant_genomes.
+      // Runs AFTER memory distillation — degrade-don't-fake, never blocks the post-call.
+      if (organisationId) {
+        try {
+          const { data: agentRow } = await sb
+            .from(KIRA_CONVAI_TABLES.agents)
+            .select('journey_type')
+            .eq('id', conv.agentId)
+            .single();
+
+          if (agentRow?.journey_type === 'consultant') {
+            // Read transcript from conversation_messages (already persisted by the hub)
+            const { data: msgs } = await sb
+              .from(KIRA_CONVAI_TABLES.messages)
+              .select('role, content')
+              .eq('conversation_id', conv.id)
+              .order('message_index', { ascending: true });
+
+            if (msgs?.length) {
+              const { extractConsultantGenome } = await import('@/lib/kira/consultant-genome-extract');
+              await extractConsultantGenome(
+                organisationId,
+                msgs.map((m: { role: string; content: string }) => ({ role: m.role, content: m.content })),
+                { apiKey: process.env.OPENAI_API_KEY || '' },
+              );
+            }
+          }
+        } catch (error) {
+          console.error('[kira/convai] consultant genome extraction failed (memories are safe):', error);
+        }
+      }
     },
     // Identity resolution, two identifiers (Scope D). The caller's person_id — carried
     // per-session as a platform-filled `user_id` dynamic variable by the start_conversation
