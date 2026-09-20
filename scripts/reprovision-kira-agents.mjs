@@ -158,7 +158,7 @@ for (const a of agents) {
     if (!TOOLS_ONLY) {
       await bindWorkspaceWebhook(ELEVENLABS_API_KEY, id, {
         name: 'Kira post-call',
-        url: `${APP_URL}/api/kira/webhook`,
+        url: `${APP_URL}/api/kira/webhooks/post-call`,
       });
       await setAllowlist(ELEVENLABS_API_KEY, id, standardAllowlist(hostname));
     }

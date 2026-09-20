@@ -1,1 +1,0 @@
-SELECT * FROM migration_ledger ORDER BY migration_timestamp DESC LIMIT 10;
