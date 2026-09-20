@@ -72,7 +72,7 @@ export async function provisionClientOrganisation(formData: FormData): Promise<A
   // 1. Create the client organisation.
   const { data: org, error: orgError } = await svc
     .from('organisations')
-    .insert({ legal_name: legalName, status: 'active' })
+    .insert({ legal_name: legalName, org_type: 'client_org', status: 'active' })
     .select('organisation_id')
     .single();
 
@@ -81,7 +81,18 @@ export async function provisionClientOrganisation(formData: FormData): Promise<A
     return { ok: false, message: `Could not create org: ${orgError?.message ?? 'unknown error'}` };
   }
 
-  // 2. Auto-grant the caller a portfolio entry over the new org.
+  // 2. Land a portals row so the client has a canonical /talk URL.
+  const talkUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://kiraexec.com').replace(/\/$/, '') + '/talk';
+  await svc.from('portals').upsert(
+    {
+      organisation_id: org.organisation_id,
+      portal_url: `${talkUrl}?journey=business`,
+      portal_level: 'client_org',
+    },
+    { onConflict: 'organisation_id' },
+  );
+
+  // 3. Auto-grant the caller a portfolio entry over the new org.
   const { error: portfolioError } = await svc
     .from('distributor_portfolio')
     .insert({

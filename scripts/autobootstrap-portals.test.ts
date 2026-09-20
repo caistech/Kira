@@ -10,7 +10,7 @@ import { join } from 'node:path';
 
 const root = process.cwd();
 
-const runner = () => readFile(join(root, 'scripts', 'autobootstrap-portals.mjs'), 'utf8');
+const runner = () => readFile(join(root, 'app/api/cron/autobootstrap-portals/route.ts'), 'utf8');
 const migration = () => readFile(
   join(root, 'supabase/migrations/20260921010000_stage_a_harden.sql'),
   'utf8',

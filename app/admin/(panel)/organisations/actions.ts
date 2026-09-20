@@ -26,6 +26,7 @@ export async function createOrganisationAction(formData: FormData): Promise<Acti
     .from('organisations')
     .insert({
       legal_name: legalName,
+      org_type: 'distributor',
       status: 'active'
     })
     .select('organisation_id')
@@ -35,6 +36,17 @@ export async function createOrganisationAction(formData: FormData): Promise<Acti
     console.error('[admin/organisations/actions] creation failed:', error);
     return { ok: false, message: `Creation failed: ${error?.message ?? 'unknown error'}` };
   }
+
+  // Land a portals row so the distributor has a canonical /talk URL for the next lane.
+  const talkUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://kiraexec.com').replace(/\/$/, '') + '/talk';
+  await supabase.from('portals').upsert(
+    {
+      organisation_id: org.organisation_id,
+      portal_url: `${talkUrl}?journey=consultant`,
+      portal_level: 'distributor',
+    },
+    { onConflict: 'organisation_id' },
+  );
 
   revalidatePath('/admin/organisations');
   return { 

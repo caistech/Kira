@@ -34,7 +34,11 @@
     },
     {
       "path": "/api/cron/capture-consultant-genomes",
-      "schedule": "30 5 * * *"
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/autobootstrap-portals",
+      "schedule": "45 * * * *"
     }
   ]
 }
