@@ -44,6 +44,8 @@ export interface AgentResolution {
 interface CallerScope {
   personId: string;
   organisationId: string;
+  /** Resolve a journey-specific agent first (e.g. ?journey=consultant on /talk). */
+  journeyType?: string;
 }
 
 const AGENT_COLUMNS =
@@ -93,7 +95,19 @@ export async function resolveCanonicalKiraAgent(
 ): Promise<AgentResolution> {
   const own = await fetchAgents(svc, 'person_id', caller.personId);
 
-const ownAgent = firstBusiness(own);
+  // Journey-specific resolution: when a lane is requested (?journey=consultant on /talk),
+  // prefer the caller's own agent of that lane, then fall back to the canonical business-first
+  // rule below. Additive — the business-first ordering is unchanged when no lane is requested.
+  if (caller.journeyType) {
+    const laneAgent = own.find(
+      (row) => row.journey_type === caller.journeyType && row.status === 'active',
+    );
+    if (laneAgent) {
+      return { agent: resolve(laneAgent), reason: 'own-other' };
+    }
+  }
+
+  const ownAgent = firstBusiness(own);
   if (ownAgent) {
     return {
       agent: resolve(ownAgent),

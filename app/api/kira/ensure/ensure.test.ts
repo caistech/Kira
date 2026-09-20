@@ -22,11 +22,18 @@ describe('/api/kira/ensure invariants', () => {
     expect(ROUTE).toMatch(/getCurrentOrganisationContext\(\)/);
   });
 
-  it('looks up the CALLER\'s existing active business agent before creating one', () => {
+  it('looks up the CALLER\'s existing active agent for the requested lane before creating one', () => {
     expect(ROUTE).toMatch(/from\('kira_agents'\)/);
     expect(ROUTE).toMatch(/\.eq\('person_id', orgContext\.personId\)/);
-    expect(ROUTE).toMatch(/\.eq\('journey_type', JOURNEY\)/);
+    expect(ROUTE).toMatch(/\.eq\('journey_type', journey\)/);
     expect(ROUTE).toMatch(/\.eq\('status', 'active'\)/);
+  });
+
+  it('mints a lane-aware agent from a whitelisted ?journey= (never trusts arbitrary body lanes)', () => {
+    expect(ROUTE).toMatch(/MINTABLE_JOURNEY_LANES/);
+    expect(ROUTE).toMatch(/MINTABLE_JOURNEY_LANES\.has\(body\.journey\)/);
+    expect(ROUTE).toMatch(/journeyType: journey,/);
+    expect(ROUTE).toMatch(/journey_type: journey,/);
   });
 
   it('inserts person_id as the owning identity, plus legacy user_id for provenance', () => {

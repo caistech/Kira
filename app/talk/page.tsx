@@ -10,21 +10,41 @@ import { createSessionClientV2 } from '@/lib/supabase/server-session';
 import { resolveCanonicalKiraAgent } from '@/lib/kira/resolve-agent';
 import ChatPage from '@/app/chat/[agentId]/page';
 import { isAreaKey } from '@/lib/kira/area-focus';
+import { JourneyType } from '@/lib/kira/prompts';
 import KiraBootstrap from './kira-bootstrap';
 
 export const dynamic = 'force-dynamic';
+
+/** Journey lanes an invite URL may mint (fleet directive: ?journey= is lane-selected). */
+const INVITE_JOURNEY_LANES: ReadonlySet<string> = new Set<JourneyType>([
+  'business',
+  'consultant',
+  'distributor',
+]);
 
 export default async function TalkPage({
   searchParams,
 }: {
   // `?area=people` — set by the buttons on /my-genome/[area]. It is the TRIGGER for the opener; the
   // outstanding questions themselves are pulled by her, through area_agenda, at the moment she asks.
-  searchParams?: Promise<{ area?: string }>;
+  // `?journey=consultant` — set by the portal-lane invite URLs Stage C lands in portals.portal_url;
+  // it selects which lane's agent is minted on first /talk.
+  searchParams?: Promise<{ area?: string; journey?: string }>;
 }) {
   const authUser = await getAuthUser();
   const focusArea = (await searchParams)?.area ?? null;
+  const requestedJourney = (await searchParams)?.journey ?? null;
+  // Security: never forward an arbitrary ?journey= into provisioning. Only known lanes pass.
+  const journey = requestedJourney && INVITE_JOURNEY_LANES.has(requestedJourney) ? requestedJourney : null;
   // NOT SIGNED IN → send to login, remembering where they were headed.
-  if (!authUser) redirect(`/login?next=${encodeURIComponent(focusArea ? `/talk?area=${focusArea}` : '/talk')}`);
+  if (!authUser) {
+    const nextPath = [
+      '/talk',
+      focusArea && isAreaKey(focusArea) ? `?area=${focusArea}` : '',
+      journey ? `${focusArea && isAreaKey(focusArea) ? '&' : '?'}journey=${journey}` : '',
+    ].join('');
+    redirect(`/login?next=${encodeURIComponent(nextPath)}`);
+  }
   // SIGNED IN. Resolve org context for the request. It is null for a brand-new account that is
   // mid-setup (an auth identity exists but no organisation membership yet — found via the engine
   // test of 2026-09-01). That MUST NOT bounce the owner back to /login: he just signed in, and a
@@ -54,6 +74,7 @@ export default async function TalkPage({
     ? await resolveCanonicalKiraAgent(svc, {
         personId: orgContext.personId,
         organisationId: orgContext.organisationId,
+        journeyType: journey ?? undefined,
       })
     : null;
   const agent = resolution?.agent ?? null;
@@ -90,6 +111,7 @@ export default async function TalkPage({
       <KiraBootstrap
         firstName={(person?.first_name as string) ?? null}
         focusArea={focusArea}
+        journey={journey}
       />
     );
   }

@@ -50,6 +50,13 @@ const ELEVENLABS_CONFIG = {
 
 const JOURNEY: JourneyType = 'business';
 
+/** Journey lanes a caller may request for minting (?journey= from a Stage-C invite URL). */
+const MINTABLE_JOURNEY_LANES: ReadonlySet<string> = new Set<JourneyType>([
+  'business',
+  'consultant',
+  'distributor',
+]);
+
 /* ------------------------------------------------------------------ */
 /* Logging helper (identical shape to /api/kira/create)                 */
 /* ------------------------------------------------------------------ */
@@ -78,9 +85,22 @@ async function log(
 /* POST /api/kira/ensure                                                */
 /* ------------------------------------------------------------------ */
 
-export async function POST() {
+export async function POST(request: Request) {
   const requestId = randomUUID();
   const supabase = createServiceClientV2();
+
+  // Lane select: the Stage-C invite URL (?journey=consultant) arrives as the caller's intended
+  // lane. Identity stays session-derived (never trusted from a body) — only the lane is accepted,
+  // and only from the whitelist. Unknown/absent → default business lane.
+  let journey: JourneyType = JOURNEY;
+  try {
+    const body = (await request.json()) as { journey?: unknown };
+    if (typeof body?.journey === 'string' && MINTABLE_JOURNEY_LANES.has(body.journey)) {
+      journey = body.journey as JourneyType;
+    }
+  } catch {
+    /* empty body → default lane */
+  }
 
   try {
     await log(supabase, requestId, 'init', 'start');
@@ -118,7 +138,7 @@ export async function POST() {
       .from('kira_agents')
       .select('id, elevenlabs_agent_id')
       .eq('person_id', orgContext.personId)
-      .eq('journey_type', JOURNEY)
+      .eq('journey_type', journey)
       .eq('status', 'active')
       .maybeSingle();
 
@@ -179,14 +199,14 @@ export async function POST() {
       userName: firstName,
       firstName,
       location: '',
-      journeyType: JOURNEY,
+      journeyType: journey,
       primaryObjective: '',
       keyContext: [] as string[],
     };
 
     const { systemPrompt, firstMessage } = getKiraPrompt({ framework });
     const agentName = generateAgentName(
-      JOURNEY,
+      journey,
       firstName,
       '',
       orgContext.personId,
@@ -433,7 +453,7 @@ export async function POST() {
         // migration 20260921020000; ownership is the canonical person_id.
         user_id: legacyUserId,
         agent_name: agentName,
-        journey_type: JOURNEY,
+        journey_type: journey,
         elevenlabs_agent_id: agentId,
         status: 'active',
         voice_id: ELEVENLABS_CONFIG.voice_id,
@@ -455,7 +475,7 @@ export async function POST() {
           .from('kira_agents')
           .select('id, elevenlabs_agent_id')
           .eq('person_id', orgContext.personId)
-          .eq('journey_type', JOURNEY)
+.eq('journey_type', journey)
           .eq('status', 'active')
           .maybeSingle();
         // Best-effort delete the just-minted orphan (avoids a second paid agent under the org).

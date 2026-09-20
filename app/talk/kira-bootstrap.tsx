@@ -18,9 +18,10 @@ const MAX_RETRIES = 2;
 interface Props {
   firstName: string | null;
   focusArea: string | null;
+  journey?: string | null;
 }
 
-export default function KiraBootstrap({ firstName, focusArea }: Props) {
+export default function KiraBootstrap({ firstName, focusArea, journey = null }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +41,11 @@ export default function KiraBootstrap({ firstName, focusArea }: Props) {
     setError(null);
 
     try {
-      const res = await fetch('/api/kira/ensure', { method: 'POST' });
+      const res = await fetch('/api/kira/ensure', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ journey: journey ?? 'business' }),
+      });
       const data = await res.json();
 
       if (!res.ok) {
@@ -66,7 +71,7 @@ export default function KiraBootstrap({ firstName, focusArea }: Props) {
         setBusy(false);
       }
     }
-  }, [retries, router]);
+  }, [retries, router, journey]);
 
   useEffect(() => {
     provisionRef.current = provision;
