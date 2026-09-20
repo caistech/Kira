@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS consultant_frameworks (
   outputs                 JSONB NOT NULL DEFAULT '[]',      -- [product names / deliverables]
   diagnostic_method       TEXT,
   kira_integration        JSONB NOT NULL DEFAULT '{}',      -- how Kira participates
-  source_conversation_id  UUID REFERENCES conversations(conversation_id),
+  source_conversation_id  UUID REFERENCES conversations(id),
   superseded_by_framework_id UUID REFERENCES consultant_frameworks(framework_id),
   created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS consultant_genomes (
   commercial_model        JSONB NOT NULL DEFAULT '{}',
   areas_kira_can_assist   JSONB NOT NULL DEFAULT '[]',
   areas_consultant_led    JSONB NOT NULL DEFAULT '[]',
-  source_conversation_id  UUID REFERENCES conversations(conversation_id),
+  source_conversation_id  UUID REFERENCES conversations(id),
   extraction_version      TEXT,
   completeness            NUMERIC(3, 2) NOT NULL DEFAULT 0,
   created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
