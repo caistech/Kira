@@ -152,6 +152,11 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
           SUPABASE_SECRET_KEY: placeholder-service-role-key
+          # V2 API KEY MODEL pair — lib/supabase/browser.ts's createClientV2() (client components,
+          # some of which get statically prerendered, e.g. /pubguard/login) and server-session.ts
+          # each read one of these; the legacy ANON_KEY above doesn't cover either.
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: placeholder-publishable-key
+          SUPABASE_PUBLISHABLE_KEY: placeholder-publishable-key
           # Dummy like the rest. Deliberately NOT `kira.vercel.app` — that bare slug is
           # hijacked by an unrelated external app, so it reads as a real host and is not one.
           NEXT_PUBLIC_APP_URL: https://placeholder.example.com
