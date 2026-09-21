@@ -8,6 +8,11 @@
 // All queries use the service-role client (RLS bypass) for now — the admin UI
 // lives in a server component that already checked isCurrentUserAdmin. This
 // avoids double-checking the same RLS path twice per request.
+//
+// @design-tokens-ok: this file builds raw HTML EMAIL — email clients (Outlook, Gmail) strip
+// <style> blocks and do not support CSS custom properties/var(), so the hex literals in the
+// inline style="" attributes below are the only way to set colour in an email. DESIGN.md §3's
+// token rule governs the app's own UI, not mail rendered outside it.
 
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/email/resend';

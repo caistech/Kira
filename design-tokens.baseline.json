@@ -4,7 +4,6 @@
   "app/manifest.ts": 2,
   "app/my-genome/page.tsx": 5,
   "app/onboarding/page.tsx": 5,
-  "app/plan/page.tsx": 8,
   "app/pubguard/config.ts": 2,
   "app/unsubscribe/route.ts": 1,
   "components/auth/AuthForm.tsx": 1,
