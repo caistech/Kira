@@ -9,24 +9,33 @@
 
 ## What Was Just Done
 <!-- Updated at end of each session. Most recent first. -->
-- **(uncommitted)** — fixed 3 gaps on the distributor-onboarding path ahead of inviting 3 real
+- **`05313cc` (pushed, UNVERIFIED LIVE — session ended before re-test)** — the deeper bug a
+  REAL walkthrough found: `/plan`'s post-redemption redirect (`window.location.assign(...)`)
+  never carried the org's journey lane forward — it always sent a fresh member to bare `/talk`
+  with no `?journey=`, so `/api/kira/ensure` minted their agent as `'business'` regardless of
+  which org they'd just joined. Every fix in `7f19b91` (below) was correct and simply never
+  reached for a real invited partner. Fixed: `/api/identity/plan` POST now returns
+  `identity.organisationType`; `/plan/page.tsx` redirects to `/talk?journey=consultant` for any
+  non-`client_org` lane. **FIRST THING NEXT SESSION: create a fresh test org, send a real
+  invite, redeem it, and confirm via DB query that `kira_agents.journey_type='consultant'`
+  this time** — this was verified BROKEN live before the fix but not yet verified FIXED.
+  Full narrative + 4 other findings (business-genome tests polluting prod, QA admin identity
+  was unprovisioned) in memory `project_kira_distributor_onboarding_2026-09-21.md`.
+- `7f19b91` — fixed 3 gaps on the distributor-onboarding path ahead of inviting 3 real
   partners: (1) deleted the dead `research_practice` stub; (2) `getKiraPrompt` had NO branch for
   `journeyType === 'consultant'` — it fell through to `getBusinessPrompt` (the fractional-exec,
-  "capture your business to sell it" persona), so every partner's first /talk call opened with the
-  wrong pitch entirely. Added `getConsultantPrompt`. (3) `currentUserIsDistributor()` /
-  `callerIsDistributor()` required an existing `distributor_portfolio` row to unlock the
-  `/distributor` portal or `provisionClientOrganisation` — a chicken-and-egg that meant a brand-new
-  partner could never reach either. Both now also recognise active membership in an
-  `org_type='distributor'` org. (4) `sendInvitationEmail`'s link pointed at `/?code=` — the
-  redemption surface is `/plan?code=`, so every invitation email sent through this system linked to
-  the marketing homepage and silently dropped the code. Fixed. Confirmed `NEXT_PUBLIC_APP_URL` is
-  correctly `https://kiraexec.com` (a wrong-host variant of this same bug was flagged earlier today
-  and appears already resolved). (5) `/api/admin/invitations` always minted into the CALLER's own
-  org context — no way to invite a partner into a distributor org created via `/admin/organisations`.
-  Now accepts an optional `organisationId` override, gated on `isCurrentUserAdmin()` (not just org
-  membership) to avoid a cross-tenant mint. **Not yet wired into any UI** — usable via direct POST
-  today; `/admin/organisations` has no "invite" affordance yet. `tsc --noEmit` clean, targeted tests
-  green (36/36); full suite not re-run this pass.
+  "capture your business to sell it" persona). Added `getConsultantPrompt`. (3)
+  `currentUserIsDistributor()` / `callerIsDistributor()` required an existing
+  `distributor_portfolio` row to unlock the `/distributor` portal or
+  `provisionClientOrganisation` — a chicken-and-egg a brand-new partner could never escape. Both
+  now also recognise active membership in an `org_type='distributor'` org. (4)
+  `sendInvitationEmail`'s link pointed at `/?code=` (dead) instead of `/plan?code=`. (5) new
+  `InviteToOrganisationForm` on `/admin/organisations` + `inviteToOrganisationAction` — the
+  missing UI to invite someone into an org Dennis just created; email copy branches by org_type
+  ("Welcome to the Kira Partnership Team" for partners vs the original beta-tester copy for
+  client_org). `tsc`/`eslint`/`next build` all clean; full test suite green (failures both runs
+  were confined to unrelated `business-genome/*` DB-timeout flakes, confirmed passing 64/64 in
+  isolation).
 - `eb52352` — org_type selector on admin create-org form + latent portals bug fix.
   `portals.portal_level DEFAULT 'business'` violated its own CHECK (portfolio/project/
   distributor/client_org); every portals writer now sets `portal_level` + `journey_type`
@@ -39,26 +48,28 @@
 
 ## What's Next
 <!-- Prioritised list of pending work. Updated each session. -->
-- [ ] **Before inviting the 3 partners**: add an "Invite" affordance to `/admin/organisations`
-      (email + first/last name field, posts to `/api/admin/invitations` with the new org's
-      `organisationId`) so Dennis doesn't have to hand-craft the POST. The API side is done.
-- [ ] Send-invitation email copy still says "Kira Beta Testing Programme" — fine for a beta
-      tester, wrong register for a partner being onboarded as a distributor. Worth a distinct
-      template/subject line before the 3 sends, not functionally broken.
-- [ ] `createOrganisationAction` never sets `organisations.parent_organisation_id` — the
-      chain-of-truth hierarchy column exists (migration `20260921000000`) but nothing populates
-      it, so distributor orgs aren't actually linked under a parent. Nothing reads this column
-      yet (feeds unbuilt truth-comparison/memory-push features), so not blocking, but cheap to
-      fix now while it's fresh.
-- [ ] Not yet verified live: does completing `/talk?journey=consultant` actually land the new
-      partner with an active `organisation_memberships` row in the org Dennis created for them?
-      Traced the identity/plan code path but did not walk it end-to-end in a browser — this is
-      the one link in the chain that's reasoned-through, not observed.
+- [ ] **FIRST: re-verify `05313cc` live** — new test org, new invite, redeem it, confirm
+      `kira_agents.journey_type='consultant'`. Do NOT invite the 3 real partners before this
+      is confirmed green — this exact bug (silently defaulting to 'business') is what would
+      otherwise ship to them.
+- [ ] Clean up test orgs left in prod from this session: "Factory2Key Partner Demo"
+      (`a158f6de-f1bc-4e85-a973-b6ee27fa119f`) and "Factory2Key Partner Demo 2"
+      (`f7c38d46-32da-45c3-adeb-2f91df404e0d`), plus the test person/agent rows under
+      `dennis+kirapartner@factory2key.com.au`.
+- [ ] **Separate, real, unrelated finding**: `business-genome/repository.test.ts`,
+      `extract.test.ts`, `e2e-validation.test.ts` write directly to LIVE PRODUCTION Supabase
+      and never clean up — confirmed by seeing 120+ test-fixture orgs ("Genome Repository Test
+      Org", "Manufacturer Test", "D1 Diag Co", etc.) in `/admin/organisations`'s own dropdown,
+      which got heavy enough to crash a real Chromium tab. Needs a separate test DB/schema or
+      teardown, or both. Not fixed this session.
+- [ ] Landing page: Dennis wants a repositioned distributor/consultant CTA — zero cost/friction
+      to become a distributor (a phone call, then onboarded), no fees until they onboard a real
+      paying client, and even then billing is monthly in arrears. Not started.
+- [ ] `createOrganisationAction` never sets `organisations.parent_organisation_id` (chain-of-
+      truth hierarchy column exists, unpopulated). Not blocking, cheap to fix while fresh.
 - [ ] Tighten the consultant/distributor extraction prompt
-      (`lib/kira/consultant-genome-extract.ts` `EXTRACTION_PROMPT`) so a distributor interview
-      is not forced into a "consultant-with-methodology" shape. Lower priority now that the live
-      interview itself asks the right questions — a thin answer here degrades gracefully (nulls),
-      it doesn't feel wrong to the partner the way the old prompt did.
+      (`lib/kira/consultant-genome-extract.ts` `EXTRACTION_PROMPT`) — lower priority now that
+      the live interview itself will ask the right questions once `05313cc` is confirmed.
 - [ ] area_agenda firing after the genome-aware opener, and the 5 voice embeds at 375px mobile —
       both still unverified live (carried over from the previous session).
 
