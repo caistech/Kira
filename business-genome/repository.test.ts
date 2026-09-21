@@ -3,11 +3,14 @@
 // INTEGRATION TESTS for the Business Genome repository.
 // Tests the full CRUD + supersession + confirmation cycle.
 //
-// These tests use a test user ID and do NOT affect production data.
-// The Supabase client is created with the service role key (bypasses RLS).
+// Runs against the dedicated test Supabase project (test-support/test-db.ts), never production —
+// this file used to say "do NOT affect production data" while calling createServiceClientV2(),
+// which is production. It was wrong for as long as it existed; see test-db.ts for the incident.
+// Skips cleanly via describe.skipIf(!hasTestDb) when TEST_SUPABASE_URL/TEST_SUPABASE_SECRET_KEY
+// aren't configured.
 
 import { describe, it, expect, beforeAll } from 'vitest';
-import { createServiceClientV2 } from '@/lib/supabase/server';
+import { createTestServiceClient, hasTestDb } from './test-support/test-db';
 import {
   createEntity,
   findEntity,
@@ -36,22 +39,25 @@ import type { GenomeEntityInput, GenomeFactInput, GenomeRelationshipInput } from
 let TEST_ORGANISATION_ID: string;
 const TEST_USER_ID = '00000000-0000-0000-0000-000000000002';
 
-beforeAll(async () => {
-  const sb = createServiceClientV2();
-  const { data, error } = await sb
-    .from('organisations')
-    .insert({
-      legal_name: 'Genome Repository Test Org',
-      trading_name: 'GenomeRepoTest',
-      status: 'active',
-    })
-    .select('organisation_id')
-    .single();
-  if (error || !data) throw new Error(`Failed to create test org: ${error?.message ?? 'no row'}`);
-  TEST_ORGANISATION_ID = data.organisation_id;
-});
+// Skipped entirely (including the org-creation beforeAll below) when no test DB is configured —
+// the beforeAll must live INSIDE this block, not before it, or it runs unconditionally regardless
+// of skipIf and writes a row wherever createTestServiceClient() happens to point.
+describe.skipIf(!hasTestDb)('Genome Repository', () => {
+  beforeAll(async () => {
+    const sb = createTestServiceClient();
+    const { data, error } = await sb
+      .from('organisations')
+      .insert({
+        legal_name: 'Genome Repository Test Org',
+        trading_name: 'GenomeRepoTest',
+        status: 'active',
+      })
+      .select('organisation_id')
+      .single();
+    if (error || !data) throw new Error(`Failed to create test org: ${error?.message ?? 'no row'}`);
+    TEST_ORGANISATION_ID = data.organisation_id;
+  });
 
-describe('Genome Repository', () => {
   // ─── ENTITIES ──────────────────────────────────────────────────────────────
 
   describe('Entity CRUD', () => {
@@ -234,7 +240,7 @@ describe('Genome Repository', () => {
       expect(current?.supersedes).toBe(factId);
 
       // History is retained — original is accessible via the supersession chain
-      const { data: original } = await createServiceClientV2()
+      const { data: original } = await createTestServiceClient()
         .from('genome_facts')
         .select('id, value, superseded_at')
         .eq('id', factId)

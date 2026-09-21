@@ -11,6 +11,7 @@
 //   3. Identity is server-baked from the organisation_id — no cross-organisation leakage
 //   4. user_id = provenance (who performed / created / confirmed), NOT ownership
 
+import { createClient } from '@supabase/supabase-js';
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import type {
   GenomeEntity,
@@ -27,7 +28,28 @@ import type {
 // HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Test-only override: this repository is exercised directly by the DB-integration suite
+// (repository.test.ts, extract.test.ts, e2e-validation.test.ts), which creates its test
+// organisations/persons in a dedicated test Supabase project (test-support/test-db.ts) — never
+// production. Without this override every function below still called createServiceClientV2()
+// (production) regardless, so a test-created org existed only in the test project while every
+// actual write here targeted production, failing with an FK violation there (found 2026-09-21
+// provisioning the test project — the org row was real, just in the wrong database).
+//
+// Doubly gated so this can never activate in a real request: NODE_ENV==='test' is set by vitest
+// and never true in a deployed app, AND the TEST_SUPABASE_* vars are deliberately never present
+// outside a test run (never added to Vercel dev/preview/production env — see gate.yml). Either
+// condition alone already rules out production; both together is redundant on purpose.
 function supabase() {
+  if (
+    process.env.NODE_ENV === 'test' &&
+    process.env.TEST_SUPABASE_URL &&
+    process.env.TEST_SUPABASE_SECRET_KEY
+  ) {
+    return createClient(process.env.TEST_SUPABASE_URL, process.env.TEST_SUPABASE_SECRET_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+  }
   return createServiceClientV2();
 }
 

@@ -25,7 +25,7 @@
 //   - All genome tables must exist (run migration first)
 
 import { describe, it, expect, beforeAll, vi } from 'vitest';
-import { createServiceClientV2 } from '@/lib/supabase/server';
+import { createTestServiceClient, hasTestDb } from './test-support/test-db';
 import { extractGenomeFromConversation } from './extract';
 import {
   getAllEntities,
@@ -97,7 +97,7 @@ async function createTestOrg(
   email: string,
   userId: string
 ): Promise<TestOrg> {
-  const sb = createServiceClientV2();
+  const sb = createTestServiceClient();
 
   // 1. Create organisation (organisation_id = a fresh UUID)
   const orgId = crypto.randomUUID();
@@ -145,7 +145,7 @@ async function createTestOrg(
  * Clean all genome data for an organisation.
  */
 async function cleanOrgGenomeData(organisationId: string): Promise<void> {
-  const sb = createServiceClientV2();
+  const sb = createTestServiceClient();
   // Delete in FK-safe order
   await sb.from('genome_events').delete().eq('organisation_id', organisationId);
   await sb.from('genome_relationships').delete().eq('organisation_id', organisationId);
@@ -221,7 +221,7 @@ const MANUFACTURER_CONVERSATIONS = [
 // TEST SUITE
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe.skipIf(!hasApi)('Business Genome — End-to-End Validation', () => {
+describe.skipIf(!hasApi || !hasTestDb)('Business Genome — End-to-End Validation', () => {
   vi.setConfig({ testTimeout: 120000 });
 
   let orgA: TestOrg;

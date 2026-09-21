@@ -97,8 +97,18 @@ jobs:
       # Placed AFTER lint and BEFORE build because it is the fastest signal that carries real meaning
       # and the build is the slowest step; a failing assertion should not wait behind a bundle.
       # `--if-present` so a repo with no test script skips rather than fails, matching its neighbours.
+      #
+      # TEST_SUPABASE_URL/TEST_SUPABASE_SECRET_KEY point at a dedicated, permanent test Supabase
+      # project (business-genome/test-support/test-db.ts) — NOT the production
+      # NEXT_PUBLIC_SUPABASE_URL/SUPABASE_SECRET_KEY pair. Wiring the production pair here would
+      # make every push write real test rows into production (the exact ~150-row pollution
+      # incident of 2026-09-21, which crashed a live admin page). Without these two, the
+      # business-genome DB-integration suite skips cleanly rather than failing.
       - name: Tests
         run: npm test --if-present
+        env:
+          TEST_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
+          TEST_SUPABASE_SECRET_KEY: ${{ secrets.TEST_SUPABASE_SECRET_KEY }}
 
       # PRODUCT_STANDARDS §4 — every authenticated route renders inside the app chrome.
       #

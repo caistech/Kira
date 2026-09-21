@@ -3,12 +3,16 @@
 // TESTS for the structured genome extraction pipeline.
 // Tests the extraction against synthetic business conversations.
 //
-// NOTE: These are integration tests that call an LLM via OPENAI_API_KEY or OPENAI_BASE_URL.
-// They require OPENAI_API_KEY or OPENAI_BASE_URL to be set in the environment.
-// If not set, they are skipped.
+// NOTE: These are integration tests that call an LLM via OPENAI_API_KEY or OPENAI_BASE_URL, AND
+// write real organisation/genome rows to the dedicated test Supabase project (test-support/
+// test-db.ts) — never production. Skips cleanly when either is missing. The org-creation
+// beforeAll used to sit OUTSIDE the skipIf'd describe block, so it ran (against production, via
+// createServiceClientV2()) even when the LLM key was absent and the rest of the suite skipped —
+// that's how "Genome Extract Test Org" kept accumulating regardless of whether this suite could
+// actually do anything.
 
 import { describe, it, expect, vi, beforeAll } from 'vitest';
-import { createServiceClientV2 } from '@/lib/supabase/server';
+import { createTestServiceClient, hasTestDb } from './test-support/test-db';
 import { extractGenomeFromConversation } from './extract';
 
 // LLM calls can take 10-60s; raise the suite timeout well above the 5s default.
@@ -18,25 +22,10 @@ vi.setConfig({ testTimeout: 120000 });
 let TEST_ORGANISATION_ID: string;
 const TEST_USER_ID = '00000000-0000-0000-0000-000000000003';
 
-beforeAll(async () => {
-  const sb = createServiceClientV2();
-  const { data, error } = await sb
-    .from('organisations')
-    .insert({
-      legal_name: 'Genome Extract Test Org',
-      trading_name: 'GenomeExtractTest',
-      status: 'active',
-    })
-    .select('organisation_id')
-    .single();
-  if (error || !data) throw new Error(`Failed to create test org: ${error?.message ?? 'no row'}`);
-  TEST_ORGANISATION_ID = data.organisation_id;
-});
-
 // Base conversation id for this suite (source_id expects a UUID)
 const TEST_ORG_CONV_ID = '00000000-0000-0000-0000-000000000098';
 
-// Skip if no LLM configured
+// Skip if no LLM configured, or no test DB to write into.
 const hasApiKey = !!(process.env.OPENAI_API_KEY || process.env.OPENAI_BASE_URL);
 
 const llmConfig = {
@@ -45,7 +34,22 @@ const llmConfig = {
   model: process.env.KIRA_EXTRACTION_MODEL,
 };
 
-describe.skipIf(!hasApiKey)('Genome Extraction Pipeline', () => {
+describe.skipIf(!hasApiKey || !hasTestDb)('Genome Extraction Pipeline', () => {
+  beforeAll(async () => {
+    const sb = createTestServiceClient();
+    const { data, error } = await sb
+      .from('organisations')
+      .insert({
+        legal_name: 'Genome Extract Test Org',
+        trading_name: 'GenomeExtractTest',
+        status: 'active',
+      })
+      .select('organisation_id')
+      .single();
+    if (error || !data) throw new Error(`Failed to create test org: ${error?.message ?? 'no row'}`);
+    TEST_ORGANISATION_ID = data.organisation_id;
+  });
+
   describe('Business A: Plumbing company', () => {
     const transcript = [
       { role: 'user', content: "Most of our jobs come from builders. We usually inspect the site first, then Sarah puts together the quote. We charge a $180 call-out and materials are marked up 25%." },
