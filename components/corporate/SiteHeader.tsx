@@ -53,6 +53,9 @@ const OWN_CHROME_BOTH = [
   // shell is the thing that actually owns the chrome.
   '/requests',
   '/knowledge',
+  // Wrapped in UserShell (app/genome-knowledge/layout.tsx, added 2026-09-21 to fix the missing
+  // app-chrome PRODUCT_STANDARDS §4 gap) — same reason as /drafts and /requests.
+  '/genome-knowledge',
   '/start',
   '/discovery',
   '/setup',
