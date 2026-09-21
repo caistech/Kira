@@ -9,24 +9,48 @@ import { BetaFeedbackButton } from '@/components/BetaFeedbackButton';
 import { FULL_RATE_PERIOD_CAP, PRICE_TIERS } from '@/lib/valuation/pricing';
 import { formatPrice, DEFAULT_CURRENCY } from '@/lib/valuation/currency';
 import { HEADLINE_NUMBERS } from '@/lib/valuation/headline-numbers';
+import { CORPORATE_AI_SOLUTIONS } from '@/components/KiraBranding';
 
 const LANDING_EXAMPLE_FIGURES = ['$220k', '$626k', '$821k'] as const;
 
+// The single booking link every "become a partner" CTA on this page points at — one source so
+// the destination changes in one place if the booking flow ever moves off Calendly.
+const PARTNER_BOOKING_URL = CORPORATE_AI_SOLUTIONS.booking;
+
 const NAV = [
+  { href: '#the-offer', label: 'The offer' },
   { href: '#the-opportunity', label: 'The opportunity' },
-  { href: '#how-it-works', label: 'How it works' },
+  { href: '#the-toolkit', label: 'The toolkit' },
   { href: '#pricing', label: 'Pricing' },
   { href: '/about', label: 'About' },
 ];
 
 const FOOTER_LINKS = [
   { href: '/about', label: 'About' },
-  { href: '#how-it-works', label: 'How it works' },
+  { href: '#the-offer', label: 'The offer' },
+  { href: '#the-toolkit', label: 'The toolkit' },
   { href: '#pricing', label: 'Pricing' },
-  { href: '/advisors', label: 'For advisors' },
   { href: '/privacy', label: 'Privacy' },
   { href: '/terms', label: 'Terms' },
 ];
+
+const PARTNER_STEPS = [
+  {
+    n: '01',
+    title: 'Book a call',
+    body: 'A 15-minute conversation. We walk you through the whole platform — nothing to sign, nothing to pay, no obligation either way.',
+  },
+  {
+    n: '02',
+    title: "We set you up as a partner",
+    body: 'Your own partner portal, live from day one. Explore it, demo it to your own prospects, bring on as many clients as you like — still nothing to pay.',
+  },
+  {
+    n: '03',
+    title: 'You bring on a real client — that’s when billing starts',
+    body: 'Billed monthly, in arrears, only for what’s actually being used. You are never asked to pay ahead of the revenue it brings in.',
+  },
+] as const;
 
 const PROBLEMS = [
   {
@@ -102,16 +126,10 @@ export function LandingConsultant() {
               Sign in
             </a>
             <a
-              href="/signup"
-              className="ln-link flex min-h-[44px] items-center whitespace-nowrap text-[16px] sm:text-[15px] text-kira-charcoal hover:text-kira-600"
-            >
-              Create an account
-            </a>
-            <a
-              href="/business-valuation"
+              href={PARTNER_BOOKING_URL}
               className="ln-link flex min-h-[44px] items-center whitespace-nowrap rounded-md bg-kira-600 px-4 text-[16px] sm:text-[15px] font-medium text-white hover:bg-kira-700"
             >
-              Explore Kira
+              Book a 15-minute call
             </a>
           </nav>
 
@@ -130,7 +148,7 @@ export function LandingConsultant() {
 
         {menuOpen && (
           <div className="border-t border-kira-line bg-kira-surface px-6 py-2 md:hidden">
-            {[...NAV, { href: '/login', label: 'Sign in' }, { href: '/signup', label: 'Create an account' }].map((item) => (
+            {[...NAV, { href: '/login', label: 'Sign in' }, { href: PARTNER_BOOKING_URL, label: 'Book a 15-minute call' }].map((item) => (
               <a
                 key={item.href}
                 href={item.href}
@@ -144,40 +162,118 @@ export function LandingConsultant() {
         )}
       </header>
 
-      {/* THE OPPORTUNITY — §16 #1 */}
-      <section id="the-opportunity" className="mx-auto max-w-5xl xl:max-w-6xl px-6 pb-16 pt-16 lg:pt-24">
+      {/* HERO — the partner-revenue pitch, primary front door */}
+      <section className="mx-auto max-w-5xl xl:max-w-6xl px-6 pb-16 pt-16 lg:pt-24">
         <div>
           <div className="mb-8 flex items-center gap-4">
             <span className="block h-16 w-16 shrink-0 overflow-hidden rounded-full ring-1 ring-kira-line lg:hidden">
               <img src="/female_avatar.jpeg" alt="Kira" className="h-full w-full object-cover" />
             </span>
             <p className="text-[16px] sm:text-[15px] uppercase tracking-[0.14em] text-kira-soft">
-              A generation of valuable businesses is approaching ownership transition.
+              A toolkit for advisors and consultants, not just another product for your clients.
             </p>
           </div>
 
           <h1 className="max-w-[20ch] text-[40px] font-semibold leading-[1.08] tracking-[-0.02em] text-kira-dark lg:text-[56px]">
-            There is a major market opportunity in the BBBO generation.
+            Turn your client relationships into recurring revenue.
           </h1>
-          <p className="mt-4 max-w-[24ch] text-[27px] leading-[1.2] text-kira-charcoal lg:text-[34px]">
-            Your expertise has a meaningful place in solving it.
+
+          <p className="ln-measure mt-6 text-[19px] leading-[1.6] text-kira-charcoal lg:text-[21px]">
+            A ready-made toolkit — starting with Kira, our AI platform that helps your clients unlock
+            the value trapped in their business — built for advisors who want more of their
+            prospects to actually convert.{' '}
+            <strong className="font-semibold text-kira-dark">No cost to see it. Nothing to pay until
+            you bring on your first client.</strong>
           </p>
 
+          <div className="mt-10 flex flex-wrap items-center gap-4">
+            <a
+              href={PARTNER_BOOKING_URL}
+              className="ln-link inline-flex min-h-[52px] items-center rounded-md bg-kira-600 px-7 text-[17px] font-medium text-white hover:bg-kira-700"
+            >
+              Book a 15-minute call
+            </a>
+            <a
+              href="#the-offer"
+              className="ln-link inline-flex min-h-[52px] items-center rounded-md border border-kira-line bg-white px-7 text-[17px] font-medium text-kira-dark hover:border-kira-600 hover:text-kira-600"
+            >
+              See how it works
+            </a>
+          </div>
+          <p className="mt-4 text-[16px] sm:text-[15px] text-kira-soft">
+            Run a business yourself, rather than advise one?{' '}
+            <a href="/business-valuation" className="ln-link font-medium text-kira-600 underline underline-offset-4 hover:text-kira-700">
+              See what Kira does for owners →
+            </a>
+          </p>
+        </div>
+      </section>
+
+      {/* THE OFFER — the zero-cost, arrears-billed mechanics. This is the section that has to
+          carry "why would I not just try this": nowhere in the journey is a partner asked to pay
+          before they've made money. */}
+      <section id="the-offer" className="border-y border-kira-line bg-white">
+        <div className="mx-auto max-w-5xl px-6 py-16">
+          <h2 className="max-w-[24ch] text-[27px] font-semibold tracking-tight text-kira-dark lg:text-[34px]">
+            Three steps. Nothing to pay until you're already earning.
+          </h2>
+          <p className="ln-measure mt-4 text-[17px] leading-[1.65] text-kira-charcoal">
+            Becoming a partner costs nothing and commits you to nothing. You only pay once a real
+            client is live on the platform — and even then, it's billed after the fact, never in
+            advance.
+          </p>
+
+          <ol className="mt-12">
+            {PARTNER_STEPS.map((s, i) => (
+              <li key={s.n} className={`grid gap-x-8 gap-y-3 py-8 sm:grid-cols-[4rem_1fr] ${i > 0 ? 'border-t border-kira-line' : ''}`}>
+                <span className="text-[21px] font-semibold tabular-nums text-kira-600">{s.n}</span>
+                <div>
+                  <h3 className="text-[21px] font-semibold text-kira-dark">{s.title}</h3>
+                  <p className="ln-measure mt-2 text-[17px] leading-[1.65] text-kira-charcoal">{s.body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+
+          <div className="mt-4">
+            <a
+              href={PARTNER_BOOKING_URL}
+              className="ln-link inline-flex min-h-[52px] items-center rounded-md bg-kira-600 px-7 text-[17px] font-medium text-white hover:bg-kira-700"
+            >
+              Book a 15-minute call
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* THE OPPORTUNITY — §16 #1 (unchanged market-sizing context, now positioned after the offer) */}
+      <section id="the-opportunity" className="mx-auto max-w-5xl xl:max-w-6xl px-6 py-16">
+        <div>
+          <p className="text-[16px] sm:text-[15px] uppercase tracking-[0.14em] text-kira-soft">
+            A generation of valuable businesses is approaching ownership transition.
+          </p>
+
+          <h2 className="mt-4 max-w-[24ch] text-[27px] font-semibold leading-[1.15] tracking-[-0.01em] text-kira-dark lg:text-[34px]">
+            There is a major market opportunity in the BBBO generation — and your expertise has a
+            meaningful place in it.
+          </h2>
+
           <p className="ln-measure mt-8 text-[17px] leading-[1.65] text-kira-charcoal">
-            Many Baby Boomer business owners have spent decades building valuable companies 
-            without deliberately preparing those businesses for eventual transfer. 
-            The issues that constrain performance today can also constrain value and saleability later — 
+            Many Baby Boomer business owners have spent decades building valuable companies
+            without deliberately preparing those businesses for eventual transfer.
+            The issues that constrain performance today can also constrain value and saleability later —
             and the window to address them is finite.{' '}
-            <strong className="font-semibold text-kira-dark">The BBBO mission exists to help them get 
+            <strong className="font-semibold text-kira-dark">The BBBO mission exists to help them get
             everything those businesses are capable of being worth.</strong>
           </p>
 
           <p className="ln-measure mt-6 text-[17px] leading-[1.65] text-kira-charcoal">
-            Kira is one capability inside that larger mission. She is not the ecosystem itself — 
-            she is a technology capability that helps capture organisational knowledge, reduce owner 
+            Kira is one capability inside that larger mission. She is not the ecosystem itself —
+            she is a technology capability that helps capture organisational knowledge, reduce owner
             dependence and create persistent business intelligence.{' '}
             <strong className="font-semibold text-kira-dark">Your expertise is another.</strong>{' '}
-            Together with the broader BBBO ecosystem, that is how these businesses improve.
+            Together with the broader toolkit, that is how these businesses improve — and how you earn
+            from more of the prospects you already talk to.
           </p>
 
           <div className="mt-10 flex flex-wrap items-center gap-4">
@@ -326,35 +422,35 @@ export function LandingConsultant() {
         </div>
       </section>
 
-      {/* THE ECOSYSTEM — §16 #6, §7 */}
-      <section className="border-t border-kira-line bg-white">
+      {/* THE TOOLKIT — Kira is the flagship, not the whole offer. §16 #6, §7 */}
+      <section id="the-toolkit" className="border-t border-kira-line bg-white">
         <div className="mx-auto max-w-5xl px-6 py-16">
           <h2 className="max-w-[24ch] text-[27px] font-semibold tracking-tight text-kira-dark lg:text-[34px]">
-            You don&apos;t have to solve every value gap.
+            Kira is the flagship. The toolkit is growing.
           </h2>
           <p className="ln-measure mt-4 text-[17px] leading-[1.65] text-kira-charcoal">
-            You bring the expertise. Kira provides the persistent business intelligence. 
-            The BBBO ecosystem provides the broader capabilities.
+            You bring the relationships. We bring the tools — built specifically to help advisors turn
+            more of their prospects into clients, and more of their clients into recurring revenue.
           </p>
 
           <div className="ln-measure mt-6 space-y-4 text-[17px] leading-[1.65] text-kira-charcoal">
             <p>
-              The mission explicitly identifies business consultants as contributors providing 
-              operational improvement, strategy and performance. That is your place in the ecosystem.
+              <strong className="font-semibold text-kira-dark">Kira</strong> captures a client&apos;s
+              business into a durable, transferable record and works with them between your
+              engagements — the recurring line inside the toolkit today.
             </p>
             <p>
-              Other ecosystem participants address other gaps — accountants and CFOs on financial 
-              quality, brokers and M&amp;A advisers on transaction preparation, lawyers on legal structure 
-              and succession, HR specialists on management depth, technology providers on systems and 
-              knowledge capture, and coaches on accountability and execution.
+              More tools are joining it — built for the same job: getting more of the prospects
+              you already talk to into an actual sales process, and doing it without adding to your
+              own workload.
             </p>
           </div>
 
           <p className="ln-measure mt-6 text-[17px] leading-[1.65] text-kira-charcoal">
-            That is precisely why the ecosystem exists. Each contributor addresses specific value gaps 
-            according to their existing capabilities.{' '}
-            <strong className="font-semibold text-kira-dark">You don&apos;t need to solve every problem — 
-            you have a place in a system that can.</strong>
+            You don&apos;t need to solve every value gap yourself.{' '}
+            <strong className="font-semibold text-kira-dark">
+              You have a place in a toolkit that can.
+            </strong>
           </p>
         </div>
       </section>
@@ -619,13 +715,30 @@ export function LandingConsultant() {
         </div>
       </section>
 
-      {/* PRICING */}
+      {/* PRICING — two distinct numbers: what YOU pay us, and what your CLIENT pays for Kira.
+          Deliberately no public dollar figure on the partner side yet — the operator has this
+          marked as an open, unresolved figure (placeholder $349/org, inclusive-of-users question
+          still open per the 2026-09-21 architecture session); publishing a specific number here
+          would be asserting something not yet decided. */}
       <section id="pricing" className="mx-auto max-w-5xl px-6 py-20">
         <h2 className="text-[27px] font-semibold tracking-tight text-kira-dark lg:text-[34px]">
-          See the number. Then decide.
+          What you pay. What your client pays. Two different numbers.
         </h2>
 
-        <p className="mt-8 text-[16px] sm:text-[15px] uppercase tracking-[0.1em] text-kira-soft">Plans run from</p>
+        <div className="ln-measure mt-8 space-y-4 text-[17px] leading-[1.65] text-kira-charcoal">
+          <p>
+            <strong className="font-semibold text-kira-dark">What you pay us:</strong> nothing to
+            become a partner, nothing while you explore or demo it. Once a real client is live,
+            it&apos;s a small monthly fee — billed after the month is used, never in advance, and
+            never for a client you haven&apos;t actually onboarded.
+          </p>
+          <p>
+            <strong className="font-semibold text-kira-dark">What your client pays you:</strong> your
+            call entirely. Below is what Kira alone is worth charging for, as a reference point.
+          </p>
+        </div>
+
+        <p className="mt-10 text-[16px] sm:text-[15px] uppercase tracking-[0.1em] text-kira-soft">A reference: Kira plans run from</p>
         <p className="mt-2 text-[44px] font-semibold tracking-tight text-kira-dark">
           {floorPrice}
           <span className="text-[21px] font-normal text-kira-soft"> to {ceilingPrice} /month</span>
@@ -633,41 +746,47 @@ export function LandingConsultant() {
 
         <div className="ln-measure mt-8 space-y-4 text-[17px] leading-[1.65] text-kira-charcoal">
           <p>
-            Which band your client lands in depends on the size of their business — the annual profit 
-            they tell us, not the gap we calculate. That distinction is non-negotiable: the tool that 
+            Which band your client lands in depends on the size of their business — the annual profit
+            they tell us, not the gap we calculate. That distinction is non-negotiable: the tool that
             works out what the business is worth has nothing to gain from the number being bigger.
           </p>
           <p>The valuation is completely free — no sign-up, no card, no obligation.</p>
           <p>
             Kira&apos;s fee is set to a small fraction of what they stand to unlock. They are{' '}
-            <strong className="font-semibold text-kira-dark">never invoiced for the month they are 
+            <strong className="font-semibold text-kira-dark">never invoiced for the month they are
             in</strong> — each month is billed once it has finished, and if they cancel, that month is on us.
           </p>
           <p>
-            <strong className="font-semibold text-kira-dark">It is meant to end.</strong> Kira&apos;s job 
+            <strong className="font-semibold text-kira-dark">It is meant to end.</strong> Kira&apos;s job
             is to get what is in their head onto paper. Once that is done, keeping it current costs only{' '}
             <strong className="font-semibold text-kira-dark">a third of their band</strong>.
           </p>
           <p>
             <strong className="font-semibold text-kira-dark">
-              And there is a ceiling: after {FULL_RATE_PERIOD_CAP} months they move to the lower rate 
+              And there is a ceiling: after {FULL_RATE_PERIOD_CAP} months they move to the lower rate
               whether or not we think the work is done.
             </strong>{' '}
             We would rather cap what you and your client can be charged than guess or drag out the timeline.
           </p>
         </div>
 
-        <div className="mt-10">
+        <div className="mt-10 flex flex-wrap items-center gap-4">
+          <a
+            href={PARTNER_BOOKING_URL}
+            className="ln-link inline-flex min-h-[52px] items-center rounded-md bg-kira-600 px-7 text-[17px] font-medium text-white hover:bg-kira-700"
+          >
+            Book a 15-minute call
+          </a>
           <a
             href="/business-valuation"
-            className="ln-link inline-flex min-h-[52px] items-center rounded-md bg-kira-600 px-7 text-[17px] font-medium text-white hover:bg-kira-700"
+            className="ln-link inline-flex min-h-[52px] items-center rounded-md border border-kira-line bg-white px-7 text-[17px] font-medium text-kira-dark hover:border-kira-600 hover:text-kira-600"
           >
             Experience the valuation
           </a>
-          <p className="mt-3 text-[16px] sm:text-[15px] text-kira-soft">
-            Free · no sign-up · see the numbers in 3 minutes.
-          </p>
         </div>
+        <p className="mt-3 text-[16px] sm:text-[15px] text-kira-soft">
+          The valuation is free · no sign-up · see the numbers in 3 minutes.
+        </p>
       </section>
 
       {/* ABOUT */}
@@ -735,19 +854,20 @@ export function LandingConsultant() {
       <section className="border-t border-kira-line bg-kira-mist">
         <div className="mx-auto max-w-3xl px-6 py-20 text-center">
           <h2 className="text-[27px] font-semibold tracking-tight text-kira-dark lg:text-[34px]">
-            See how Kira could work with your clients.
+            Book a 15-minute call. See the whole platform. Decide after.
           </h2>
           <p className="ln-measure mx-auto mt-4 text-[17px] leading-[1.65] text-kira-charcoal">
-            There is a large, specific and time-sensitive market of mature Baby Boomer-owned businesses 
-            that need help becoming more valuable, more transferable and more demonstrably ready for 
-            their next owner. Your expertise is one of the capabilities that can help make that happen.
+            There is a large, specific and time-sensitive market of mature Baby Boomer-owned businesses
+            that need help becoming more valuable, more transferable and more demonstrably ready for
+            their next owner. Your expertise is one of the capabilities that can help make that happen —
+            and nothing about seeing it costs you anything.
           </p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
             <a
-              href="/business-valuation"
+              href={PARTNER_BOOKING_URL}
               className="ln-link inline-flex min-h-[52px] items-center rounded-md bg-kira-600 px-7 text-[17px] font-medium text-white hover:bg-kira-700"
             >
-              Explore becoming a BBBO ecosystem consultant
+              Book a 15-minute call
             </a>
             <a
               href="/sample-genome"
@@ -757,7 +877,7 @@ export function LandingConsultant() {
             </a>
           </div>
           <p className="mt-4 text-[16px] sm:text-[15px] text-kira-soft">
-            No account required. The journey begins with a 3-minute valuation.
+            No cost to become a partner. Nothing to pay until you bring on a real client.
           </p>
         </div>
       </section>
@@ -769,14 +889,15 @@ export function LandingConsultant() {
             <div>
               <p className="text-[21px] font-semibold text-white">Kira</p>
               <p className="ln-measure mt-3 text-[17px] leading-[1.6] text-kira-on-dark">
-                Part of the BBBO mission to help 10,000 Baby Boomer-owned businesses achieve their 
-                maximum proven value. One technology capability inside a much larger ecosystem.
+                A toolkit for advisors and consultants — starting with Kira, the recurring-revenue
+                line, part of the BBBO mission to help 10,000 Baby Boomer-owned businesses achieve
+                their maximum proven value.
               </p>
               <a
-                href="/business-valuation"
+                href={PARTNER_BOOKING_URL}
                 className="ln-link mt-6 inline-flex min-h-[48px] items-center rounded-md bg-kira-600 px-6 text-[17px] font-medium text-white hover:bg-kira-700"
               >
-                Explore Kira
+                Book a 15-minute call
               </a>
             </div>
 
