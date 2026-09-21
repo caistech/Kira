@@ -48,30 +48,40 @@
 
 ## What's Next
 <!-- Prioritised list of pending work. Updated each session. -->
-- [ ] **FIRST: re-verify `05313cc` live** — new test org, new invite, redeem it, confirm
-      `kira_agents.journey_type='consultant'`. Do NOT invite the 3 real partners before this
-      is confirmed green — this exact bug (silently defaulting to 'business') is what would
-      otherwise ship to them.
-- [ ] Clean up test orgs left in prod from this session: "Factory2Key Partner Demo"
-      (`a158f6de-f1bc-4e85-a973-b6ee27fa119f`) and "Factory2Key Partner Demo 2"
-      (`f7c38d46-32da-45c3-adeb-2f91df404e0d`), plus the test person/agent rows under
-      `dennis+kirapartner@factory2key.com.au`.
-- [ ] **Separate, real, unrelated finding**: `business-genome/repository.test.ts`,
-      `extract.test.ts`, `e2e-validation.test.ts` write directly to LIVE PRODUCTION Supabase
-      and never clean up — confirmed by seeing 120+ test-fixture orgs ("Genome Repository Test
-      Org", "Manufacturer Test", "D1 Diag Co", etc.) in `/admin/organisations`'s own dropdown,
-      which got heavy enough to crash a real Chromium tab. Needs a separate test DB/schema or
-      teardown, or both. Not fixed this session.
+- [x] **`05313cc` re-verified live, CONFIRMED WORKING (2026-09-21).** Full real-stack test:
+      created a real `org_type='distributor'` org, minted a real invitation, redeemed it as a
+      genuinely new person (unauthenticated → `/api/beta/redeem` → magic-link exchange →
+      `/api/identity/plan`, matching the real browser flow exactly), called
+      `/api/kira/ensure` with `journey=consultant`, and confirmed via DB query
+      `kira_agents.journey_type = 'consultant'`. Then pulled the LIVE ElevenLabs prompt for
+      that agent and confirmed it contains the consultant-partner opening line, not the
+      business fractional-exec one. All test orgs/persons/agents (DB rows + real ElevenLabs
+      agents) from this verification have been deleted. **Safe to invite the 3 real partners.**
+- [x] Cleaned up ~150 leftover test-fixture organisations from production (`Genome Repository
+      Test Org`, `Manufacturer Test`, `Plumbing Co Test`, `D1 Diag Co`, `F1 Acceptance Co`,
+      etc., plus their `genome_entities`/`genome_facts`/`genome_events`/`kira_agents`/
+      `organisation_memberships`/`portals`/`beta_codes` rows) — this is what was crashing the
+      `/admin/organisations` invite dropdown. 9 real organisations remain.
+- [ ] **Root cause still open**: `business-genome/repository.test.ts`, `extract.test.ts`,
+      `e2e-validation.test.ts` use `createServiceClientV2()` — the exact same client the live
+      app uses — with no separate test Supabase project or `.env.test`. Every run of that
+      suite writes fresh garbage into PRODUCTION. Fixing this properly means provisioning a
+      separate test Supabase project and rewiring the suite/CI — a real project, not a quick
+      fix. Until it's done, running that suite (including via `vitest run` with no file filter)
+      re-pollutes prod every time.
 - [ ] Landing page: Dennis wants a repositioned distributor/consultant CTA — zero cost/friction
       to become a distributor (a phone call, then onboarded), no fees until they onboard a real
       paying client, and even then billing is monthly in arrears. Not started.
-- [ ] `createOrganisationAction` never sets `organisations.parent_organisation_id` (chain-of-
-      truth hierarchy column exists, unpopulated). Not blocking, cheap to fix while fresh.
+- [ ] `createOrganisationAction` still never sets `organisations.parent_organisation_id`.
+      Deliberately left unset rather than guessed — there is no "Kira project" org row inside
+      Kira's own DB to point at (that concept lives in the separate CAS `portfolio_projects`
+      table), so populating it now would invent a hierarchy rather than complete one. Needs a
+      decision on what the local parent chain should actually be before this is safe to fill in.
 - [ ] Tighten the consultant/distributor extraction prompt
       (`lib/kira/consultant-genome-extract.ts` `EXTRACTION_PROMPT`) — lower priority now that
-      the live interview itself will ask the right questions once `05313cc` is confirmed.
+      the live interview asks the right questions (confirmed above).
 - [ ] area_agenda firing after the genome-aware opener, and the 5 voice embeds at 375px mobile —
-      both still unverified live (carried over from the previous session).
+      both still unverified live (carried over from an earlier session).
 
 ## Blockers
 <!-- Anything preventing progress. Include who/what is needed to unblock. -->
