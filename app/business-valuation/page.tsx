@@ -67,6 +67,7 @@ import {
   Mail,
   Brain,
   Clock,
+  Calendar,
 } from 'lucide-react';
 import {
   computeValuation,
@@ -96,6 +97,11 @@ import {
   saveValuationLocal,
   VALUATION_TTL_DAYS,
 } from '@/lib/valuation/persist';
+
+// The public funnel's conversion CTA. Real onboarding now goes through a
+// consultant/distributor relationship rather than a self-serve signup — see the
+// planHref comment in ResultView for why this replaced a direct link to /plan.
+const CALENDLY_URL = 'https://calendly.com/mcmdennis';
 
 /**
  * THE ICONS, mapped from the key the question set carries.
@@ -474,7 +480,12 @@ export default function BusinessValuationPage() {
     // result screen is eleven answers away, by which time the flag has settled.
   }, [isResult, answers, currency, firstName, returningToApp]);
 
-  const planHref = returningToApp ? '/dashboard' : '/plan';
+  // The old end of this funnel was a self-serve signup ("Start building your Operating
+  // Manual" → /plan). /plan is now beta-code-only, so that button dead-ended for any
+  // visitor without an invitation — and per the target architecture the public funnel is
+  // a showroom, not a production front door: real onboarding now goes through a
+  // consultant/distributor relationship. The public CTA becomes a call booking instead.
+  const planHref = returningToApp ? '/dashboard' : CALENDLY_URL;
 
   const progress = isResult ? 100 : Math.round(((stepIndex + 1) / (total + 1)) * 100);
 
@@ -1594,9 +1605,14 @@ function ResultView({
         )}
         <a
           href={planHref}
+          {...(!returningToApp ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
           className="grad-coral text-white font-display font-bold px-8 py-4 rounded-full text-lg inline-flex items-center gap-2 min-h-[52px] shadow-lg shadow-pink-200 hover:opacity-95"
         >
-          {returningToApp ? 'Back to Kira' : 'Start building your Operating Manual'} <ArrowRight className="h-5 w-5" />
+          {returningToApp ? (
+            <>Back to Kira <ArrowRight className="h-5 w-5" /></>
+          ) : (
+            <>Book in for a call <Calendar className="h-5 w-5" /></>
+          )}
         </a>
         <div className="mt-5 flex items-center justify-center gap-5 text-sm">
           {/* THE LABEL SAYS WHAT THE BUTTON DOES (register P11).
