@@ -159,6 +159,11 @@ jobs:
           STRIPE_SECRET_KEY: sk_test_placeholder
           STRIPE_WEBHOOK_SECRET: whsec_placeholder
           ELEVENLABS_API_KEY: placeholder-elevenlabs-key
+          # app/unsubscribe/route.ts reads this at module-evaluation time (lib/email/suppressions.ts
+          # unsubscribeSecret() throws if unset), so importing the route during page-data collection
+          # fails the build outright — found live the first time this gate ever reached the Build
+          # step (every earlier push failed at an earlier step first).
+          UNSUBSCRIBE_SECRET: placeholder-unsubscribe-secret
 
       - name: Verify preview URL is set
         run: |
