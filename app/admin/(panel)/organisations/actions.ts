@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { isCurrentUserAdmin } from '@/lib/auth';
 import { createServiceClientV2 } from '@/lib/supabase/server';
+import { mintInvitation, sendInvitationEmail } from '@/lib/invitation/invitation-service';
 
 export interface ActionResult {
   ok: boolean;
@@ -60,9 +61,96 @@ export async function createOrganisationAction(formData: FormData): Promise<Acti
   );
 
   revalidatePath('/admin/organisations');
-  return { 
-    ok: true, 
+  return {
+    ok: true,
     message: `Organisation "${legalName}" created successfully.`,
-    organisationId: org.organisation_id 
+    organisationId: org.organisation_id
   };
+}
+
+/**
+ * Mint an invitation into an EXISTING organisation and email it — the missing link between
+ * "create the distributor org" and "the partner actually gets a working sign-up link". Mirrors
+ * /api/admin/invitations' cross-org path but as a direct server action (this page is already
+ * inside the admin layout, so it re-checks isCurrentUserAdmin() itself, same as
+ * createOrganisationAction above, rather than round-tripping through the API route).
+ */
+export async function inviteToOrganisationAction(formData: FormData): Promise<ActionResult> {
+  if (!(await isCurrentUserAdmin())) {
+    return { ok: false, message: 'Not authorised' };
+  }
+
+  const email = String(formData.get('email') || '').trim().toLowerCase();
+  const firstName = String(formData.get('first_name') || '').trim();
+  const lastName = String(formData.get('last_name') || '').trim();
+  const organisationId = String(formData.get('organisation_id') || '');
+
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!email || !EMAIL_RE.test(email)) {
+    return { ok: false, message: 'Enter a valid email address.' };
+  }
+  if (!organisationId) {
+    return { ok: false, message: 'Choose an organisation to invite them into.' };
+  }
+
+  const supabase = createServiceClientV2();
+  const { data: org, error: orgError } = await supabase
+    .from('organisations')
+    .select('legal_name, org_type')
+    .eq('organisation_id', organisationId)
+    .maybeSingle();
+
+  if (orgError || !org) {
+    return { ok: false, message: 'That organisation does not exist.' };
+  }
+
+  // Non-client_org lanes (portfolio/project/distributor) are someone joining their OWN org to
+  // bring Kira to clients — the "Welcome to the Kira Partnership Team" copy. client_org (or an
+  // unset org_type — the legacy CAIS-beta-sandbox rows) keeps the original beta-tester copy.
+  const emailVariant = org.org_type && org.org_type !== 'client_org' ? 'partner' : 'beta';
+
+  try {
+    const minted = await mintInvitation({
+      organisationId,
+      email,
+      firstName: firstName || null,
+      lastName: lastName || null,
+      betaType: 'superadmin', // first person into a freshly created org should land as its owner
+      label: `${firstName} ${lastName}`.trim() || null,
+      createdBy: 'admin',
+    });
+
+    let emailStatus: 'sent' | 'failed' = 'sent';
+    try {
+      await sendInvitationEmail(
+        {
+          organisationId,
+          email,
+          firstName: firstName || null,
+          lastName: lastName || null,
+          betaType: 'superadmin',
+          label: minted.invitation.label,
+          code: minted.code,
+          prettyCode: minted.prettyCode,
+        },
+        emailVariant,
+      );
+    } catch (err) {
+      emailStatus = 'failed';
+      console.error('[admin/organisations/actions] invitation email failed:', err);
+    }
+
+    revalidatePath('/admin/organisations');
+    return {
+      ok: true,
+      message:
+        emailStatus === 'sent'
+          ? `Invitation sent to ${email} for "${org.legal_name}" (code ${minted.prettyCode}).`
+          : `Invitation code ${minted.prettyCode} created for "${org.legal_name}", but the email failed to send — share the code directly.`,
+      organisationId,
+    };
+  } catch (error) {
+    console.error('[admin/organisations/actions] invite failed:', error);
+    return { ok: false, message: `Could not create invitation: ${(error as Error).message}` };
+  }
 }

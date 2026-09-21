@@ -29,7 +29,13 @@ async function resolveCallerPersonId(): Promise<string | null> {
 }
 
 /**
- * Verify the caller holds at least one active distributor portfolio entry.
+ * Verify the caller holds at least one active distributor portfolio entry,
+ * OR is a member of a distributor-lane organisation.
+ *
+ * Mirrors lib/auth.ts currentUserIsDistributor() — see its comment. Without
+ * the membership fallback, a brand-new partner with zero clients yet could
+ * never pass this check, and this action is the ONLY way to create their
+ * first client (which is what would otherwise earn them a portfolio row).
  */
 async function callerIsDistributor(personId: string): Promise<boolean> {
   const svc = createServiceClientV2();
@@ -44,7 +50,23 @@ async function callerIsDistributor(personId: string): Promise<boolean> {
     console.error('[distributor/actions] portfolio check failed:', error);
     return false;
   }
-  return (count ?? 0) > 0;
+  if ((count ?? 0) > 0) return true;
+
+  const { data: memberships, error: membershipError } = await svc
+    .from('organisation_memberships')
+    .select('organisation_id, organisations(org_type)')
+    .eq('person_id', personId)
+    .eq('status', 'active');
+
+  if (membershipError) {
+    console.error('[distributor/actions] membership check failed:', membershipError);
+    return false;
+  }
+
+  return (memberships ?? []).some((m) => {
+    const org = Array.isArray(m.organisations) ? m.organisations[0] : m.organisations;
+    return (org as { org_type?: string } | undefined)?.org_type === 'distributor';
+  });
 }
 
 /**

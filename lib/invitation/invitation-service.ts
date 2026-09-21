@@ -61,6 +61,12 @@ export interface MintParams {
   expiresInDays?: number;
 }
 
+// Which narrative the invitation email tells. 'beta' is the original CAIS-sandbox copy
+// (org_type null/client_org, or unresolved — the historical default, unchanged). 'partner' is for
+// someone joining their OWN live distributor/consultant org — a materially different pitch (real
+// account, not a sandbox; they're bringing Kira to clients, not testing a pre-seeded scenario).
+export type InvitationVariant = 'beta' | 'partner';
+
 export interface MintResult {
   code: string;
   prettyCode: string;
@@ -97,33 +103,71 @@ export async function mintInvitation(params: MintParams): Promise<MintResult> {
 
 // ── Send invitation email ───────────────────────────────────────────────────
 
-export async function sendInvitationEmail(invitation: MintParams & { code: string; prettyCode: string }): Promise<void> {
-  const codeUrl = `${APP_URL}/?code=${normalise(invitation.code)}`;
+export async function sendInvitationEmail(
+  invitation: MintParams & { code: string; prettyCode: string },
+  variant: InvitationVariant = 'beta',
+): Promise<void> {
+  // The redemption surface is /plan, not the root — a root URL renders the marketing homepage
+  // and silently drops the code, so a recipient following this link never gets past "get started".
+  const codeUrl = `${APP_URL}/plan?code=${normalise(invitation.code)}`;
   const firstName = invitation.firstName || invitation.email.split('@')[0];
   const sender = senderIdentityOrNull();
 
-  const subject = `${firstName}, Your Invitation to the Kira Beta Testing Programme`;
+  const subject =
+    variant === 'partner'
+      ? `${firstName}, Welcome to the Kira Partnership Team`
+      : `${firstName}, Your Invitation to the Kira Beta Testing Programme`;
 
-  const html = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:40px 20px;">
-<tr><td align="center">
-<table width="640" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,.1);">
-  <tr><td style="background:linear-gradient(135deg,#E8998D 0%,#D4847C 100%);padding:40px;text-align:center;">
-    <h1 style="color:#fff;margin:0;font-size:24px;">Kira Beta</h1>
-  </td></tr>
-  <tr><td style="padding:40px;">
+  const bannerText = variant === 'partner' ? 'Kira Partnership' : 'Kira Beta';
+
+  const bodyHtml =
+    variant === 'partner'
+      ? `
     <p style="font-size:16px;color:#333;line-height:1.7;margin:0 0 20px;">Dear ${firstName},</p>
     <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 20px;">
       Dennis McMahon here from Corporate AI Solutions.
-    </p>  
+    </p>
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 20px;">
+      Following our conversation, I've set up your <strong>Kira Partner account</strong> — this is
+      live, not a sandbox. It's yours to build.
+    </p>
+
+    <h2 style="font-size:17px;color:#333;margin:28px 0 12px;">What you're joining</h2>
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 16px;">
+      Kira is an AI Voice Agent platform for business owners who are running successful businesses
+      but who the business can't run without — we call it "Owner Dependence". Kira captures how the
+      business actually runs, straight from the owner, and turns it into a durable, transferable
+      record: the Business Genome.
+    </p>
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 16px;">
+      As a partner, you bring Kira to the businesses you already work with — under your own
+      methodology, your own client relationships, and your own commercial terms with them.
+    </p>
+
+    <h2 style="font-size:17px;color:#333;margin:28px 0 12px;">How it works</h2>
+    <ol style="font-size:16px;color:#555;line-height:1.8;margin:0 0 20px;padding-left:22px;">
+      <li>Start at <strong style="color:#D4847C;">${codeUrl}</strong> — your invitation is carried with
+          you automatically, so there's no code to type in.</li>
+      <li>You'll have a short conversation with Kira about your practice — who you serve, how you
+          work, and what you'd want her to handle for your clients.</li>
+      <li>That sets up your own <strong>Kira Partner Portal</strong>, where you bring your clients
+          onto Kira and oversee their portals.</li>
+    </ol>
+
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0;">
+      Let me know once you're in so I can hear how it's going for you.
+    </p>`
+      : `
+    <p style="font-size:16px;color:#333;line-height:1.7;margin:0 0 20px;">Dear ${firstName},</p>
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 20px;">
+      Dennis McMahon here from Corporate AI Solutions.
+    </p>
     <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 20px;">
       You and I had discussed the Kira Platform for Baby Boomer Business Owners.
-    </p>  
+    </p>
     <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 20px;">
       I had asked you (and I think you agreed :) to be a Beta Tester for the Kira Platform.
-    </p>    
+    </p>
     <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 20px;">
       I have set up a <strong>sandbox Kira portal</strong> for beta testers, so there's nothing you can
       break as you test it out&nbsp;:)
@@ -134,9 +178,9 @@ export async function sendInvitationEmail(invitation: MintParams & { code: strin
       Kira is a business support platform I built to help Baby Boomer Business Owners (BBBOs)
       who are running successful businesses but the "Owner Dependence" levels are high (ie the
       business just can't run without them).
-      
+
       I want them to get the maximum value from their businesses when they choose to exit and retire.
-       
+
        And - at the same time - create a valuable business opportunity for ourselves and the consultants that will be needed to support the business owners:)
     </p>
     <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 16px;">
@@ -182,7 +226,19 @@ export async function sendInvitationEmail(invitation: MintParams & { code: strin
 
     <p style="font-size:16px;color:#555;line-height:1.7;margin:0;">
       Let me know once you have logged in so I can hear how it's going for you.
-    </p>
+    </p>`;
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:40px 20px;">
+<tr><td align="center">
+<table width="640" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,.1);">
+  <tr><td style="background:linear-gradient(135deg,#E8998D 0%,#D4847C 100%);padding:40px;text-align:center;">
+    <h1 style="color:#fff;margin:0;font-size:24px;">${bannerText}</h1>
+  </td></tr>
+  <tr><td style="padding:40px;">
+    ${bodyHtml}
   </td></tr>
   <tr><td style="background:#f9f9f9;padding:24px 40px;text-align:center;border-top:1px solid #eee;">
     <p style="font-size:12px;color:#aaa;margin:0;">

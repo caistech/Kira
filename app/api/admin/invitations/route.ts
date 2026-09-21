@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-import { getAuthUser, getCurrentOrganisationContext, resolveOrganisationForPerson } from '@/lib/auth';
+import { getAuthUser, getCurrentOrganisationContext, resolveOrganisationForPerson, isCurrentUserAdmin } from '@/lib/auth';
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import {
   listInvitations,
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Not authorised' }, { status: 401 });
   }
 
-  let body: { email?: string; firstName?: string; lastName?: string; betaType?: string };
+  let body: { email?: string; firstName?: string; lastName?: string; betaType?: string; organisationId?: string };
   try {
     body = await request.json();
   } catch {
@@ -63,9 +63,45 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Valid email is required' }, { status: 400 });
   }
 
+  // Default: mint into the caller's own org context (unchanged behaviour).
+  // Override: a PLATFORM admin (ADMIN_EMAILS) may target a different org — the case this exists
+  // for is inviting a partner into a distributor-lane org created via /admin/organisations, which
+  // is never the org the platform admin is themselves "acting as". Gated on isCurrentUserAdmin(),
+  // not just requireAdmin()'s org-context check, because an ordinary org owner/admin passing an
+  // arbitrary organisationId here would otherwise be able to mint an invitation into ANY other
+  // tenant's org — a cross-tenant escalation, not a convenience.
+  let targetOrganisationId = auth.org.organisationId;
+  if (body.organisationId && body.organisationId !== auth.org.organisationId) {
+    if (!(await isCurrentUserAdmin())) {
+      return NextResponse.json({ error: 'Not authorised to target another organisation' }, { status: 403 });
+    }
+    const svc = createServiceClientV2();
+    const { data: targetOrg, error: targetOrgError } = await svc
+      .from('organisations')
+      .select('organisation_id')
+      .eq('organisation_id', body.organisationId)
+      .maybeSingle();
+    if (targetOrgError || !targetOrg) {
+      return NextResponse.json({ error: 'Target organisation not found' }, { status: 404 });
+    }
+    targetOrganisationId = body.organisationId;
+  }
+
+  // The email tells a different story depending on what's being joined: a client_org (or an
+  // org with no org_type set — the historical CAIS-beta-sandbox rows) gets the beta-tester copy
+  // unchanged; anything else (portfolio/project/distributor) is someone joining their OWN live
+  // org to bring Kira to clients, which gets the partner copy.
+  const svcForType = createServiceClientV2();
+  const { data: targetOrgRow } = await svcForType
+    .from('organisations')
+    .select('org_type')
+    .eq('organisation_id', targetOrganisationId)
+    .maybeSingle();
+  const emailVariant = targetOrgRow?.org_type && targetOrgRow.org_type !== 'client_org' ? 'partner' : 'beta';
+
   try {
     const minted = await mintInvitation({
-      organisationId: auth.org.organisationId,
+      organisationId: targetOrganisationId,
       email: body.email,
       firstName: body.firstName ?? null,
       lastName: body.lastName ?? null,
@@ -79,16 +115,19 @@ export async function POST(request: NextRequest) {
     // "email sent" when the provider rejected it.
     let emailStatus: 'sent' | 'failed' = 'sent';
     try {
-      await sendInvitationEmail({
-        organisationId: auth.org.organisationId,
-        email: body.email,
-        firstName: body.firstName ?? null,
-        lastName: body.lastName ?? null,
-        betaType: (body.betaType as 'superadmin' | 'user') ?? 'user',
-        label: minted.invitation.label,
-        code: minted.code,
-        prettyCode: minted.prettyCode,
-      });
+      await sendInvitationEmail(
+        {
+          organisationId: targetOrganisationId,
+          email: body.email,
+          firstName: body.firstName ?? null,
+          lastName: body.lastName ?? null,
+          betaType: (body.betaType as 'superadmin' | 'user') ?? 'user',
+          label: minted.invitation.label,
+          code: minted.code,
+          prettyCode: minted.prettyCode,
+        },
+        emailVariant,
+      );
     } catch (err) {
       emailStatus = 'failed';
       console.error('[api/admin/invitations] email send failed:', err);

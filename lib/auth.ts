@@ -1230,7 +1230,23 @@ export async function requireOrgCeo(): Promise<OrganisationContext> {
 //
 
 /**
- * Check if the current user has any active distributor portfolio entries.
+ * Check if the current user has any active distributor portfolio entries,
+ * OR is a member of a distributor-lane organisation.
+ *
+ * The portfolio-entry check alone left a chicken-and-egg gap: a freshly
+ * onboarded partner (member of an org_type='distributor' org, per the
+ * admin-created lane) has ZERO portfolio entries until they provision their
+ * first client — but provisionClientOrganisation itself requires this
+ * function to already return true. Nothing seeded the first entry, so the
+ * /distributor portal never appeared and a new partner could never reach the
+ * action that would have unlocked it.
+ *
+ * Membership in a distributor-lane org is authority-bearing on its own (it
+ * is how the admin-created org/portal lane, PRODUCT_STANDARDS' portal-lane
+ * autobootstrap, actually grants the partner role) — it does not depend on
+ * distributor_portfolio, which only ever describes CLIENTS a distributor has
+ * already added. Per-client content access (auth_user_is_distributor_for)
+ * is untouched by this — it still requires a real portfolio row.
  */
 export async function currentUserIsDistributor(): Promise<boolean> {
   const authUser = await getAuthUser();
@@ -1248,7 +1264,7 @@ export async function currentUserIsDistributor(): Promise<boolean> {
 
   if (!credential?.person_id) return false;
 
-  // 2. Check for active portfolio entries
+  // 2. Check for active portfolio entries (has already added ≥1 client)
   const { count, error } = await supabase
     .from('distributor_portfolio')
     .select('id', { count: 'exact', head: true })
@@ -1261,7 +1277,25 @@ export async function currentUserIsDistributor(): Promise<boolean> {
     return false;
   }
 
-  return (count ?? 0) > 0;
+  if ((count ?? 0) > 0) return true;
+
+  // 3. Fall back to org membership: an active member of a distributor-lane
+  //    org is a distributor from day one, before they've added any clients.
+  const { data: memberships, error: membershipError } = await supabase
+    .from('organisation_memberships')
+    .select('organisation_id, organisations(org_type)')
+    .eq('person_id', credential.person_id)
+    .eq('status', 'active');
+
+  if (membershipError) {
+    console.error('[lib/auth] distributor membership lookup failed:', membershipError);
+    return false;
+  }
+
+  return (memberships ?? []).some((m) => {
+    const org = Array.isArray(m.organisations) ? m.organisations[0] : m.organisations;
+    return (org as { org_type?: string } | undefined)?.org_type === 'distributor';
+  });
 }
 
 /**

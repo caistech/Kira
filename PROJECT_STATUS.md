@@ -9,6 +9,24 @@
 
 ## What Was Just Done
 <!-- Updated at end of each session. Most recent first. -->
+- **(uncommitted)** — fixed 3 gaps on the distributor-onboarding path ahead of inviting 3 real
+  partners: (1) deleted the dead `research_practice` stub; (2) `getKiraPrompt` had NO branch for
+  `journeyType === 'consultant'` — it fell through to `getBusinessPrompt` (the fractional-exec,
+  "capture your business to sell it" persona), so every partner's first /talk call opened with the
+  wrong pitch entirely. Added `getConsultantPrompt`. (3) `currentUserIsDistributor()` /
+  `callerIsDistributor()` required an existing `distributor_portfolio` row to unlock the
+  `/distributor` portal or `provisionClientOrganisation` — a chicken-and-egg that meant a brand-new
+  partner could never reach either. Both now also recognise active membership in an
+  `org_type='distributor'` org. (4) `sendInvitationEmail`'s link pointed at `/?code=` — the
+  redemption surface is `/plan?code=`, so every invitation email sent through this system linked to
+  the marketing homepage and silently dropped the code. Fixed. Confirmed `NEXT_PUBLIC_APP_URL` is
+  correctly `https://kiraexec.com` (a wrong-host variant of this same bug was flagged earlier today
+  and appears already resolved). (5) `/api/admin/invitations` always minted into the CALLER's own
+  org context — no way to invite a partner into a distributor org created via `/admin/organisations`.
+  Now accepts an optional `organisationId` override, gated on `isCurrentUserAdmin()` (not just org
+  membership) to avoid a cross-tenant mint. **Not yet wired into any UI** — usable via direct POST
+  today; `/admin/organisations` has no "invite" affordance yet. `tsc --noEmit` clean, targeted tests
+  green (36/36); full suite not re-run this pass.
 - `eb52352` — org_type selector on admin create-org form + latent portals bug fix.
   `portals.portal_level DEFAULT 'business'` violated its own CHECK (portfolio/project/
   distributor/client_org); every portals writer now sets `portal_level` + `journey_type`
@@ -21,12 +39,28 @@
 
 ## What's Next
 <!-- Prioritised list of pending work. Updated each session. -->
+- [ ] **Before inviting the 3 partners**: add an "Invite" affordance to `/admin/organisations`
+      (email + first/last name field, posts to `/api/admin/invitations` with the new org's
+      `organisationId`) so Dennis doesn't have to hand-craft the POST. The API side is done.
+- [ ] Send-invitation email copy still says "Kira Beta Testing Programme" — fine for a beta
+      tester, wrong register for a partner being onboarded as a distributor. Worth a distinct
+      template/subject line before the 3 sends, not functionally broken.
+- [ ] `createOrganisationAction` never sets `organisations.parent_organisation_id` — the
+      chain-of-truth hierarchy column exists (migration `20260921000000`) but nothing populates
+      it, so distributor orgs aren't actually linked under a parent. Nothing reads this column
+      yet (feeds unbuilt truth-comparison/memory-push features), so not blocking, but cheap to
+      fix now while it's fresh.
+- [ ] Not yet verified live: does completing `/talk?journey=consultant` actually land the new
+      partner with an active `organisation_memberships` row in the org Dennis created for them?
+      Traced the identity/plan code path but did not walk it end-to-end in a browser — this is
+      the one link in the chain that's reasoned-through, not observed.
 - [ ] Tighten the consultant/distributor extraction prompt
       (`lib/kira/consultant-genome-extract.ts` `EXTRACTION_PROMPT`) so a distributor interview
-      is not forced into a "consultant-with-methodology" shape.
-- [ ] `app/api/kira/webhooks/research_practice/route.ts` — stale untracked stub from another
-      session; imports renamed `researchPractice` export and breaks `tsc`. Decide: delete or
-      point at new `researchOrganisation` (lib/kira/practice-intelligence/research.ts).
+      is not forced into a "consultant-with-methodology" shape. Lower priority now that the live
+      interview itself asks the right questions — a thin answer here degrades gracefully (nulls),
+      it doesn't feel wrong to the partner the way the old prompt did.
+- [ ] area_agenda firing after the genome-aware opener, and the 5 voice embeds at 375px mobile —
+      both still unverified live (carried over from the previous session).
 
 ## Blockers
 <!-- Anything preventing progress. Include who/what is needed to unblock. -->

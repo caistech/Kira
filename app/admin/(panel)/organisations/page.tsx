@@ -14,6 +14,7 @@
 import { createServiceClientV2 } from '@/lib/supabase/server';
 
 import { CreateOrganisationForm } from './CreateOrganisationForm';
+import { InviteToOrganisationForm } from './InviteToOrganisationForm';
 
 export const metadata = { title: 'Organisations · Kira Admin' };
 export const dynamic = 'force-dynamic';
@@ -23,7 +24,7 @@ export default async function AdminOrganisationsPage() {
 
   const { data: organisations } = await svc
     .from('organisations')
-    .select('organisation_id, legal_name, trading_name, abn, status, created_at')
+    .select('organisation_id, legal_name, trading_name, abn, status, org_type, created_at')
     .order('created_at', { ascending: false })
     .limit(100);
 
@@ -40,6 +41,15 @@ export default async function AdminOrganisationsPage() {
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-bold text-gray-900 mb-4">Create an organisation</h2>
         <CreateOrganisationForm />
+      </section>
+
+      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-bold text-gray-900 mb-4">Invite someone into an organisation</h2>
+        <p className="mb-4 max-w-prose text-sm text-gray-600">
+          Mints a sign-up code and emails it. Use this once the organisation above exists — creating
+          an organisation alone doesn&apos;t send anyone anything.
+        </p>
+        <InviteToOrganisationForm organisations={organisations ?? []} />
       </section>
 
       <section>

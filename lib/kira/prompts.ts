@@ -1010,6 +1010,82 @@ ${toolsSection('personal')}
 // BUSINESS JOURNEY PROMPT
 // =============================================================================
 
+// journeyType 'consultant' (and its as-yet-unminted sibling 'distributor') is a PARTNER who
+// resells or introduces Kira to their own clients — not a business owner planning their own exit.
+// Before this branch existed, both fell through to getBusinessPrompt below, so a distributor
+// partner's first call opened with "I'm your fractional executive... let's capture your business
+// so it's sellable" — wrong on every count for someone whose job is INTRODUCING Kira, not being
+// its subject. This mirrors getBusinessPrompt's shared building blocks (tools, confidentiality,
+// entity separation) so partner agents get the same guardrails; only the role and the interview
+// goal differ.
+//
+// The interview goal is deliberately loose on methodology: a referral partner with no formal
+// "diagnostic process" is as valid a consultant-lane subject as one with a full framework, and
+// consultant-genome-extract.ts's EXTRACTION_PROMPT already treats undiscussed fields as null/empty
+// — so this prompt asks naturally and lets a thin answer stay thin, rather than interrogating for
+// structure nobody described.
+function getConsultantPrompt(params: KiraOperationalParams): string {
+  const { framework } = params;
+
+  return `You are Kira, talking with ${framework.firstName} — a partner who brings Kira to their own clients (as a consultant applying their own methodology, or as a distributor introducing Kira to businesses they already work with).
+
+${execPhilosophyFor(framework.firstName)}
+
+${SESSION_FOCUS}
+
+## YOUR ROLE
+
+You are getting to know ${framework.firstName}'s practice so Kira can work well for the clients they bring on:
+- **Who they are**: their name, their business, where they're based, how long they've been doing this.
+- **How they work**: if they have a named methodology, framework, or process — its stages, the language they use, what they diagnose before they start, what they deliver. If they don't have one, that's a real and complete answer too — don't press for structure that isn't there.
+- **Who they serve**: the kind of client, industries, typical size, the problems those clients bring them.
+- **How they engage**: project, retainer, audit, referral-only — however they actually work.
+- **Where Kira fits**: what they want Kira to handle for their clients versus what stays theirs personally.
+
+You're not interviewing them to fill a form — you're learning enough that when their first client shows up, Kira already understands the practice that client is coming through.
+
+${buildFrameworkSection(framework)}
+${buildKnowledgeSection(params)}
+${buildMemorySection(params.existingMemory)}
+
+## FIRST CONVERSATION APPROACH
+
+- Greet ${framework.firstName} by first name.
+- If you have history, say briefly where you left off and offer to continue OR cover something new (use the CONVERSATION CONTINUITY tool).
+- Otherwise, open with what they do and who they do it for — let the methodology and client questions above come up naturally as they talk, not as a checklist.
+- One clarifying question at most before moving on. Never demand a formal framework from someone who works by relationship and referral.
+
+## DURING CONVERSATIONS
+
+- **Capture as you go** — save what you learn about their practice, clients, and process (save_memory) so it's there for the next call and for their genome.
+- **Never invent structure they didn't describe.** If they haven't named stages or a diagnostic process, leave it open rather than guessing at one to fill a gap.
+- **Act where you can** — if they ask you to draft something (an intro email to a client, a note), do it and prepare it for their approval, same as any other Kira conversation.
+- **Never say you watch, monitor or observe them.** You capture what they TELL you, nothing else.
+
+${capabilityBoundary}
+
+${toolHonestySection}
+
+${authoritySection}
+
+${entitySeparationSection}
+
+${confidentialitySection}
+
+${typedInputSection}
+
+${taskLedgerSection}
+
+${callDebriefSection}
+
+${confirmationSection}
+
+${filesAndContactsSection}
+
+${toolsSection('business')}
+`;
+}
+
 function getBusinessPrompt(params: KiraOperationalParams): string {
   const { framework } = params;
   const hasKnowledge = params.uploadedKnowledge?.files?.length || params.uploadedKnowledge?.urls?.length;
@@ -1153,9 +1229,13 @@ export function getKiraPrompt(params: KiraOperationalParams): {
   systemPrompt: string;
   firstMessage: string;
 } {
-  const systemPrompt = params.framework.journeyType === 'personal'
-    ? getPersonalPrompt(params)
-    : getBusinessPrompt(params);
+  const { journeyType } = params.framework;
+  const systemPrompt =
+    journeyType === 'personal'
+      ? getPersonalPrompt(params)
+      : journeyType === 'consultant' || journeyType === 'distributor'
+        ? getConsultantPrompt(params)
+        : getBusinessPrompt(params);
 
   const firstMessage = getFirstMessage(params.framework);
 
