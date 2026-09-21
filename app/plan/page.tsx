@@ -71,6 +71,7 @@ type IdentityResponse = {
   identity?: {
     organisationId?: string | null;
     organisationName?: string | null;
+    organisationType?: string | null;
     personId?: string | null;
     membershipId?: string | null;
     role?: string | null;
@@ -493,6 +494,17 @@ export default function PlanPage() {
         body.identity?.isSuperadmin === true ||
         body.isSuperadmin === true;
 
+      // Which /talk EXPERIENCE a fresh member gets is decided by the org they just joined, not by
+      // guessing from the URL — a distributor/portfolio/project-lane org means a CONSULTANT
+      // interview (getConsultantPrompt), never the fractional-exec "capture your business to sell
+      // it" pitch a bare /talk defaults new agents to. Found live 2026-09-21: a partner invited
+      // into a freshly admin-created distributor org landed on plain /talk (no ?journey=), and
+      // /api/kira/ensure minted a 'business' agent — every downstream fix to the prompt itself was
+      // correct and simply never reached, because nothing here told /talk which lane to mint.
+      // client_org (and legacy orgs with no org_type set) keep the existing bare business journey.
+      const orgType = body.identity?.organisationType ?? null;
+      const journeyLane = orgType && orgType !== 'client_org' ? 'consultant' : null;
+
       // FRESH-USER FIRST SURFACE IS /talk, NOT /dashboard. A brand-new owner has no kira_agents
       // row — and only /talk provisions one (KiraBootstrap → /api/kira/ensure mints the agent on
       // first visit). Landing on /dashboard first left them with zero agents and a Kira that could
@@ -503,7 +515,9 @@ export default function PlanPage() {
       // (boundOrganisation set — the beta-tester case) and a plain self-signup (boundOrganisation
       // null). Returning users never reach this fork — they are caught earlier by
       // hasCanonicalOrganisation and sent to /dashboard.
-      window.location.assign(becameSuperadmin ? '/manage' : '/talk');
+      window.location.assign(
+        becameSuperadmin ? '/manage' : `/talk${journeyLane ? `?journey=${journeyLane}` : ''}`,
+      );
 
     } catch (error: unknown) {
       setIdentityError(

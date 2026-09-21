@@ -87,6 +87,7 @@ type CanonicalMembership = {
 type OrganisationRow = {
   organisation_id: string;
   legal_name: string | null;
+  org_type: string | null;
 };
 
 function normaliseString(value: unknown): string {
@@ -496,7 +497,7 @@ async function resolveOrganisation(
 ): Promise<OrganisationRow> {
   const { data, error } = await supabase
     .from('organisations')
-    .select('organisation_id, legal_name')
+    .select('organisation_id, legal_name, org_type')
     .eq('organisation_id', organisationId)
     .maybeSingle();
 
@@ -1290,6 +1291,7 @@ export async function POST(request: Request) {
         identity: {
           organisationId: organisation.organisation_id,
           organisationName: organisation.legal_name,
+          organisationType: organisation.org_type,
           personId,
           membershipId: membership.membership_id,
           role: membership.role,
