@@ -4,6 +4,9 @@
 //
 // Server component: auth is enforced by the (panel) layout.
 // InvitationForm and RevokeInvitation are client components.
+//
+// @no-voice-route: operator console — Kira is the OWNER-facing product, and these are the
+// screens the operator uses to look at owners. (Same rule as the introducers/distributors surface.)
 
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import { getCurrentOrganisationContext } from '@/lib/auth';

@@ -5,6 +5,7 @@
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import { AreaKnowledgeDetail } from '@/components/genome-knowledge/AreaKnowledgeDetail';
+import { KiraShapeSection } from '@/components/KiraShapeSection';
 import { notFound } from 'next/navigation';
 
 const AREA_NAMES: Record<string, string> = {
@@ -51,6 +52,11 @@ export default async function AreaDetailPage({
           <h1 className="text-3xl font-bold text-[var(--text-primary)] mt-2">
             {AREA_NAMES[areaKey]}
           </h1>
+        </div>
+
+        {/* PRODUCT_STANDARDS §6 — same gap as the parent /genome-knowledge page, same fix. */}
+        <div className="mb-8">
+          <KiraShapeSection surface="genome-knowledge" />
         </div>
 
         {/* Area Detail */}

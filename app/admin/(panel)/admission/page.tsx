@@ -1,3 +1,5 @@
+// @no-voice-route: operator console — Kira is the OWNER-facing product, and these are the
+// screens the operator uses to look at owners. (Same rule as the introducers/distributors surface.)
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import { cohortEvidenceForMany, type CohortEvidence } from '@/lib/genome/cohort-evidence';
 import { NominateForm } from './NominateForm';

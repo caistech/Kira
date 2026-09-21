@@ -14,6 +14,8 @@ export type VoiceSurface =
   | 'drafts'
   | 'requests'
   | 'knowledge'
+  | 'genome-knowledge'
+  | 'distributor'
   | 'start'
   | 'chat'
   | 'landing'

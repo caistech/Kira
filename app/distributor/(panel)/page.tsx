@@ -2,6 +2,7 @@ import { createServiceClientV2 } from '@/lib/supabase/server';
 import { getAuthUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { CreateClientOrgForm } from './CreateClientOrgForm';
+import { KiraShapeSection } from '@/components/KiraShapeSection';
 
 export const metadata = { title: 'Distributor Portfolio' };
 export const dynamic = 'force-dynamic';
@@ -37,6 +38,12 @@ export default async function DistributorPortfolioPage() {
           Manage client organisations you oversee.
         </p>
       </header>
+
+      {/* PRODUCT_STANDARDS §6 — a partner in their own portal is exactly the surface this whole
+          onboarding chain exists to serve, and it had no way to reach Kira at all (found live
+          2026-09-21, once the app-chrome fix let the gate's voice-reachable check run for the
+          first time). */}
+      <KiraShapeSection surface="distributor" />
 
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-bold text-gray-900 mb-4">Provision New Client</h2>

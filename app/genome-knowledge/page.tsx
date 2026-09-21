@@ -14,6 +14,7 @@
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import { GenomeKnowledgeDashboard } from '@/components/genome-knowledge/GenomeKnowledgeDashboard';
+import { KiraShapeSection } from '@/components/KiraShapeSection';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,6 +49,13 @@ export default async function GenomeKnowledgePage() {
           <p className="text-[var(--text-secondary)]">
             What Kira knows about {businessName}, how reliable it is, and what&apos;s missing.
           </p>
+        </div>
+
+        {/* PRODUCT_STANDARDS §6 — talking to Kira is the product; this page had no way to reach
+            her at all until this line (found live, once the app-chrome fix let the gate's
+            voice-reachable check actually run for the first time). */}
+        <div className="mb-8">
+          <KiraShapeSection surface="genome-knowledge" />
         </div>
 
         {/* Dashboard */}
