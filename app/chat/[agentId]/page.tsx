@@ -426,9 +426,28 @@ export default function ChatPage({
               ? '🟢 Live conversation'
               : agentInfo?.journey_type === 'business'
                 ? 'Kira · your part-time general manager'
-                : 'Kira · your thinking partner'}
+                : agentInfo?.journey_type === 'consultant' || agentInfo?.journey_type === 'distributor'
+                  ? 'Kira · setting up your partnership'
+                  : 'Kira · your thinking partner'}
           </p>
         </header>
+
+        {/* First-time partner reminder — what they're actually engaging with. A brand-new
+            consultant/distributor has no context for why this call matters or what Kira offers the
+            clients they're about to bring on; this is the answer, shown once before the interview
+            starts (has_history gates it so a returning partner isn't shown marketing copy again). */}
+        {(agentInfo?.journey_type === 'consultant' || agentInfo?.journey_type === 'distributor') &&
+          context &&
+          !context.has_history && (
+            <div className="mx-4 mb-2 rounded-2xl border border-amber-200 bg-white/70 px-4 py-3 text-left">
+              <p className="text-sm font-semibold text-stone-800">What your clients get through Kira</p>
+              <ul className="mt-1.5 space-y-1 text-sm leading-snug text-stone-600">
+                <li>Their business captured in conversation — not a form, not a survey.</li>
+                <li>Recurring admin taken off their plate — drafted, never sent without their approval.</li>
+                <li>A durable, organised record of the business, built for the day they hand it over or sell.</li>
+              </ul>
+            </div>
+          )}
 
         {/* Voice coach — the canonical portfolio VoiceWidget, owner-gated via signed URL. It renders
             its own avatar, transcript, and mic/mute/end controls (no bespoke voice UI). */}
@@ -578,7 +597,9 @@ export default function ChatPage({
                 context?.has_history && (lastTopic || (context.message_count ?? 0) > 0)
                   ? 'Welcome back — Kira remembers where you left off. Tap the mic to continue.'
                   : context && !context.has_history
-                    ? 'Your first conversation with Kira. Tap the mic (or type) to begin — we start from scratch together.'
+                    ? agentInfo?.journey_type === 'consultant' || agentInfo?.journey_type === 'distributor'
+                      ? "Your first conversation with Kira — this is how she learns your practice so she's ready for your first client. Tap the mic (or type) to begin."
+                      : 'Your first conversation with Kira. Tap the mic (or type) to begin — we start from scratch together.'
                     : undefined
               }
               // Speak the recall instead of hoping the agent fetches it. This page already holds the
