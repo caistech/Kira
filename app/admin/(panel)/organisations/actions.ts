@@ -33,12 +33,29 @@ export async function createOrganisationAction(formData: FormData): Promise<Acti
 
   const supabase = createServiceClientV2();
 
+  // A distributor org's parent is the root 'project' org (migration
+  // 20260922000000_org_hierarchy_root.sql) — the one row inside Kira's own
+  // database representing Kira itself. portfolio/project/client_org creation
+  // through this form is rare/unused today and deliberately left parentless
+  // rather than guessing which row above them should be the parent.
+  let parentOrganisationId: string | null = null;
+  if (orgType === 'distributor') {
+    const { data: root } = await supabase
+      .from('organisations')
+      .select('organisation_id')
+      .eq('org_type', 'project')
+      .eq('legal_name', 'Kira')
+      .maybeSingle();
+    parentOrganisationId = root?.organisation_id ?? null;
+  }
+
   const { data: org, error } = await supabase
     .from('organisations')
     .insert({
       legal_name: legalName,
       org_type: orgType,
-      status: 'active'
+      status: 'active',
+      parent_organisation_id: parentOrganisationId,
     })
     .select('organisation_id')
     .single();

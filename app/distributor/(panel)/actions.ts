@@ -70,6 +70,37 @@ async function callerIsDistributor(personId: string): Promise<boolean> {
 }
 
 /**
+ * Resolve the organisation_id of the distributor-lane org the caller belongs
+ * to, if any — used to set parent_organisation_id on a client_org they
+ * provision (migration 20260922000000_org_hierarchy_root.sql). Deliberately
+ * separate from callerIsDistributor(): that returns a boolean and can pass via
+ * distributor_portfolio alone with no organisation to point at, whereas
+ * parent_organisation_id needs an actual org row. Returns null rather than
+ * guessing when the caller has no distributor-lane membership — the client
+ * org is still created, just without a parent link, same as before this fix.
+ */
+async function resolveCallerDistributorOrgId(personId: string): Promise<string | null> {
+  const svc = createServiceClientV2();
+  const { data: memberships, error } = await svc
+    .from('organisation_memberships')
+    .select('organisation_id, organisations(org_type)')
+    .eq('person_id', personId)
+    .eq('status', 'active');
+
+  if (error) {
+    console.error('[distributor/actions] distributor-org lookup failed:', error);
+    return null;
+  }
+
+  const distributorMembership = (memberships ?? []).find((m) => {
+    const org = Array.isArray(m.organisations) ? m.organisations[0] : m.organisations;
+    return (org as { org_type?: string } | undefined)?.org_type === 'distributor';
+  });
+
+  return distributorMembership?.organisation_id ?? null;
+}
+
+/**
  * Provision a new client organisation and automatically grant the caller
  * a distributor portfolio entry over it — the "distributor creates a client
  * org and gets its portal" step of the provisioning chain.
@@ -90,11 +121,17 @@ export async function provisionClientOrganisation(formData: FormData): Promise<A
   }
 
   const svc = createServiceClientV2();
+  const parentOrganisationId = await resolveCallerDistributorOrgId(personId);
 
   // 1. Create the client organisation.
   const { data: org, error: orgError } = await svc
     .from('organisations')
-    .insert({ legal_name: legalName, org_type: 'client_org', status: 'active' })
+    .insert({
+      legal_name: legalName,
+      org_type: 'client_org',
+      status: 'active',
+      parent_organisation_id: parentOrganisationId,
+    })
     .select('organisation_id')
     .single();
 
