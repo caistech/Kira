@@ -7,7 +7,7 @@ breaking it, or a technical reviewer checking that the claims in the HLD are act
 that must survive any future change. An invariant is not a style preference. Each one is here
 because breaking it causes a specific, named failure.
 
-**Status:** `main` as at 2026-09-10.
+**Status:** `main` as at 2026-09-22.
 
 ---
 
@@ -111,13 +111,14 @@ time, because the marker lives in the dispatcher file, not in any component.
 
 ## 2. Identity and authorisation
 
-### 2.1 The four identities
+### 2.1 The five identities
 
 Enforced in `middleware.ts`, plus per-route checks.
 
 ```
 /admin/*         Supabase session  AND  email ∈ ADMIN_EMAILS      → else redirect
 /introducer/*    valid signed introducer cookie                   → else /introducer/expired
+/distributor/*   Supabase session  AND  distributor-org membership → else 403 (see 2.4)
 /talk /chat …    Supabase session                                 → else /login
 everything else  public
 ```
@@ -167,6 +168,24 @@ database projection, not in the route.
 reachable through an introducer path. Because the boundary is in SQL, a future UI change cannot
 widen it by accident. The privacy policy states this as *fact*, which it can only do while this
 holds.
+
+### 2.4 Distributor identity — added 2026-09-22
+
+Unlike an introducer, a distributor/consultant IS a full Supabase account holder (`kira_agents.
+journey_type IN ('consultant','distributor')`). `callerIsDistributor()` (`app/distributor/(panel)/
+actions.ts`) checks two paths — an active `distributor_portfolio` row, OR active membership in an
+`org_type='distributor'` organisation (the fallback exists so a brand-new partner with zero clients
+yet, who therefore has no portfolio row, can still reach `/distributor` and provision their first
+one — without it the route is unreachable on exactly the first use).
+
+**RLS invariant (migration `20260921140000_distributor_content_access_gate.sql`):** a bare,
+unapproved `distributor_portfolio` row grants ONLY `view_status` — never read/write of a client's
+`conversations` / `kira_memory` / genome rows. That requires a separate, approved
+`operating_agreements` row (`auth_user_has_distributor_content_agreement()`). Before this migration,
+`auth_user_can_read_org_row()`'s first gate delegated straight to `auth_user_has_organisation_access()`
+— which already folded in the Tier-2 distributor fallback — so a distributor with zero agreements had
+unrestricted content access. `auth_user_has_organisation_access()` itself is untouched and remains
+canonical for org-administration surfaces (`organisations`, `portals`); only content tables narrowed.
 
 ---
 
@@ -729,7 +748,8 @@ Principal tables (`supabase/migrations/` is the **only** canonical location — 
 | Group | Tables |
 |---|---|
 | Identity | `users`, `client_profiles`, `setup_sessions` |
-| Voice + memory | `kira_agents`, `conversations`, `conversation_messages`, `kira_memory`, `kira_logs` |
+| Org hierarchy (added 2026-09-21/22) | `organisations` (`org_type`: portfolio/project/distributor/client_org, self-referential `parent_organisation_id`, anti-cycle-guarded), `organisation_memberships`, `portals` (per-org canonical `/talk` URL, `journey_type`), `distributor_portfolio` (a distributor's client orgs), `beta_codes` (invitations, `betaType`/variant), `consultant_frameworks`, `consultant_genomes`, `operating_agreements`, `truth_comparisons` (chain-of-truth §7A of the HLD; the latter three exist in schema, not yet consumed by application code as at 2026-09-22) |
+| Voice + memory | `kira_agents` (`journey_type`: personal/business/consultant/distributor — governs which persona `getKiraPrompt` selects, see HLD §7A), `conversations`, `conversation_messages`, `kira_memory`, `kira_logs` |
 | Knowledge | `kira_knowledge`, `kira_knowledge_chunks` (pgvector), `knowledge_files`, `knowledge_urls` |
 | Work | `kira_tasks`, `kira_drafts`, `kira_research_sessions` |
 | Write-back | `drive_documents` (where each area of the manual lives in the owner's own storage — the idempotency map, §6A) |
@@ -749,6 +769,13 @@ Principal tables (`supabase/migrations/` is the **only** canonical location — 
    wrong place.
 4. **Columns are `snake_case`; TypeScript is `PascalCase`/`camelCase`.** Dual naming is accepted
    only at the API boundary and normalised immediately inside it.
+5A. **Org-hierarchy-aware tables (added 2026-09-21/22 — `kira_agents`, `conversations`,
+   `kira_memory`, `portals`, `organisation_memberships`) scope by `organisation_id`, resolved via
+   `resolveCanonicalKiraAgent`/`getCurrentOrganisationContext` — never a bare `person_id`/`user_id`
+   lookup.** This is the current, correct pattern (`KiraShapeSection.tsx`'s own comment: "ownership
+   never comes from the legacy user row"). Invariant 5 below predates this and describes an older
+   layer; the two are not in conflict for tables not yet migrated onto the org model, but a reader
+   should treat 5A as the live rule for anything organisation-scoped.
 5. **Genome tables key on `users.id`, NEVER `auth.users.id`.** Every agent / conversation /
    `kira_memory` row references `users.id` (see `20260720100000_auth_link.sql`), and the Genome is
    derived by app user id throughout. A table keyed the other way joins to nothing and its RLS

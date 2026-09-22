@@ -109,6 +109,55 @@
 > - `area_agenda` firing after the genome-aware opener, and the 5 voice embeds at 375px mobile —
 >   both still unverified live, carried over from an earlier session.
 >
+> ### T8 — a real persona bug, caught by testing on yourself first, plus the narrative unification
+>
+> The operator's own instruction — "I need to send one to myself first so I'm sure the flow all
+> works" — caught a real, pre-existing bug (predates this session, present since `getConsultantPrompt`
+> was first written) that no amount of code review had: `getConsultantPrompt` injected
+> `EXEC_PHILOSOPHY` verbatim, a block its own file header says is "the fractional executive for a
+> **business owner**" — so a partner bringing Kira to their own clients was told "you are building
+> their exit," the wrong persona in the wrong journey. Routing was correct
+> (`journey_type='consultant')` in the DB, `getKiraPrompt` branched correctly) — the PROMPT CONTENT
+> was wrong. Fixed via `consultantPhilosophyFor()` (`lib/kira/exec-philosophy.mjs`), a sibling to
+> `execPhilosophyFor()` sharing the persona-neutral sections and rewriting only the two
+> business-owner-specific ones. Live-patched onto the one existing consultant-journey test agent via
+> a new reusable tool, `scripts/patch-consultant-philosophy.mjs` (exact-string replace, refuses to
+> guess at a drifted prompt).
+>
+> **Then a second, live-only finding**: even with the persona fixed, a first-time partner was asked
+> a business question cold, with nothing explaining what the call was for — "how would they know
+> what they're working on today unless she tells them?" Fixed in three places at once, matching the
+> operator's explicit brief that the invitation email, the `/talk` first screen, and Kira's own
+> opening must tell ONE story in ONE order — consultant-benefit first, client-benefit second, never
+> reversed, so a partner finishes the first screen thinking "this extends my own practice," not
+> "another AI tool to sell":
+> - `lib/invitation/invitation-service.ts` — the `'partner'` email variant rewritten to the
+>   operator's exact copy, replacing an older pitch written for the client-owner journey.
+> - `app/chat/[agentId]/page.tsx` — first-time consultant/distributor visitors see practice-benefit
+>   cards → "And your clients?" (shorter, second) → the exact 7-item list of what to tell Kira,
+>   before the widget. Two drafts before this one — the first version led with client benefits,
+>   corrected on operator review to match the email's order.
+> - `lib/kira/prompts.ts` — `getConsultantPrompt`'s YOUR ROLE + FIRST CONVERSATION APPROACH now ask
+>   about the same seven things the page just told the partner to expect.
+>
+> **Then a third finding, live, at `/distributor`**: the page shows the partner's own Kira
+> conversation (generic `PRODUCT_STANDARDS` §6 voice-reachability) directly above an unrelated plain
+> client-provisioning form, nothing distinguishing them — Kira kept talking about the partner's own
+> consultancy while he was trying to onboard a client. Scoped fix: explanatory copy on both sections
+> (`app/distributor/(panel)/page.tsx`), not a rebuild — voice-driven client provisioning is real,
+> deliberately deferred follow-up work (the same Phase-2 reasoning as T7).
+>
+> All of it verified live by the operator walking the actual flow, not by reading the diff — the
+> persona bug in particular would not have been caught any other way; the DB and the code both said
+> the right thing while the conversation said the wrong one.
+>
+> ### T9 — docs brought current
+>
+> `docs/HLD.md` §7A (new) and `docs/LLD.md` §2.1/2.4/§7 updated to document the org-hierarchy model,
+> the distributor identity check, the RLS content-access gate, and the persona-per-journey-type
+> invariant from T7–T8 — none of which existed in either doc before today. Both docs' `Status` lines
+> bumped to 2026-09-22.
+>
 > ## S. 2026-08-18 — three days of conversations went nowhere, and every signal was green
 >
 > **Trigger:** a session closed unexpectedly mid-investigation. Tracing what it had been doing

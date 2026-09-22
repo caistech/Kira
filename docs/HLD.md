@@ -7,7 +7,7 @@ diligence contact, or a new engineer on day one.
 **Companion:** `docs/LLD.md` holds the contracts, schemas and invariants. This document stops at
 the boundary of "what talks to what, and why."
 
-**Status:** describes `main` as at 2026-09-10. Where something is deliberately *not* built, it says
+**Status:** describes `main` as at 2026-09-22. Where something is deliberately *not* built, it says
 so — an HLD that quietly omits the gaps is worse than none.
 
 ---
@@ -195,6 +195,74 @@ Introducers can:
 - Receive attribution for owners who convert.
 
 Attribution is signed (`@caistech/attribution`) and survives cookie deletion.
+
+---
+
+## 7A. The distributor/consultant channel (org hierarchy) — added 2026-09-22
+
+A **second** partner channel, distinct from §7's introducer channel (introducers refer; they hold no
+Supabase account and never touch a client's data). Distributors and consultants are full account
+holders who bring Kira to businesses they already work with, under their own methodology.
+
+**The hierarchy.** `organisations.org_type` (`portfolio` | `project` | `distributor` | `client_org`)
++ a self-referential `parent_organisation_id` (migration `20260921000000_chain_of_truth_hierarchy.sql`,
+anti-cycle-guarded). One `project`-type root row — legal_name `"Kira"` — was created this session
+(`20260922000000_org_hierarchy_root.sql`) as the single row inside Kira's own database that
+distributor orgs parent under; it is the one row `parent_organisation_id` is deliberately left NULL
+on. `portfolio`-type (Corporate AI Solutions itself) is deliberately not modelled here — that lives
+in the *separate* `corporate-ai-solutions` repo's own Supabase project (`/portfolio-admin`), a
+different database entirely; the two are NOT the same "Kira project portal" and there is no cascade
+between them (an explicit, locked decision — see the register).
+
+**The chain, end to end:**
+1. Admin creates a distributor org at `/admin/organisations` (`createOrganisationAction`) — sets
+   `org_type='distributor'`, `parent_organisation_id` = the root, and lands a `portals` row
+   (`/talk?journey=consultant`).
+2. Admin invites the partner (`inviteToOrganisationAction` → `/api/admin/invitations`, real API
+   route, admin-session-gated). Email variant `'partner'` (see `lib/invitation/invitation-service.ts`).
+3. The partner redeems (`/plan?code=…` → `/talk?journey=consultant`) and gets a `journey_type=
+   'consultant'` `kira_agents` row (`getKiraPrompt` branches on `journeyType`, `lib/kira/prompts.ts`).
+4. The partner's own onboarding conversation runs `getConsultantPrompt` — she asks about their
+   practice (who they work with, methodology, outcomes, where Kira should fit) and captures it via
+   the same tool-calling pattern used for the client-owner journey, never a parallel pipeline.
+5. The partner provisions their own clients at `/distributor` (`provisionClientOrganisation`) — a
+   plain form today (voice-driven provisioning here is deliberately deferred, see below), which
+   sets `org_type='client_org'`, parents the new org under the PARTNER's own org (not the root), and
+   auto-grants a `distributor_portfolio` entry.
+
+**⚠️ Persona correctness is load-bearing and was a real, live bug.** `getConsultantPrompt` and
+`getBusinessPrompt` (the client-owner journey) must NEVER share the same "WHO YOU ARE" philosophy —
+a consultant/distributor partner is not selling their own business, and being told "you are building
+YOUR exit" mid-onboarding is the wrong persona bleeding into the wrong journey. Found live 2026-09-22
+(routing was correct — `journey_type` was right in the DB — the PROMPT CONTENT was wrong). Fixed via
+`lib/kira/exec-philosophy.mjs`'s `consultantPhilosophyFor()`, a sibling to `execPhilosophyFor()` that
+shares the persona-neutral operational sections (rapport-fast, act-don't-discuss, human-in-the-loop)
+but rewrites the two owner-specific ones. A source fix alone does not reach an already-provisioned
+live agent — see `scripts/patch-consultant-philosophy.mjs`, the reusable sweep-and-patch tool.
+
+**RLS closed a real gap the same day:** a bare, unapproved `distributor_portfolio` row used to grant
+a distributor unrestricted read/write of a client's org-visibility content with zero
+`operating_agreements` check. Closed via `auth_user_has_direct_org_membership()` +
+`auth_user_has_distributor_content_agreement()` (migration `20260921140000`) — not yet exploited, the
+distributor portal only ever displayed `organisations.legal_name` at the time.
+
+**Narrative consistency (2026-09-22) — the invitation email, the `/talk` first screen, and Kira's own
+opening conversation tell ONE story, in one fixed order:** what this does for the partner's practice
+→ what it means for their clients → how to start. Never client-benefit-first — a partner should
+finish the first screen thinking *"this extends my own practice,"* not *"another AI tool to sell."*
+All three artifacts (`lib/invitation/invitation-service.ts`'s `'partner'` variant,
+`app/chat/[agentId]/page.tsx`'s `isFirstTimePartner` block, `getConsultantPrompt`'s question list)
+were rewritten in lockstep to the same seven things a partner is asked to describe.
+
+**Deliberately not built (Phase 2, scoped out on purpose 2026-09-22):** voice-driven client
+provisioning at `/distributor` — today's plain form stays, with explanatory copy added so a partner
+isn't confused by the *unrelated* voice widget PRODUCT_STANDARDS §6 requires on every authenticated
+route (that widget continues the partner's OWN practice conversation; it is not about the client
+being provisioned). An outside-model review found that voice-driven ADMIN org creation would only
+ever capture one string (`legal_name`) — disproportionate machinery for the value — and that the
+genuinely urgent goal (onboarding real partners) needed no new build at all, since steps 1–4 above
+already existed and were verified live. That finding is recorded, not silently dropped: any future
+voice-driven-provisioning work should read it first rather than re-deriving the same conclusion.
 
 ---
 
