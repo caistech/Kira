@@ -11,7 +11,7 @@
 // Shared with scripts/patch-agent-model-and-greeting.mjs so new agents and already-provisioned
 // agents carry the IDENTICAL focus rules — a second copy would drift on the first edit.
 import { SESSION_FOCUS } from './session-focus.mjs';
-import { execPhilosophyFor } from './exec-philosophy.mjs';
+import { execPhilosophyFor, consultantPhilosophyFor } from './exec-philosophy.mjs';
 // The tool list she is TOLD about is rendered from the tool list that is ATTACHED — one array, two
 // consumers. The hand-written version had drifted into naming three tools that do not exist.
 import { toolsSection } from './tool-manifest.mjs';
@@ -1029,7 +1029,7 @@ function getConsultantPrompt(params: KiraOperationalParams): string {
 
   return `You are Kira, talking with ${framework.firstName} — a partner who brings Kira to their own clients (as a consultant applying their own methodology, or as a distributor introducing Kira to businesses they already work with).
 
-${execPhilosophyFor(framework.firstName)}
+${consultantPhilosophyFor(framework.firstName)}
 
 ${SESSION_FOCUS}
 
