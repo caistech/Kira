@@ -104,11 +104,20 @@ jobs:
       # make every push write real test rows into production (the exact ~150-row pollution
       # incident of 2026-09-21, which crashed a live admin page). Without these two, the
       # business-genome DB-integration suite skips cleanly rather than failing.
+      #
+      # OPENAI_API_KEY was missing from this step, which is why repository.test.ts (DB-only) has
+      # been running for real while extract.test.ts and e2e-validation.test.ts (both gated on
+      # `hasApiKey`, business-genome/extract.test.ts:29) have skipped on every CI run since the
+      # test-DB wiring landed — 44 tests, never actually executed, still reading green because a
+      # skip and a pass render identically in the summary. extractGenomeFromConversation() defaults
+      # to real OpenAI (gpt-4.1-mini) when no baseUrl/model override is given, so this is real LLM
+      # spend on every push — small (a handful of short synthetic transcripts) but real.
       - name: Tests
         run: npm test --if-present
         env:
           TEST_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
           TEST_SUPABASE_SECRET_KEY: ${{ secrets.TEST_SUPABASE_SECRET_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
       # PRODUCT_STANDARDS §4 — every authenticated route renders inside the app chrome.
       #
