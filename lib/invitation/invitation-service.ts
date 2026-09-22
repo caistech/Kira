@@ -70,7 +70,13 @@ export interface MintParams {
 // (org_type null/client_org, or unresolved — the historical default, unchanged). 'partner' is for
 // someone joining their OWN live distributor/consultant org — a materially different pitch (real
 // account, not a sandbox; they're bringing Kira to clients, not testing a pre-seeded scenario).
-export type InvitationVariant = 'beta' | 'partner';
+// 'founding-beta' is a THIRD, distinct pitch — a small, named cohort of consultants Dennis has
+// already spoken with, invited specifically to test the consultant-led model and the business
+// model/journey (not software QA). Kept separate from 'partner' rather than folded in: 'partner' is
+// already live-verified copy for the general distributor-onboarding chain, and this cohort needs
+// materially different framing (founding-beta acknowledgment, a per-person personal note, an
+// explicit "what we're testing" block) that would be wrong for a future ordinary distributor sign-up.
+export type InvitationVariant = 'beta' | 'partner' | 'founding-beta';
 
 export interface MintResult {
   code: string;
@@ -109,7 +115,19 @@ export async function mintInvitation(params: MintParams): Promise<MintResult> {
 // ── Send invitation email ───────────────────────────────────────────────────
 
 export async function sendInvitationEmail(
-  invitation: MintParams & { code: string; prettyCode: string },
+  invitation: MintParams & {
+    code: string;
+    prettyCode: string;
+    /**
+     * A per-recipient personal opening — one or two sentences referencing the actual conversation
+     * already had with them. 'founding-beta' only. Never invent this; every call site must draw it
+     * from something Dennis actually said or a real detail of the recipient's own practice (D1's
+     * explicit rule: "Do not invent details about a person's methodology"). Plain text (converted
+     * to <p> below), not pre-formatted HTML — keeps call sites simple and this function the only
+     * place that knows the email's markup.
+     */
+    personalNote?: string;
+  },
   variant: InvitationVariant = 'beta',
 ): Promise<void> {
   // The redemption surface is /plan, not the root — a root URL renders the marketing homepage
@@ -119,14 +137,72 @@ export async function sendInvitationEmail(
   const sender = senderIdentityOrNull();
 
   const subject =
-    variant === 'partner'
-      ? `${firstName}, Welcome to the Kira Partnership Team`
-      : `${firstName}, Your Invitation to the Kira Beta Testing Programme`;
+    variant === 'founding-beta'
+      ? `${firstName} — Kira Founding Consultant Beta`
+      : variant === 'partner'
+        ? `${firstName}, Welcome to the Kira Partnership Team`
+        : `${firstName}, Your Invitation to the Kira Beta Testing Programme`;
 
-  const bannerText = variant === 'partner' ? 'Kira Partnership' : 'Kira Beta';
+  const bannerText =
+    variant === 'founding-beta' ? 'Kira Founding Consultant Beta' : variant === 'partner' ? 'Kira Partnership' : 'Kira Beta';
+
+  const personalNoteHtml = invitation.personalNote
+    ? `<p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 20px;">${invitation.personalNote}</p>`
+    : '';
 
   const bodyHtml =
-    variant === 'partner'
+    variant === 'founding-beta'
+      ? `
+    <p style="font-size:16px;color:#333;line-height:1.7;margin:0 0 20px;">${firstName}, thanks again for the conversation.</p>
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 20px;">
+      Dennis McMahon here from Corporate AI Solutions.
+    </p>
+    ${personalNoteHtml}
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 20px;">
+      Since we spoke, the shape of Kira has evolved — and I'd like you to be one of a small
+      founding group testing where it's landed.
+    </p>
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 20px;">
+      This isn't a standard distributor sign-up. You're being invited specifically to the
+      <strong>Kira Founding Consultant Beta</strong> — a small group of consultants and advisers I've
+      already spoken with, testing the new consultant-led model before it goes any wider.
+    </p>
+
+    <h2 style="font-size:17px;color:#333;margin:28px 0 12px;">How it works now</h2>
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 8px;">
+      Kira starts by understanding YOUR practice, not a client's:
+    </p>
+    <ul style="font-size:16px;color:#555;line-height:1.8;margin:0 0 16px;padding-left:22px;">
+      <li>it learns your methodology and how you actually work</li>
+      <li>then you bring it to the clients you already work with</li>
+    </ul>
+
+    <h2 style="font-size:17px;color:#333;margin:28px 0 12px;">What I'd like you to do</h2>
+    <ol style="font-size:16px;color:#555;line-height:1.8;margin:0 0 20px;padding-left:22px;">
+      <li>Enter the portal and have the conversation with Kira.</li>
+      <li>Go through it as if you were genuinely considering using Kira in your own practice —
+          because that's the real question.</li>
+      <li>Tell me where the story, the workflow, or the next step is unclear. That's what I actually
+          need from you.</li>
+    </ol>
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 20px;">
+      To be direct about it: I'm testing the <strong>business model and the journey</strong> here,
+      not asking you to do software QA. If something about the CONCEPT doesn't hold up for a
+      practice like yours, that's exactly the kind of thing I want to hear.
+    </p>
+
+    <p style="font-size:16px;color:#333;line-height:1.7;margin:24px 0 8px;"><strong>Start here:</strong></p>
+    <p style="font-size:16px;line-height:1.7;margin:0 0 4px;">
+      <a href="${codeUrl}" style="color:#D4847C;">${codeUrl}</a>
+    </p>
+    <p style="font-size:14px;color:#777;line-height:1.6;margin:0 0 24px;">
+      Your invitation is carried with you automatically, so there's no code to type in.
+    </p>
+
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0;">
+      Dennis<br/>Corporate AI Solutions
+    </p>`
+      : variant === 'partner'
       ? `
     <p style="font-size:16px;color:#333;line-height:1.7;margin:0 0 20px;">${firstName}, welcome to the Kira Partnership Team.</p>
     <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 20px;">
