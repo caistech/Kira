@@ -1,7 +1,7 @@
 # Project Status — Kira
 
 > Auto-maintained by OpenCode. Read at session start, updated before session end.
-> Last updated: 2026-09-21
+> Last updated: 2026-09-22
 
 ## Current State
 <!-- One of: ACTIVE_DEVELOPMENT | MAINTENANCE | BLOCKED | PAUSED | SHIPPED -->
@@ -9,6 +9,17 @@
 
 ## What Was Just Done
 <!-- Updated at end of each session. Most recent first. -->
+- **`9dcb7f6` — closed the test-isolation gap this file's "What's Next" list called open.** The
+  underlying rewiring (dedicated test Supabase project, `createTestServiceClient()`) had already
+  shipped 2026-09-21 in `001b169`, same day as this file's last update — this file just hadn't
+  caught up. The real remaining gap: CI's `Tests` step never passed `OPENAI_API_KEY`, so
+  `extract.test.ts` + `e2e-validation.test.ts` (44 tests, both gated on an LLM key) **skipped on
+  every CI run**, reading identically to a pass in the summary, while `repository.test.ts`
+  (DB-only) ran for real. Fixed by adding `OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}` to the
+  step. **Verified live**, not just by reading the diff: CI run `35683914101` shows both files
+  actually executing and passing (147/149 test files green, was 145/149 + 4 silently-skipped).
+  `Tests` step now takes ~6m35s instead of ~40s — that's the 44 real tests running, not a
+  regression. Folded into `docs/BUILD_REGISTER.md` as T7 (`d2b96d1`).
 - **`05313cc` (pushed, UNVERIFIED LIVE — session ended before re-test)** — the deeper bug a
   REAL walkthrough found: `/plan`'s post-redemption redirect (`window.location.assign(...)`)
   never carried the org's journey lane forward — it always sent a fresh member to bare `/talk`
@@ -62,13 +73,13 @@
       etc., plus their `genome_entities`/`genome_facts`/`genome_events`/`kira_agents`/
       `organisation_memberships`/`portals`/`beta_codes` rows) — this is what was crashing the
       `/admin/organisations` invite dropdown. 9 real organisations remain.
-- [ ] **Root cause still open**: `business-genome/repository.test.ts`, `extract.test.ts`,
-      `e2e-validation.test.ts` use `createServiceClientV2()` — the exact same client the live
-      app uses — with no separate test Supabase project or `.env.test`. Every run of that
-      suite writes fresh garbage into PRODUCTION. Fixing this properly means provisioning a
-      separate test Supabase project and rewiring the suite/CI — a real project, not a quick
-      fix. Until it's done, running that suite (including via `vitest run` with no file filter)
-      re-pollutes prod every time.
+- [x] **Closed 2026-09-22.** `business-genome/repository.test.ts`, `extract.test.ts`,
+      `e2e-validation.test.ts` all run against a dedicated test Supabase project
+      (`test-support/test-db.ts`, `TEST_SUPABASE_URL`/`TEST_SUPABASE_SECRET_KEY`) and skip
+      cleanly when it isn't configured — never touch prod. CI now also passes `OPENAI_API_KEY`
+      into the `Tests` step, so all 3 files (not just the DB-only one) actually execute instead
+      of silently skipping. Verified live in CI run `35683914101`. See `9dcb7f6` +
+      `docs/BUILD_REGISTER.md` T7.
 - [ ] Landing page: Dennis wants a repositioned distributor/consultant CTA — zero cost/friction
       to become a distributor (a phone call, then onboarded), no fees until they onboard a real
       paying client, and even then billing is monthly in arrears. Not started.
@@ -114,3 +125,4 @@
 | Date | Duration | Summary |
 |------|----------|---------|
 | 2026-09-21 | — | Fixed 29 pre-existing test failures; org_type selector; portals default bug fix + migration (unapplied); recorded bug knowledge |
+| 2026-09-22 | — | Build register brought current (T entry, 12 days); closed the business-genome test-isolation gap this file called open (`OPENAI_API_KEY` missing from CI, not the DB wiring); verified live in CI |
