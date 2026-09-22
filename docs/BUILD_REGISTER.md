@@ -1,5 +1,114 @@
 # Build register — Kira
 
+> ## T. 2026-09-22 — the distributor/consultant lane shipped, then today closed the gaps it left exposed
+>
+> **Trigger:** twelve days and ~50 commits since the last register entry (H6, 2026-09-10) with
+> nothing recorded here — `PROJECT_STATUS.md` (OpenCode's session-state file, added 9/21) carried
+> the day-by-day narrative for 9/15–9/21 in the meantime. This folds that into the record of truth
+> and adds today's work, which PROJECT_STATUS.md doesn't cover yet.
+>
+> ### T1 — what shipped, 2026-09-14 → 09-21
+>
+> The **chain-of-truth hierarchy + distributor model**, built in stages: `organisations` gained
+> `parent_organisation_id`/`org_type` + `consultant_frameworks`/`consultant_genomes`/
+> `operating_agreements`/`truth_comparisons` tables and an anti-cycle trigger (Stage A,
+> `4aa9fc2`); a `/talk`-interview genome-extraction seam that lands a consultant's own ontology
+> into those tables (Stage B, `ee7ef74`); portal-lane autobootstrap that writes the canonical
+> `/talk` invite URL into `portals.portal_url` keyed on `org_type` (Stage C, `bd1944a`); and
+> **lane-aware `/talk` provisioning** — `?journey=business|consultant|distributor` threaded into
+> agent resolution and `KiraBootstrap` so a partner and a client owner get different agents,
+> different prompts (`4940856`). Admin gained an **org-type selector** on org creation
+> (portfolio/project/distributor/client_org), which also surfaced and fixed a **live bug**:
+> `portals.portal_level DEFAULT 'business'` violated its own CHECK constraint, so any insert
+> omitting it was silently rejected — the autobootstrap cron had been failing to land portal URLs
+> for new orgs (`eb52352`; the fix migration `20260921130000` is confirmed **applied live**,
+> defaults dropped, NOT NULL now fails loudly instead).
+>
+> ### T2 — the distributor onboarding chain: broken, "fixed", still broken, then verified live
+>
+> Ahead of inviting 3 real partners, `7f19b91` closed 5 gaps (dead invite link, missing consultant
+> prompt branch, a chicken-and-egg distributor-portal gate, no UI to invite someone into an org).
+> A **real walkthrough** then found the deeper bug none of those five touched: `/plan`'s
+> post-redemption redirect never carried the org's journey lane forward, so every freshly invited
+> partner still landed at bare `/talk` and got minted as `'business'` regardless of which org they
+> joined (`05313cc`). **This was re-verified live 2026-09-21** with a full real-stack test — a
+> real distributor org, a real invitation, redemption as a genuinely new person through the actual
+> browser path, confirmed via DB query (`kira_agents.journey_type = 'consultant'`) and by pulling
+> the live ElevenLabs prompt and confirming the consultant-partner opening line. All test rows and
+> agents were deleted afterward. **Safe to invite the 3 real partners** — this is the load-bearing
+> fact PROJECT_STATUS.md exists to carry, now also on record here.
+>
+> ### T3 — a real RLS gap, closed before anything used it
+>
+> `auth_user_can_read_org_row()`'s first gate delegated to a helper that already folds in the
+> Tier-2 distributor fallback — so a **bare, unapproved** `distributor_portfolio` row (no
+> `operating_agreements` row ever consulted) granted a distributor unrestricted **read AND write**
+> of every org-visibility conversation/`kira_memory`/genome row for that client (`fc005d9`).
+> Distributor content-write access is now removed entirely (nothing today writes as a
+> distributor); reads require an approved `operating_agreements` row. **Not yet exploited** — the
+> distributor portal only ever displayed `organisations.legal_name` — closed before it mattered.
+>
+> ### T4 — the funnel no longer dead-ends
+>
+> The public valuation result's CTA pointed at `/plan`, which is now beta-code-gated — every
+> visitor without an invitation hit a dead end. Per the target architecture (the public funnel is
+> a showroom; real onboarding runs through a consultant/distributor relationship) the CTA now
+> books a call instead (`e8a0cc3`). The consultant landing was separately reframed as an explicit
+> partner-revenue pitch and merged (`b946c70`/PR #86, `bb3f8bd`) — widening the 9/10 H6 decision
+> that made it the default front door.
+>
+> ### T5 — today (09-22): the gate had stopped checking two things it was built to check
+>
+> Fixing the `/plan` first-paint check surfaced that **voice-reachability had also never run past
+> its first failing step** — so "voice reachable from every authenticated route" (PRODUCT_STANDARDS
+> §6) hadn't actually executed in a while either. Closed 5 routes: two admin console pages needed
+> only the `@no-voice-route` exemption marker they were missing, but **`/distributor` and
+> `/genome-knowledge` (+ `[area]`) were real gaps** — a partner in their own portal, and a route
+> effectively forgotten, both had no way to reach Kira at all (`635742e`, verified
+> `check-voice-reachable.mjs` 22/22, was 17/22). Separately, `/plan`'s first paint was a single
+> `'use client'` file whose initial render was "Loading your onboarding session..." — 48 visible
+> characters — until a partner's invite link resolved; split into a server shell rendering real
+> text immediately plus the client flow unchanged (`7aeb4e0`), then corrected again when the CI
+> check still failed because the banner was a `<p>` and the check's alternate pass condition needs
+> a real heading, not a character count, on a legitimately sparse page (`0002ea1` → `h2`, verified
+> against a real production build). Also today: two missing env-placeholder sets added to the CI
+> Build step (`49c2324`, `601f823`) and the partner-email design-tokens opt-out corrected
+> (`98c70bc`). **CI is green** on `0002ea1` as of this entry.
+>
+> ### T7 — the test-isolation item in T6 was already half-done, and the visible half was wrong
+>
+> Investigating T6's first bullet found the underlying work had already landed the same day it was
+> written (`001b169`, 2026-09-21, same session chain as this entry): all three business-genome
+> DB-integration files were already rewired onto a dedicated `createTestServiceClient()`
+> (`business-genome/test-support/test-db.ts`), and a real, permanent test Supabase project already
+> existed — `TEST_SUPABASE_URL`/`TEST_SUPABASE_SECRET_KEY` were set as GitHub secrets 2026-09-21.
+> `PROJECT_STATUS.md` (a different tool, OpenCode) simply hadn't caught up.
+>
+> The real gap was narrower and easy to miss precisely because it read as success: CI's `Tests`
+> step never passed `OPENAI_API_KEY` into its env, so `extract.test.ts` and `e2e-validation.test.ts`
+> — 44 tests, both gated on an LLM key being present — **skipped on every CI run since the test-DB
+> wiring landed**, while `repository.test.ts` (DB-only, no LLM) ran for real and passed. A skip and
+> a pass render identically in the CI summary, so the suite had been reading green while 44 of its
+> tests never executed even once. Fixed by adding `OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}`
+> to the step (`9dcb7f6`). **Verified live in CI, not just by reading the diff**: run `35683914101`
+> shows `extract.test.ts` (5 tests, real OpenAI calls, 100.7s) and `e2e-validation.test.ts` (39
+> tests, 393.7s) both actually executing and passing — 147/149 test files green, only 2 skipped
+> (down from 4). The `Tests` step now takes ~6m35s instead of ~40s; that's the real cost of the 44
+> tests actually running, not a regression.
+>
+> **Still true, unaffected by this fix:** `business-genome` tests run only against the dedicated
+> test project when `TEST_SUPABASE_URL`/`TEST_SUPABASE_SECRET_KEY` are configured (CI has them;
+> local `.env.local` was not checked here) — no code path in the suite touches prod any more.
+> ~150 leftover test-fixture orgs were already cleaned out of prod once, 2026-09-21, before this
+> wiring existed.
+> - Landing: a repositioned distributor/consultant CTA (zero cost/friction to become a distributor,
+>   no fees until a real paying client onboards, billing monthly in arrears) — not started.
+> - `createOrganisationAction` still never sets `parent_organisation_id` — deliberately, pending a
+>   decision on what the local hierarchy root should be (no "Kira project" org row exists inside
+>   Kira's own DB; that concept lives in CAS's separate `portfolio_projects` table).
+> - `area_agenda` firing after the genome-aware opener, and the 5 voice embeds at 375px mobile —
+>   both still unverified live, carried over from an earlier session.
+>
 > ## S. 2026-08-18 — three days of conversations went nowhere, and every signal was green
 >
 > **Trigger:** a session closed unexpectedly mid-investigation. Tracing what it had been doing
