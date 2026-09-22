@@ -128,39 +128,88 @@ export async function sendInvitationEmail(
   const bodyHtml =
     variant === 'partner'
       ? `
-    <p style="font-size:16px;color:#333;line-height:1.7;margin:0 0 20px;">Dear ${firstName},</p>
+    <p style="font-size:16px;color:#333;line-height:1.7;margin:0 0 20px;">${firstName}, welcome to the Kira Partnership Team.</p>
     <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 20px;">
       Dennis McMahon here from Corporate AI Solutions.
     </p>
     <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 20px;">
-      Following our conversation, I've set up your <strong>Kira Partner account</strong> — this is
-      live, not a sandbox. It's yours to build.
+      Following our conversation, I've set up your <strong>Kira Partner account</strong>. This is
+      live, not a sandbox — it's yours to explore and build.
     </p>
 
-    <h2 style="font-size:17px;color:#333;margin:28px 0 12px;">What you're joining</h2>
+    <h2 style="font-size:17px;color:#333;margin:28px 0 12px;">What you're actually joining</h2>
     <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 16px;">
-      Kira is an AI Voice Agent platform for business owners who are running successful businesses
-      but who the business can't run without — we call it "Owner Dependence". Kira captures how the
-      business actually runs, straight from the owner, and turns it into a durable, transferable
-      record: the Business Genome.
+      Kira isn't intended to replace what you do with your clients.
     </p>
     <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 16px;">
-      As a partner, you bring Kira to the businesses you already work with — under your own
-      methodology, your own client relationships, and your own commercial terms with them.
+      <strong>The opposite.</strong>
+    </p>
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 16px;">
+      You bring the expertise, methodology and client relationship. Kira provides an AI operating
+      layer that helps you extend that capability across your clients.
+    </p>
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 16px;">
+      The idea is simple: you've already spent years developing a way of helping businesses improve,
+      grow, prepare for transition or solve specific problems. Kira can learn how you work and then
+      operate within that framework.
+    </p>
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 16px;">
+      That means your expertise doesn't have to live only in the consulting session. Kira can help
+      keep the work moving between conversations, capture what is happening inside the client
+      business, organise the information, support agreed actions and create a durable record of
+      progress.
     </p>
 
-    <h2 style="font-size:17px;color:#333;margin:28px 0 12px;">How it works</h2>
-    <ol style="font-size:16px;color:#555;line-height:1.8;margin:0 0 20px;padding-left:22px;">
-      <li>Start at <strong style="color:#D4847C;">${codeUrl}</strong> — your invitation is carried with
-          you automatically, so there's no code to type in.</li>
-      <li>You'll have a short conversation with Kira about your practice — who you serve, how you
-          work, and what you'd want her to handle for your clients.</li>
-      <li>That sets up your own <strong>Kira Partner Portal</strong>, where you bring your clients
-          onto Kira and oversee their portals.</li>
-    </ol>
+    <h2 style="font-size:17px;color:#333;margin:28px 0 12px;">Why that matters to you</h2>
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 16px;">
+      The opportunity isn't simply to give your clients another AI tool. It's to make your existing
+      practice more scalable and more valuable.
+    </p>
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 8px;">
+      Kira can give you a way to:
+    </p>
+    <ul style="font-size:16px;color:#555;line-height:1.8;margin:0 0 16px;padding-left:22px;">
+      <li>extend your methodology beyond your own consulting hours</li>
+      <li>stay engaged with clients between consulting sessions</li>
+      <li>create a more continuous client experience</li>
+      <li>build a repeatable capability around the way you already work</li>
+      <li>create a natural foundation for recurring client revenue</li>
+      <li>bring a lower-friction entry point into businesses that may later need deeper advisory work</li>
+    </ul>
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 16px;">
+      Your methodology remains yours. Your client relationship remains yours. You decide how Kira
+      fits into your commercial model.
+    </p>
 
-    <p style="font-size:16px;color:#555;line-height:1.7;margin:0;">
-      Let me know once you're in so I can hear how it's going for you.
+    <h2 style="font-size:17px;color:#333;margin:28px 0 12px;">Your first step</h2>
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 16px;">
+      Your first conversation with Kira is not about setting up a generic AI assistant. It's about
+      her learning your practice.
+    </p>
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 16px;">
+      Tell her who you work with, how you help them, the methodology or framework you use, what you
+      want to achieve with your clients and where you think an AI operating layer could add value.
+    </p>
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 16px;">
+      That conversation becomes the starting point for your Kira Partner Portal. From there, you can
+      begin exploring how you would bring Kira into your own client delivery.
+    </p>
+
+    <p style="font-size:16px;color:#333;line-height:1.7;margin:24px 0 8px;"><strong>Start here:</strong></p>
+    <p style="font-size:16px;line-height:1.7;margin:0 0 4px;">
+      <a href="${codeUrl}" style="color:#D4847C;">${codeUrl}</a>
+    </p>
+    <p style="font-size:14px;color:#777;line-height:1.6;margin:0 0 24px;">
+      Your invitation is carried with you automatically, so there's no code to type in.
+    </p>
+
+    <p style="font-size:16px;color:#555;line-height:1.7;margin:0 0 24px;">
+      Once you're in, have the conversation with Kira and then let me know how it feels from the
+      perspective of your practice. That's the part I'm particularly interested in learning from you.
+    </p>
+
+    <p style="font-size:16px;color:#333;line-height:1.7;margin:0;">
+      Dennis<br/>Corporate AI Solutions
     </p>`
       : `
     <p style="font-size:16px;color:#333;line-height:1.7;margin:0 0 20px;">Dear ${firstName},</p>

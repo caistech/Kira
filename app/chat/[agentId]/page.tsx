@@ -416,6 +416,15 @@ export default function ChatPage({
     );
   }
 
+  // First-time partner (consultant/distributor, no conversation history yet) gets the practice-
+  // first narrative the invitation email already told: what this does for THEM, then their
+  // clients, then how Kira works, then start — never client-benefits first. A returning partner
+  // (context.has_history) skips straight to the widget like every other journey.
+  const isFirstTimePartner =
+    (agentInfo?.journey_type === 'consultant' || agentInfo?.journey_type === 'distributor') &&
+    !!context &&
+    !context.has_history;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-orange-50">
       <div className="relative flex flex-col min-h-[calc(100vh-52px)] max-w-2xl mx-auto">
@@ -427,27 +436,73 @@ export default function ChatPage({
               : agentInfo?.journey_type === 'business'
                 ? 'Kira · your part-time general manager'
                 : agentInfo?.journey_type === 'consultant' || agentInfo?.journey_type === 'distributor'
-                  ? 'Kira · setting up your partnership'
+                  ? 'Kira · your practice partner'
                   : 'Kira · your thinking partner'}
           </p>
         </header>
 
-        {/* First-time partner reminder — what they're actually engaging with. A brand-new
-            consultant/distributor has no context for why this call matters or what Kira offers the
-            clients they're about to bring on; this is the answer, shown once before the interview
-            starts (has_history gates it so a returning partner isn't shown marketing copy again). */}
-        {(agentInfo?.journey_type === 'consultant' || agentInfo?.journey_type === 'distributor') &&
-          context &&
-          !context.has_history && (
-            <div className="mx-4 mb-2 rounded-2xl border border-amber-200 bg-white/70 px-4 py-3 text-left">
-              <p className="text-sm font-semibold text-stone-800">What your clients get through Kira</p>
-              <ul className="mt-1.5 space-y-1 text-sm leading-snug text-stone-600">
-                <li>Their business captured in conversation — not a form, not a survey.</li>
-                <li>Recurring admin taken off their plate — drafted, never sent without their approval.</li>
-                <li>A durable, organised record of the business, built for the day they hand it over or sell.</li>
-              </ul>
+        {/* First-time partner narrative — matches the invitation email's hierarchy, on purpose:
+            what this does for the CONSULTANT first, their clients second, then start. The email
+            said this before they ever arrived; this page has to say it again in the same order or
+            the story breaks between the two artifacts. Never shown to a returning partner. */}
+        {isFirstTimePartner && (
+          <div className="mx-4 mb-2 text-left">
+            <h1 className="text-xl font-bold text-stone-900">
+              Your practice. Your methodology. An AI operating layer.
+            </h1>
+            <p className="mt-2 text-sm leading-relaxed text-stone-700">
+              You already have the expertise, methodology and client relationships. Kira is designed
+              to help you extend that capability beyond your own consulting time.
+            </p>
+            <p className="mt-1.5 text-sm font-medium text-stone-800">
+              You bring the expertise. You keep the relationship. Kira helps keep the work moving.
+            </p>
+
+            <p className="mt-4 text-sm font-semibold text-stone-800">What this can mean for your practice</p>
+            <div className="mt-1.5 space-y-2.5">
+              <div className="rounded-xl border border-amber-200 bg-white/70 px-3.5 py-2.5">
+                <p className="text-sm font-semibold text-stone-800">Extend your expertise</p>
+                <p className="mt-0.5 text-sm leading-snug text-stone-600">
+                  Give clients ongoing support around the methodology and framework you already use —
+                  without every interaction requiring your personal time.
+                </p>
+              </div>
+              <div className="rounded-xl border border-amber-200 bg-white/70 px-3.5 py-2.5">
+                <p className="text-sm font-semibold text-stone-800">Create a continuous client experience</p>
+                <p className="mt-0.5 text-sm leading-snug text-stone-600">
+                  Your work doesn't have to stop when the consulting session ends. Kira can capture
+                  information, organise the work and support agreed actions between conversations.
+                </p>
+              </div>
+              <div className="rounded-xl border border-amber-200 bg-white/70 px-3.5 py-2.5">
+                <p className="text-sm font-semibold text-stone-800">Build a repeatable delivery model</p>
+                <p className="mt-0.5 text-sm leading-snug text-stone-600">
+                  Your approach can become something that operates consistently across multiple client
+                  businesses, rather than something that depends entirely on you being in the room.
+                </p>
+              </div>
+              <div className="rounded-xl border border-amber-200 bg-white/70 px-3.5 py-2.5">
+                <p className="text-sm font-semibold text-stone-800">Create recurring value</p>
+                <p className="mt-0.5 text-sm leading-snug text-stone-600">
+                  Kira can provide an ongoing capability around your advisory work, creating a
+                  foundation for recurring client relationships and revenue.
+                </p>
+              </div>
             </div>
-          )}
+
+            <p className="mt-4 text-sm font-semibold text-stone-800">And your clients?</p>
+            <p className="mt-1 text-sm leading-relaxed text-stone-600">
+              They get the benefit of having your expertise supported continuously. Their business can
+              be captured through conversation rather than another form or survey. Information can be
+              organised into a durable business record. Agreed work can be supported between consulting
+              sessions.
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-stone-700">
+              But Kira doesn't replace you. You remain the trusted adviser and decision-maker. Kira
+              operates within the way you choose to work.
+            </p>
+          </div>
+        )}
 
         {/* Voice coach — the canonical portfolio VoiceWidget, owner-gated via signed URL. It renders
             its own avatar, transcript, and mic/mute/end controls (no bespoke voice UI). */}
@@ -469,11 +524,13 @@ export default function ChatPage({
                 it below so her first reply is about that part of the business rather than about
                 whatever he happens to type. */}
             <h2 className="text-2xl font-bold text-gray-800 mb-1">
-              {areaFocusTitle
-                ? `Let's look at ${areaFocusTitle}`
-                : lastTopic
-                  ? 'Picking up where you left off'
-                  : 'Ready when you are'}
+              {isFirstTimePartner
+                ? 'Ready to build your Kira partnership?'
+                : areaFocusTitle
+                  ? `Let's look at ${areaFocusTitle}`
+                  : lastTopic
+                    ? 'Picking up where you left off'
+                    : 'Ready when you are'}
             </h2>
             {/* BOTH WAYS IN, NAMED. This said "Tap the mic below to talk with Kira" and nothing
                 else, so typing existed but was invisible until you clicked the mic — and on a
@@ -483,13 +540,29 @@ export default function ChatPage({
                 say "I'm selling" out loud, and the commonest cause of "no mic" is not a missing
                 device, it is him clicking Block on the permission prompt. Typing is the PRIVATE
                 option, not the fallback, and it should not be behind the one door he just shut. */}
-            <p className="text-base text-gray-600">
-              {areaFocusQuestion
-                ? `${areaFocusQuestion} Tell her by voice or by typing — whichever suits where you are.`
-                : lastTopic
-                  ? `Last time you talked about ${lastTopic}. Pick it up by voice or by typing.`
-                  : 'Talk to Kira, or type to her — whichever suits where you are.'}
-            </p>
+            {isFirstTimePartner ? (
+              <div className="text-left max-w-xl mx-auto">
+                <p className="text-base text-gray-600">Your first conversation with Kira is about your practice. Tell her:</p>
+                <ul className="mt-2 list-disc pl-5 text-base leading-relaxed text-gray-600">
+                  <li>who you work with</li>
+                  <li>how you help them</li>
+                  <li>the methodology or framework you use</li>
+                  <li>the outcomes you work toward</li>
+                  <li>where you spend too much time today</li>
+                  <li>what you&apos;d like Kira to handle</li>
+                  <li>how you would like her to fit into your client relationships</li>
+                </ul>
+                <p className="mt-2 text-sm text-gray-500">This is how Kira begins learning your way of working.</p>
+              </div>
+            ) : (
+              <p className="text-base text-gray-600">
+                {areaFocusQuestion
+                  ? `${areaFocusQuestion} Tell her by voice or by typing — whichever suits where you are.`
+                  : lastTopic
+                    ? `Last time you talked about ${lastTopic}. Pick it up by voice or by typing.`
+                    : 'Talk to Kira, or type to her — whichever suits where you are.'}
+              </p>
+            )}
           </div>
 
           {/* THE TYPED EXCHANGE.
@@ -597,8 +670,8 @@ export default function ChatPage({
                 context?.has_history && (lastTopic || (context.message_count ?? 0) > 0)
                   ? 'Welcome back — Kira remembers where you left off. Tap the mic to continue.'
                   : context && !context.has_history
-                    ? agentInfo?.journey_type === 'consultant' || agentInfo?.journey_type === 'distributor'
-                      ? "Your first conversation with Kira — this is how she learns your practice so she's ready for your first client. Tap the mic (or type) to begin."
+                    ? isFirstTimePartner
+                      ? "Your first conversation with Kira is how she begins learning your practice, so she can help you explore how Kira could work with your first client."
                       : 'Your first conversation with Kira. Tap the mic (or type) to begin — we start from scratch together.'
                     : undefined
               }
