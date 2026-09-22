@@ -22,7 +22,9 @@ import { stripComments } from '@/lib/source-scan';
 const here = (...p: string[]) => path.resolve(__dirname, ...p);
 
 const carrier = readFileSync(here('BetaCodeCarrier.tsx'), 'utf8');
-const plan = readFileSync(here('..', 'app', 'plan', 'page.tsx'), 'utf8');
+// The redeem-step logic pinned below lives in PlanPageClient.tsx — app/plan/page.tsx is now just a
+// server shell (first-paint fix) that renders <PlanPageClient />. See that file's own comment.
+const plan = readFileSync(here('..', 'app', 'plan', 'PlanPageClient.tsx'), 'utf8');
 const planStripped = stripComments(plan);
 
 describe('the code arrives at the landing page and is carried as context', () => {
