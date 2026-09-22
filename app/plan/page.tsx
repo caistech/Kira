@@ -14,6 +14,13 @@
 // partner following an invitation link saw this before anything real appeared). This
 // file server-renders a real heading immediately; PlanPageClient still owns the entire
 // interactive flow, untouched.
+//
+// ⚠️ MUST BE A HEADING TAG, NOT A <p>. The first version of this fix used a <p> and still
+// FAILED the same audit in CI: portfolio-gate-audit-first-paint passes on EITHER >=200 chars
+// of non-chrome content OR a heading (h1/h2/h3, >=8 chars) — deliberately, so a legitimately
+// sparse page (this one) isn't pressured into padding itself with prose to satisfy a char
+// count. A <p> gets neither signal. h2 (not h1) so this slim strip never duplicates the h1
+// PlanPageClient renders once hydrated.
 export default function PlanPage() {
   // A slim strip, not a hero block — PlanPageClient's own states are all full-height
   // (min-h-screen) sections with their own headings once hydrated, so anything larger here
@@ -21,9 +28,9 @@ export default function PlanPage() {
   // This exists purely so the FIRST thing a visitor sees is real text, not a blank screen.
   return (
     <>
-      <p className="border-b border-stone-100 bg-stone-50 px-6 py-2 text-center text-sm text-stone-500">
+      <h2 className="border-b border-stone-100 bg-stone-50 px-6 py-2 text-center text-sm font-normal text-stone-500">
         Setting up your Kira account — confirming your invitation…
-      </p>
+      </h2>
       <PlanPageClient />
     </>
   );
