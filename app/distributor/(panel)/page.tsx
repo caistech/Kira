@@ -43,10 +43,21 @@ export default async function DistributorPortfolioPage() {
           onboarding chain exists to serve, and it had no way to reach Kira at all (found live
           2026-09-21, once the app-chrome fix let the gate's voice-reachable check run for the
           first time). */}
-      <KiraShapeSection surface="distributor" />
+      <section>
+        <p className="mb-2 text-sm text-gray-600">
+          <strong>This Kira is still about your own practice</strong> — the same conversation from
+          your onboarding, not this specific client. Once you provision a client below, they get
+          their own Kira, and their conversation is about their business, not yours.
+        </p>
+        <KiraShapeSection surface="distributor" />
+      </section>
 
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Provision New Client</h2>
+        <h2 className="text-lg font-bold text-gray-900 mb-1">Provision New Client</h2>
+        <p className="mb-4 text-sm text-gray-600">
+          This is how you add a client — enter their business name below. It creates their portal
+          and their own Kira; it does not start a conversation here.
+        </p>
         <CreateClientOrgForm />
       </section>
 
