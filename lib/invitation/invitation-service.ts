@@ -127,6 +127,9 @@ export async function sendInvitationEmail(
      * place that knows the email's markup.
      */
     personalNote?: string;
+    /** Optional CC — e.g. the operator, so a real send to a real recipient is also in their sent
+     * record. Never defaulted silently; a caller supplies it explicitly per send. */
+    cc?: string | string[];
   },
   variant: InvitationVariant = 'beta',
 ): Promise<void> {
@@ -381,7 +384,7 @@ export async function sendInvitationEmail(
 </td></tr></table>
 </body></html>`;
 
-  await sendEmail({ to: invitation.email, subject, html });
+  await sendEmail({ to: invitation.email, subject, html, cc: invitation.cc });
 }
 
 // ── List ───────────────────────────────────────────────────────────────────

@@ -52,7 +52,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Not authorised' }, { status: 401 });
   }
 
-  let body: { email?: string; firstName?: string; lastName?: string; betaType?: string; organisationId?: string };
+  let body: {
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    betaType?: string;
+    organisationId?: string;
+    /**
+     * Platform-admin-only override for the email's narrative — the default computed below covers
+     * the two ordinary cases (partner / beta). 'founding-beta' is a third, deliberately explicit
+     * choice: a named, small cohort, never the default, so an ordinary invite can never drift into
+     * founding-beta copy by omission.
+     */
+    variant?: 'founding-beta';
+    /** Per-recipient personal opening, 'founding-beta' only — see sendInvitationEmail's own doc. */
+    personalNote?: string;
+  };
   try {
     body = await request.json();
   } catch {
@@ -97,7 +112,18 @@ export async function POST(request: NextRequest) {
     .select('org_type')
     .eq('organisation_id', targetOrganisationId)
     .maybeSingle();
-  const emailVariant = targetOrgRow?.org_type && targetOrgRow.org_type !== 'client_org' ? 'partner' : 'beta';
+  let emailVariant: 'partner' | 'beta' | 'founding-beta' =
+    targetOrgRow?.org_type && targetOrgRow.org_type !== 'client_org' ? 'partner' : 'beta';
+
+  // 'founding-beta' is an explicit, platform-admin-only override — same isCurrentUserAdmin() gate
+  // as the cross-org targeting above, for the same reason: this is a named, deliberate choice per
+  // send, never something an ordinary org admin should be able to trigger on themselves.
+  if (body.variant === 'founding-beta') {
+    if (!(await isCurrentUserAdmin())) {
+      return NextResponse.json({ error: 'Not authorised to use the founding-beta variant' }, { status: 403 });
+    }
+    emailVariant = 'founding-beta';
+  }
 
   try {
     const minted = await mintInvitation({
@@ -125,6 +151,8 @@ export async function POST(request: NextRequest) {
           label: minted.invitation.label,
           code: minted.code,
           prettyCode: minted.prettyCode,
+          ...(emailVariant === 'founding-beta' && body.personalNote ? { personalNote: body.personalNote } : {}),
+          ...(emailVariant === 'founding-beta' && body.cc ? { cc: body.cc } : {}),
         },
         emailVariant,
       );

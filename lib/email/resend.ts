@@ -49,14 +49,16 @@ interface SendEmailParams {
   subject: string;
   html: string;
   text?: string;
+  cc?: string | string[];
 }
 
-export async function sendEmail({ to, subject, html, text }: SendEmailParams) {
+export async function sendEmail({ to, subject, html, text, cc }: SendEmailParams) {
   try {
     const { data, error } = await getResend().emails.send({
       replyTo: replyToAddress(),
       from: EMAIL_FROM,
       to,
+      ...(cc ? { cc } : {}),
       subject,
       html,
       text: text || stripHtml(html),
