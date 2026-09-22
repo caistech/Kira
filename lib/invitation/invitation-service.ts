@@ -174,7 +174,8 @@ export async function sendInvitationEmail(
     </p>
     <ul style="font-size:16px;color:#555;line-height:1.8;margin:0 0 16px;padding-left:22px;">
       <li>it learns your methodology and how you actually work</li>
-      <li>then you bring it to the clients you already work with</li>
+      <li>then you bring it to clients you're already working with, and/or look at ways to
+          collaborate to bring it to clients together</li>
     </ul>
 
     <h2 style="font-size:17px;color:#333;margin:28px 0 12px;">What I'd like you to do</h2>
