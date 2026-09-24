@@ -69,6 +69,19 @@ export async function addIntroducer(formData: FormData): Promise<ActionResult> {
     return { ok: false, message: 'That email is already an introducer — use Re-send instead.' };
   }
 
+  // Most introducers arrive via the /advisors enquiry form, which already asks for their state,
+  // practice type and rough client count (app/advisors/AdvisorEnquiryForm.tsx) — and until now that
+  // data was dropped the moment they were promoted to a real introducer row here. Carried across
+  // automatically so it's never re-typed; a direct manual add with no matching enquiry just gets
+  // nulls, same as every other optional field on this table.
+  const { data: enquiry } = await supabase
+    .from('advisor_enquiries')
+    .select('firm_state, advisory_type, client_band')
+    .eq('email', email)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   const token = referralToken();
   const { data: introducer, error } = await supabase
     .from('introducers')
@@ -82,6 +95,9 @@ export async function addIntroducer(formData: FormData): Promise<ActionResult> {
       payee_name: (payeeType === 'entity' ? orgName : name) || null,
       role: role === 'broker' ? 'broker' : 'introducer',
       referral_token: token,
+      region: enquiry?.firm_state ?? null,
+      practice_type: enquiry?.advisory_type ?? null,
+      client_band: enquiry?.client_band ?? null,
     })
     .select('id, email, name, referral_token')
     .single();

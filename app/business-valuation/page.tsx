@@ -17,7 +17,7 @@
 // question count is rendered from STEPS.length rather than written in prose, because "a few
 // questions" against an actual eleven is the kind of drift a comment cannot prevent.
 
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 
 import {
   SDE_DEFINITION,
@@ -128,6 +128,11 @@ const ICONS: Record<IconKey, React.ReactNode> = {
 
 /** Where in-progress answers are parked so a reload resumes rather than restarting. */
 const PROGRESS_KEY = 'kira_valuation_progress';
+
+/** One id per anonymous visit, so valuation_started/valuation_completed can be tied together
+ *  (KIRA_FUNNEL_SCOPE.md §15) without surviving past this session — a reload keeps it, a new tab
+ *  (or the 7-day progress expiry) does not. */
+const TRACKING_SESSION_KEY = 'kira_valuation_session_id';
 
 /**
  * A money figure said back in plain words — "2.4 million", "850 thousand".
@@ -372,8 +377,55 @@ export default function BusinessValuationPage() {
     }
   }, []);
 
+  // Phase 0 funnel tracking (KIRA_FUNNEL_SCOPE.md §6, §15) — a lightweight, fire-and-forget
+  // first-party event log. This never blocks or affects the flow: a tracking failure is swallowed,
+  // and it never reads or writes anything the answer-persistence logic above already owns.
+  const sessionIdRef = useRef('');
+  const utmRef = useRef<{ utm_source?: string; utm_medium?: string; utm_campaign?: string }>({});
+  const completedTrackedRef = useRef(false);
+  useEffect(() => {
+    try {
+      let id = window.sessionStorage.getItem(TRACKING_SESSION_KEY);
+      if (!id) {
+        id = crypto.randomUUID();
+        window.sessionStorage.setItem(TRACKING_SESSION_KEY, id);
+      }
+      sessionIdRef.current = id;
+      const params = new URLSearchParams(window.location.search);
+      const utm: typeof utmRef.current = {};
+      const source = params.get('utm_source');
+      const medium = params.get('utm_medium');
+      const campaign = params.get('utm_campaign');
+      if (source) utm.utm_source = source;
+      if (medium) utm.utm_medium = medium;
+      if (campaign) utm.utm_campaign = campaign;
+      utmRef.current = utm;
+    } catch {
+      // Private browsing or a blocked sessionStorage: fall back to an in-memory id so tracking
+      // still works for this page life, it just won't survive a reload.
+      if (!sessionIdRef.current) sessionIdRef.current = Math.random().toString(36).slice(2);
+    }
+  }, []);
+
+  const track = useCallback((eventType: 'valuation_started' | 'valuation_completed') => {
+    if (!sessionIdRef.current) return;
+    fetch('/api/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event_type: eventType,
+        session_id: sessionIdRef.current,
+        path: window.location.pathname,
+        ...utmRef.current,
+      }),
+    }).catch(() => {});
+  }, []);
+
   async function next() {
     if (!canAdvance || llmPending) return;
+    // Leaving the intro screen is the start of a real attempt — fire before the rest of `next`'s
+    // logic, which is all question-specific and does not apply on the intro step.
+    if (isIntro) track('valuation_started');
 
     // Settle the backstop BEFORE leaving the industry question, so its answer can never arrive
     // after the step it belongs to has gone. Skipped when the phrase is already a sector name or
@@ -414,6 +466,16 @@ export default function BusinessValuationPage() {
     // Every field is required to reach the result, so the cast is safe.
     return computeValuation(answers as ValuationInputs);
   }, [isResult, answers]);
+
+  // Fired once per session, the moment a result first computes — guarded by a ref rather than
+  // depending on `result` alone, since re-rendering the result screen (e.g. a currency change,
+  // which recomputes nothing here but still re-runs this effect's deps) must not double-count.
+  useEffect(() => {
+    if (result && !completedTrackedRef.current) {
+      completedTrackedRef.current = true;
+      track('valuation_completed');
+    }
+  }, [result, track]);
 
   // Carry the valuation into the sales page (and on to checkout) so the price + dashboard use it.
   //
