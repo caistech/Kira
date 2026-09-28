@@ -7,25 +7,63 @@ import crypto from 'crypto';
 
 const RESEND_WEBHOOK_SECRET = process.env.RESEND_WEBHOOK_SECRET;
 
-// Verify Resend webhook signature
-function verifySignature(payload: string, signature: string, secret: string): boolean {
-  const expectedSignature = crypto
-    .createHmac('sha256', secret)
-    .update(payload)
-    .digest('hex');
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expectedSignature)
-  );
+// Replay guard per Svix's own guidance — reject anything outside a 5-minute clock skew.
+const TIMESTAMP_TOLERANCE_SECONDS = 5 * 60;
+
+// Resend delivers webhooks THROUGH SVIX, not with a bare `resend-signature` header carrying a raw
+// hex HMAC of the body — that was the previous implementation here, and it verified against a
+// header Resend never sends. Since `Buffer.from('')` (the missing header, always empty in real
+// traffic) never matches the 32-byte digest, `timingSafeEqual`'s length check THROWS, which the
+// outer try/catch turns into a 500 on every single real event — invisible for months because no
+// webhook was even registered to call this route (see git history), and only surfaced once one was.
+//
+// Correct scheme (docs.svix.com/receiving/verifying-payloads/how-manual): headers svix-id /
+// svix-timestamp / svix-signature; secret is `whsec_<base64>` — strip the prefix, base64-decode the
+// rest to get the HMAC key; signed content is `{svix-id}.{svix-timestamp}.{raw body}`; signature is
+// HMAC-SHA256, base64-encoded; svix-signature carries space-separated `v1,<sig>` entries (secret
+// rotation) — any match is valid.
+function verifySignature(
+  payload: string,
+  svixId: string,
+  svixTimestamp: string,
+  svixSignature: string,
+  secret: string
+): boolean {
+  if (!svixId || !svixTimestamp || !svixSignature) return false;
+
+  const timestampSeconds = Number(svixTimestamp);
+  if (!Number.isFinite(timestampSeconds)) return false;
+  if (Math.abs(Date.now() / 1000 - timestampSeconds) > TIMESTAMP_TOLERANCE_SECONDS) return false;
+
+  const secretBytes = Buffer.from(secret.replace(/^whsec_/, ''), 'base64');
+  const signedContent = `${svixId}.${svixTimestamp}.${payload}`;
+  const expected = crypto.createHmac('sha256', secretBytes).update(signedContent).digest();
+
+  return svixSignature
+    .split(' ')
+    .map((entry) => entry.split(',')[1])
+    .filter((sig): sig is string => Boolean(sig))
+    .some((sig) => {
+      const sigBuf = Buffer.from(sig, 'base64');
+      return sigBuf.length === expected.length && crypto.timingSafeEqual(sigBuf, expected);
+    });
 }
 
 export async function POST(request: NextRequest) {
   try {
     const payload = await request.text();
-    const signature = request.headers.get('resend-signature') || '';
+    const svixId = request.headers.get('svix-id') || '';
+    const svixTimestamp = request.headers.get('svix-timestamp') || '';
+    const svixSignature = request.headers.get('svix-signature') || '';
 
-    // Verify webhook signature (skip if no secret configured)
-    if (RESEND_WEBHOOK_SECRET && !verifySignature(payload, signature, RESEND_WEBHOOK_SECRET)) {
+    // Fail CLOSED, not open — same posture as the elevenlabs-convai post-call webhook fix
+    // (@caistech/elevenlabs-convai v0.10.0): an unverified webhook must never be treated as
+    // authentic. No secret configured is a deploy/config gap, not a reason to skip verification.
+    if (!RESEND_WEBHOOK_SECRET) {
+      console.error('[resend-webhook] RESEND_WEBHOOK_SECRET is not set — refusing unverifiable webhook');
+      return NextResponse.json({ error: 'Webhook verification not configured' }, { status: 500 });
+    }
+    if (!verifySignature(payload, svixId, svixTimestamp, svixSignature, RESEND_WEBHOOK_SECRET)) {
       console.error('[resend-webhook] Invalid signature');
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
