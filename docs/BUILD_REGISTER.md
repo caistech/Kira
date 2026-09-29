@@ -1,5 +1,82 @@
 # Build register — Kira
 
+> ## Z. 2026-09-30 (same day, continued) — live verification of X/Y found two real production bugs, both fixed and re-verified
+>
+> **Trigger:** the operator's instruction after X/Y shipped — "commit + push + deploy, then reprovision
+> a scoped test agent and verify with a real login." Register Y's own "NOT verified" list said plainly
+> that no real browser had loaded `/talk` and seen the banner. This entry is that verification, and it
+> did not come back clean.
+>
+> **Round 1 — page rendering (real browser, `dennis+qauser@factory2key.com.au`, fresh org "QA
+> Verification Plumbing Co"):** confirmed. The "A one-off, before anything else" banner rendered
+> verbatim, the title read "Let's get to know your business", the text-fallback input and the voice
+> button were both present. Screenshot evidence in the session transcript.
+>
+> **Round 2 — the actual mechanism, found broken:** the first real typed message ("Hi, I'm the owner
+> and I run a plumbing business.") got the ordinary day-to-day greeting back — *"How can I assist you
+> with your plumbing business today? What do you want handled?"* — not a discovery question. Root
+> cause, read against the deployed prompt: `## DISCOVERY GATE` said *"call discovery_agenda FIRST,
+> every call, before greeting him"* — a premise that only holds for voice, where the AGENT speaks
+> first. On text transport the OWNER speaks first, so the instruction's trigger condition never
+> matched, and `tool_choice: 'auto'` let the model fall straight into the much more specific `##
+> FIRST CONVERSATION APPROACH` block instead (her reply was near-verbatim from it).
+>
+> **Fix 1 — mechanical enforcement, not a better sentence.** This codebase already has the pattern for
+> "a prompt instruction alone isn't reliable enough" (the task-ledger fix that replaced a regex
+> intervention on `claimsWorkState`). Applied the same logic: `app/api/kira/chat/text/route.ts` now
+> FORCES `tool_choice` to `discovery_agenda` on round 0 of any conversation with empty history, when
+> the deployed agent holds the tool — rather than hoping the model chooses to call it. The prompt
+> wording was also fixed (transport-agnostic: *"his speaking first doesn't skip it"*), trimmed to fit
+> the existing 39,300-char ceiling with no raise needed. Voice stays prompt-only (ElevenLabs owns that
+> loop) — the same reliance `area_agenda` already accepts.
+>
+> **Round 3 — retested, found a SECOND, bigger bug:** with the forced call wired, her reply now
+> explicitly narrated a tool result — *"Hello again! The discovery flow is complete..."* — on an
+> account that had shared one sentence and never been through a single distillation. Read
+> `discovery-agenda.ts`: every fail-open path (`!uid`, `!orgContext`, a DB read error) returns
+> `complete: true` alongside `ok: false` — an honest "I couldn't check" encoded in a field the model
+> reads as "done", and it took the honest field at face value instead of relaying `reason` verbatim.
+>
+> Queried production directly (Supabase Management API SQL endpoint, since local `.env.local` is
+> stale and Vercel MCP access is scoped to the wrong team — both known, per-repo issues): for this
+> account, `organisation_memberships.person_id` = `c07733d3-…`, but `kira_agents.user_id` = the
+> completely different `a4f8ae81-…` — and that value has **no matching row in `persons` at all**.
+>
+> **Fix 2 — the real bug, three weeks old and unrelated to today's discovery work.**
+> `app/api/kira/chat/text/route.ts` was passing `agent.user_id` (the LEGACY `users.id` FK) as the
+> identity behind every `?uid=` tool call. Migration `20260907090000_kira_agents_person_scope.sql`
+> split `kira_agents` into `person_id` (canonical, DB-constrained NOT NULL for active rows) vs
+> `user_id` (legacy provenance, nullable, a different identity space) three weeks before today — this
+> route was never updated to follow it. `resolveOrganisationForPerson()` does a bare
+> `.eq('person_id', uid)` with no legacy fallback, so **every person-scoped tool call over TEXT
+> transport** — `discovery_agenda`, `area_agenda`, `dispatch_task`, `approve_task`, `check_tasks`,
+> `record_refusal`, `facts_to_confirm`, `confirm_fact`, `read_document`, `look_up_financials`,
+> `recall_memory`, `save_memory` — silently failed org resolution and degraded to each tool's fail-open
+> path. Voice transport was never affected: `kiraAllTools()` bakes the canonical `person_id` into the
+> tool URLs at provision time, never the legacy column. Fixed by selecting `person_id` alongside
+> `user_id` and passing `agent.person_id ?? agent.user_id` — the one line that decides identity for
+> every text-transport tool call.
+>
+> **Round 4 — retested against the deployed fix, confirmed correct:** same account, new message. She
+> called `discovery_agenda` again (unforced — `tool_choice: 'auto'`, the model's own choice this time)
+> and this time got the true state back: *"Before we get into day-to-day things, I want to properly
+> understand your business — this is a one-off discovery session, not something we do every time.
+> Let's start with your name, your story, and what matters to you personally. What's your full name
+> and a bit about yourself?"* — an exact match to `DISCOVERY_STAGES[0]` (identity: name, background,
+> life_context). Screenshot evidence in the session transcript.
+>
+> **Verified:** full suite green after each fix (`npx vitest run` — 148 files, 1957 passed, 74
+> skipped; `npx tsc --noEmit` clean both times). Both fixes live-verified end to end against a real
+> login on a real production deployment, not just re-tested locally.
+>
+> **NOT verified, and NOT claimed:** whether the same identity bug affects any account CREATED before
+> the 20260907090000 migration (older `kira_agents` rows may have `user_id` and `person_id` coincide,
+> or may not — not checked). Voice transport was reasoned about, not independently re-tested live
+> this session. Vercel runtime-log access remains 403'd for this project under the current token scope
+> (pre-existing, unrelated to today — see memory `feedback-kira-vercel-access-scope.md`); all
+> diagnosis here came from direct DB queries via the Supabase Management API, not from application
+> logs.
+
 > ## Y. 2026-09-30 (same day, continued) — old /discovery retired; ChatPage carries the page-level framing
 >
 > **Closes the two items register X left owed.**
