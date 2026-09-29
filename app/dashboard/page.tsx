@@ -384,30 +384,26 @@ export default async function DashboardPage({
         </div>
       )}
 
+      {/* Status only, no button — discovery is no longer a separate page to visit (build register X,
+          2026-09-30). It happens automatically, and mandatorily, inside the regular /talk
+          conversation now (discovery_agenda). Nothing here is actionable from THIS page any more;
+          a "Continue discovery" button pointing at the retired /discovery page would be exactly the
+          dead-end this file's own history (the /talk agent-less-owner saga) already learned to stop
+          shipping. */}
       <div className="mt-8 rounded-2xl border border-gray-200 bg-gray-50 p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900">
-              {profile?.discovery_complete ? 'Discovery — Kira knows you' : 'Go deeper (optional)'}
-            </h2>
-            <p className="mt-1 text-sm text-gray-600">
-              {profile?.discovery_complete
-                ? `${pct}% briefed across ${profile?.sessions_count ?? 0} session${(profile?.sessions_count ?? 0) === 1 ? '' : 's'}. Deepen it anytime.`
-                : 'A longer coaching conversation so Kira learns your business, goals, people and how you work. Optional — deepens each session.'}
-            </p>
-            {(profile?.sessions_count ?? 0) > 0 && !profile?.discovery_complete && (
-              <div className="mt-3 h-2 w-full max-w-xs overflow-hidden rounded-full bg-white">
-                <div className="h-full rounded-full bg-violet-500" style={{ width: `${pct}%` }} />
-              </div>
-            )}
+        <h2 className="text-base font-semibold text-gray-900">
+          {profile?.discovery_complete ? 'Discovery — Kira knows you' : 'Getting to know you'}
+        </h2>
+        <p className="mt-1 text-sm text-gray-600">
+          {profile?.discovery_complete
+            ? `${pct}% briefed across ${profile?.sessions_count ?? 0} session${(profile?.sessions_count ?? 0) === 1 ? '' : 's'}.`
+            : "Kira's one-time interview happens automatically the next time you talk to her — no separate visit needed."}
+        </p>
+        {(profile?.sessions_count ?? 0) > 0 && !profile?.discovery_complete && (
+          <div className="mt-3 h-2 w-full max-w-xs overflow-hidden rounded-full bg-white">
+            <div className="h-full rounded-full bg-violet-500" style={{ width: `${pct}%` }} />
           </div>
-          <Link
-            href="/discovery"
-            className="inline-flex min-h-[44px] items-center whitespace-nowrap rounded-lg border border-violet-600 px-5 py-2.5 text-base font-semibold text-violet-700 hover:bg-violet-50"
-          >
-            {(profile?.sessions_count ?? 0) > 0 ? 'Continue discovery' : 'Start discovery'}
-          </Link>
-        </div>
+        )}
       </div>
     </div>
   );

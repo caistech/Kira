@@ -27,6 +27,7 @@ import { resolveOrganisationForPerson } from '@/lib/auth';
 
 import { GENOME_AREAS, type AreaKey } from '@/lib/genome/areas';
 import { itemsForArea, fetchAdmittedChecklist, type ChecklistItem } from '@/lib/genome/checklist';
+import { fetchTaskItems } from '@/lib/genome/tasks';
 import type { ItemStatus } from '@/lib/genome/checklist-bands';
 
 function json(status: number, body: unknown): Response {
@@ -127,7 +128,14 @@ export async function handleAreaAgenda(req: Request): Promise<Response> {
   // The admission gate's live set (T3): a question the operator admitted for this area is on Kira's
   // agenda until it is answered, exactly like a founding-cohort item. Fail-soft on a ledger read.
   const admitted = await fetchAdmittedChecklist(supabase);
-  const items = itemsForArea(area, admitted);
+  // Task discovery's live set (lib/genome/tasks.ts): a task Kira has noticed for THIS business joins
+  // the agenda the same way — open until answered, never a silent addition to the score.
+  const taskItems = await fetchTaskItems(supabase, orgContext.organisationId, area);
+  // The observed-automation item (lib/genome/orchestrator-evidence.ts) is DELIBERATELY EXCLUDED from
+  // the agenda — no conversation can ever satisfy it (only real orchestrator automation can), so
+  // surfacing it as a question would ask her to interrogate him about something only proven, never
+  // told. It belongs on the panel (app/my-genome/[area]/page.tsx), not here.
+  const items = itemsForArea(area, [...admitted, ...taskItems]);
   const { data, error } = await supabase
     .from('genome_item_status')
     .select('item_key, status, why')

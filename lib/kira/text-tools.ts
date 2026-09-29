@@ -55,6 +55,8 @@ import { kiraConfirmFactToolDef, kiraFactsToConfirmToolDef } from './confirm-too
 import { handleConfirmFact, handleFactsToConfirm } from './confirm';
 import { kiraAreaAgendaToolDef } from './area-agenda-tool-def.mjs';
 import { handleAreaAgenda } from './area-agenda';
+import { kiraDiscoveryAgendaToolDef } from './discovery-agenda-tool-def.mjs';
+import { handleDiscoveryAgenda } from './discovery-agenda';
 import { kiraResearchOrganisationToolDef } from './practice-intelligence-tool-def.mjs';
 import { researchOrganisation } from './practice-intelligence/research';
 import {
@@ -119,6 +121,7 @@ const BUILDERS: Record<string, Builder> = {
   confirm_fact: kiraConfirmFactToolDef as Builder,
   research_organisation: kiraResearchOrganisationToolDef as Builder,
   area_agenda: kiraAreaAgendaToolDef as Builder,
+  discovery_agenda: kiraDiscoveryAgendaToolDef as Builder,
 };
 
 const UNUSED_BASE_URL = 'https://in-process.invalid';
@@ -315,6 +318,12 @@ export async function runTextTool(
       case 'area_agenda':
         if (!resolvedPersonId) throw new Error('personId required for area_agenda');
         return await (await handleAreaAgenda(asToolRequest(name, resolvedPersonId, args))).json();
+      // Same reasoning as area_agenda immediately above: the mandatory discovery gate has to hold
+      // for someone typing too, or a client with no microphone would skip the interview entirely
+      // rather than being carried through it by another route.
+      case 'discovery_agenda':
+        if (!resolvedPersonId) throw new Error('personId required for discovery_agenda');
+        return await (await handleDiscoveryAgenda(asToolRequest(name, resolvedPersonId, args))).json();
       case 'confirm_fact':
         if (!resolvedPersonId) throw new Error('personId required for confirm_fact');
         return await (await handleConfirmFact(asToolRequest(name, resolvedPersonId, args))).json();

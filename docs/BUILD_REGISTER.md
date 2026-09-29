@@ -1,5 +1,305 @@
 # Build register — Kira
 
+> ## Y. 2026-09-30 (same day, continued) — old /discovery retired; ChatPage carries the page-level framing
+>
+> **Closes the two items register X left owed.**
+>
+> **Retirement, both sides of the loop:**
+> - `app/discovery/page.tsx` — replaced with a redirect to `/talk`, not a 404. A bookmark, an old
+>   email, or a stale link lands somewhere real.
+> - `app/api/kira/discovery/start/route.ts` — 410, same controlled-retirement pattern this codebase
+>   already used for the legacy `/api/kira/webhook` alias. Nothing mints sessions for the separate
+>   discovery agent any more.
+> - All six `app/api/convai/webhooks/*` routes (`post-call`, `save_memory`, `recall_memory`,
+>   `save_message`, `update_topic`, `start_conversation`) — the separate discovery agent's ENTIRE
+>   webhook set, all bound to `DISCOVERY_AGENT_ID`. Each retired to a 410 rather than deleted
+>   outright, in case ElevenLabs still holds a stale webhook binding for that agent — a clean,
+>   explicit answer instead of a silent 404 or a crash.
+> - `app/dashboard/page.tsx`'s "Go deeper (optional)" card — the copy and the "optional" framing
+>   were both now false, and the button pointed at a retired page. Replaced with a status-only
+>   version: no button, no link, just where things stand. Discovery isn't a page to visit any more.
+>
+> **⚠️ One real feature quietly at risk, named rather than silently dropped:** the old page also
+> hosted `PreBriefPanel` — "give Kira a head start" — paste a URL or notes and seed the Client
+> Profile before ever talking to her. That capability is genuinely separate from the retired
+> interview mechanism (it calls the same shared `applyProfileExtraction`, never touched
+> `DISCOVERY_AGENT_ID`), and **`app/api/kira/discovery/ingest/route.ts` was deliberately left
+> running** — but its only UI lived on the page just deleted. It is not currently reachable from
+> anywhere. Relocating it (Settings? `/talk` itself?) is a real decision, not made here — flagging it
+> rather than letting a working feature disappear as an unnoticed side effect of a cleanup.
+>
+> **Page-level framing, `app/chat/[agentId]/page.tsx` (read properly this time — 1,429 lines, the
+> relevant ~150 read in full before editing):**
+> - `app/api/kira/agent/route.ts` now returns `discovery_complete` (business-journey only; `null`
+>   for other journeys) alongside the fields it already returned — one extra `client_profiles` read,
+>   zero new round trips, since `ChatPage` already fetches this endpoint on load.
+> - `ChatPage` derives `discoveryIncomplete` the same way it already derives `isFirstTimePartner` —
+>   client-side, from state already being fetched, no new plumbing.
+> - A new banner, styled and placed exactly like the existing first-time-partner banner it sits
+>   beside: *"A one-off, before anything else... This happens once, not every time you talk to her,
+>   and it may take more than one conversation to finish."*
+> - The existing title/subtitle ladder (`isFirstTimePartner` → `areaFocusTitle` → `lastTopic` →
+>   default) gained `discoveryIncomplete` at the TOP — highest priority, since an incomplete
+>   mandatory interview matters more than which genome area he last clicked.
+>
+> **Verified:** `npx vitest run` — **148 files, 1957 passed, 74 skipped**. `npx tsc --noEmit` clean.
+> No existing test broke from the retirement or the ChatPage changes — the one-test difference from
+> register X's count is surface area removed with the old page, not a new failure.
+>
+> **NOT verified, and NOT claimed:** no real browser has loaded `/talk` and seen the new banner. The
+> 410 routes have not been hit by a real (or stale) ElevenLabs webhook delivery. `PreBriefPanel`'s
+> relocation is an open decision, not a next-session default.
+
+> ## X. 2026-09-30 — discovery folded into the one agent: mandatory, one-time, gated by a tool not a static flag
+>
+> **Trigger:** walking `/talk`'s actual shape surfaced that it and `/discovery` were two fully
+> disconnected mechanisms — `/talk` never checks `discovery_complete`, `/discovery` runs on a
+> separate `DISCOVERY_AGENT_ID`, not the owner's own `kira_agents` row. The operator's decision:
+> option 2 — stop treating them as two agents. One Kira, one memory, one tool set; discovery is what
+> her early conversations are FOR, not a separate product. **Mandatory until complete, one-time, and
+> the prompt must tell the owner plainly what the step is for.**
+>
+> **Design decision worth recording:** discovery-complete status is NOT baked into the static system
+> prompt. The ElevenLabs agent's prompt is fixed at creation and only changes on an explicit
+> re-provision — baking "interview him" into static text would mean re-patching every agent the day
+> its profile crosses the threshold, or she interviews people forever. Instead: one evergreen prompt
+> instruction to call a tool first, every call, and the tool reports live state. Same "pull, don't
+> bake in" principle `get_conversation_context`/`area_agenda` already established — applied here
+> specifically so the mechanism never needs re-provisioning as accounts complete discovery over time.
+>
+> **What shipped:**
+> - `lib/kira/discovery-agenda.ts` + `discovery-agenda-tool-def.mjs` + `app/api/kira/webhooks/
+>   discovery_agenda/route.ts` — the new `discovery_agenda` tool, mirroring `area_agenda`'s exact
+>   contract. Reads `client_profiles`, walks `DISCOVERY_STAGES` against a new `STAGE_COVERAGE` map
+>   (which `ClientProfile` field satisfies which stage's `mustCover` label — held as data, next to
+>   the stages, same reasoning as `checklist.ts`), returns the first stage with a real gap and its
+>   outstanding items — never more than one stage at a time, same "not a list, a conversation"
+>   discipline as `area_agenda`. Fails OPEN (`complete: true`) on any read error or unresolvable
+>   account — a broken gate must never trap someone in an interview forever.
+> - `lib/kira/prompts.ts` — a new `## DISCOVERY GATE` section in `getBusinessPrompt`: call the tool
+>   first, every call, before greeting him; while incomplete, **tell him plainly this is a one-off**,
+>   then run it; FIRST CONVERSATION APPROACH and DURING CONVERSATIONS (draft, act, chase) are
+>   suspended until complete.
+> - `lib/kira/extract-client-profile.ts` — the extraction step (transcript → `ClientProfile`)
+>   factored out standalone, so the business-journey post-call hook doesn't need to spin up
+>   `@caistech/discovery-agent`'s full session machinery (ElevenLabs key + session secret) just to
+>   run its extraction. Same schema, same system prompt, same model as the original flow.
+> - `lib/kira/convai.ts` — Stage C in `onConversationComplete`, mirroring Stage B (consultant genome
+>   extraction) exactly: for a business-journey call, while `discovery_complete` is false, extract
+>   and apply via the existing `applyProfileExtraction` (unchanged — shared with the old ingestion
+>   pre-brief path, so nothing about storage/merge/threshold logic is new). Skipped entirely once
+>   complete — not merely redundant, an active choice to stop spending a model call on every future
+>   call forever.
+> - `discovery_agenda` wired into BOTH transports — `tool-manifest.mjs` (voice) and `text-tools.ts`
+>   (typing) — caught by the existing `registration.test.ts` guard on the first run, exactly as
+>   designed: a client with no microphone must be carried through the mandatory interview too, not
+>   silently exempted by which transport they happen to use.
+>
+> **A real, caught constraint, not silently worked around:** the addition pushed the business
+> prompt over its own explicit ceiling (`prompt-size.test.ts`), whose own comment says plainly "the
+> next section added should not be a raise; it should be the tranche." Cut the addition twice
+> (1150 → 215 chars) before accepting a **100-character** raise for the irreducible remainder —
+> documented at the point of the raise with the exact reasoning, matching the file's own established
+> convention for when a raise is earned rather than lazy. The relocation debt that comment describes
+> is still owed and this doesn't pay it down.
+>
+> **Verified:** `npx vitest run` — **148 files, 1958 passed, 74 skipped**, including 7 new tests on
+> `discovery-agenda.ts`'s gap-detection logic (never-started, partial-profile stage-skipping,
+> complete-but-row-stale, fail-open on any read error). `npx tsc --noEmit` clean.
+>
+> **NOT verified, and NOT claimed:** no real call has ever gone through this gate — the tool response
+> shape, the stage-skip logic, and the prompt instruction are all tested in isolation, never against
+> a real ElevenLabs conversation. The old `/discovery` route, `DiscoveryWidget`, and
+> `DISCOVERY_AGENT_ID` are **left in place, not removed** — a live but now-redundant second path,
+> deliberately not touched this pass (removing it is a separate, lower-urgency decision). **Page
+> copy is NOT done** — `/talk` renders `ChatPage` (1,429 lines, not read this pass) directly with no
+> wrapper; adding a "this is a one-time session" banner risks an unreviewed layout change to a
+> component this size, so it was left out rather than guessed at. The mandatory behaviour is fully
+> real in the conversation itself (voice and typed); the page-level reinforcement the operator also
+> asked for is the one piece still owed.
+>
+> **Next, in order:** read `ChatPage` properly and add the page-level "one-time session" framing;
+> walk one real account through the gate end to end (a fresh org, zero `client_profiles` row) and
+> confirm she actually opens with it rather than routine work; decide whether/when to retire the old
+> `/discovery` route now that it's redundant.
+
+> ## W. 2026-09-29 (same day, later still) — the agent-builder's backlog, made readable (orchestrator repo)
+>
+> **Trigger:** mid-build on working through TASK_REGISTRY's remaining ~130 flows, the operator
+> stopped it directly: the 140 is "a best guess at what may be asked of Kira" and there needs to be
+> a mechanism for tasks/functions that were never in it at all. Right diagnosis. Grinding through a
+> fixed list, however long, never closes a gap the list's own author admits it can't see.
+>
+> **What was already there, unbuilt:** `app/api/v1/dispatch/route.ts` already writes every request
+> with no owning agent into `tasks` with `status='unsupported'`, and its own comment calls that row
+> **"the agent-builder's backlog"**. Kira's Seam 4 (`AgentBuilder`, `lib/kira/integration/stubs.ts`)
+> has always thrown `"no swarm builder connected"` on `build()`. The backlog was real and growing;
+> nothing had ever read it. `drafter.ts`'s classifier is also a genuinely closed set — quote / email
+> / reminder / compliance / unsupported, "unsupported: anything else" — confirming the gap is real
+> and not merely under-built.
+>
+> **What shipped (orchestrator repo):**
+> - `db/011_capability_gap.sql` — `capability_proposals`, same pending/accepted/rejected/built
+>   shape `evidence_staging` already established as this codebase's "AI proposes, human decides"
+>   pattern. **Never auto-applied** to `config/agents.json` or `src/rules.ts` — those stay reviewed,
+>   version-controlled changes, same posture as every other capability boundary in this system.
+> - `src/capability-gap.ts` — reads recent `status='unsupported'` tasks, groups them by normalised
+>   recurring text (tenant-isolated; a single occurrence proves nothing and is dropped), and
+>   classifies each recurring group into one of three shapes:
+>   - **`sweep`** — fits `src/rules.ts`'s existing threshold→template→gate mechanism. Per that
+>     file's own header ("adding the 21st flow must not mean writing a 21st function"), this is
+>     genuinely just a new data row once accepted — no new code.
+>   - **`draft_agent`** — fits `config/agents.json` + the existing runner's draft-and-hold/async
+>     shape. Also mostly data: a new registry entry.
+>   - **`needs_design`** — fits neither. Stated as the honest, expected common case, not a failure —
+>     claiming every gap generalises would be exactly the overclaim this exists to prevent.
+> - `scripts/review-capability-gaps.ts` (`npm run capability-gaps` / `-- --dry-run`) — mirrors
+>   `scripts/run-agents.ts`'s exact hosting pattern (env loading, `--dry-run` convention) so the
+>   business logic stays pure and testable in `src/`.
+>
+> **This is the second, structurally different discovery channel for the same underlying question**
+> — the genome-tasks layer (register U) discovers gaps Kira hears about in conversation; this
+> discovers gaps from requests that were actually MADE and failed. Neither replaces the other.
+>
+> **Verified:** orchestrator's full suite — **26 files, 257 tests, all passing** (7 new, covering
+> grouping/tenant-isolation/dedup/degrade-don't-fake — the LLM classification call itself is not
+> exercised, same convention as `drafter.ts`'s own test coverage). `npm run typecheck` clean (one
+> real type error caught and fixed mid-build: `ctx.usage()`'s actual field names are `inputTokens`/
+> `outputTokens`, not the names first guessed — caught by the typecheck, not assumed correct).
+>
+> **NOT verified, and NOT claimed:** the migration has not been applied to any database. No real
+> `unsupported` task has ever been grouped or classified by this — the classifier prompt is
+> untested against real requests. There is no review surface yet (`/continuity` is the natural
+> home; not built this pass). `proposeCapability`'s draft-config shapes (`SweepRule`/`AgentEntry`)
+> are plausible, not validated against `rules.ts`'s/`register.ts`'s actual runtime type-checking —
+> a human reviewer merging a proposal still needs to confirm it actually parses.
+>
+> **Next, in order:** apply the migration; run `--dry-run` against real `unsupported` rows (F2K or
+> red-team tenant) and read the groupings by hand before trusting the classifier; add a minimal read
+> surface (extend `/continuity` or a new page) so a human can actually see and act on a proposal
+> rather than querying the table directly.
+
+> ## V. 2026-09-29 (same day, later) — the evidence bridge: orchestrator's real automation now reaches `/my-genome`, NOT yet live
+>
+> **Trigger:** asked directly whether U's task-discovery layer duplicated something in `/orchestrator`.
+> It did, partially, and worse than duplicated — orchestrator's doing-layer (`AGENTIC_NETWORK.md`,
+> **Built 2026-09-16**, thirteen days more recent than anything else read from that repo) has a real,
+> live, OBSERVED evidence mechanism — `src/genome/evidence-collector.ts` maps a completed, human-
+> promoted effect (a quote actually sent, a debt actually chased) to a genome bucket. `KIRA_SWARM_
+> ADAPTER=orchestrator` is confirmed set in Vercel Production (register G2) with real dispatches
+> flowing (12 F2K, 139 red-team). None of it reached the owner: `evidence_staging` was read by
+> exactly one place, orchestrator's own `/continuity` dashboard, on a domain no owner opens. Also
+> found and read in full: `docs/GENOME_WRITE_BACK.md` (2026-08-05, a DIFFERENT, complementary flow —
+> writing the owner's manual OUT to his Drive, not evidence IN — not a duplicate) and
+> `orchestrator/AGENT_TRAINING_SOP.md` (2026-09-16), which is the operator's 6-month promise written
+> out in full: 140 flows, 4 tiers (Clerk ~70 / Advisor ~35 / Specialist ~20 / Human ~15), and the
+> honest confession that ~10 of 140 are actually live today.
+>
+> **What shipped — the missing read leg, both sides:**
+> - **orchestrator:** `app/api/v1/evidence/route.ts` — `GET /v1/evidence?tenantId=…&status=promoted`,
+>   mirroring `/v1/tasks`' exact pattern (`authoriseCaller`, tenant-required-or-400, `serviceClient()`).
+>   Defaults to `promoted` only — a `pending`/`reviewed` row is evidence a human has not yet signed
+>   off, and AGENTIC_NETWORK.md §1.4 ("the Genome is not written by agents") has to hold at this seam
+>   too, not just inside `/continuity`.
+> - **Kira:** `lib/genome/orchestrator-evidence.ts` — `EVIDENCE_BUCKET_TO_AREA` (a real, documented,
+>   disputable mapping from orchestrator's 9 bucket names to Kira's 9 area keys — a THIRD taxonomy
+>   existed with no bridge to either of Kira's two), `fetchPromotedEvidence` (degrade-don't-fake,
+>   same `ORCHESTRATOR_URL`/`ORCHESTRATOR_SECRET` wire contract `orchestrator-adapter.ts` already
+>   uses — `tenantId` confirmed = Kira's own user id per `GENOME_WRITE_BACK.md`), `observedAutomationItem`
+>   (one item per area, `required: false`, `factor: null` — same discipline as every task-derived
+>   item: this can only move operational-coverage, never `readiness`/`readiness_now`), and
+>   `writeObservedVerdicts` — writes DIRECTLY to `genome_item_status`, never through the LLM assessor,
+>   because "did a promoted row land" is a boolean fact from orchestrator's own data, not something
+>   an LLM should be asked to interpret from a conversation it cannot see.
+> - Wired into `app/my-genome/[area]/actions.ts` (the write, run independently of the conversational
+>   assessment — real automation evidence has nothing to do with whether he's talked to Kira about
+>   the area) and `app/my-genome/[area]/page.tsx` (the read, pure item definition, no orchestrator
+>   call on page load).
+> - **Deliberately reverted out of `lib/kira/area-agenda.ts`.** First wired there too; the full test
+>   suite caught it within the hour — `area-agenda.test.ts`'s "reports nothing outstanding" test
+>   failed because the item can never be satisfied by TALKING, only by real automation existing, so
+>   surfacing it as something to ask about was wrong, not the test. Removed; it belongs on the panel
+>   only. Recorded because it's the kind of real, caught mistake this register exists to keep visible
+>   rather than quietly fix and forget.
+>
+> **The mechanical fix for how this happened at all:** `cais-shared-services/scripts/
+> check-concept-duplication.mjs` — before building anything genome/task/evidence/checklist-shaped in
+> Kira or orchestrator, greps both repos (+ cais-shared-services + corporate-ai-solutions) for the
+> concept and fails loudly (exit 2) if it's structurally present in more than one. Run live against
+> `genome task evidence sop checklist` — correctly flagged all five as present in both repos, which
+> is exactly the state that produced U's near-duplicate. Not a lint rule (duplication across repos
+> can be legitimate — self-report vs. observed evidence, DATA_STANDARD R2); the requirement is that a
+> session SEES the report before building, not that it never duplicates anything.
+>
+> **Verified:** `npx vitest run` (Kira, full suite) — **147 files, 1950 passed, 74 skipped** (DB/LLM-
+> gated, correctly skipping). `npx tsc --noEmit` clean in both repos (Kira and orchestrator) aside
+> from 2 pre-existing, unrelated errors already on Kira's branch. The new evidence route itself was
+> NOT hit by a live request — no test harness for a Next route handler with `context.params` exists
+> in orchestrator today (its sibling `/v1/tasks` has none either), so this matches existing practice,
+> not a gap introduced here.
+>
+> **NOT verified, and NOT claimed:** `writeObservedVerdicts` has never run against a real
+> `evidence_staging` row — nobody has promoted a real evidence row and watched it appear on
+> `/my-genome`. The bucket mapping (`EVIDENCE_BUCKET_TO_AREA`) is a reasoned judgement call, not
+> something a real business's data has validated — `risk_management → compliance` and
+> `supply_chain → operations` in particular are named as judgement calls in the code, not exact fits.
+> Neither `ORCHESTRATOR_URL` nor `ORCHESTRATOR_SECRET` were touched, read, or exercised live in this
+> session. `lib/capabilities.ts` remains untouched — this is infrastructure an owner cannot yet see
+> anything from.
+>
+> **Next, in order:** confirm a real `evidence_staging` row exists and is `promoted` for a real
+> tenant (F2K or the red-team tenant); call the new orchestrator endpoint for real and confirm the
+> shape matches what `fetchPromotedEvidence` expects; run one real `assessArea` action for that
+> tenant's account and confirm `observed.<area>` actually appears on `/my-genome/[area]`; only then
+> is any of this a demonstrated fact rather than a plausible design.
+
+> ## U. 2026-09-29 — task discovery: the operational-completeness layer, built and unit-tested, NOT yet live
+>
+> **Trigger:** the operator's literal promise to BBBO owners — "every task that makes up the
+> business will be mapped and locked into an SOP inside 6–12 months, so the owner can take 12 weeks
+> off" — traced against every genome-adjacent system in this repo (`business-genome/`, frozen
+> 2026-08-25 pre-production; `lib/genome/checklist.ts`+`pathway.ts`, live since 2026-08-15). Neither
+> answers the promise: `business-genome/` is unwired from the live conversation loop; the live
+> checklist is a fixed ~50-item BUYER-relevant rubric (dependency-closure for a sale), not an
+> open-ended TASK inventory (operational completeness for an absence). Full finding in this
+> session's transcript, not duplicated here.
+>
+> **What shipped:** `lib/genome/tasks.ts` — a per-organisation, open-ended task list that plugs into
+> the SAME extension seam the admission ledger already uses (`itemsForArea(area, extra)` /
+> `assessAreaEntries(..., extraItems)`). Gate 2's substance tests, gate 4's pathways, and
+> `evidenced-readiness.ts` are UNCHANGED — a discovered task is scored, coached and (if it needs
+> one) offered a pathway through the exact same code a static item goes through. `factor` is always
+> null on a task-derived item: tasks can only move a new, separate `taskCoverageForArea()` number,
+> never `readiness`/`readiness_now` — the exact conflation `PRODUCT_MEASURED_SYSTEMISATION.md` warns
+> against.
+>
+> Migration `20260929000000_genome_tasks.sql` — organisation-scoped (INV-020), RLS via the canonical
+> `organisation_memberships` pattern (phase1c), soft-delete. Wired into all three live call sites
+> that already merge admission-ledger items: `lib/kira/area-agenda.ts` (voice), `app/my-genome/
+> [area]/actions.ts` (discovery runs here, on-demand, same reasoning as the existing assessment —
+> a model call belongs to the button pressed, not the page visit), `app/my-genome/[area]/page.tsx`
+> (read-only render).
+>
+> **Verified:** `npx vitest run lib/genome app/my-genome` — 26 files, 313 passed, 3 skipped (the
+> DB-integration tests in `tasks.test.ts`, correctly skipping without a configured test project).
+> `npx tsc --noEmit` — zero new errors (the 2 pre-existing errors are unrelated, in
+> `app/api/admin/invitations/route.ts`, from already-uncommitted work on invitation CC support).
+> Fixed one legitimate regression in `area-panel.test.ts` (a source-text guard matching the old
+> literal `assessAreaItems(..., admitted)` call) rather than loosen what it actually protects
+> against — baseline self-report never entering the assessed count.
+>
+> **NOT verified, and NOT claimed:** the migration has not been applied to any Supabase project —
+> live or test. `discoverTasks()` has never been run against a real conversation; its LLM prompt is
+> untested against real owner language. Nobody has walked `/my-genome/[area]` or a live voice call
+> and watched a task actually get discovered, scored, and coached. **`lib/capabilities.ts` /
+> `/what-she-does` is deliberately unchanged** — nothing here is told to a beta tester as existing
+> until it has been watched working, which is the entire reason this session happened.
+>
+> **Next, in order:** apply the migration to the correct project (confirm ref first — multiple live
+> Supabase projects exist, per `PRODUCT_STANDARDS.md`'s ref-map warning); run `discoverTasks` against
+> a real account's existing entries and read the proposals by hand before trusting them; walk one
+> area live end to end (voice and panel); only then extend `capabilities.ts`.
+
 > ## T. 2026-09-22 — the distributor/consultant lane shipped, then today closed the gaps it left exposed
 >
 > **Trigger:** twelve days and ~50 commits since the last register entry (H6, 2026-09-10) with

@@ -20,6 +20,8 @@ import { GENOME_AREAS, type AreaKey } from '@/lib/genome/areas';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { assessAreaEntries } from '@/lib/genome/checklist-assess';
 import { fetchAdmittedChecklist } from '@/lib/genome/checklist';
+import { discoverTasks, createTask, fetchTaskItems } from '@/lib/genome/tasks';
+import { writeObservedVerdicts } from '@/lib/genome/orchestrator-evidence';
 import { recomputeEvidencedReadiness } from '@/lib/valuation/recompute-readiness';
 
 const AREA_KEYS = new Set(GENOME_AREAS.map((a) => a.key));
@@ -55,14 +57,57 @@ export async function assessArea(area: string): Promise<AssessState> {
   // alongside the founding cohort — until there is a verdict it returns 'open', which is precisely
   // the monotonic honesty guarantee (a new question lowers the band until it is answered).
   const admitted = await fetchAdmittedChecklist(supabase);
-  const verdicts = await assessAreaEntries(area as AreaKey, entries, {}, admitted);
 
-  // Everything open means nothing was established — either there is nothing on the record, or the
-  // model was unreachable. Writing a full set of `open` rows would make an outage indistinguishable
-  // from a genuinely empty area FOREVER, because the panel would then read as assessed. Degrade,
-  // don't fake: write nothing and let it keep saying it has not been checked.
+  // Task discovery — the operational-completeness layer (lib/genome/tasks.ts). Runs in the same
+  // on-demand action as the assessment itself, for the same reason assessment is on-demand rather
+  // than on page load: this is a model call, and it belongs to the button he pressed, not his visit.
+  // Newly discovered tasks join THIS SAME assessment pass so he sees them scored, not just added.
+  const existingTasks = await fetchTaskItems(supabase, orgContext.organisationId, area as AreaKey);
+  const proposals = await discoverTasks(
+    area as AreaKey,
+    entries,
+    existingTasks.map((t) => t.ownerPrompt),
+  );
+  for (const proposal of proposals) {
+    await createTask(supabase, {
+      organisationId: orgContext.organisationId,
+      discoveredByUserId: authUser.id,
+      area: area as AreaKey,
+      name: proposal.name,
+      sourceType: 'conversation',
+    });
+  }
+  const taskItems = proposals.length
+    ? await fetchTaskItems(supabase, orgContext.organisationId, area as AreaKey)
+    : existingTasks;
+
+  const verdicts = await assessAreaEntries(area as AreaKey, entries, {}, [...admitted, ...taskItems]);
+
+  // Orchestrator's observed evidence (lib/genome/orchestrator-evidence.ts) — INDEPENDENT of the
+  // conversational record above, so it runs even when there is nothing on the record at all. Real
+  // automation evidence existing has nothing to do with whether he has talked to Kira about this
+  // area; the two are different questions answered by different sources (DATA_STANDARD R2).
+  // tenantId IS authUser.id — confirmed in docs/GENOME_WRITE_BACK.md.
+  const observedResult = await writeObservedVerdicts(
+    supabase,
+    orgContext.organisationId,
+    authUser.id,
+    authUser.id,
+    area as AreaKey,
+  );
+
+  // Everything open means nothing was established from the conversational record — either there is
+  // nothing on the record, or the model was unreachable. Writing a full set of `open` rows would
+  // make an outage indistinguishable from a genuinely empty area FOREVER, because the panel would
+  // then read as assessed. Degrade, don't fake: write nothing FROM THE LLM PATH and let it keep
+  // saying it has not been checked — but still revalidate if the observed-evidence write above found
+  // something, since that is real regardless of what the conversation did or didn't say.
   if (verdicts.every((v) => v.status === 'open')) {
-    return { assessed: 0 };
+    if (observedResult.observed) {
+      revalidatePath(`/my-genome/${area}`);
+      revalidatePath('/my-genome');
+    }
+    return { assessed: observedResult.observed ? 1 : 0 };
   }
 
   const { error } = await supabase.from('genome_item_status').upsert(

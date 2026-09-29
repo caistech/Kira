@@ -22,6 +22,8 @@ import { createServiceClientV2 } from '@/lib/supabase/server';
 import { GENOME_AREAS, type AreaKey } from '@/lib/genome/areas';
 import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { fetchAdmittedChecklist } from '@/lib/genome/checklist';
+import { fetchTaskItems } from '@/lib/genome/tasks';
+import { observedAutomationItem } from '@/lib/genome/orchestrator-evidence';
 import { assessArea as assessAreaItems, type AssessedItem, type ItemStatus } from '@/lib/genome/checklist-bands';
 import { outstandingSplit } from '@/lib/genome/checklist-bands';
 import { pathwayAvailableFor } from '@/lib/genome/pathway';
@@ -88,6 +90,17 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
   // "Kira moved the goalposts".
   const admittedKeys = new Set(admitted.filter((a) => a.area === area).map((a) => a.key));
 
+  // Task discovery's live set (lib/genome/tasks.ts) — a task Kira noticed in conversation joins the
+  // denominator here exactly like an admitted question: open until answered, never a silent change
+  // to the band. Read-only on page load, same reasoning as `admitted` above — discovery itself is a
+  // model call and belongs to the assess ACTION, not this render (see actions.ts).
+  const taskItems = await fetchTaskItems(supabase, orgContext.organisationId, area as AreaKey);
+
+  // The observed-evidence item (lib/genome/orchestrator-evidence.ts) — no orchestrator call here,
+  // its VERDICT is written by the assess action and already sits in `rows` above if it exists. This
+  // is just the pure item definition, same as any static checklist item.
+  const observedItem = observedAutomationItem(area as AreaKey);
+
   const assessed: AssessedItem[] = (rows ?? []).map((r) => ({
     itemKey: r.item_key as string,
     status: r.status as ItemStatus,
@@ -99,7 +112,7 @@ export default async function AreaPage({ params }: { params: Promise<{ area: str
   // this page would most easily commit: telling a man nothing in his record answers anything, when
   // in truth nobody has looked yet.
   const neverAssessed = assessed.length === 0;
-  const result = assessAreaItems(area as AreaKey, assessed, admitted);
+  const result = assessAreaItems(area as AreaKey, assessed, [...admitted, ...taskItems, observedItem]);
   const split = outstandingSplit(result);
   const entryCount = section?.entries.length ?? 0;
 

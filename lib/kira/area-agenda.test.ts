@@ -50,6 +50,19 @@ describe('resolving what she said into one of the nine areas', () => {
 // The handler needs a Supabase client, so it is exercised through a stubbed module rather than a
 // live table — what is being tested here is the ORDERING and the SHAPE, both of which are pure
 // decisions about what she gets handed.
+// A thenable stub for any query-builder chain (select/eq/is/order/limit…), resolving empty at
+// whatever point it's awaited — matches how the real Supabase client is itself thenable mid-chain.
+// Used for genome_tasks: the task-discovery layer (lib/genome/tasks.ts) is exercised in its own
+// suite; here it only needs to resolve to "no discovered tasks" so the agenda-ordering assertions
+// below are unaffected by it.
+function emptyChain() {
+  const chain: Record<string, unknown> = {};
+  const methods = ['select', 'eq', 'is', 'order', 'limit'];
+  for (const m of methods) chain[m] = () => chain;
+  chain.then = (resolve: (v: { data: never[]; error: null }) => void) => resolve({ data: [], error: null });
+  return chain;
+}
+
 function membershipChain() {
   return {
     select: () => ({
@@ -87,6 +100,7 @@ describe('what comes back', () => {
         from: (table: string) => {
           if (table === 'organisation_memberships') return membershipChain();
           if (table === 'genome_admission_ledger') return { select: () => ({ eq: () => ({ is: () => Promise.resolve({ data: [], error: null }) }) }) };
+          if (table === 'genome_tasks') return emptyChain();
           // genome_item_status → return rows
           return { select: () => ({ eq: () => ({ eq: async () => ({ data: rows, error: null }) }) }) };
         },
@@ -166,6 +180,7 @@ describe('when it cannot answer', () => {
         from: (table: string) => {
           if (table === 'organisation_memberships') return membershipChain();
           if (table === 'genome_admission_ledger') return { select: () => ({ eq: () => ({ is: () => Promise.resolve({ data: [], error: null }) }) }) };
+          if (table === 'genome_tasks') return emptyChain();
           return { select: () => ({ eq: () => ({ eq: async () => ({ data: null, error: { message: 'boom' } }) }) }) };
         },
       }),

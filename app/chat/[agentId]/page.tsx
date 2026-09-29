@@ -108,6 +108,8 @@ interface AgentInfo {
   status: string;
   elevenlabs_agent_id: string;
   first_name?: string | null;
+  // null for a non-business journey (the discovery gate doesn't apply there); true/false for business.
+  discovery_complete?: boolean | null;
 }
 
 /**
@@ -425,6 +427,13 @@ export default function ChatPage({
     !!context &&
     !context.has_history;
 
+  // The mandatory, one-time discovery interview (build register X, 2026-09-30). She already knows
+  // to run it — discovery_agenda is called first, every call, and the prompt tells her to say so —
+  // this is the PAGE saying the same thing, so it isn't only spoken and gone. `=== false` on
+  // purpose: `null` (non-business journey) and `undefined` (still loading) must not flash this
+  // banner while agentInfo hasn't resolved yet.
+  const discoveryIncomplete = agentInfo?.discovery_complete === false;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-orange-50">
       <div className="relative flex flex-col min-h-[calc(100vh-52px)] max-w-2xl mx-auto">
@@ -504,6 +513,22 @@ export default function ChatPage({
           </div>
         )}
 
+        {/* The mandatory, one-time discovery interview — the page saying plainly what the prompt
+            already tells her to say (build register X, 2026-09-30). Business journey only; never
+            shown once discovery_complete flips true, and never shown again after this session ends
+            — a returning owner who somehow re-enters this state mid-way just continues it, he is
+            not told "welcome, one-time thing" twice. */}
+        {discoveryIncomplete && (
+          <div className="mx-4 mb-2 rounded-xl border border-violet-200 bg-violet-50/70 px-4 py-3 text-left">
+            <p className="text-sm font-semibold text-stone-900">A one-off, before anything else</p>
+            <p className="mt-1 text-sm leading-relaxed text-stone-700">
+              Before Kira starts handling day-to-day things, she needs to properly understand your
+              business — how it runs, what matters to you, who's involved. This happens once, not
+              every time you talk to her, and it may take more than one conversation to finish.
+            </p>
+          </div>
+        )}
+
         {/* Voice coach — the canonical portfolio VoiceWidget, owner-gated via signed URL. It renders
             its own avatar, transcript, and mic/mute/end controls (no bespoke voice UI). */}
         <main className="flex-1 px-4 pb-6">
@@ -524,13 +549,15 @@ export default function ChatPage({
                 it below so her first reply is about that part of the business rather than about
                 whatever he happens to type. */}
             <h2 className="text-2xl font-bold text-gray-800 mb-1">
-              {isFirstTimePartner
-                ? 'Ready to build your Kira partnership?'
-                : areaFocusTitle
-                  ? `Let's look at ${areaFocusTitle}`
-                  : lastTopic
-                    ? 'Picking up where you left off'
-                    : 'Ready when you are'}
+              {discoveryIncomplete
+                ? "Let's get to know your business"
+                : isFirstTimePartner
+                  ? 'Ready to build your Kira partnership?'
+                  : areaFocusTitle
+                    ? `Let's look at ${areaFocusTitle}`
+                    : lastTopic
+                      ? 'Picking up where you left off'
+                      : 'Ready when you are'}
             </h2>
             {/* BOTH WAYS IN, NAMED. This said "Tap the mic below to talk with Kira" and nothing
                 else, so typing existed but was invisible until you clicked the mic — and on a
@@ -554,6 +581,11 @@ export default function ChatPage({
                 </ul>
                 <p className="mt-2 text-sm text-gray-500">This is how Kira begins learning your way of working.</p>
               </div>
+            ) : discoveryIncomplete ? (
+              <p className="text-base text-gray-600">
+                Tell her about yourself and your business, by voice or by typing — there are no wrong
+                answers, and she&apos;ll ask what she needs to know next.
+              </p>
             ) : (
               <p className="text-base text-gray-600">
                 {areaFocusQuestion

@@ -61,6 +61,20 @@ export async function GET(request: NextRequest) {
       .eq('person_id', organisationContext.personId)
       .maybeSingle();
 
+    // The mandatory discovery gate's page-level framing (ChatPage) needs to know, without a
+    // second round trip, whether this business's one-time interview is done. Business-journey
+    // only — the gate doesn't apply to consultant/distributor/personal agents. Absent row reads
+    // as incomplete (never started), same default discovery_agenda itself uses.
+    let discoveryComplete: boolean | null = null;
+    if (agent.journey_type === 'business' && agent.organisation_id) {
+      const { data: profile } = await supabase
+        .from('client_profiles')
+        .select('discovery_complete')
+        .eq('organisation_id', agent.organisation_id)
+        .maybeSingle();
+      discoveryComplete = Boolean(profile?.discovery_complete);
+    }
+
     return NextResponse.json({
       id: agent.id,
       // user_id is retained as provenance; organisation_id is the ownership/tenant scope.
@@ -74,6 +88,8 @@ export async function GET(request: NextRequest) {
       status: agent.status,
       elevenlabs_agent_id: agent.elevenlabs_agent_id,
       first_name: (person?.first_name as string) ?? null,
+      // null for a non-business journey (the gate doesn't apply); true/false for business.
+      discovery_complete: discoveryComplete,
     });
 
   } catch (error) {

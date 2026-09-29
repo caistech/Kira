@@ -67,7 +67,13 @@ describe('the panel does not contradict the card that links to it', () => {
     // A self-report from the thirteen questions is not a captured fact. The band must still be
     // computed from assessed items alone — letting a baseline lift an area out of empty would
     // manufacture progress from a form he filled in before he paid.
-    expect(source).toMatch(/assessAreaItems\(area as AreaKey, assessed, admitted\)/);
+    //
+    // The third argument is the item-source list (admitted + discovered tasks, lib/genome/tasks.ts)
+    // and is allowed to grow; what this guards is that it never becomes `section?.baseline` or
+    // anything derived from it.
+    const call = source.match(/assessAreaItems\(area as AreaKey, assessed, ([^)]*)\)/);
+    expect(call, 'assessAreaItems call not found in its expected shape').not.toBeNull();
+    expect(call![1]).not.toMatch(/baseline/);
   });
 });
 

@@ -280,6 +280,57 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
           console.error('[kira/convai] consultant genome extraction failed (memories are safe):', error);
         }
       }
+
+      // ── STAGE C: business-journey Client Profile extraction (the folded-in discovery gate) ──
+      // Mirrors Stage B exactly, for the sibling journey. Runs only while discovery is genuinely
+      // incomplete — once client_profiles.discovery_complete is true this is a wasted model call on
+      // every single call forever, so it's skipped, not merely redundant. Degrade-don't-fake, never
+      // blocks the post-call path.
+      if (organisationId) {
+        try {
+          const { data: agentRow } = await sb
+            .from(KIRA_CONVAI_TABLES.agents)
+            .select('journey_type')
+            .eq('id', conv.agentId)
+            .single();
+
+          if (agentRow?.journey_type === 'business') {
+            const { data: existingProfile } = await sb
+              .from('client_profiles')
+              .select('discovery_complete')
+              .eq('organisation_id', organisationId)
+              .maybeSingle();
+
+            if (!existingProfile?.discovery_complete) {
+              const { data: msgs } = await sb
+                .from(KIRA_CONVAI_TABLES.messages)
+                .select('role, content')
+                .eq('conversation_id', conv.id)
+                .order('message_index', { ascending: true });
+
+              if (msgs?.length) {
+                const { extractClientProfile } = await import('@/lib/kira/extract-client-profile');
+                const { applyProfileExtraction } = await import('@/lib/kira/apply-profile');
+                const extracted = await extractClientProfile(
+                  msgs.map((m: { role: string; content: string }) => ({ role: m.role, content: m.content })),
+                  { apiKey: process.env.OPENAI_API_KEY || '' },
+                );
+                if (extracted && userId) {
+                  const orgContext = await resolveOrganisationForPerson(userId);
+                  if (orgContext) {
+                    await applyProfileExtraction(sb, orgContext, extracted, {
+                      source: 'talk',
+                      bumpSession: true,
+                    });
+                  }
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error('[kira/convai] client profile extraction failed (memories are safe):', error);
+        }
+      }
     },
     // Identity resolution, two identifiers (Scope D). The caller's person_id — carried
     // per-session as a platform-filled `user_id` dynamic variable by the start_conversation

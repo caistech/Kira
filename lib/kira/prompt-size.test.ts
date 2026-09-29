@@ -73,8 +73,14 @@ const framework = (journeyType: JourneyType): KiraFramework => ({
 //
 // Net: the business prompt is 1,719 characters SMALLER than before the new section was added, and
 // the ceiling moves with the measurement so that saving cannot be quietly given back.
-const BUDGET = { business: 39_200, personal: 10_200 } as const;
+const BUDGET = { business: 39_300, personal: 10_200 } as const;
 
+// ⚠️ RAISED 100 CHARS, 2026-09-30, FOR THE DISCOVERY GATE — one new mandatory instruction (call
+// discovery_agenda first, every call; suspend ordinary work while it reports incomplete), the
+// prompt-side half of folding the separate /discovery flow into this same agent. Cut twice first
+// (1150 → 215 chars) before touching the ceiling — this is the irreducible remainder, not the first
+// draft. Does not touch the relocation debt the note below still owes; that tranche is still owed.
+//
 // ⚠️ THE BUSINESS CEILING WENT BACK UP, from 28,000 to 36,000, and that is not backsliding.
 //
 // Cutting the duplicated tool descriptions took it to 26,681. Restoring four sections the rebuild
