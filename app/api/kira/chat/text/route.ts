@@ -240,7 +240,7 @@ export async function POST(req: NextRequest) {
   // memory behind them is the owner's business. An admin may open one; nobody else may.
   const { data: agent, error: agentError } = await supabase
     .from(KIRA_CONVAI_TABLES.agents)
-    .select('id, user_id, organisation_id, elevenlabs_agent_id, status')
+    .select('id, user_id, person_id, organisation_id, elevenlabs_agent_id, status')
     .eq('elevenlabs_agent_id', agentId)
     .maybeSingle();
 
@@ -595,7 +595,22 @@ export async function POST(req: NextRequest) {
         // IDENTITY IS THE ROUTE'S, NOT THE MODEL'S. agent.organisation_id came from the authenticated
         // session and the ownership check above; anything the model put in `args` is ignored by
         // every handler. This is the line that keeps a typed session inside its own business.
-        const result = await runTextTool(name, args, agentOrganisationId, agent.user_id);
+        //
+        // ⚠️ MUST BE agent.person_id, NOT agent.user_id. `?uid=` is read by every person-scoped
+        // handler (discovery_agenda, area_agenda, dispatch_task, recall_memory, …) as the CANONICAL
+        // person_id (lib/auth.ts resolveOrganisationForPerson does a bare `.eq('person_id', uid)`
+        // with no legacy fallback). agent.user_id is the LEGACY users.id FK — a different identity
+        // space entirely since migration 20260907090000, and NULL for any agent minted straight
+        // against a canonical person (the ensure/create routes' normal path). Passing it here silently
+        // fails every such handler's org lookup, which returns null and fails OPEN — discovery_agenda
+        // in particular reports `complete: true` on that failure (an honest "I don't know" encoded in
+        // a field the model reads as "done"), so a account whose legacy id doesn't resolve gets told
+        // the one-time interview is finished before it started. Live-verified in production 2026-09-30
+        // against a fresh account: kira_agents.user_id resolved to no row in `persons` at all, while
+        // organisation_memberships.person_id (the real identity) was a different UUID. Voice transport
+        // never had this bug — kiraAllTools bakes the canonical person_id into the tool URLs at
+        // provision time, never the legacy column.
+        const result = await runTextTool(name, args, agentOrganisationId, agent.person_id ?? agent.user_id);
         toolsUsed.push(name);
 
         working.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(result) });
