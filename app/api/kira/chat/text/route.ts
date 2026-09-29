@@ -524,6 +524,21 @@ export async function POST(req: NextRequest) {
   // she talks, exactly as this route behaved before tools existed.
   const tools = textToolsFor(await liveToolNamesFor(agentId));
 
+  // THE DISCOVERY GATE, ENFORCED, NOT ASKED. The prompt already tells her to call discovery_agenda
+  // before anything else in every new conversation — and on the first real typed turn against this
+  // change, with `tool_choice: 'auto'`, she did not: she answered the owner's opener with the
+  // ordinary "what do you want handled?" greeting instead, evidence read live in production
+  // 2026-09-30 (build register). Prompt-only enforcement has a known failure rate elsewhere in this
+  // file (record_refusal measured 0/6, then 1/6, before the ledger replaced the ask) — asking her
+  // twice was not the fix there and would not be here. The gate is mandatory-until-complete, so the
+  // one point it can be enforced mechanically is taken: on the first message of a brand-new
+  // conversation, if the deployed agent holds the tool, FORCE the call rather than hope for it. The
+  // handler itself is a cheap read and fails open, so forcing it costs one extra round-trip and
+  // nothing else — and once it has run, the model is free to act on `complete` however the prompt
+  // says to.
+  const isFreshConversation = !history || history.length === 0;
+  const hasDiscoveryAgenda = tools.some((t) => t.function.name === 'discovery_agenda');
+
   let reply: string;
   const toolsUsed: string[] = [];
   try {
@@ -534,6 +549,7 @@ export async function POST(req: NextRequest) {
     const working: unknown[] = [...messages];
 
     for (let round = 0; ; round++) {
+      const forceDiscoveryAgenda = round === 0 && isFreshConversation && hasDiscoveryAgenda;
       const res = await fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
@@ -541,7 +557,11 @@ export async function POST(req: NextRequest) {
           model,
           messages: working,
           max_tokens: 600,
-          ...(tools.length && round < MAX_TOOL_ROUNDS ? { tools, tool_choice: 'auto' } : {}),
+          ...(forceDiscoveryAgenda
+            ? { tools, tool_choice: { type: 'function', function: { name: 'discovery_agenda' } } }
+            : tools.length && round < MAX_TOOL_ROUNDS
+              ? { tools, tool_choice: 'auto' }
+              : {}),
         }),
       });
       if (!res.ok) throw new Error(`model returned ${res.status}`);
