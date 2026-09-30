@@ -22,7 +22,10 @@ app/
                     · business-valuation · plan · advisors · privacy · terms · unsubscribe
                     · consultant-preview (landing-variant preview)
   talk chat dashboard knowledge settings      the owner's product
+  my-genome drafts requests genome-knowledge  the owner's product (continued)
+  manage/             org management (members, invitations, settings)
   admin/            operator console          gated by middleware + ADMIN_EMAILS
+  distributor/      distributor management portal
   introducer/       channel portal            gated by a signed cookie
   api/              ~45 route handlers        see §3
 lib/
@@ -195,13 +198,35 @@ The most safety-critical part of the codebase.
 
 ### 3.1 Provisioning
 
-One ElevenLabs agent per user, via `ensureUserAgent` from `@caistech/elevenlabs-convai`. Idempotent
-— safe to call on every page load. Binding row in `kira_agents`.
+One ElevenLabs agent per person. Binding row in `kira_agents`. Minted by Kira's own routes, not by
+a helper in the shared package:
 
-**Why one agent per user, and not one shared agent:** ElevenLabs **does not pass the conversation
+| Route | When it mints | Notes |
+|---|---|---|
+| `/api/kira/create` | An approved `kira_drafts` row is redeemed | Two branches — **create** (new person) and **reuse** (PATCH an existing agent). Both are idempotent. |
+| `/api/kira/ensure` | On demand, behind `/talk` | Self-service provisioning for a person with no agent yet. |
+
+Both release the draft claim on failure, so a failed mint strands a draft as `used` with no agent
+behind it — recoverable by retrying, which is why the release is there.
+
+**The reuse branch must send `conversation_config.turn` too.** A PATCH that omits a key leaves a
+deployed agent on whatever it was minted with. This is not hypothetical: all 30 live agents were
+moved to `turn_eagerness: 'patient'` on 2026-09-30, and a reuse PATCH without `turn` would have
+silently reverted the first agent to be re-briefed. Same for the LLM pin — see below.
+
+**Turn-taking and model are part of the agent, not preferences.** `turn.turn_eagerness: 'patient'`
+and `llm: gpt-4.1-mini` are sent on **every** creation path (this route's create *and* reuse
+branches, `/api/kira/ensure`, and the legacy factory in `lib/kira/elevenlabs.ts`). Rationale for
+both is in HLD §3.
+
+**Why one agent per person, and not one shared agent:** ElevenLabs **does not pass the conversation
 id to server-tool webhooks.** The agent sends only the parameters its language model chose to fill
-in. So there is nothing trustworthy in the request that identifies the caller — the owner must be
-fixed at *provisioning* time and baked into the tool URLs (`?uid=<user>`).
+in. So there is nothing trustworthy in the request that identifies the caller — the person must be
+fixed at *provisioning* time and baked into the tool URLs.
+
+**Identity resolves through `person_id`, not `user_id`.** A person can belong to several
+organisations with different `user_id`s. Tools keyed off the session's `user_id` wrote to the wrong
+owner's data — a live production bug, fixed in `4bd06c7`.
 
 This is worth stating plainly because a direct-call test **hides the bug**: the test supplies a
 conversation id, so identity resolution appears to work, and then fails in every real call. That
@@ -216,11 +241,31 @@ Mounted under `/api/kira/webhooks/*`:
 | `start_conversation` | open a conversation, recall prior memory into context |
 | `recall_memory` | mid-call recall |
 | `save_memory` | mid-call capture |
-| `save_message` | transcript capture |
-| `update_topic` | topic tracking |
+| `save_message` | transcript capture — **route exists, tool filtered out** of the manifest (see below) |
+| `update_topic` | topic tracking — **route exists, tool filtered out** of the manifest |
 | `search_knowledge` | retrieval over the owner's uploaded documents |
+| `discovery_agenda` | the mandatory one-time discovery interview gate |
 | `dispatch_task` / `approve_task` | the swarm's do-work path |
-| `post-call` | distil + persist (`/api/convai/webhooks/post-call`) |
+| `check_tasks` | read-only: what is open, what went out |
+| `look_up_financials` | Xero read path |
+| `search_drive` / `read_document` / `keep_document` | Google Drive: find, read, retain |
+| `lookup_contact` | contact resolution |
+| `record_refusal` / `facts_to_confirm` / `confirm_fact` | the refusal and fact-confirmation loop |
+| `area_agenda` | the nine business areas |
+| `file_manual` | writes the operating manual into the owner's own storage |
+| `research_organisation` | practice intelligence on another organisation |
+| `create_operational_kira` | mint a new operational agent |
+| `save-framework-draft` | persist a framework draft |
+| `task-events` | task lifecycle events |
+| `post-call` | **distil + persist** (`/api/convai/webhooks/post-call`) |
+
+**A mounted route is not a held tool.** `save_message` and `update_topic` are implemented and
+mounted, but `toolDefsFor` filters them out — they ask the model to do filing the post-call webhook
+already performs, and every extra tool is attention the model spends on a long call. See HLD §3 for
+the measured cost. Do not add a tool back without that argument.
+
+**The post-call webhook is the VOICE path's distil trigger only.** The text path has its own
+contract — see §3.6.
 
 **Invariants**
 
@@ -264,6 +309,25 @@ completeConversationMemory(sb, {
 
 One canonical call does distil → dedupe → persist to `kira_memory` → index into Mnemo.
 
+**The distil trigger is transport-dependent.** Voice distils on the `post-call` webhook. Text
+distils on `{ end: true }` sent as a `navigator.sendBeacon` from the browser — see §3.6.
+
+**Post-distil sweeps (both transports, same code path):**
+
+1. **Entity sweep** (`forgetParkedEntityLeaks`) — the distil paraphrases, so a fact about another
+   business that `save_memory` correctly parked can be re-filed by the distil in wording the
+   parking filter never matched. This removes the semantic copy.
+2. **Capability claims sweep** (`refileAssistantCapabilityClaims`) — the distil is a second writer
+   that doesn't know the bounds the tools follow; it can write down Kira's own limitations as facts
+   about the business. This re-files them as assistant state.
+3. **Genome classification** (`classifyPendingMemories`) — unclassified memories are assigned to
+   one of the nine areas. Without this, the Genome page regresses: facts are saved but never
+   appear in any area, so the count goes up while the coverage bar goes *down*. Measured on the
+   operator's own account: nine typed facts, all unclassified, coverage visibly worse after talking
+   to her.
+4. **Dedup sweep** (`sweepDuplicateMemories`) — runs *after* classification so a classified row is
+   never parked in favour of an unfiled twin. The ordering is load-bearing.
+
 **Invariants**
 
 1. **`scopePrefix` is frozen at `kira-user-`.** Every stored fact is keyed by it. Change it and
@@ -273,6 +337,8 @@ One canonical call does distil → dedupe → persist to `kira_memory` → index
    degrades recall quality and loses nothing.
 4. **Memory failures are logged, never thrown.** A failed persist must not break the call the owner
    is having.
+5. **The sweeps run before `distilled_at` is stamped.** A failed sweep is retried by the next
+   trigger; a stamp written before the sweep completes would skip it permanently.
 
 ### 3.4 CI verification
 
@@ -328,8 +394,10 @@ vocabulary is fixed in `CLAUDE.md`; the short version:
 (server) resolves the owner's agent and passes it in, so a page mounts her in one line and cannot
 get the lookup subtly different from its neighbours.
 
-Mounted on `/dashboard`, `/my-genome`, `/drafts`, `/requests`, `/knowledge`. `/settings` and
-`/setup/*` opt out by name with a stated reason.
+Mounted on **seven** pages: `/dashboard`, `/drafts`, `/genome-knowledge`, `/knowledge`,
+`/my-genome`, `/requests`, `/talk`. `/settings` and `/setup/*` opt out by name with a stated reason.
+(Audited 2026-09-30 — the list was previously incomplete, missing `/genome-knowledge` and `/talk`.
+All seven accept **typed** input, which is why §3.6's two invariants apply to every one.)
 
 **Two invariants, both load-bearing:**
 
@@ -349,6 +417,67 @@ welcome-back banner is suppressed, so the screen cannot contradict the voice.
 
 ⚠️ **Observed live 2026-08-18** — she spoke the opener on the operator's own account ("four parts…
 the biggest gap is who does the work"). What has NOT been observed is `area_agenda` firing after it.
+
+### 3.6 The text transport — added 2026-09-30
+
+Kira has **two transports into the same agent**: voice (ElevenLabs, the signed-URL call) and text
+(`/api/kira/chat/text`, a typed fallback that runs the same tools server-side against the same
+LLM). The text path is not a lesser copy — for an owner in a truck it is the only reachable one, so
+it carries the same invariants.
+
+`/api/kira/chat/text` is a tool-calling loop, not a passthrough. It resolves the agent by
+`person_id` (never `user_id` — see §3.1), caps a message at **4000 characters** and the loop at
+**4 tool rounds**, and binds `?uid=` to `agent.person_id` for every person-scoped handler.
+
+**The discovery gate is enforced here, not merely requested.** On a fresh conversation the first
+round pins `tool_choice` to `discovery_agenda`, so the interview *cannot* be skipped by a model
+that simply forgets the instruction in its prompt. This is the one place the gate is mechanical
+rather than persuasive.
+
+#### Invariant 1 — the conversation id must survive a reload
+
+`typedConversationId` is persisted to `localStorage` (key `kira-typed-conv-<agentId>`), by **both**
+surfaces that accept typing: `app/chat/[agentId]/page.tsx` and `components/KiraShape.tsx`.
+
+It was not persisted before 2026-09-30, and the failure was unusually well-camouflaged: every
+reload minted a fresh empty conversation row while the transcript was re-hydrated from the
+database. The owner saw his full history on screen; the model received **no** prior turns. It
+presents as "she forgets everything" and as "she keeps restarting the same interview", and the
+visible transcript actively argues against it being a backend problem. Rejecting that read is the
+whole lesson.
+
+#### Invariant 2 — a typed message must be flushed to distil
+
+The voice path distils on the `post-call` webhook. **The text path has no call, so it has no such
+trigger.** A typed message is written to `conversation_messages` and is *not* extracted into
+`kira_memory` until a flush arrives.
+
+`KiraShape` therefore owes a flush, and uses the same trigger set as `app/chat/[agentId]/page.tsx`:
+`visibilitychange` (when hidden — the one that fires on a phone) · `pagehide` · a 3-minute
+`setInterval`. Each sends a `navigator.sendBeacon` to `/api/kira/chat/text` with `{ end: true }`.
+
+`KiraShape` had no flush at all before 2026-09-30. Typed on the inline widget — `/dashboard`,
+`/my-genome`, `/knowledge`, `/drafts`, `/requests`, `/genome-knowledge`, `/distributor` — the
+message was persisted and **never** became memory. There is no error, no log, and nothing to grep
+for: the data is all there, the extraction simply never ran.
+
+**Rule for any new typing surface: a surface that writes typed messages owes a distil flush.**
+Cost of the extra beacons is one indexed query — the route compares `created_at` against
+`distilled_at` and skips when nothing is newer — not one LLM pass.
+
+### 3.7 The knowledge-upload contract — added 2026-09-30
+
+`POST /api/kira/knowledge/upload` accepts a file and/or a URL for the owner, writes to
+`kira_knowledge` + `kira_knowledge_chunks`, and **attaches the result to his canonical
+`elevenlabs_agent_id`**. That last step is the contract, not a detail — a document stored without
+the agent link is in the library and invisible to the agent, which is indistinguishable from
+"knowledge is broken."
+
+**4 MB is a hard ceiling, enforced on both sides.** The platform rejects an oversized body *before*
+it reaches the route, so the server-side guard (before `formData()`) exists to turn that opaque
+platform error into a message naming the file and its size; the client-side guards on all three
+upload surfaces (`KnowledgeManager`, `app/setup/knowledge`, `app/chat/[agentId]`) exist to catch it
+before the round trip. The client check is advisory; the server check is the control.
 
 ---
 
@@ -751,6 +880,7 @@ Principal tables (`supabase/migrations/` is the **only** canonical location — 
 | Org hierarchy (added 2026-09-21/22) | `organisations` (`org_type`: portfolio/project/distributor/client_org, self-referential `parent_organisation_id`, anti-cycle-guarded), `organisation_memberships`, `portals` (per-org canonical `/talk` URL, `journey_type`), `distributor_portfolio` (a distributor's client orgs), `beta_codes` (invitations, `betaType`/variant), `consultant_frameworks`, `consultant_genomes`, `operating_agreements`, `truth_comparisons` (chain-of-truth §7A of the HLD; the latter three exist in schema, not yet consumed by application code as at 2026-09-22) |
 | Voice + memory | `kira_agents` (`journey_type`: personal/business/consultant/distributor — governs which persona `getKiraPrompt` selects, see HLD §7A), `conversations`, `conversation_messages`, `kira_memory`, `kira_logs` |
 | Knowledge | `kira_knowledge`, `kira_knowledge_chunks` (pgvector), `knowledge_files`, `knowledge_urls` |
+| Consultant | `consultant_genomes` (consultant identity/target/services/frameworks — read by `discovery_agenda` when `journey_type` is consultant/distributor), `consultant_frameworks` (methodology principles/stages) |
 | Work | `kira_tasks`, `kira_drafts`, `kira_research_sessions` |
 | Write-back | `drive_documents` (where each area of the manual lives in the owner's own storage — the idempotency map, §6A) |
 | Genome scoring | `genome_item_status` (one verdict per owner per checklist item), `genome_pathways`, `genome_pathway_milestones` (§6B) |

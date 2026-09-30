@@ -7,7 +7,7 @@ diligence contact, or a new engineer on day one.
 **Companion:** `docs/LLD.md` holds the contracts, schemas and invariants. This document stops at
 the boundary of "what talks to what, and why."
 
-**Status:** describes `main` as at 2026-09-22. Where something is deliberately *not* built, it says
+**Status:** describes `main` as at 2026-09-30. Where something is deliberately *not* built, it says
 so — an HLD that quietly omits the gaps is worse than none.
 
 ---
@@ -191,6 +191,11 @@ the wrong owner's data. This was a live production bug, fixed in `4bd06c7`.
 Both are idempotent. A PATCH that omits part of `conversation_config` leaves a deployed agent on
 whatever it was minted with — see the `turn` note below, which is a live instance of that.
 
+**The kill switch.** `haltState('conversations')` is checked at the top of both the voice start
+route and the text route. When it fires, both return 503 immediately — the owner sees "Kira is
+briefly unavailable", and no tools run, no memory is written, no vendor time is spent. It is a
+hard stop on a misbehaving agent, not a retry.
+
 **Turn-taking is set explicitly, not inherited.** The ElevenLabs default for
 `conversation_config.turn.turn_eagerness` is `normal`, which reads ~7 seconds of user silence as
 end-of-turn and has the agent talk over a person who is merely thinking. Kira sends `patient` on
@@ -252,6 +257,24 @@ transcript is:
 **Invariant:** no conversation is ever discarded. The transcript is the canonical record; extracted
 memory and documents are derived and can be regenerated.
 
+**Post-distil sweeps (run in order after every distil):**
+
+1. **Entity sweep** (`forgetParkedEntityLeaks`) — the distil is a *second writer* that
+   paraphrases, so a fact about *another business* that `save_memory` correctly parked can be
+   re-filed by the distil in wording the parking filter never matched. This sweep removes the
+   semantic copy.
+2. **Capability claims sweep** (`refileAssistantCapabilityClaims`) — the distil does not know the
+   bounds the tools follow, so it can write down Kira's own limitations as facts about the business
+   (e.g. "the business has no email system" when what was said was "I cannot send email"). This
+   sweep re-files those as assistant state, not business fact.
+3. **Genome classification** (`classifyPendingMemories`) — unclassified memories (no
+   `genome_section`) are assigned to one of the nine areas. Without this, the Genome page
+   regresses: a typed conversation adds facts that never appear in any area, so the count goes up
+   while the coverage bar goes *down*. Measured on the operator's own account: nine typed facts,
+   all unclassified, coverage visibly worse after talking to her.
+4. **Deduplication sweep** (`sweepDuplicateMemories`) — runs *after* classification so that a
+   classified row is never parked in favour of an unfiled twin. The ordering is load-bearing.
+
 The extractor is an LLM prompt with a strict JSON schema. It is not a chat model — it is a
 structured-information extractor. The schema is versioned and lives in `lib/kira/memory-extractor.ts`.
 
@@ -308,6 +331,13 @@ explicitly stated or strongly implied in the transcript.
 server-side before `formData()` — because a request over the platform's body limit is rejected
 *before* it reaches the route, which produced an opaque error with no indication which file or how
 large. The server guard exists because the client one is advisory and bypassable.
+
+**The RAG pipeline.** A document that reaches `kira_knowledge` is not yet searchable. The
+`ingestKnowledgeDocument` pipeline extracts text (via ElevenLabs as a commodity parser), chunks it
+(~1500 chars, 200-char overlap, paragraph/sentence boundary-aware), embeds each chunk, and stores
+the vectors in `kira_knowledge_chunks`. Only then can `search_knowledge` retrieve it. Extraction
+can lag a beat behind a fresh upload — the pipeline polls briefly rather than racing — so a
+document uploaded then immediately asked about may return empty on the first try.
 
 ### Knowledge in the voice agent
 
@@ -493,8 +523,8 @@ most recent build (the branded unsubscribe page and the resend action on the log
 
 | Package | Purpose |
 |---|---|
-| `supabase-client` | browser / server / service-role clients |
-| `mnemo` | the semantic-memory transport |
+| `elevenlabs-convai` | **The voice agent, its tools, the conversation lifecycle, and the shared type surface.** Agent creation/update, tool definitions (`createConversationTools`), signed-URL minting, `DEFAULT_AGENT_LLM`, the post-call distil trigger. The single most important package — Kira cannot run without it. |
+| `mnemo` | the semantic-memory transport (the `recall_memory` / `save_memory` partner) |
 | `discovery-agent` | the structured voice interview behind the Client Profile |
 | `corporate-components` | login, signup, forgot/reset — the whole auth surface |
 | `subscription-billing` | Stripe checkout + the subscription webhook lifecycle |
@@ -503,7 +533,12 @@ most recent build (the branded unsubscribe page and the resend action on the log
 | `coordination-sdk` | the introducer/broker role model |
 | `abn-lookup` | ABN validation and ABR lookup |
 | `beta-gate` | trial clock and usage caps |
+| `portfolio-gate` | portfolio-level access control for the distributor/consultant hierarchy |
 | `platform-trust-middleware` → `sayfix-embed` → `webmcp-kit` | rate limiting + audit → bug reporting → agent discoverability |
+| `brave-search` | web search (used by research_organisation) |
+| `extractors` | document text extraction (used by knowledge ingest) |
+| `mapbox` | mapping (used by the valuation and address flows) |
+| `kira-testing-client` | shared test utilities for the Kira test suite |
 
 ---
 

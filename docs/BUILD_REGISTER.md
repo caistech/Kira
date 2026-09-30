@@ -1,5 +1,115 @@
 # Build register — Kira
 
+> ## AA. 2026-09-30 (same day, continued) — five production bugs from two partners' first live use, then a documentation audit that found the HLD describing a system that does not exist
+>
+> **Trigger:** two partners reported unusable behaviour in their first hands-on test. John Orian:
+> the agent "keeps checking to see if I am still here — it's so annoying that I turned her off",
+> and after a page reload the conversation was gone. Craig Kira: knowledge uploads "don't work", and
+> a LinkedIn URL saved but was not attached to his agent.
+>
+> ### Part 1 — the five bugs
+>
+> **1. The "stay quiet" bug was not a prompt bug.** The phrase John heard — *"I'll stay quiet until
+> you say otherwise"* — appears in **no prompt**. It is ElevenLabs' own soft-timeout filler being
+> spoken, because the turn model declared his turn over. Searched all three prompt sources
+> (business, consultant, the live agent config) for `quiet|silence|still here|say otherwise`: no
+> match. The cause was `conversation_config.turn.turn_eagerness`, on the hub default `normal`, which
+> reads ~7s of user silence as end-of-turn. **No prompt change could ever have fixed this**, and
+> editing the prompt would have looked like trying.
+>
+> **Root cause of the root cause:** `grep turn_eagerness` across the repo returned **zero hits**. No
+> creation path — `/api/kira/create` (neither branch), `/api/kira/ensure`, nor the legacy factory in
+> `lib/kira/elevenlabs.ts` — ever set `conversation_config.turn`. So the field was never a decision;
+> it was an omission, inherited silently by all 30 agents. Enum confirmed against the live API
+> (`patient` / `normal` / `eager`) by a validation-error probe, since a wrong guess here would have
+> been a no-op that read as a fix.
+>
+> **Live fix:** all 30 agents PATCHed to `patient`, then **verified by re-reading every agent**: all
+> patient, with `turn_timeout`, `silence_end_call_timeout` and `soft_timeout_config` all preserved.
+> The whole `turn` object was sent back rather than a partial PATCH, precisely because a partial
+> PATCH can silently reset sibling fields to defaults — a fix that trades one silent field for another
+> is the same bug wearing a different hat.
+>
+> **The regression guard is the part that matters.** A PATCH that omits `turn` leaves a deployed
+> agent on whatever it was minted with — so the live sweep above would have been **undone the first
+> time any agent was re-briefed**, silently, by `/api/kira/create`'s reuse branch. `turn` is now set
+> on every creation path, reuse branch included. A one-off sweep fixes this afternoon; the reuse
+> branch would have undone it next week and looked like a vendor regression.
+>
+> **2. Typed conversations were being orphaned on every reload.** `typedConversationId` was never
+> persisted. Each reload minted a fresh empty conversation row while the transcript was re-hydrated
+> from the database. The owner saw his full history; the model received no prior turns. Now
+> `localStorage`-keyed by agent id, in **both** typing surfaces (`ChatPage` *and* `KiraShape`) —
+> fixing one and not the other would leave the same bug reachable from a different page.
+>
+> **3. A silent memory hole in the inline widget.** `KiraShape` accepted typed messages and had **no
+> distil flush**. Messages reached `conversation_messages` and never became `kira_memory` — the voice
+> path distils on the `post-call` webhook, and text has no call, so it has no such trigger. Every
+> fact typed on any of the **seven** pages that mount it (`/dashboard`, `/drafts`,
+> `/genome-knowledge`, `/knowledge`, `/my-genome`, `/requests`, `/talk`) was written and **never
+> remembered**. No error, no log, nothing to grep for: the data is all present and the extraction
+> simply never ran. Fixed with the same trigger set the chat page uses — `visibilitychange`,
+> `pagehide`, 3-minute interval — costing one
+> indexed query per beacon, not one LLM pass.
+>
+> **4. Uploads: a platform limit presented as a broken feature.** Files over the 4.5MB body ceiling
+> are rejected *before* the route, so the handler never ran and the error named neither the file nor
+> the size. Server-side guard now fires before `formData()`, with the offending size in the message;
+> client-side guards added to all three upload surfaces.
+>
+> **5. Knowledge stored but never attached.** Files and URLs were written to `kira_knowledge` and
+> left unattached to the owner's `elevenlabs_agent_id` — in the library, invisible to the agent, and
+> indistinguishable from "knowledge is broken". `KnowledgeManager` now receives the canonical agent
+> id and the upload route attaches on write.
+>
+> **Not fixed, deliberately:** the *content* of the speech ("I'll stay quiet until you say
+> otherwise") was a model artefact of a config bug. No prompt line was added to suppress the phrase.
+> That is a band-aid over a mechanical cause, and it would have made the next such symptom
+> undiagnosable.
+>
+> ### Part 2 — the docs were describing a different product
+>
+> Asked to bring HLD/LLD up to date, the audit turned up more than missing entries: **the HLD was
+> factually wrong**, predating this session entirely.
+>
+> | HLD claimed | Reality |
+> |---|---|
+> | agent state in `elevenlabs_agents` | no such table — `kira_agents` |
+> | tools `save_message`, `start_conversation`, `update_conversation`, `search_memory`, `write_knowledge`, `read_knowledge`, `list_knowledge`, `create_task`, `complete_task`, `search_tasks` | **none exist.** Real set generated from `toolDefsFor('business')`: 19 tools |
+> | chunks → `memory_chunks`, facts → `knowledge` | `kira_knowledge_chunks`, `kira_memory` |
+> | `knowledge` as a key/value fact store (`key`/`value`/`confidence`) | `kira_knowledge` is a **document** table (`title`/`summary`/`key_points`/`source_type`) |
+> | provisioning via `ensureUserAgent` from the shared package | no such function anywhere; Kira's own `/api/kira/create` + `/api/kira/ensure` |
+> | swarm = daily catch-up, weekly synthesis, compliance check, valuation refresh, trial monitor | none of those five exist; the ten cron routes that do are listed instead |
+>
+> **Why this mattered more than the register entry.** The LLD was merely silent; the HLD was
+> *confidently incorrect*. A session that trusts §3 for the tool surface learns ten invented tool
+> names, and — because the three real conversation tools it omits include `get_conversation_context`
+> — concludes the agent has no way to read prior context. That is a conclusion that reads as a
+> diagnosis and sends the next person hunting for a bug that does not exist.
+>
+> Also corrected: the LLD's webhook table listed 9 mounted routes against 25, and described
+> `save_message` / `update_topic` as held tools when `toolDefsFor` filters both out on measured
+> attention cost. Added LLD §3.6 (text transport: reload-persistence and distil-flush invariants)
+> and §3.7 (upload contract: agent attachment + the 4MB ceiling on both sides). Tool list in the HLD
+> is now generated-from-manifest by reference, so it cannot drift silently again.
+>
+> ### Deployment
+>
+> Both commits verified live, not merely pushed: GitHub reports `success` — "Deployment has
+> completed" for `2daf81b` and `aff71cc`. The agent sweep is API state and independent of any deploy.
+>
+> ### NOT verified
+>
+> - **Voice timing itself.** `patient` is a configuration change reasoned from the reported symptom;
+>  nobody has listened to a call with a real microphone since. The next lever if she still
+>  interrupts is `soft_timeout_config` (currently disabled at `-1`), not the prompt.
+> - **`KiraShape` distil flush end-to-end** — the code path and trigger set are in place and
+>  typechecked, but no typed-then-reload-then-verify cycle has been run against production.
+> - **Upload limits against a real oversized file** — guards are in place; not exercised with a
+>  genuine >4MB upload.
+> - **`/talk` self-provisioning** — the ensure route now sends `turn: patient`, but no agent has
+>  been minted through it since the change.
+
 > ## Z. 2026-09-30 (same day, continued) — live verification of X/Y found two real production bugs, both fixed and re-verified
 >
 > **Trigger:** the operator's instruction after X/Y shipped — "commit + push + deploy, then reprovision
