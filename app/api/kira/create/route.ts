@@ -52,6 +52,26 @@ const ELEVENLABS_CONFIG = {
   llm: DEFAULT_AGENT_LLM,
   temperature: 0.7,                    // Balanced creativity
   max_duration_seconds: 3600,          // 1 hour max conversation
+
+  // ⚠️ SHE MUST NOT INTERRUPT A MAN WHO IS THINKING. Sent verbatim as conversation_config.turn.
+  //
+  // The hub default is `normal`, and "normal" reads ~7s of silence as the user's turn being over.
+  // For a product whose whole surface is a voice call, that is not a tuning preference — it is the
+  // agent talking over the one person who is still there. John Orian, testing 2026-09-29:
+  // "the constant checking to see if I am still here is so annoying that I turned her off."
+  //
+  // `patient` makes her wait the pause out. She still takes the turn when he has genuinely
+  // finished — it is not a mute switch, and turning her silent is not the goal; being audible
+  // without being intrusive is. The remaining fields are pinned to the values already live on all
+  // 30 agents (verified 2026-09-30) so applying this to a NEW agent produces the same agent as the
+  // fleet, rather than a second silently-different fleet.
+  turn: {
+    mode: 'turn',
+    turn_eagerness: 'patient',
+    turn_timeout: 7.0,
+    silence_end_call_timeout: -1.0,
+    turn_model: 'turn_v3',
+  },
 };
 
 /* ------------------------------------------------------------------ */
@@ -318,6 +338,11 @@ export async function POST(req: NextRequest) {
               model_id: ELEVENLABS_CONFIG.tts_model,
               voice_id: ELEVENLABS_CONFIG.voice_id,
             },
+            // Sent on the REUSE branch too, deliberately. A PATCH that omits `turn` leaves an
+            // already-deployed agent on whatever it was minted with — so the fleet fix (all 30
+            // agents moved to `patient` on 2026-09-30) would have been silently undone the first
+            // time any of them was re-briefed. This is the only thing keeping that from recurring.
+            turn: ELEVENLABS_CONFIG.turn,
             conversation: {
               max_duration_seconds: ELEVENLABS_CONFIG.max_duration_seconds,
             },
@@ -372,6 +397,7 @@ export async function POST(req: NextRequest) {
               model_id: ELEVENLABS_CONFIG.tts_model,
               voice_id: ELEVENLABS_CONFIG.voice_id,
             },
+            turn: ELEVENLABS_CONFIG.turn,
             conversation: {
               max_duration_seconds: ELEVENLABS_CONFIG.max_duration_seconds,
             },

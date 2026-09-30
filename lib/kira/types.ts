@@ -232,6 +232,20 @@ export interface ElevenLabsAgentConfig {
       voice_id: string;
       model_id: string;
     };
+    /**
+     * Turn-taking. OPTIONAL on the wire but not optional in practice: ElevenLabs defaults
+     * `turn_eagerness` to `normal`, which reads ~7s of user silence as the turn ending and has the
+     * agent talk over someone who is merely thinking. Every creation path in this repo now sets
+     * `patient` explicitly for that reason — see ELEVENLABS_CONFIG.turn in
+     * app/api/kira/create/route.ts, which is the canonical definition.
+     */
+    turn?: {
+      mode: string;
+      turn_eagerness: 'patient' | 'normal' | 'eager';
+      turn_timeout: number;
+      silence_end_call_timeout: number;
+      turn_model: string;
+    };
   };
   platform_settings?: {
     webhook?: {

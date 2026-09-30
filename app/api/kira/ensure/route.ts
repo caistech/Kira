@@ -46,6 +46,19 @@ const ELEVENLABS_CONFIG = {
   llm: DEFAULT_AGENT_LLM,
   temperature: 0.7,
   max_duration_seconds: 3600,
+  // ⚠️ SHE MUST NOT INTERRUPT A MAN WHO IS THINKING. See the full note on the identical field in
+  // app/api/kira/create/route.ts — the hub default (`normal`) reads ~7s of silence as the user's
+  // turn being over, which is what produced "the constant checking to see if I am still here is so
+  // annoying that I turned her off" (John Orian, 2026-09-29). This route is the on-demand path
+  // behind /talk, so a partner who self-provisions here would get the wrong behaviour unless the
+  // setting travels with the create. The two configs are mirrors by design — keep them mirrored.
+  turn: {
+    mode: 'turn',
+    turn_eagerness: 'patient',
+    turn_timeout: 7.0,
+    silence_end_call_timeout: -1.0,
+    turn_model: 'turn_v3',
+  },
 };
 
 const JOURNEY: JourneyType = 'business';
@@ -278,6 +291,7 @@ export async function POST(request: Request) {
               model_id: ELEVENLABS_CONFIG.tts_model,
               voice_id: ELEVENLABS_CONFIG.voice_id,
             },
+            turn: ELEVENLABS_CONFIG.turn,
             conversation: {
               max_duration_seconds: ELEVENLABS_CONFIG.max_duration_seconds,
             },
