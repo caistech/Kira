@@ -8,6 +8,14 @@ import { getCurrentOrganisationContext } from '@/lib/auth';
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
 
+/**
+ * Vercel Node.js serverless functions have a 4.5 MB request body limit. Files larger than this
+ * produce a platform-level 413 before the function even runs — the user sees an opaque error.
+ * We check early and return a clear message. This also guards against memory exhaustion: the
+ * entire file is buffered by req.formData() below.
+ */
+const MAX_FILE_BYTES = 4 * 1024 * 1024; // 4 MB — safe margin under Vercel's 4.5 MB ceiling
+
 export async function POST(req: NextRequest) {
   try {
     if (!ELEVENLABS_API_KEY) {
@@ -33,6 +41,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: 'No file provided' },
         { status: 400 }
+      );
+    }
+
+    if (file.size > MAX_FILE_BYTES) {
+      return NextResponse.json(
+        { error: `File is too large (${Math.round(file.size / 1024 / 1024)} MB). The limit is 4 MB. Try splitting it into smaller files or removing images.` },
+        { status: 413 }
       );
     }
 

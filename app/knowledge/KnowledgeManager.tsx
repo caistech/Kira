@@ -35,7 +35,7 @@ function readableSource(t: string) {
   }
 }
 
-export function KnowledgeManager({ personId, initial }: { personId: string; initial: KnowledgeItem[] }) {
+export function KnowledgeManager({ personId, initial, agentId }: { personId: string; initial: KnowledgeItem[]; agentId?: string | null }) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -67,7 +67,7 @@ export function KnowledgeManager({ personId, initial }: { personId: string; init
       const res = await fetch('/api/kira/knowledge/url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: value, userId: personId }),
+        body: JSON.stringify({ url: value, userId: personId, agentId }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error || 'Could not add that link');
       setUrl('');
@@ -82,12 +82,23 @@ export function KnowledgeManager({ personId, initial }: { personId: string; init
   async function addFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Guard before hitting the server: Vercel's body-size limit is 4.5 MB. Files above this
+    // produce an opaque platform-level 413; a clear message here saves a round-trip.
+    const MAX_FILE_BYTES = 4 * 1024 * 1024;
+    if (file.size > MAX_FILE_BYTES) {
+      setError(`File is too large (${Math.round(file.size / 1024 / 1024)} MB). The limit is 4 MB. Try splitting it into smaller files or removing images.`);
+      e.target.value = '';
+      return;
+    }
+
     setAdding(true);
     setError(null);
     try {
       const fd = new FormData();
       fd.append('file', file);
       fd.append('userId', personId);
+      if (agentId) fd.append('agentId', agentId);
       const res = await fetch('/api/kira/knowledge/upload', { method: 'POST', body: fd });
       if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error || 'Could not upload that file');
       router.refresh();

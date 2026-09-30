@@ -33,7 +33,7 @@
 // a sibling product, with the owner silently getting no agent at all. None of that belongs on the
 // app's landing page.
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { VoiceWidget } from '@caistech/elevenlabs-convai/react';
 
@@ -76,7 +76,55 @@ export function KiraShape({
    */
   firstMessage?: string;
 }) {
-  const [typedConversationId, setTypedConversationId] = useState<string | null>(null);
+  // Persist the typed conversation across reloads so the server always resumes the same thread.
+  // Without this, every page reload creates a fresh conversation row — the transcript shows (it is
+  // read from the DB) but the model has zero context, the one-time discovery interview re-fires,
+  // and the owner must repeat everything. localStorage keyed on the agent so different agents
+  // (business vs consultant) don't collide.
+  const [typedConversationId, setTypedConversationId] = useState<string | null>(() => {
+    if (!agentId || typeof window === 'undefined') return null;
+    try { return localStorage.getItem(`kira-typed-conv-${agentId}`); } catch { return null; }
+  });
+
+  const updateConversationId = useCallback((id: string | null) => {
+    setTypedConversationId(id);
+    if (!agentId) return;
+    try {
+      if (id) localStorage.setItem(`kira-typed-conv-${agentId}`, id);
+      else localStorage.removeItem(`kira-typed-conv-${agentId}`);
+    } catch { /* storage full or private mode — degrade to session-only */ }
+  }, [agentId]);
+
+  /**
+   * Distil typed sessions into memory — the text equivalent of the voice post-call webhook.
+   *
+   * Without this, facts typed through the inline widget (KiraShape) hit conversation_messages
+   * but never reach kira_memory / the Genome. The owner talks, she answers, and nothing is
+   * remembered. This is the same trigger set ChatPage uses: visibilitychange, pagehide, and a
+   * 3-minute periodic beacon. The server skips when nothing is newer than distilled_at, so
+   * extra beacons cost one cheap query, not one LLM pass.
+   */
+  useEffect(() => {
+    if (!typedConversationId || !agentId) return;
+    const distil = () => {
+      navigator.sendBeacon?.(
+        '/api/kira/chat/text',
+        new Blob(
+          [JSON.stringify({ agentId, conversationId: typedConversationId, end: true })],
+          { type: 'application/json' },
+        ),
+      );
+    };
+    const onHide = () => { if (document.visibilityState === 'hidden') distil(); };
+    document.addEventListener('visibilitychange', onHide);
+    window.addEventListener('pagehide', distil);
+    const timer = window.setInterval(distil, 3 * 60 * 1000);
+    return () => {
+      document.removeEventListener('visibilitychange', onHide);
+      window.removeEventListener('pagehide', distil);
+      window.clearInterval(timer);
+    };
+  }, [typedConversationId, agentId]);
 
   /**
    * The signed URL for HIS agent, resolved at connect time.
@@ -119,13 +167,13 @@ export function KiraShape({
           body: JSON.stringify({ agentId, message: value, conversationId: typedConversationId }),
         });
         const data = await res.json().catch(() => ({}));
-        if (data.conversationId) setTypedConversationId(data.conversationId as string);
+        if (data.conversationId) updateConversationId(data.conversationId as string);
       } catch {
         // The widget shows its own failure state; a throw here would surface as an unhandled
         // rejection and change nothing the owner can see.
       }
     },
-    [agentId, typedConversationId],
+    [agentId, typedConversationId, updateConversationId],
   );
 
   // NO AGENT YET — an honest door into the flow that creates one, wearing the same face.

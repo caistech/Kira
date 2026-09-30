@@ -148,7 +148,22 @@ export default function ChatPage({
   // The typed conversation. Kept here rather than inside the widget because it survives the widget
   // unmounting, and because the transcript is the thing he came back to read.
   const [typed, setTyped] = useState<{ role: 'user' | 'assistant'; text: string }[]>([]);
-  const [typedConversationId, setTypedConversationId] = useState<string | null>(null);
+  // Persisted to localStorage so the same conversation resumes after a page reload — without this,
+  // every reload creates a fresh empty conversation row while the transcript is hydrated from the
+  // DB, so the owner sees his history but the model has zero context and re-runs the one-time
+  // discovery interview.
+  const [typedConversationId, setRawTypedConversationId] = useState<string | null>(() => {
+    if (!agentId || typeof window === 'undefined') return null;
+    try { return localStorage.getItem(`kira-typed-conv-${agentId}`); } catch { return null; }
+  });
+  const setTypedConversationId = useCallback((id: string | null) => {
+    setRawTypedConversationId(id);
+    if (!agentId) return;
+    try {
+      if (id) localStorage.setItem(`kira-typed-conv-${agentId}`, id);
+      else localStorage.removeItem(`kira-typed-conv-${agentId}`);
+    } catch { /* storage full or private mode — degrade to session-only */ }
+  }, [agentId]);
   const [typing, setTyping] = useState(false);
 
   // HYDRATE THE TRANSCRIPT HE CAME BACK TO READ.
@@ -1067,7 +1082,11 @@ function UploadKnowledgeModal({
       try {
         // Upload files
         if (files.length > 0) {
+          const MAX_FILE_BYTES = 4 * 1024 * 1024;
           for (const file of files) {
+            if (file.size > MAX_FILE_BYTES) {
+              throw new Error(`"${file.name}" is too large (${Math.round(file.size / 1024 / 1024)} MB). The limit is 4 MB.`);
+            }
             const formData = new FormData();
             formData.append('file', file);
             formData.append('agentId', agentId);

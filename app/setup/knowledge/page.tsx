@@ -105,6 +105,12 @@ function KnowledgeUploadContent() {
 
   const uploadFile = async (file: File, fileId: string) => {
     try {
+      // Guard before hitting the server: Vercel's body-size limit is 4.5 MB.
+      const MAX_FILE_BYTES = 4 * 1024 * 1024;
+      if (file.size > MAX_FILE_BYTES) {
+        throw new Error(`File is too large (${Math.round(file.size / 1024 / 1024)} MB). The limit is 4 MB.`);
+      }
+
       // Update progress
       setFiles(prev => prev.map(f =>
         f.id === fileId ? { ...f, progress: 30 } : f

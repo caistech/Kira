@@ -8,6 +8,7 @@ import { getCurrentOrganisationContext } from '@/lib/auth';
 import { createSessionClientV2 } from '@/lib/supabase/server-session';
 import { KiraShapeSection } from '@/components/KiraShapeSection';
 import { KnowledgeManager, type KnowledgeItem } from './KnowledgeManager';
+import { resolveCanonicalKiraAgent } from '@/lib/kira/resolve-agent';
 
 export const metadata = { title: 'Knowledge · Kira' };
 export const dynamic = 'force-dynamic';
@@ -52,10 +53,22 @@ export default async function KnowledgePage() {
   // She belongs on the library because the documents here are the raw material she works from:
   // "what does this contract actually say" is a question about a file on this page, asked out loud,
   // and until now the answer required leaving it.
+
+  // Resolve the canonical agent so knowledge can be attached to it (ElevenLabs knowledge base
+  // needs the agent id; without it, documents are stored in the RAG but the agent can't surface
+  // them in voice conversation).
+  const { agent: canonicalAgent } = ctx
+    ? await resolveCanonicalKiraAgent(svc, {
+        personId: ctx.personId,
+        organisationId: ctx.organisationId,
+      })
+    : { agent: null };
+  const agentElevenLabsId = (canonicalAgent?.elevenlabs_agent_id as string) ?? null;
+
   return (
     <>
       {ctx ? (
-        <KnowledgeManager personId={ctx.personId} initial={items} />
+        <KnowledgeManager personId={ctx.personId} initial={items} agentId={agentElevenLabsId} />
       ) : (
         <div className="mx-auto max-w-3xl px-5 py-10">
           <p className="text-base text-stone-700">
