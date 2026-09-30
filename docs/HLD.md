@@ -86,24 +86,149 @@ explicit authorisation. See `docs/SUPABASE_API_KEY_MODEL_MIGRATION_VALIDATION.md
 
 ---
 
-## 3. The voice agent
+## 2A. The portal fleet — four surfaces, not one
 
-One ElevenLabs Conversational AI agent per owner. The agent is created at onboarding and lives as
-long as the owner's account. Agent state is persisted to Supabase (`elevenlabs_agents`) and
-re-created if the ElevenLabs side is deleted.
+A new engineer reasonably assumes "the portal" is one thing. It is four, built from two codebases
+against three databases, and confusing any two of them is a class of bug the product has already
+hit.
 
-Tools exposed to the agent:
+```text
+┌──────────────────────────────────────────────────────────────────────────┐
+│                  CORPORATE AI SOLUTIONS (separate repo)                 │
+│  corporateaisolutions.com/portfolio-admin                               │
+│  Supabase: corporate-ai-solutions (different project, different DB)     │
+│                                                                         │
+│  Dennis's portfolio admin. Creates distributor orgs, invites partners,  │
+│  manages the commercial hierarchy. CANNOT see any owner's business      │
+│  data — different database, no cascade, by design.                      │
+└────────────────────────────────┬─────────────────────────────────────────┘
+                                 │ creates distributor orgs + invites
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                  KIRA PROJECT PORTAL (this repo)                        │
+│  kiraexec.com                                                           │
+│  Supabase: Kira (kmrskyewwnwettlycpfe)                                 │
+│                                                                         │
+│  Three authenticated surfaces, one auth seam, one canonical /talk:       │
+│                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────┐     │
+│  │  /admin/*            Operator console                          │     │
+│  │  10 sub-pages: organisations, distributors, introducers,       │     │
+│  │  beta-testers, invitations, exec, trust, loi, admission,       │     │
+│  │  asked-for. Gated by middleware + ADMIN_EMAILS.                 │     │
+│  │  Dennis's operations surface — NOT a user-facing portal.       │     │
+│  └─────────────────────────────────────────────────────────────────┘     │
+│                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────┐     │
+│  │  /distributor         Distributor management portal            │     │
+│  │  Manages: client orgs, portfolio view, CreateClientOrgForm.    │     │
+│  │  KiraShapeSection here is about the distributor's OWN practice │     │
+│  │  — not the client's. Client orgs get their own Kira below.     │     │
+│  └─────────────────────────────────────────────────────────────────┘     │
+│                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────┐     │
+│  │  Owner end-user platform — the product itself                  │     │
+│  │                                                                 │     │
+│  │  /talk          Primary entry — the mic, on-demand provision.  │     │
+│  │  /chat/[id]     Full chat page (same component as /talk).      │     │
+│  │  /dashboard     Overview + KiraShape inline.                   │     │
+│  │  /my-genome     The nine business areas + KiraShape inline.    │     │
+│  │  /knowledge     Document library + KiraShape inline.           │     │
+│  │  /drafts        AI-drafted documents + KiraShape inline.       │     │
+│  │  /requests      Owner requests + KiraShape inline.             │     │
+│  │  /genome-knowledge  Per-area knowledge + KiraShape inline.     │     │
+│  │  /settings      Account settings.                              │     │
+│  │  /manage/*      Org management (members, invitations, kira).   │     │
+│  │                                                                 │     │
+│  │  Seven of these mount KiraShapeSection — the inline widget     │     │
+│  │  that accepts typed input and therefore owes a distil flush.   │     │
+│  └─────────────────────────────────────────────────────────────────┘     │
+│                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────┐     │
+│  │  /introducer/*    Introducer portal                             │     │
+│  │  Brokers/advisers who refer owners. Separate layout,           │     │
+│  │  separate session, @caistech/attribution for signed attribution.│     │
+│  │  No access to client data — referrals only.                     │     │
+│  └─────────────────────────────────────────────────────────────────┘     │
+└──────────────────────────────────────────────────────────────────────────┘
+```
 
-- `save_message` — append to the owner's conversation transcript
-- `start_conversation` — create a new conversation record
-- `update_conversation` — rename, retag, or close a conversation
-- `search_memory` — semantic search over the owner's accumulated transcripts (RAG over pgvector)
-- `write_knowledge` — store a structured fact extracted from conversation
-- `read_knowledge` — retrieve a structured fact
-- `list_knowledge` — list facts by category
-- `create_task` — create a follow-up task for the owner
-- `complete_task` — mark a task complete
-- `search_tasks` — search tasks
+**What trips people up:**
+
+1. **`/admin` and `/distributor` live on the same domain and share the same auth seam** as the
+   owner's platform. A distributor is a *different kind of user*, not a different deployment. The
+   middleware checks `org_type` on session creation, not at the route level — so a distributor who
+   navigates to `/dashboard` sees an empty owner view rather than an error, and a new admin who
+   types `/distributor` sees a page that doesn't know who they are.
+
+2. **The corporate-ai-solutions repo is a *different database entirely*.** The HLD §7A already
+   states this, but it bears repeating here: there is no cascade between the two Supabase projects,
+   and a distributor created at `/admin/organisations` in the Kira repo will NOT appear in the
+   corporate-ai-solutions repo's own `/portfolio-admin`. The two are reconciled by the
+   `autobootstrap-portals` cron, not by a shared schema.
+
+3. **`/talk` is the single canonical entry for *every* journey type.** A business owner, a
+   consultant, and a distributor all reach `/talk`. The journey lane is carried in the URL
+   (`?journey=consultant`) and resolved server-side by `resolveCanonicalKiraAgent` — it is never
+   inferred from the page the user is on. The same `KiraShape` component is used on all seven
+   authenticated pages; the only difference is which agent the server resolves.
+
+4. **The introducer portal is deliberately separate** — different layout, different middleware, no
+   access to client data. An introducer *refers*; they never see what Kira captured.
+
+---
+
+One ElevenLabs Conversational AI agent per owner, living as long as the owner's account. Agent
+state is persisted to Supabase (`kira_agents`) and re-created if the ElevenLabs side is deleted.
+
+**Identity.** `kira_agents` carries both `user_id` and `person_id`. Every *person-scoped tool call
+resolves identity through `person_id`*, not `user_id` — a person can be a member of several
+organisations with different `user_id`s, and a tool that trusted the session's `user_id` wrote to
+the wrong owner's data. This was a live production bug, fixed in `4bd06c7`.
+
+**Provisioning.** Agents are minted by Kira's own routes, not by a shared helper:
+`/api/kira/create` (from an approved draft) and `/api/kira/ensure` (on demand, behind `/talk`).
+Both are idempotent. A PATCH that omits part of `conversation_config` leaves a deployed agent on
+whatever it was minted with — see the `turn` note below, which is a live instance of that.
+
+**Turn-taking is set explicitly, not inherited.** The ElevenLabs default for
+`conversation_config.turn.turn_eagerness` is `normal`, which reads ~7 seconds of user silence as
+end-of-turn and has the agent talk over a person who is merely thinking. Kira sends `patient` on
+every creation path. The product's entire surface is a voice call, so this is a correctness
+requirement, not a preference.
+
+**The LLM is pinned to `gpt-4.1-mini` (portfolio default) and must not be overridden per-agent.**
+`gpt-4o-mini` was measured *dropping tool calls* as a long conversation proceeds, which silently
+disables the whole memory loop: the agent simply stops calling `recall_memory` / `save_memory`, and
+there is no error anywhere to see. A correctly-wired loop still ends up as an agent that
+"doesn't remember".
+
+### The tool surface
+
+Nineteen tools on the business journey, authored in `lib/kira/tool-manifest.mjs`. Generated from
+that manifest, not hand-maintained here — if this list and the manifest disagree, the manifest
+wins.
+
+**Conversation and memory (from `@caistech/elevenlabs-convai`):**
+`get_conversation_context` · `recall_memory` · `save_memory`
+
+**Kira's own:**
+`search_knowledge` · `discovery_agenda` · `dispatch_task` · `approve_task` · `look_up_financials` ·
+`check_tasks` · `search_drive` · `read_document` · `keep_document` · `lookup_contact` ·
+`record_refusal` · `facts_to_confirm` · `confirm_fact` · `area_agenda` · `file_manual` ·
+`research_organisation`
+
+The package also defines `save_message` and `update_conversation_topic`, and the manifest
+**deliberately filters both out**. They ask the model to do filing the post-call webhook already
+performs, and it shows in the data — roughly one saved message per fifteen calls. The cost is not
+storage, it is *attention*: every tool is an entry in the function-calling menu of a small model on
+a long call, which is the exact case where dropping tool calls is measured.
+
+`discovery_agenda` is **first** in the list, matching the prompt instruction to call it before
+anything else — the mandatory one-time discovery interview gate. Six of the tools
+(`dispatch_task`, `approve_task`, `search_drive`, `read_document`, `keep_document`, `lookup_contact`)
+reach Google's APIs and so are business-journey only; the personal journey is a coach and gets
+neither.
 
 The tool surface is deliberately narrow. The agent does not execute code, make HTTP requests, or
 reach external APIs directly. All side effects go through the tools above, which are implemented
@@ -116,49 +241,87 @@ in the Kira application and secured by the owner's session.
 The memory loop is the source material. Every conversation with the agent produces a transcript. That
 transcript is:
 
-1. Stored verbatim in `conversations`.
-2. Chunked, embedded and written to `memory_chunks` (pgvector) for semantic search.
-3. Passed to a structured extractor that writes durable facts to `knowledge`.
-4. Linked to tasks created during or after the conversation.
+1. Stored verbatim in `conversations` and `conversation_messages`.
+2. Passed to a structured extractor that writes durable facts to `kira_memory` — extracted memory,
+   scoped to the owner, retrieved by `recall_memory` and surfaced to the agent in the prompt.
+3. Linked to tasks created during or after the conversation.
+4. Owner-uploaded documents and URLs are a *separate* path — they land in `kira_knowledge` and are
+   retrieved by `search_knowledge` (see §5). Conversation-extracted memory and uploaded documents do
+   not share a table, and the agent has a different tool for each.
 
-**Invariant:** no conversation is ever discarded. The transcript is the canonical record; chunks
-and extracted knowledge are derived and can be regenerated.
+**Invariant:** no conversation is ever discarded. The transcript is the canonical record; extracted
+memory and documents are derived and can be regenerated.
 
 The extractor is an LLM prompt with a strict JSON schema. It is not a chat model — it is a
 structured-information extractor. The schema is versioned and lives in `lib/kira/memory-extractor.ts`.
 
+**The distil trigger is a contract, not a detail.** The post-call webhook is the *voice* path's
+distil trigger. The *text* path is separate: a typed message must be explicitly flushed to the
+distil pipeline, or it is written to `conversation_messages` and never extracted. Every UI surface
+that lets the owner type therefore owes a flush (see LLD §3.6). When this was missed on the inline
+`KiraShape` surfaces, facts the owner typed on the portal were persisted but silently never became
+memory — a hole with no error anywhere to see.
+
 ### Memory privacy
 
-All memory data is scoped to the owner's user id. Row-level security enforces this at the database
+All memory data is scoped to the owner's person id. Row-level security enforces this at the database
 layer. There is no cross-owner search, no shared index, no multi-tenant leakage.
 
 ---
 
 ## 5. The knowledge system
 
-`knowledge` holds structured facts extracted from conversations:
+`kira_knowledge` holds **owner-supplied documents and URLs** — what he uploaded, what he pasted a
+link to, what research produced. It is a document table, not a key/value fact store:
 
 ```typescript
 type Knowledge = {
   id: string;
-  user_id: string;
-  category: 'business' | 'personal' | 'financial' | 'legal' | 'contacts' | 'preferences' | 'other';
-  key: string;
-  value: string;
-  confidence: number;     // 0–1, extractor's self-reported confidence
-  source_conversation_id: string | null;
+  user_id: string;                              // references users(id)
+  kira_agent_id: string | null;                 // which Kira it belongs to
+  source_type: 'kira_research' | 'user_upload' | 'user_url' | 'user_note';
+  title: string;
+  url: string | null;                           // set for source_type 'user_url'
+  summary: string;
+  key_points: string[];
+  relevance_note: string | null;
+  raw_content: string | null;                   // the extracted document body
+  tags: string[];
+  topic: string | null;
+  token_count: number;
+  search_session_id: string | null;
+  created_by: 'kira' | 'user';
   created_at: string;
   updated_at: string;
 };
 ```
 
+**Facts extracted from conversation do not live here** — they go to `kira_memory` (§4). The
+distinction is load-bearing: `kira_memory` is what the agent *remembers being told*, and
+`kira_knowledge` is what it *has been handed*. Conflating them is how an agent ends up quoting a
+document as if it were something the owner said.
+
 The extractor decides what is worth keeping. It does not hallucinate — it only extracts what is
 explicitly stated or strongly implied in the transcript.
 
+**Uploads are size-capped at 4 MB.** The cap is enforced twice — client-side before the request,
+server-side before `formData()` — because a request over the platform's body limit is rejected
+*before* it reaches the route, which produced an opaque error with no indication which file or how
+large. The server guard exists because the client one is advisory and bypassable.
+
 ### Knowledge in the voice agent
 
-The agent can call `write_knowledge`, `read_knowledge`, `list_knowledge`. This means the agent
-can both learn from and act on the owner's accumulated knowledge within the same conversation.
+`search_knowledge` is the agent's **only** path into `kira_knowledge`, and it is **read-only** — it
+takes a single `query` and returns passages with their source. There is no tool that writes to
+`kira_knowledge`, and that is deliberate: documents enter by owner action (upload or pasted URL via
+`/api/kira/knowledge/upload`), so what she can retrieve is bounded by what he chose to give her.
+
+`keep_document` is unrelated despite the name — it retains a document in the owner's **Google
+Drive**, part of the write-back path (LLD §6A), not the knowledge library.
+
+**A document only reaches the agent if it is attached to that owner's `kira_agents` row.** Storing
+it in `kira_knowledge` without the agent link leaves it in the library and invisible to her — a
+silent failure that looks identical to "the knowledge doesn't work".
 
 ### Knowledge in the swarm
 
@@ -168,17 +331,20 @@ The swarm (see §6) can also read knowledge, so owner facts are available to bac
 
 ## 6. The swarm
 
-A set of background agents that run on a schedule or are triggered by events:
+Background jobs, implemented as Next.js cron routes under `app/api/cron/*` — the same Supabase
+client and tooling as the voice agent, not a separate service. What actually ships:
 
-- **Daily catch-up** — reviews the day's conversations, extracts any missed knowledge, creates
-  follow-up tasks.
-- **Weekly synthesis** — summarises the week's activity, highlights decisions, surfaces risks.
-- **Compliance check** — scans for regulatory/compliance signals in new knowledge.
-- **Valuation refresh** — re-runs the valuation model when financial knowledge changes.
-- **Trial monitor** — enforces trial limits and sends lifecycle emails.
+- `memory-integrity` — audits the extracted memory for drift and gaps.
+- `genome-classify` — classifies genome entries.
+- `capture-consultant-genomes` — pulls in consultant genomes.
+- `red-team-drift` — runs red-team probes for behavioural drift.
+- `reconcile-tasks` — reconciles open tasks against what actually happened.
+- `reminders` / `reengagement-emails` / `trial-ending` — lifecycle and trial messaging.
+- `auto-record-absence` — records the working pattern of absent owners.
+- `autobootstrap-portals` — provisions distributor/consultant portals.
 
-The swarm runs in the Kira application (Next.js cron routes) and uses the same Supabase client
-and tooling as the voice agent. It is not a separate service.
+There is no scheduled "weekly synthesis" or "valuation refresh" job in the codebase; if one is
+needed it does not exist yet.
 
 ---
 
@@ -380,4 +546,19 @@ Stated rather than omitted.
 
 - **The valuation band decision is CLOSED** (2026-08-03/04): the sector median is a centre rather
   than a floor, Kira's claimed uplift is bounded at 0.75 turns, and everyone is rescored rather than
-  f
+  frozen at a historical multiple. See BUILD_REGISTER entry for `LLD 6`.
+
+- **Voice timing with `turn_eagerness: patient` is unverified by listening** (2026-09-30): the
+  config change was reasoned from the reported symptom and applied across all 30 agents; nobody has
+  been on a call with a real microphone since. If she still interrupts, the next lever is
+  `soft_timeout_config.timeout_seconds` (currently disabled at `-1`), not a prompt change. The
+  relevant entry is BUILD_REGISTER AA.
+
+- **`KiraShape` distil flush has not been verified end-to-end in production** (2026-09-30): the
+  code path and trigger set are in place and typechecked; no typed-then-reload-then-verify cycle
+  has been run against a real deployment. See BUILD_REGISTER AA.
+
+- **The text-transport `person_id` fix** (2026-09-30, `4bd06c7`) was live-verified against one
+  fresh account; whether any account created **before** the `20260907090000` migration carries a
+  `kira_agents.user_id` that does not resolve to a `persons` row was not checked. Voice transport
+  was reasoned about, not re-tested.
