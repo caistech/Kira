@@ -1,0 +1,22 @@
+Hi John,
+
+Good news first: the two big ones held. She waited your 30 seconds without a word, and when you asked what she had on you, she read back the right synopsis — that's the memory working across typing and talking, which it wasn't before.
+
+Your three new reports were all real, and all fixed now:
+
+1. What you typed didn't appear in the thread
+Kira received it — that's why she answered — but the page never displayed it. Typed messages now show in the conversation the same way spoken ones do. (Her explanation that "you won't see your typing echoed back" was her inventing a reason. Ignore it.)
+
+2. "Your organisation membership isn't set up yet" when she tried to save a document
+Your account was fine. The document-filing step was looking you up in the wrong place and failed for everyone, every time. That's fixed. One thing to know: filing a document needs somewhere to put it — a document store connected to your account — and yours doesn't have one yet. So when you next ask, she'll tell you that plainly instead of blaming your membership. We can set that up together when you want it.
+
+3. "I couldn't write that down" when you confirmed a fact
+Also a fault at our end, and also one that had never worked: the confirmation was being written to a field that didn't exist. Fixed. Next time she reads something back and you confirm it, it will be recorded as confirmed.
+
+Your question about reading your conversation: yes. Your conversations are now saved on our side, so I can read them directly — you don't need to copy them into an email. The spreadsheet-style layout after you sent it was your email program reformatting the paste; nothing to do with Kira.
+
+And ZALEX Systems Corp. is in correctly — I can see it.
+
+Thank you, John. This round turned up two things that had never worked for anyone, which no amount of testing on my side had found.
+
+Dennis
