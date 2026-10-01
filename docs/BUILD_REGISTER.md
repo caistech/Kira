@@ -1,5 +1,22 @@
 # Build register — Kira
 
+> ## AC. 2026-10-02 — John Orian's third round: two of AB's fixes CONFIRMED live by him; three tools that had never worked
+>
+> **Confirmed by the tester, live:** silence — he waited ~30s and was not interrupted; memory —
+> `get_conversation_context` returned `has_history: true` and she read back his synopsis correctly;
+> the Canadian business identity saved and renders (Settings, "Calgary AB T2C 4K3, Canada").
+>
+> | Symptom | Cause | Fix |
+> |---|---|---|
+> | "Your organisation membership isn't set up yet" filing a document | `fileManual()` resolved the org from the LOGIN SESSION; a tool webhook has none, so it was null on every voice call — the tool had **never** filed anything | Resolve from the route's server-baked `?uid` (`resolveOrganisationForPerson`) |
+> | "I couldn't write that down just now", twice | Commit 4d79901 (2026-08-31) inserted `organisation_id` + `user_said`; the table has `said` and had no org column. `kira_fact_confirmations` had **0 rows ever**. The unit test asserted `user_said` against a mock and passed. | Code writes `said`; migration `20261002010000` adds `organisation_id` (applied to prod); errors now log their message, not `[object Object]`; a new test checks every inserted column against the migrations (mutation-verified) |
+> | Typed messages missing from the thread during a voice call | Shared `VoiceWidget` sent typed text to the agent but never added it to the transcript | `@caistech/elevenlabs-convai` 0.17.2 published; Kira bumped |
+> | Settings header said "name, ABN and address" for a Canadian business | Copy | Country-aware |
+>
+> **NOT verified:** filing now reaches the orchestrator, but John has no document storage connected,
+> so expect an honest "nowhere to file" rather than a filed manual — untested end to end. No live
+> confirm_fact or typed-echo walk since deploy.
+
 > ## AB. 2026-10-01 — John Orian's second round: two of AA's fixes were aimed at the wrong thing, and voice calls had not been recorded for anyone since 22 September
 >
 > **Trigger:** John Orian retested on 1 October (screenshots in `docs/beta testers feedback/john orian

@@ -147,7 +147,9 @@ export default async function SettingsPage() {
       <section id="business" className="mb-6 rounded-2xl border border-gray-200 bg-white p-6">
         <h2 className="text-lg font-semibold text-gray-900">Your business</h2>
         <p className="mt-1 text-base text-gray-600">
-          The name, ABN and address that appear at the bottom of every email Kira sends for you.
+          {identity && !isAustralia(identity.country)
+            ? 'Your registered business name and address — what Kira knows your business as.'
+            : 'The name, ABN and address that appear at the bottom of every email Kira sends for you.'}
         </p>
 
         {identity ? (

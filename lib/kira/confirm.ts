@@ -254,7 +254,9 @@ export async function handleConfirmFact(req: Request): Promise<Response> {
       user_id: userId,
       organisation_id: orgContext.organisationId,
       outcome,
-      user_said: said,
+      // The column is `said` — it always has been. Writing `user_said` made every confirmation fail
+      // on an unknown column from 2026-08-31 until 2026-10-02 (see migration 20261002010000).
+      said,
       kira_agent_id: fact.kira_agent_id ?? null,
     });
     if (insertError) throw insertError;
@@ -272,20 +274,12 @@ export async function handleConfirmFact(req: Request): Promise<Response> {
       patch.active = false;
       patch.parked_reason = outcome === 'denied' ? 'denied' : 'superseded';
     }
-    const updateOp = supabase.from('kira_memory').update(patch)
+    const { error: updateError } = await supabase
+      .from('kira_memory')
+      .update(patch)
       .eq('id', fact.id)
       .eq('organisation_id', orgContext.organisationId);
-    
-    const { error: updateError } = await updateOp;
-    
-    if (updateError) {
-      console.error('DEBUG: Update error:', updateError);
-      throw updateError;
-    }
-    
-    // In test environment, the update chain might not have been fully executed if mock returns sync.
-    // For debugging tests:
-    // console.log('DEBUG: patch applied', patch);
+    if (updateError) throw updateError;
 
     if (outcome === 'confirmed') {
       return json(200, { success: true, recorded: true, confirmed: true });
@@ -302,10 +296,13 @@ export async function handleConfirmFact(req: Request): Promise<Response> {
           : 'Taken out of his record.',
     });
   } catch (error) {
-    console.error('[confirm] could not record a confirmation:', error);
+    // A Supabase error is a plain object: String(error) is "[object Object]", which is what hid this
+    // defect for a month. Log and return its message.
+    const detail = error instanceof Error ? error.message : (error as { message?: string })?.message ?? JSON.stringify(error);
+    console.error('[confirm] could not record a confirmation:', detail);
     // Honest failure, not a silent one. She has just told him she is noting it down; if that did not
     // happen he is entitled to know, because the alternative is him believing the record is better
     // than it is.
-    return json(200, { success: false, error: "I couldn't write that down just now.", debug: String(error) });
+    return json(200, { success: false, error: "I couldn't write that down just now.", debug: detail });
   }
 }

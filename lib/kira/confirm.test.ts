@@ -122,8 +122,27 @@ describe('a confirmation cannot be manufactured', () => {
 
   it('writes the event with his words, not her summary', async () => {
     await handleConfirmFact(post(URL_WITH_UID, { handle: 'abcd1234', outcome: 'confirmed', said: 'That is exactly right.' }));
-    expect(db.inserted[0].user_said).toBe('That is exactly right.');
+    expect(db.inserted[0].said).toBe('That is exactly right.');
     expect(db.inserted[0].outcome).toBe('confirmed');
+  });
+
+  // A mock accepts any column name, which is how this test once asserted `user_said` — a column that
+  // never existed — and passed for a month while every real confirmation failed. This one reads the
+  // MIGRATIONS: every column the handler writes must have been created by one.
+  it('writes only columns the migrations actually create', async () => {
+    const { readdirSync, readFileSync } = await import('node:fs');
+    const sql = readdirSync('supabase/migrations')
+      .filter((file) => file.endsWith('.sql'))
+      .map((file) => readFileSync(`supabase/migrations/${file}`, 'utf8'))
+      .filter((text) => text.includes('kira_fact_confirmations'))
+      .join('\n');
+    await handleConfirmFact(post(URL_WITH_UID, { handle: 'abcd1234', outcome: 'confirmed', said: 'yes' }));
+    const columns = Object.keys(db.inserted[0]).filter((key) => key !== 'table');
+    for (const column of columns) {
+      expect(sql, `kira_fact_confirmations.${column} is created by no migration`).toMatch(
+        new RegExp(`\\b${column}\\b\\s+(UUID|TEXT|TIMESTAMPTZ)`, 'i'),
+      );
+    }
   });
 
   it('stamps the fact so rendering a Genome stays one query', async () => {

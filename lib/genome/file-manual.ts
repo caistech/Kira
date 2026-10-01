@@ -20,7 +20,7 @@ import { deriveOwnerGenome } from '@/lib/genome/derive';
 import { renderAreas, type Audience } from '@/lib/genome/render';
 import { displayName, timeZoneForState } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
-import { getCurrentOrganisationContext } from '@/lib/auth';
+import { resolveOrganisationForPerson } from '@/lib/auth';
 
 const DESTINATION = 'drive';
 
@@ -55,7 +55,7 @@ function folderName(business: string, audience: Audience): string {
  * that" when nothing was written is the failure that costs an owner the whole product, because he
  * will not discover it until he sends someone to a folder that is not there.
  */
-export async function fileManual(audience: Audience): Promise<FileManualResult> {
+export async function fileManual(audience: Audience, personId: string): Promise<FileManualResult> {
   const baseUrl = (process.env.ORCHESTRATOR_URL || '').replace(/\/$/, '');
   const secret = process.env.ORCHESTRATOR_SECRET || '';
   if (!baseUrl || !secret) {
@@ -67,7 +67,12 @@ export async function fileManual(audience: Audience): Promise<FileManualResult> 
 
   const supabase = createServiceClientV2();
 
-  const orgContext = await getCurrentOrganisationContext();
+  // ⚠️ FROM THE PERSON THE TOOL URL NAMES, NOT FROM A LOGIN SESSION. This runs inside an ElevenLabs
+  // tool webhook, which never carries a browser cookie — getCurrentOrganisationContext() is null on
+  // every such call, so the voice tool told every owner "No organisation membership found" and had
+  // never once filed anything (John Orian, 2026-10-01: "your organisation membership isn't set up
+  // yet"). The person id is the server-baked ?uid, the same identity every other tool resolves by.
+  const orgContext = await resolveOrganisationForPerson(personId);
   if (!orgContext) {
     return { ok: false, message: "No organisation membership found — cannot file.", written: 0, total: 0 };
   }
