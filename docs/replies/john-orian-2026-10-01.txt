@@ -1,0 +1,34 @@
+Hi John,
+
+As promised, here's each item from your testing, what was actually wrong, and where it stands now. One thing first: in my last email I told you the "are you still there?" nagging was fixed. It wasn't — I'd changed the wrong setting. That's on me, and it's why I went back through everything this time rather than patching what you'd reported.
+
+1. "Are you still there?" every few seconds
+There are two separate settings: one decides when you've finished speaking, the other how long Kira waits in silence before checking on you. I'd fixed the first; the nagging was the second, still at seven seconds. It's now off — she waits quietly for as long as you're away finding a file. Changed on your Kira and on every other one, and I've checked each one.
+
+2. Kira not remembering the typed conversation when you went back to voice
+This was the real one, and it had two causes. What you typed was being saved under one version of your account and what you said under another, so neither could see the other. And your voice conversations weren't being saved at all. Both are fixed, and I've moved everything you'd already typed — including the 18-step customer journey — across, so she has it now. Typing and talking are now one conversation.
+
+3. "Connection closed unexpectedly" when you first tried to talk
+That happened once, and a later attempt connected fine. I haven't found the cause yet. If it happens again, note the time and send it to me — that's the piece I need to track it down.
+
+4. Kira saying she couldn't enable voice
+She was wrong, and worse, she then filed "prefers text because voice isn't enabled" as a fact about you. I've removed that, and she now points you to the Talk button instead.
+
+5. "Auth session missing!" when changing your password
+A setting on the sign-in link stopped the page from seeing that you were logged in. Fixed — but it takes effect at your next sign-in, so please sign out and back in once before trying the password again.
+
+6. Saving your business details
+The form only knew about Australian businesses — ABN, Australian states, 4-digit postcodes — so Calgary couldn't be saved. It now asks for the country first, and I've set yours to Canada. You'll see no ABN question, and Alberta and T2C will save.
+
+Your questions:
+- Changing the business name to ZALEX Systems Corp. is fine. It won't affect your account or registration.
+- The website address doesn't need https:// — with or without both work.
+- Screenshots are exactly right. Keep doing it that way.
+
+One thing to know: Kira can only send email on someone's behalf in Australia so far — each country has its own email law. Everything else works for you; she just can't send email as ZALEX yet.
+
+When you next test, the two things I'd most value your ear on are whether she now leaves you alone while you go and get something, and whether she picks up where you left off when you switch between typing and talking.
+
+Thank you, John. Seven precise reports in one evening is worth more to me than any amount of polite feedback.
+
+Dennis

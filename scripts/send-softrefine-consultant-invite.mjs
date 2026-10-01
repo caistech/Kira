@@ -52,17 +52,18 @@ const RECIPIENTS = [
     email: 'shani.shah@softrefine.com',
     firstName: 'Shani',
     code: 'H87A2ZWRNJAU',
-    subject: 'Shani — the link I promised, and Kira from the consultant\'s side',
+    subject: 'Shani — your invitation to the Kira consultant portal',
     opening: `Hello Shani,
 
-In August I said I'd write when the entry path was fixed, and send a link that does the work rather than an instruction that asks you to. This is that link.
+Good to talk today. As promised, here is your invitation into the consultant portal, so you can see how that entry point works — it's no longer just Kira for the business owner, it's the whole system, including the layer consultants use to bring their own clients in.
 
-Since then: the invitation carries the code itself, so there is nothing to type and no promo box anywhere; Kira is on the pages where you actually work rather than behind a link; and as of today what you type and what you say are one memory, and she no longer asks "are you still there?" every few seconds while you go and find something.
+It's also the link I promised you in August: one that does the work rather than an instruction that asks you to. Since then the invitation carries the code itself, so there is nothing to type and no promo box anywhere; Kira is on the pages where you actually work rather than behind a link; and as of today what you type and what you say are one memory, and she no longer asks "are you still there?" every few seconds while you go and find something.
 
-This time I'd like you to come in as a consultant rather than a tester — the person who'd bring Kira to their own clients. That's the side of the product I most need a sharp, outside view on.`,
-    closing: `We can pick up the development side on our call — this is about the product as it stands.
+Come in as a consultant rather than a tester — the person who'd bring Kira to their own clients.`,
+    closing: `I'll look forward to your proposal. What you see in here is the current state the proposal would be picking up from, so it's worth a walk before you finalise it.
 
-Thank you, Shani. Your August note changed the product for everyone who came after you.`,
+Thank you, Shani.`,
+    footerReason: 'you took part in an earlier Kira beta and we discussed the consultant portal',
   },
   {
     email: 'yuvraj.softrefine@gmail.com',
@@ -75,20 +76,47 @@ You saw an earlier version of Kira, so this isn't a first-time beta invitation. 
 
 This time I'd like you to come in as a consultant rather than a tester — the person who'd bring Kira to their own clients. Kira now starts by learning the consultant's own practice, and that's the side I most need an outside view on.`,
     closing: `Thank you, Yuvraj — I'd genuinely rather hear the uncomfortable version than a polite one.`,
+    footerReason: 'you took part in an earlier Kira beta',
   },
   {
     email: 'darshilp.softrefine@gmail.com',
     firstName: 'Darshil',
     code: 'L6DBHB4H9RWF',
-    subject: 'Darshil — Kira has changed a lot since you last saw it',
+    subject: 'Darshil — your invitation to the Kira consultant portal',
     opening: `Hello Darshil,
 
-You saw an earlier version of Kira, so this isn't a first-time beta invitation. It's been substantially rebuilt since then, and I'd value your view of where it has landed.
+Thanks for joining the call today. As promised, here is your invitation into the consultant portal. You've seen earlier versions of Kira, and it has been substantially rebuilt since — it now starts by learning the consultant's own practice, then the consultant brings it to their clients.
 
-This time I'd like you to come in as a consultant rather than a tester — the person who'd bring Kira to their own clients. Kira now starts by learning the consultant's own practice, and that's the side I most need an outside view on.
+Come in as a consultant rather than a tester — the person who'd bring Kira to their own clients. That's the side I most need an outside view on.
 
 Your login from last time still works, and it now opens straight into your own consultant portal. The link below signs you in; if it ever asks for a password you've forgotten, "Email me a magic link" on the login page is quicker than resetting it.`,
     closing: `Thank you, Darshil — I'd genuinely rather hear the uncomfortable version than a polite one.`,
+    footerReason: 'you took part in an earlier Kira beta and we discussed the consultant portal',
+  },
+  {
+    // Dave (OneIT, Perth) — met 2026-10-01, introduced by Gail. Technical reviewer, not a former
+    // beta tester: he is reviewing the code and the HLD for a production-readiness proposal, and was
+    // promised an invitation into the distributor/consultant portal "to see how that layer works".
+    email: 'dave@oneit.com.au',
+    firstName: 'Dave',
+    code: 'ADYGFTTAZADT',
+    subject: 'Dave — your invitation to the Kira consultant portal',
+    opening: `Hello Dave,
+
+Thanks for the time today, and thanks to Gail for setting it up. As promised, here is an invitation into the consultant portal, so you can see how that layer works from the inside rather than from the brief.
+
+Two things before you start:
+
+- The HLD in the repository is current as of today, including the part that trailed off in the version you were sent. It's docs/HLD.md in the Kira repo, with docs/LLD.md beside it and docs/BUILD_REGISTER.md as the running record of what has changed and what has not yet been verified. Access to the three repositories follows as soon as I have your GitHub ID.
+- As I said on the call, this is functionally where I want it, not production-ready. Today's entry in the build register is a fair example: a round of beta feedback turned up issues I thought were fixed and weren't, and it records honestly which fixes are confirmed and which are not.`,
+    whatToDo: `What I'd like you to do
+
+- Open the link below and come in as a consultant would: set up your own practice first, then look at how a consultant brings a client in.
+- Talk or type — it's the same conversation either way.
+
+The question I'd most like your eye on is the one the consultant layer creates: whether a consultant, or one of their clients, could ever see, retrieve or infer anything that belongs to another. It's the difference between one owner with one Kira and a network of consultants each holding many clients, and it's the part I'm least able to judge myself.`,
+    closing: `Looking forward to Wednesday the 7th at 3:30.`,
+    footerReason: 'we discussed a technical review of Kira and I offered you access to the consultant portal',
   },
 ];
 
@@ -110,7 +138,7 @@ function paragraphs(text) {
     .join('\n');
 }
 
-async function footer(email) {
+async function footer(email, reason) {
   const secret = process.env.UNSUBSCRIBE_SECRET;
   let unsubscribeLink = 'https://kiraexec.com/unsubscribe [UNSIGNED — secret missing]';
   if (secret) unsubscribeLink = await unsubscribeUrlFor(APP_URL, email, secret);
@@ -120,8 +148,8 @@ async function footer(email) {
 <p style="font-size:12px;color:#666;line-height:1.5;margin:0">
 Sent by Global Buildtech Australia Pty Ltd (ABN 54 672 395 685), trading as Corporate AI Solutions,
 76-84 Brunswick Street, Fortitude Valley QLD 4006 · <a href="mailto:dennis@corporateaisolutions.com">dennis@corporateaisolutions.com</a><br>
-You are receiving this because you took part in an earlier Kira beta and are being invited to the Kira
-Founding Consultant Beta. If you would rather not hear about it again, <a href="${unsubscribeLink}">unsubscribe here</a>.
+You are receiving this because ${reason}. If you would rather not hear about it again,
+<a href="${unsubscribeLink}">unsubscribe here</a>.
 </p>`;
 }
 
@@ -129,7 +157,7 @@ function bodyFor(recipient) {
   const link = `${APP_URL}/plan?code=${recipient.code}`;
   return `${recipient.opening}
 
-${WHAT_TO_DO}
+${recipient.whatToDo ?? WHAT_TO_DO}
 
 Start here — your invitation is in the link, so there's nothing to type:
 
@@ -147,7 +175,7 @@ async function main() {
   if (!list.length) throw new Error(`No recipient ${ONLY}`);
 
   for (const recipient of list) {
-    const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#333">${paragraphs(bodyFor(recipient))}${await footer(recipient.email)}</div>`;
+    const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#333">${paragraphs(bodyFor(recipient))}${await footer(recipient.email, recipient.footerReason)}</div>`;
 
     if (!SEND) {
       console.log(`\n===== DRY RUN — ${recipient.email} (cc ${CC})\nSubject: ${recipient.subject}\n`);
