@@ -118,6 +118,34 @@ The question I'd most like your eye on is the one the consultant layer creates: 
     closing: `Looking forward to Wednesday the 7th at 3:30.`,
     footerReason: 'we discussed a technical review of Kira and I offered you access to the consultant portal',
   },
+  {
+    // Ikechukwu Okalia (TimeFrontiers) — development-team candidate, added 2026-10-02. Already signed
+    // up on 2026-09-29 as an owner (consult@ikechukwuokalia.dev, org "VibeSentry"); his agent was one
+    // of the four with no post-call webhook, so nothing from any call that day was saved. This
+    // address gets a separate consultant portal. Repo access is being added by Dennis to this address.
+    email: 'ikechukwu@team.timefrontiers.com',
+    firstName: 'Ikechukwu',
+    code: '6MNNFCTKG9E6',
+    subject: 'Ikechukwu — the Kira consultant portal, and access to the code',
+    opening: `Hello Ikechukwu,
+
+I'm bringing in a development team to take Kira from a working beta to production, and I'd like you to look at it with that in mind — both as a product and as code.
+
+Two parts to this:
+
+- The product. Below is an invitation into the consultant portal, which is how Kira now reaches the market: a business consultant sets up their own practice, then brings Kira to their clients. You signed up on 29 September as a business owner; that account stays as it is, and this is a separate consultant portal on this address.
+- The code. I'm adding this email address to the three repositories — Kira, the orchestrator and cais-shared-services — so you can review the codebase. GitHub will send an invitation for each; if GitHub knows you under a different address, reply with your username and I'll switch it. The design documents are docs/HLD.md and docs/LLD.md in the Kira repository, and docs/BUILD_REGISTER.md records what has changed and what has not yet been verified.
+
+One thing you may have noticed on the 29th, and a fair example of where it stands: your agent was one of several provisioned without the webhook that saves each call, so anything you said to her that day was never recorded. That was found and fixed on 1 October, and the register entry explains how it happened. It is functionally where I want it, and it is not production-ready.`,
+    whatToDo: `What I'd like you to do
+
+- Open the link below and come in as a consultant would: set up a practice first, then look at how a consultant brings a client in. Talk or type — it's the same conversation.
+- When the repository invitations arrive, read the code with the same question a production review would ask.
+
+The question I'd most like your view on is the one the consultant layer creates: whether a consultant, or one of their clients, could ever see, retrieve or infer anything that belongs to another — and what it would take to prove they can't.`,
+    closing: `Thank you, Ikechukwu — I'd rather hear the uncomfortable version than a polite one.`,
+    footerReason: 'you signed up to Kira and I am inviting you to review it as a prospective development partner',
+  },
 ];
 
 function paragraphs(text) {
