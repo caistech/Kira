@@ -13,7 +13,9 @@ Your account was fine. The document-filing step was looking you up in the wrong 
 3. "I couldn't write that down" when you confirmed a fact
 Also a fault at our end, and also one that had never worked: the confirmation was being written to a field that didn't exist. Fixed. Next time she reads something back and you confirm it, it will be recorded as confirmed.
 
-Your question about reading your conversation: yes. Your conversations are now saved on our side, so I can read them directly — you don't need to copy them into an email. The spreadsheet-style layout after you sent it was your email program reformatting the paste; nothing to do with Kira.
+Your question about reading your conversation: yes. Your conversations are now saved on our side, so I can read them directly — you don't need to copy them into an email.
+
+On the spreadsheet look: when you copy from the conversation box, your browser copies the coloured bubbles along with the words. When you pressed Send, your email program stripped the colours and shapes it doesn't allow, and what was left was the boxes on their own — which is why it came out looking like cells. Nothing was lost, it just looked wrong. To make that easier, there's now a "Copy conversation as text" button under the conversation. It copies the whole thing as plain text, each line labelled with who said it, so it pastes cleanly into any email.
 
 And ZALEX Systems Corp. is in correctly — I can see it.
 

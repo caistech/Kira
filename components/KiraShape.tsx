@@ -221,6 +221,9 @@ export function KiraShape({
         avatarUrl="/female_avatar.jpeg"
         coachName="Kira"
         transcript
+        // Plain-text copy — copied bubbles arrive in email as spreadsheet-like cells.
+        copyTranscript
+        userLabel={firstName || undefined}
         // Both on, and both go somewhere — see handleTypedMessage.
         textInput
         textFallback

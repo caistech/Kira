@@ -685,6 +685,11 @@ export default function ChatPage({
               avatarUrl="/female_avatar.jpeg"
               coachName="Kira"
               transcript
+              // Plain-text copy of the conversation. Copying the bubbles themselves carried their
+              // styling, which email programs strip into spreadsheet-like cells (John Orian,
+              // 2026-10-02, reporting a bug by pasting his conversation).
+              copyTranscript
+              userLabel={callerName || undefined}
               // TEXT INPUT IS OFF UNTIL IT GOES SOMEWHERE.
               //
               // It was turned on as a one-prop fix for "no microphone means no product". Reading the

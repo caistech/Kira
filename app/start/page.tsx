@@ -416,6 +416,7 @@ export default function StartPage() {
                 avatarUrl="/female_avatar.jpeg"
                 coachName="Kira"
                 transcript
+                copyTranscript
                 /* NO autoConnect — deliberately.
                    With it, the widget skipped its pre-connect state and dropped the owner straight
                    into a live session: "Mute / End / Listening for your framework…", with nothing
