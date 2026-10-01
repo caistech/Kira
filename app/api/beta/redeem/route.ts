@@ -17,7 +17,6 @@ releaseBetaCode,
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClientV2 } from '@/lib/supabase/server';
 import { TERMS_VERSION } from '@/lib/terms';
-import { v4 as uuidv4 } from 'uuid';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

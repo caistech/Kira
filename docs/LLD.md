@@ -1173,7 +1173,7 @@ inherits.
 |---|---|
 | `npm run typecheck` | `tsc --noEmit`. **The production build does not type-check** (`ignoreBuildErrors: true` in `next.config.js`); this and CI are the only places types are checked. |
 | `npm run lint` | ESLint |
-| `npm test` | Vitest, ~2,000 tests (~15 s). Two files touch live services (a Stripe integration test, a Supabase token test) and can time out; re-run before chasing them. |
+| `npm test` | Vitest, ~2,000 tests (~15 s locally). Integration tests that need live keys (`business-genome/extract.test.ts`, a Stripe test, a Supabase token test) **skip locally and run in CI**, where the keys exist — so a green local run does not predict CI. As at 2026-10-02 the extract test fails in CI (zero entities from the live model) and keeps the gate red. |
 | `npm run build` | compiles; does not catch type errors (above) |
 | `node scripts/check-app-chrome.mjs` · `check-voice-reachable.mjs` · `check-design-tokens.mjs` | the same structural checks CI runs |
 
