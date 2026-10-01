@@ -7,8 +7,10 @@ breaking it, or a technical reviewer checking that the claims in the HLD are act
 that must survive any future change. An invariant is not a style preference. Each one is here
 because breaking it causes a specific, named failure.
 
-**Status:** `main` as at 2026-10-01 (§3.6 invariant 3, §3.6A and the business-identity country rules
-added; the header previously still read 2026-09-22 although §3.6/§3.7 were added on 2026-09-30).
+**Status:** `main` as at 2026-10-02. Added this revision for development-team handover: §2.0
+(canonical identity), §3.2 invariant 4 (webhook identity), §7 corrections, §9 (complete environment
+variables), §11 (development workflow), §12 (operations). Corrected: §3.1 turn-taking, §3.2 route
+table, §7 invariant 5, §9 invariant 4 — each had drifted from the code.
 
 ---
 
@@ -115,6 +117,42 @@ time, because the marker lives in the dispatcher file, not in any component.
 
 ## 2. Identity and authorisation
 
+### 2.0 The canonical identity model — read before touching any query
+
+Defined and enforced in `lib/auth.ts` (its header lists twenty hard rules; they are the spec).
+
+| Table | Key | Holds | Notes |
+|---|---|---|---|
+| `auth.users` | `id` | the Supabase login | an **authentication** identity, never a person id |
+| `auth_credentials` | `auth_credential_id` | `auth_user_id` → `person_id`, `status`, `selected_org_id` | the **only** bridge from a login to a person; `person_id` is immutable through the helpers |
+| `persons` | `person_id` | name, email | **the canonical person** |
+| `organisation_memberships` | `membership_id` | `organisation_id`, `person_id`, `role` (`owner`/`member`/`superadmin`), `status`, `valid_from`/`valid_to`, `portal_access`, `can_spend` | access requires an active, time-valid row; unique on `(organisation_id, person_id, role)` |
+| `organisations` | `organisation_id` | names, ABN, address, `country`, `org_type`, `parent_organisation_id` | the ownership key for data |
+| `ownership_periods` | — | person ↔ organisation, `status='current'` | ownership is temporal and separate from membership |
+| `users` | `id` | **legacy** application user | do not use for identity or organisation resolution; still referenced by older columns and provenance |
+
+**Resolution functions — use exactly one per context:**
+
+| Caller | Function | Source of identity |
+|---|---|---|
+| Browser request / server component / server action | `getCurrentOrganisationContext()` | the Supabase session cookie → credential → person → membership (honouring `selected_org_id` only if a valid membership exists) |
+| Agent tool webhook, cron, background job | `resolveOrganisationForPerson(personId)` | an explicit `person_id` — for tool webhooks, the `?uid=` baked into the tool URL |
+
+Both return the same `OrganisationContext` (`organisationId`, `personId`, role data).
+
+**Invariants**
+
+1. **Data is organisation-owned.** New rows carry `organisation_id`; `user_id` records which person
+   (provenance) and holds the **`person_id`**, not a legacy `users.id` (§3.6, invariant 3).
+2. **A client-supplied organisation id is never authority.** Organisation comes from the resolved
+   context.
+3. **Server-side identity resolution uses the service client**, because the identity tables may
+   themselves require organisation context to read.
+4. **Redeeming an invitation does not create a membership for an existing account.** The redeem
+   route mints a sign-in link and pins `selected_org_id`, which grants nothing without a membership
+   (rule 15 above). An invited person who already has a login needs their membership created
+   explicitly (HLD §7A).
+
 ### 2.1 The five identities
 
 Enforced in `middleware.ts`, plus per-route checks.
@@ -211,14 +249,19 @@ Both release the draft claim on failure, so a failed mint strands a draft as `us
 behind it — recoverable by retrying, which is why the release is there.
 
 **The reuse branch must send `conversation_config.turn` too.** A PATCH that omits a key leaves a
-deployed agent on whatever it was minted with. This is not hypothetical: all 30 live agents were
-moved to `turn_eagerness: 'patient'` on 2026-09-30, and a reuse PATCH without `turn` would have
-silently reverted the first agent to be re-briefed. Same for the LLM pin — see below.
+deployed agent on whatever it was minted with, so a reuse PATCH without `turn` would silently revert
+any fleet-wide change the first time an agent is re-briefed. Same for the LLM pin — see below.
 
-**Turn-taking and model are part of the agent, not preferences.** `turn.turn_eagerness: 'patient'`
-and `llm: gpt-4.1-mini` are sent on **every** creation path (this route's create *and* reuse
-branches, `/api/kira/ensure`, and the legacy factory in `lib/kira/elevenlabs.ts`). Rationale for
-both is in HLD §3.
+**Turn-taking and model are part of the agent, not preferences.** `KIRA_TURN_CONFIG`
+(`lib/kira/turn-config.ts`: `turn_eagerness: 'patient'`, `turn_timeout: -1`) and
+`llm: DEFAULT_AGENT_LLM` (`gpt-4.1-mini`) are sent on **every** creation path (this route's create
+*and* reuse branches, `/api/kira/ensure`, and the legacy factory in `lib/kira/elevenlabs.ts`). See
+§3.6A and HLD §3.
+
+**Creation order (both routes):** create the ElevenLabs agent → set the origin allowlist → attach
+tools and enable overrides (read back, one retry) → bind the post-call webhook (read back, one retry)
+→ write the `kira_agents` row. Each step is logged to `kira_logs` under one request id; a step that
+fails is logged as an error with its observed state, never as success.
 
 **Why one agent per person, and not one shared agent:** ElevenLabs **does not pass the conversation
 id to server-tool webhooks.** The agent sends only the parameters its language model chose to fill
@@ -253,12 +296,17 @@ Mounted under `/api/kira/webhooks/*`:
 | `lookup_contact` | contact resolution |
 | `record_refusal` / `facts_to_confirm` / `confirm_fact` | the refusal and fact-confirmation loop |
 | `area_agenda` | the nine business areas |
-| `file_manual` | writes the operating manual into the owner's own storage |
+| `file_manual` | writes the operating manual into the owner's own storage (via the orchestrator) |
 | `research_organisation` | practice intelligence on another organisation |
-| `create_operational_kira` | mint a new operational agent |
 | `save-framework-draft` | persist a framework draft |
-| `task-events` | task lifecycle events |
-| `post-call` | **distil + persist** (`/api/convai/webhooks/post-call`) |
+| `task-events` | callback from the orchestrator with task lifecycle events |
+| `post-call` | **distil + persist** — the live binding is `https://kiraexec.com/api/kira/webhooks/post-call` |
+
+`create_operational_kira/` holds only a `route.ts.example` — **not a mounted route**. An older
+post-call route also exists at `/api/convai/webhooks/post-call` (and older copies of the conversation
+routes under `/api/convai/webhooks/*`); `memory-loop.config.json` still points its post-call probe
+there. Live agents are bound to the `/api/kira/webhooks/post-call` path above; treat the
+`/api/convai` tree as legacy and confirm with a workspace webhook listing before relying on it.
 
 **A mounted route is not a held tool.** `save_message` and `update_topic` are implemented and
 mounted, but `toolDefsFor` filters them out — they ask the model to do filing the post-call webhook
@@ -293,9 +341,21 @@ contract — see §3.6.
    deleted afterwards** — a "previous" that outlives its rotation is a second live credential
    nobody is tracking.
 2. **The post-call webhook verifies its HMAC.** Unsigned → 401.
-3. **Identity is server-derived on every path.** `start_conversation` resolves from the agent
-   binding; `save`/`recall` derive from the conversation row. **No path may accept a
-   caller-supplied `user_id`.**
+3. **Identity is server-derived on every path.** Tool calls take the person from the `?uid=` baked
+   into the tool URL at provisioning. `get_conversation_context` may also receive a platform-filled
+   `user_id` (ElevenLabs' own dynamic variable, for shared organisation agents); it is honoured only
+   after checking that person holds a seat on the agent's organisation, and otherwise returns an
+   empty context rather than falling back. **No path may trust a `user_id` the language model
+   chose.**
+4. **A tool webhook resolves identity with `resolveOrganisationForPerson(uid)` — never
+   `getCurrentOrganisationContext()`.** ElevenLabs' servers call these routes; there is no browser
+   session, so the session lookup returns null for every caller. `file_manual` did exactly this and
+   told every owner "No organisation membership found" until 2026-10-02 — it had never filed
+   anything. Audited 2026-10-02: no other webhook path uses the session lookup.
+5. **A write a tool performs must match the live schema, and its test must prove it.** `confirm_fact`
+   inserted two columns the table did not have from 2026-08-31 to 2026-10-02 — zero rows ever, test
+   green against a mock. `lib/kira/confirm.test.ts` now checks every inserted column against
+   `supabase/migrations/`; copy that pattern for any tool that inserts.
 
 ### 3.3 The post-call pipeline
 
@@ -615,15 +675,14 @@ Kira's suppression, alert-throttle, owner-enrichment, and beta-code operations a
 the Orchestrator at `https://connect.kiraexec.com`. Kira is an **unprivileged caller** — it does not
 hold a Supabase service-role key for these capabilities.
 
-**Migration status as at 2026-08-24 (stated, not implied):**
-
-| Side | State |
-|---|---|
-| **Orchestrator endpoints** (§5B.2–5B.5) | LIVE and production-tested (commits `24e7f73`, `c420b3c` on branch `feat/microsoft-graph-files`). ⚠️ Branch and commits not yet pushed; prod was deployed from the local tree. |
-| Kira beta-codes adapter (`lib/billing/beta-codes.ts`) | COMMITTED and pushed (`b69e577`), deployed with `main`. |
-| Kira suppression adapter (`lib/email/suppressions.ts`) | In the working tree, uncommitted. E2E production verification recorded 24 Aug. |
-| Kira throttle/owner adapters (`lib/email/unanswered-request.ts`) | Committed `b8f8fa3` (defect fixes applied: verdict-returning throttle claim, real escape entities, replyTo + transactional compliance on send). Not yet deployed. |
-| `business_identity` RLS migration (`20260824100000_business_identity_rls.sql`) + session-client switch in `lib/business-identity/store.ts` | Both in the working tree, uncommitted. **Hard ordering constraint:** the migration must be applied to the Supabase project BEFORE this store change deploys, or every business-identity read/write returns zero rows/errors. Migration application to prod UNVERIFIED. |
+**Status as at 2026-10-02:** all Kira-side adapters are committed and deployed with `main` —
+`lib/billing/beta-codes.ts` (last change `3c772fb`, 2026-09-09), `lib/email/suppressions.ts`
+(`5c23346`, 2026-09-03), `lib/email/unanswered-request.ts` (`b8f8fa3`). The business identity no
+longer lives in a `business_identity` table: it is stored on `organisations` and read with the
+service client (`lib/business-identity/store.ts`). The orchestrator-side endpoints are documented in
+the orchestrator repository; their deployment state is not visible from this one. (The 24 August
+version of this table recorded several of these as uncommitted; that state is history, kept in the
+build register.)
 
 ### 5B.1 Caller identities
 
@@ -868,7 +927,8 @@ absent field means she never asked and the point of the gate is that silence is 
 
 ## 6B. Genome scoring — the checklist, the assessment, and the second number
 
-Design: `docs/SPEC_GENOME_CHECKLIST_AND_PATHWAYS.md`. Architecture: HLD §6.
+Design: `docs/SPEC_GENOME_CHECKLIST_AND_PATHWAYS.md`. Where its inputs come from: HLD §4 (the
+memory loop).
 
 ### Modules
 
@@ -927,18 +987,19 @@ Principal tables (`supabase/migrations/` is the **only** canonical location — 
 
 | Group | Tables |
 |---|---|
-| Identity | `users`, `client_profiles`, `setup_sessions` |
+| Identity (canonical, §2.0) | `auth_credentials`, `persons`, `organisation_memberships`, `organisations`, `ownership_periods` |
+| Identity (legacy / onboarding) | `users` (legacy — not for identity resolution), `client_profiles` (the business owner's discovery profile, gates discovery), `setup_sessions` |
 | Org hierarchy (added 2026-09-21/22) | `organisations` (`org_type`: portfolio/project/distributor/client_org, self-referential `parent_organisation_id`, anti-cycle-guarded), `organisation_memberships`, `portals` (per-org canonical `/talk` URL, `journey_type`), `distributor_portfolio` (a distributor's client orgs), `beta_codes` (invitations, `betaType`/variant), `consultant_frameworks`, `consultant_genomes`, `operating_agreements`, `truth_comparisons` (chain-of-truth §7A of the HLD; the latter three exist in schema, not yet consumed by application code as at 2026-09-22) |
 | Voice + memory | `kira_agents` (`journey_type`: personal/business/consultant/distributor — governs which persona `getKiraPrompt` selects, see HLD §7A), `conversations`, `conversation_messages`, `kira_memory`, `kira_logs` |
 | Knowledge | `kira_knowledge`, `kira_knowledge_chunks` (pgvector), `knowledge_files`, `knowledge_urls` |
 | Consultant | `consultant_genomes` (consultant identity/target/services/frameworks — read by `discovery_agenda` when `journey_type` is consultant/distributor), `consultant_frameworks` (methodology principles/stages) |
 | Work | `kira_tasks`, `kira_drafts`, `kira_research_sessions` |
 | Write-back | `drive_documents` (where each area of the manual lives in the owner's own storage — the idempotency map, §6A) |
-| Genome scoring | `genome_item_status` (one verdict per owner per checklist item), `genome_pathways`, `genome_pathway_milestones` (§6B) |
+| Genome scoring | `genome_item_status` (one verdict per owner per checklist item), `genome_pathways`, `genome_pathway_milestones` (§6B), `kira_fact_confirmations` (append-only record of facts read back to the owner and his answer — `said`, `outcome`, `organisation_id`) |
 | Commercial | `business_valuations` (⚠️ `readiness` = frozen baseline; `readiness_now` = evidenced, §6B), `beta_trials`, `beta_usage`, `stripe_webhook_events`, `loi_commitments` |
 | Channel | `introducers`, `introducer_magic_links`, `introductions`, `attribution_overrides`, `advisor_enquiries` |
-| Email | `email_logs`, `email_suppressions` |
-| Observability | `voice_connect_events` (§3.6 — one row per voice connection attempt) |
+| Email | `email_logs` (every send, incl. `email_type='invitation'`; Resend id; open/click timestamps), `email_suppressions` |
+| Observability | `voice_connect_events` (§7.1 — one row per voice connection attempt), `kira_logs` (every agent-provisioning step, by request id) |
 | PubGuard | `pubguard_scans`, `pubguard_reports` |
 
 **Invariants**
@@ -957,13 +1018,21 @@ Principal tables (`supabase/migrations/` is the **only** canonical location — 
    never comes from the legacy user row"). Invariant 5 below predates this and describes an older
    layer; the two are not in conflict for tables not yet migrated onto the org model, but a reader
    should treat 5A as the live rule for anything organisation-scoped.
-5. **Genome tables key on `users.id`, NEVER `auth.users.id`.** Every agent / conversation /
-   `kira_memory` row references `users.id` (see `20260720100000_auth_link.sql`), and the Genome is
-   derived by app user id throughout. A table keyed the other way joins to nothing and its RLS
-   silently matches no rows — caught in review on `genome_item_status`, which was drafted against
-   `auth.users` and would have returned an empty panel to every owner forever.
+5. **A `user_id` column on a content table holds a `person_id` — never an `auth.users.id`.**
+   *Corrected 2026-10-02: this invariant previously said these columns hold the legacy `users.id`.*
+   The canonical model (§2.0) moved them to `person_id`, and code that still wrote the legacy id was
+   the cause of the memory split in §3.6 invariant 3. Two consequences a migration author must know:
+   (a) a column named `user_id` may hold either id on rows written before the fix — **9 of 90
+   `kira_memory` rows still carried a legacy `users.id` on 2026-10-02**; (b) none of these columns has
+   a foreign key, so the database will not catch a wrong id. Never key a new table on
+   `auth.users.id`: it joins to nothing, and its RLS silently matches no rows (caught in review on
+   `genome_item_status`).
+6. **Older RLS policies still compare against the legacy `users` table** (for example
+   `kira_fact_confirmations`' "own confirmations readable" policy joins `users.id`). Rows written with
+   a `person_id` will not match those policies for browser reads. Server reads use the service client
+   and are unaffected; an audit of policies against the canonical model is outstanding.
 
-### 3.6 Voice-connect telemetry — added 2026-08-18
+### 7.1 Voice-connect telemetry — added 2026-08-18
 
 A voice connection is the one step in this product that fails on the CLIENT, in someone else's
 browser, on someone else's network. Everything else leaves a server-side row; this left nothing. A
@@ -1013,28 +1082,36 @@ lambda its own memory; an in-process limiter limits one instance and lets every 
 
 ## 9. Environment variables
 
-Required in production:
+Every variable the code reads (`process.env.*` across `app/`, `lib/`, `components/`, 2026-10-02),
+grouped by purpose. Values live in Vercel; a local copy comes from `vercel env pull` (§11). Never
+commit one.
 
-```
-NEXT_PUBLIC_SUPABASE_URL · NEXT_PUBLIC_SUPABASE_ANON_KEY · SUPABASE_SECRET_KEY
-ELEVENLABS_API_KEY · ELEVENLABS_WEBHOOK_SECRET · KIRA_TOOL_WEBHOOK_SECRET
-STRIPE_LIVE_MODE · STRIPE_SECRET_KEY_TEST/_LIVE · STRIPE_WEBHOOK_SECRET_TEST/_LIVE
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-RESEND_API_KEY · UNSUBSCRIBE_SECRET · CRON_SECRET
-EMAIL_SENDER_NAME/_EMAIL/_ABN/_POSTAL/_PHONE      (portfolio-canonical)
-MNEMO_API_KEY · ADMIN_EMAILS · NEXT_PUBLIC_APP_URL · ABR_GUID
-```
+| Group | Variables | Notes |
+|---|---|---|
+| Supabase | `NEXT_PUBLIC_SUPABASE_URL` · `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (browser) · `SUPABASE_PUBLISHABLE_KEY` (server session) · `SUPABASE_SECRET_KEY` (service role) | Legacy names still read in places: `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` (`lib/voice-agent-checks.ts`). See §1 for the client rules. |
+| Voice | `ELEVENLABS_API_KEY` · `ELEVENLABS_WEBHOOK_SECRET` (post-call HMAC) · `KIRA_TOOL_WEBHOOK_SECRET` / `CONVAI_TOOL_SECRET` (tool header) · `KIRA_TOOL_WEBHOOK_SECRET_PREVIOUS` (rotation only — delete after) · `VOICE_COST_PER_MINUTE_USD` | Agent/voice ids for special-purpose agents: `KIRA_SETUP_AGENT_ID`, `KIRA_LANDING_AGENT_ID`, `NEXT_PUBLIC_SETUP_KIRA_AGENT_ID`, `NEXT_PUBLIC_PUBGUARD_AGENT_ID`, `KIRA_VOICE_ID`, `NEXT_PUBLIC_KIRA_VOICE_ID`, `NEXT_PUBLIC_ELEVENLABS_VOICE_ID`. The retired separate discovery agent still reads `DISCOVERY_AGENT_ID`, `DISCOVERY_SESSION_SECRET`, `DISCOVERY_POSTCALL_SECRET` (`lib/kira/discovery.ts`). |
+| LLM | `OPENAI_API_KEY` · `OPENAI_BASE_URL` · `KIRA_TEXT_MODEL` · `KIRA_EXTRACTION_MODEL` · `JINA_API_KEY` (knowledge reranking) | The voice agent's model is set on the agent (§3.1), not here. |
+| Orchestrator | `ORCHESTRATOR_URL` · `ORCHESTRATOR_SECRET` · `ORCHESTRATOR_WEBHOOK_SECRET` · `ORCHESTRATOR_PUBLIC_SECRET` · `ORCHESTRATOR_CALLBACK_SECRET` (authenticates its calls to `task-events`) · `KIRA_SWARM_ADAPTER` | §5B and HLD §2 |
+| Billing | `STRIPE_LIVE_MODE` · `STRIPE_SECRET_KEY_TEST` / `_LIVE` · `STRIPE_WEBHOOK_SECRET_TEST` / `_LIVE` | Legacy single-slot `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` still read. §4.1 |
+| Email | `RESEND_API_KEY` · `RESEND_WEBHOOK_SECRET` · `UNSUBSCRIBE_SECRET` · `EMAIL_SENDER_NAME` / `_EMAIL` / `_ABN` / `_POSTAL` / `_PHONE` (portfolio-canonical) · `EMAIL_FROM` · `ADVISOR_ENQUIRY_TO` | §5 |
+| Memory | `MNEMO_API_KEY` | read inside `@caistech/mnemo` |
+| App | `NEXT_PUBLIC_APP_URL` (`https://kiraexec.com` — baked into agent tool URLs) · `NEXT_PUBLIC_SITE_URL` · `ADMIN_EMAILS` · `CRON_SECRET` · `NEXT_PUBLIC_LANDING_VARIANT` · `KIRA_DEFAULT_TIMEZONE` · `DEFAULT_ENVIRONMENT` · `NEXT_PUBLIC_VENDOR_PHONE` / `_EMAIL` / `_CALENDLY` · `ABR_GUID` (ABN lookup) | |
+| Research / PubGuard | `BRAVE_SEARCH_API_KEY` / `BRAVE_API_KEY` · `SERPER_API_KEY` · `SHODAN_API_KEY` · `GITHUB_TOKEN` · `NVD_API_KEY` | |
+| Install time | `NODE_AUTH_TOKEN` | GitHub Packages token for `@caistech/*` (§11) |
 
 **Invariants**
 
-1. **No secret carries a `NEXT_PUBLIC_` prefix.** Only the Supabase anon key and the Stripe
-   publishable key use it. That prefix ships the value to every browser.
+1. **No secret carries a `NEXT_PUBLIC_` prefix.** That prefix ships the value to every browser; only
+   the publishable keys, public URLs and public agent/voice ids above use it.
 2. **Secrets are marked `sensitive` on Vercel, production + preview only — never `development`.**
 3. **No fallback strings for secrets, ever.** `|| 'fallback'` on a webhook secret converts an
    authentication failure into an open endpoint.
-4. **`KIRA_TOOL_WEBHOOK_SECRET` must be set in every environment.** The guard it drives is
-   fail-open when it is missing (§3.2) — losing the variable loses the protection without any
-   error. This is the one place where an unset variable is more dangerous than a wrong one.
+4. **The tool secret fails closed.** *Corrected 2026-10-02 — this invariant previously said "fail-open",
+   contradicting §3.2.* With neither `KIRA_TOOL_WEBHOOK_SECRET` nor `CONVAI_TOOL_SECRET` set,
+   `requireToolSecret()` throws and every tool route answers 500: the voice agent stops working
+   rather than running unauthenticated. Set it in every environment that serves tool calls.
+5. **`NEXT_PUBLIC_APP_URL` is baked into every live agent's tool URLs at provisioning.** Changing it
+   changes nothing for existing agents until they are re-provisioned.
 
 ---
 
@@ -1068,3 +1145,126 @@ Before a change ships:
 **The rule that generates most of the above:** if a shared `@caistech/*` package covers what you
 are about to write, consume it. A local copy is not a shortcut — it is the defect the next person
 inherits.
+
+---
+
+## 11. Development workflow
+
+### 11.1 Getting it running
+
+1. **Clone two repositories side by side** — `Kira` and `cais-shared-services` in the same parent
+   directory. `@caistech/kira-testing-client` is a local file dependency
+   (`file:../cais-shared-services/packages/kira-testing-client`); without the sibling clone
+   `npm install` fails.
+2. **Registry access.** Every other `@caistech/*` package installs from GitHub Packages. The
+   committed `.npmrc` reads the token from the environment, so export a GitHub token with
+   `read:packages` as `NODE_AUTH_TOKEN` before `npm install`. A 401 at install is this token.
+3. **Node:** current LTS (CI uses `lts/*`; Vercel builds on its default runtime). Package manager:
+   **npm** (`package-lock.json`).
+4. **Environment:** `vercel env pull .env.local --environment=production` (needs access to the
+   Vercel project). Values marked sensitive come back blank and must be supplied separately.
+   `.env.local` is gitignored.
+5. **Run:** `npm run dev`. Voice needs a reachable `NEXT_PUBLIC_APP_URL` for ElevenLabs to call the
+   tool webhooks; locally that means a tunnel, or testing tools by calling the routes directly.
+
+### 11.2 Checks before a change
+
+| Command | Checks |
+|---|---|
+| `npm run typecheck` | `tsc --noEmit`. **The production build does not type-check** (`ignoreBuildErrors: true` in `next.config.js`); this and CI are the only places types are checked. |
+| `npm run lint` | ESLint |
+| `npm test` | Vitest, ~2,000 tests (~15 s). Two files touch live services (a Stripe integration test, a Supabase token test) and can time out; re-run before chasing them. |
+| `npm run build` | compiles; does not catch type errors (above) |
+| `node scripts/check-app-chrome.mjs` · `check-voice-reachable.mjs` · `check-design-tokens.mjs` | the same structural checks CI runs |
+
+**Tests against mocks prove the logic, not the integration.** Where code writes to a table, assert
+the columns against `supabase/migrations/` (see `lib/kira/confirm.test.ts`). Where code calls a
+vendor, verify with a read-back in the code itself (see `lib/kira/post-call-binding.ts`).
+
+### 11.3 Database migrations
+
+- Write them in `supabase/migrations/`, idempotent (`IF NOT EXISTS`, guarded `ALTER`/constraints).
+- Kira's project is **`kmrskyewwnwettlycpfe`**. The portfolio has several live Supabase projects;
+  confirm the linked ref before `supabase db push` — a migration pushed to the wrong project may not
+  error.
+- The CLI migration history was empty when the project was adopted. Migrations have also been
+  applied through the Supabase Management API's SQL endpoint and then recorded by inserting the
+  version into `supabase_migrations.schema_migrations`. Check that table before assuming a migration
+  is or is not applied.
+
+### 11.4 Deploying
+
+Push to `main` → Vercel builds and deploys production; GitHub records a deployment with its status.
+There is no staging environment, no branch protection and no required review (HLD §12.1). Confirm a
+deploy with `gh api repos/<owner>/Kira/deployments?sha=<sha>` and its statuses, or the Vercel
+dashboard.
+
+### 11.5 Changing live agents
+
+Agent configuration lives in ElevenLabs. A source change reaches no existing agent until it is
+pushed to the fleet:
+
+| Change | How it reaches live agents |
+|---|---|
+| Tool list or tool definitions | `scripts/reprovision-kira-agents.mjs` (reads `toolDefsFor`). ⚠️ It applies by default and `setAgentTools` **replaces** the list. |
+| A prompt section | its own additive patch script (`scripts/patch-agent-*.mjs` — anchored, dry-run by default, read-back after write, refuses when the anchor is missing). Never regenerate a live prompt wholesale: that discards owner-specific context. |
+| Turn-taking or post-call binding | `scripts/fix-agent-turn-and-postcall.mjs <agent ids> [--apply]` — dry run by default, reads every agent back. |
+
+The ElevenLabs workspace is shared with other products: always pass explicit agent ids, never
+"every agent in the workspace".
+
+### 11.6 Shared packages
+
+`@caistech/*` packages are developed in `cais-shared-services/packages/<name>`, versioned with a
+CHANGELOG entry, built (`npm run build`), published to GitHub Packages (`npm publish`, with a
+`NODE_AUTH_TOKEN` that has `write:packages`), then installed at the new version in each consumer.
+A change to a shared package is not done until every consumer that needs it is updated and tested —
+the catalogue of consumers is `cais-shared-services/SHARED_SERVICES.md`.
+
+### 11.7 Recording what changed
+
+Every significant change gets a `docs/BUILD_REGISTER.md` entry (newest first): trigger, root cause,
+fix, and an explicit **NOT verified** list. A change that alters a contract or invariant updates this
+document and the HLD in the same commit.
+
+---
+
+## 12. Operations
+
+### 12.1 Scheduled jobs (`vercel.json`, all UTC, all authenticated by `CRON_SECRET`)
+
+| Path | Schedule | Does |
+|---|---|---|
+| `/api/cron/memory-integrity` | 02:00 daily | audits extracted memory |
+| `/api/cron/reconcile-tasks` | 03:00 daily | reconciles open tasks against outcomes |
+| `/api/cron/genome-classify` | 04:30 daily | classifies unfiled memories into Genome areas |
+| `/api/cron/capture-consultant-genomes` | 05:00 daily | placeholder genome for consultant agents without one |
+| `/api/cron/auto-record-absence` | 06:00 daily | records absent owners' working pattern |
+| `/api/cron/reminders` | 07:00 daily | reminders |
+| `/api/cron/red-team-drift` | 08:00 daily | red-team probes; mails on a change |
+| `/api/cron/trial-ending` | 09:00 daily | trial-ending notices |
+| `/api/cron/reengagement-emails` | 10:00 daily | re-engagement email |
+| `/api/cron/autobootstrap-portals` | :45 hourly | writes each organisation's canonical portal URL |
+
+### 12.2 Where to look when something is wrong
+
+| Question | Source |
+|---|---|
+| Did agent provisioning succeed, step by step? | `kira_logs` by `request_id` |
+| Did a voice connection fail, and was the vendor reachable? | `voice_connect_events` (`scripts/voice-connect-report.mjs`) |
+| What did the agent actually call, and what came back? | ElevenLabs conversation detail (`/v1/convai/conversations/<id>`): `tool_calls` and `tool_results` per turn |
+| Was a call recorded and distilled? | `conversations` (`elevenlabs_conversation_id`, `distilled_at`), then `kira_memory` |
+| Is an agent bound to the post-call webhook? | the agent's `platform_settings.workspace_overrides.webhooks.post_call_webhook_id` |
+| Did an email go out, and was it opened? | `email_logs` (Resend id, `opened_at`, `clicked_at`) |
+| Runtime errors | Vercel runtime logs — short retention, and **not currently reachable by the build tooling's token scope** |
+
+Most of the serious defects so far produced **no error at all**: a tool returning "not found", an
+agent with no webhook, a row written under the wrong identity. The table above is how they were
+found. Monitoring that detects *absence* — calls with no conversation row, tools that never succeed —
+does not exist yet and is the most useful observability work outstanding.
+
+### 12.3 Emergency stop
+
+`haltState('conversations')` (`lib/kill-switch`) makes the voice start route and the typed route
+return 503 immediately: no tools run, nothing is written, no vendor time is spent. Use it for a
+misbehaving agent; it is a stop, not a retry.

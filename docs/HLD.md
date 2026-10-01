@@ -1,14 +1,56 @@
 # Kira — High-Level Design
 
 **Audience:** someone who needs to understand what Kira is and how it hangs together without
-reading the code — a prospective licensee, an introducer's technical adviser, an investor's
-diligence contact, or a new engineer on day one.
+reading the code — a development team assessing or taking over the codebase, a prospective
+licensee, an introducer's technical adviser, an investor's diligence contact, or a new engineer on
+day one. A development team should start at §0.
 
-**Companion:** `docs/LLD.md` holds the contracts, schemas and invariants. This document stops at
-the boundary of "what talks to what, and why."
+**Companion:** `docs/LLD.md` holds the contracts, schemas, invariants and the development workflow.
+This document stops at the boundary of "what talks to what, and why."
 
-**Status:** describes `main` as at 2026-10-01. Where something is deliberately *not* built, it says
+**Status:** describes `main` as at 2026-10-02. Where something is deliberately *not* built, it says
 so — an HLD that quietly omits the gaps is worse than none.
+
+---
+
+## 0. For a development team — read this first
+
+**Kira is functionally complete enough for beta testing and is not production-ready.** It was built
+by one founder over roughly six months with AI coding assistance, on a shared package layer reused
+across the founder's portfolio. Security, governance and hardening have not been independently
+reviewed. §12 lists the gaps we know about; expect to find more.
+
+### 0.1 The three repositories
+
+| Repository | What it is | Deploys to | Database |
+|---|---|---|---|
+| **`Kira`** (this repo) | The product: Next.js 16 app — owner, consultant/distributor, introducer and admin portals; voice and typed chat; memory; Business Genome; valuation; billing | Vercel, `kiraexec.com` (also `kira-rho.vercel.app`), auto-deployed from `main` | Supabase project `kmrskyewwnwettlycpfe` (Mumbai region) |
+| **`orchestrator`** | Separate Next.js service that decides "what should happen and who must approve it": back-office tasks Kira dispatches, Google/Microsoft/Xero connectors, document filing, the email-suppression and beta-code boundary | Vercel, `connect.kiraexec.com` | Its own Supabase project, plus scoped service access to Kira's for the email boundary |
+| **`cais-shared-services`** | Monorepo of `@caistech/*` npm packages consumed by Kira, the orchestrator and ~10 other products — most importantly `@caistech/elevenlabs-convai` (the voice agent + memory loop) | Published to GitHub Packages (`npm.pkg.github.com`) | — |
+
+The orchestrator keeps its own design documents in its `docs/` (`HLD.md`, `LLD.md`,
+`SYSTEM_OF_RECORD_PORT.md`). `cais-shared-services/SHARED_SERVICES.md` catalogues every package.
+
+### 0.2 Reading order
+
+1. This document, §1–§2B (what it is, what talks to what, who is who).
+2. `docs/LLD.md` §2 (identity) and §3 (the voice + memory subsystem) — where most defects have been.
+3. `docs/LLD.md` §11 (development workflow) before running anything.
+4. `docs/BUILD_REGISTER.md` — newest first. Every significant change with its root cause, fix, and
+   an explicit **NOT verified** list. It is the most honest account of the system's real state.
+
+### 0.3 Sources of truth, in order
+
+The code and the live database win over the LLD; the LLD wins over this document; the build register
+records history and must not be read as current specification. Where any two disagree, trust the
+higher one and correct the lower.
+
+### 0.4 What this document will not tell you
+
+- **Live state.** Agent configuration lives in ElevenLabs, not the repo, and a source change does
+  not reach a live agent until it is re-provisioned or patched (LLD §6B, "Reaching the fleet").
+- **Which uncommitted work is in flight.** Several AI-assisted sessions have worked on this codebase
+  concurrently; check `git status` and the register before assuming the tree is quiescent.
 
 ---
 
@@ -45,34 +87,51 @@ loop and the suppression layer, but its product surface is completely separate.
 ## 2. System context
 
 ```
-┌─────────────┐     ┌──────────────────────────┐
-│   Owner     │────▶│     Voice agent          │
-│  (human)    │     │  (ElevenLabs Conv. AI)   │
-└─────────────┘     └───────────┬──────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────┐
-│                 Kira App (Next.js)              │
-│  ┌──────────┐ ┌──────────┐ ┌────────────────┐  │
-│  │  Talk    │ │  Memory  │ │  Knowledge /   │  │
-│  │  route   │ │  loop    │ │  Swarm         │  │
-│  └──────────┘ └──────────┘ └────────────────┘  │
-└────────────────────────┬────────────────────────┘
-                         │
-        ┌────────────────┼────────────────┐
-        ▼                ▼                ▼
-   ┌─────────┐     ┌──────────┐     ┌──────────────┐
-   │Supabase │     │ ElevenLabs│    │  Orchestrator │
-   │ (RDS)   │     │  (Voice)  │    │ (Auth/State)  │
-   └─────────┘     └──────────┘     └──────────────┘
+  Owner / consultant / admin (browser or phone)
+        │  HTTPS (Supabase session cookie)              voice: WebSocket to ElevenLabs
+        ▼                                               (signed URL minted by Kira)
+┌──────────────────────────────────────────────┐        ┌──────────────────────────────┐
+│ KIRA  (Next.js on Vercel, kiraexec.com)       │◀──────▶│ ElevenLabs Conversational AI │
+│  portals · /talk · /chat · typed chat route   │ tool   │  one agent per person, in a  │
+│  tool webhooks · post-call webhook · crons    │ calls +│  workspace shared with other │
+│  memory distil · Genome · valuation · billing │ post-  │  portfolio products          │
+└──────┬─────────────┬──────────────┬───────────┘ call   └──────────────────────────────┘
+       │             │              │  HTTP + shared secret
+       ▼             ▼              ▼
+  Supabase       OpenAI         ORCHESTRATOR (connect.kiraexec.com, own repo + DB)
+  (Postgres,     (chat on the    tasks/approvals · Google/Microsoft/Xero connectors ·
+  Auth, RLS,     text transport, document filing · email suppression · beta codes
+  pgvector)      extraction,
+                 embeddings)    Also: Stripe (billing) · Resend (email) · Mnemo (semantic memory)
 ```
 
-**Orchestrator** is a separate deployed service (`connect.kiraexec.com`) that owns privileged
-Supabase access and mediates stateful operations on behalf of Kira and other portfolio products.
-Kira is an **unprivileged caller** to the Orchestrator. It authenticates with one of two scoped,
-non-interchangeable webhook credentials — `kira-webhook` (email boundary: suppressions, alert
-throttle, owner enrichment) and `kira-public` (beta codes) — and never holds a Supabase
-service-role key for the migrated capabilities.
+**The voice path is not Kira → ElevenLabs only.** The browser talks to ElevenLabs directly; during
+the call ElevenLabs calls *back into* Kira for every tool the agent uses (`/api/kira/webhooks/*`,
+authenticated by a shared secret header) and once more when the call ends (the post-call webhook,
+HMAC-signed), which is how the conversation is recorded and distilled into memory.
+
+**The typed path does not use ElevenLabs at all.** `/api/kira/chat/text` reads the live agent's
+prompt from ElevenLabs, then runs the same tools server-side against OpenAI. One agent, two
+transports, one memory (LLD §3.6).
+
+**Orchestrator** is a separate deployed service (`connect.kiraexec.com`, its own repository and
+database) that Kira calls over HTTP. Its roles, by Kira call site:
+
+| Role | Kira caller |
+|---|---|
+| Back-office task dispatch + approvals (when `KIRA_SWARM_ADAPTER=orchestrator`; otherwise a local stub handles three task kinds) | `lib/kira/swarm/*` |
+| Google / Microsoft connect and connection status | `lib/connectors/*` |
+| Documents in the owner's own storage (read, retain, file the operating manual) | `lib/kira/document.ts`, `lib/genome/file-manual.ts` |
+| Accounting figures (Xero) | `lib/kira/financials.ts` |
+| Contact lookup | `lib/kira/lookup.ts` |
+| Business identity sync (the sender identity on outbound mail) | `lib/business-identity/sync.ts` |
+| Email suppression, alert throttle, owner enrichment | `lib/email/*` |
+| Beta-code operations | `lib/billing/beta-codes.ts` |
+
+For the email boundary and beta codes Kira is an **unprivileged caller**: it authenticates with one
+of two scoped, non-interchangeable credentials — `kira-webhook` (suppressions, alert throttle, owner
+enrichment) and `kira-public` (beta codes) — and holds no service-role key for those capabilities
+(LLD §5B). Other call sites use `ORCHESTRATOR_SECRET`.
 
 **Supabase Authentication Model (API Key Model — Target Architecture):**
 As of 2026-08-25, Kira is migrating from the legacy JWT-based authentication
@@ -178,7 +237,50 @@ hit.
 
 ---
 
-One ElevenLabs Conversational AI agent per owner, living as long as the owner's account. Agent
+## 2B. Identity, organisations and tenancy
+
+Most of the serious defects in this codebase have been identity defects, so this is worth reading
+before anything else in the LLD.
+
+```text
+Supabase Auth user (login)  ──▶  auth_credentials  ──▶  persons  ──▶  organisation_memberships  ──▶  organisations
+   auth.users.id                  the ONLY bridge        person_id      role, status, valid dates       org_type, parent
+                                  (+ selected_org_id)                                                   (hierarchy)
+                                                         persons  ──▶  ownership_periods   (ownership is separate from membership)
+```
+
+- **A person is not a login and not a legacy user.** `auth.users.id` is an authentication identity;
+  `persons.person_id` is the canonical person; the older `users` table and its `users.id` are
+  **legacy** and must not be used to resolve identity or organisation (`lib/auth.ts` header rules).
+- **Organisations form a hierarchy:** a root `project` org ("Kira") → `distributor` orgs
+  (consultants/partners) → `client_org`s (the businesses they bring in). An owner who signs up
+  directly gets their own organisation.
+- **Organisation access requires an active, time-valid membership.** `selected_org_id` on the
+  credential chooses between several memberships but grants nothing on its own.
+- **Data is organisation-owned.** Conversations, memory, tasks and documents carry
+  `organisation_id` (the ownership key) and a `user_id` that records *which person* (provenance).
+- **Two ways the server learns who is calling, and they must not be mixed up:**
+  1. **Browser requests** carry a Supabase session cookie → `getCurrentOrganisationContext()`.
+  2. **Agent tool calls** come from ElevenLabs servers and carry **no cookie**. The person is baked
+     into each tool's URL as `?uid=<person_id>` when the agent is provisioned, and resolved with
+     `resolveOrganisationForPerson(uid)`. A tool handler that reaches for the session instead fails
+     for every caller — this happened twice (LLD §3.2, invariant 4).
+
+**Why one agent per person:** ElevenLabs does not tell a tool webhook which conversation or caller it
+belongs to, so the caller's identity must be fixed when the agent is created. One agent per person
+is what makes `?uid=` trustworthy.
+
+**Isolation is mostly enforced in application code, not by the database.** Every table has row-level
+security, but server routes and tool webhooks use the service-role key, which bypasses it. Tenant
+isolation on those paths therefore depends on each query filtering by the right `organisation_id`.
+RLS protects only what the browser reads directly. An independent review of this boundary is the
+single most valuable security work outstanding.
+
+---
+
+## 3. The voice agent
+
+One ElevenLabs Conversational AI agent per person, living as long as the account. Agent
 state is persisted to Supabase (`kira_agents`) and re-created if the ElevenLabs side is deleted.
 
 **Identity.** `kira_agents` carries both `user_id` and `person_id`. Every *person-scoped tool call
@@ -196,11 +298,17 @@ route and the text route. When it fires, both return 503 immediately — the own
 briefly unavailable", and no tools run, no memory is written, no vendor time is spent. It is a
 hard stop on a misbehaving agent, not a retry.
 
-**Turn-taking is set explicitly, not inherited.** The ElevenLabs default for
-`conversation_config.turn.turn_eagerness` is `normal`, which reads ~7 seconds of user silence as
-end-of-turn and has the agent talk over a person who is merely thinking. Kira sends `patient` on
-every creation path. The product's entire surface is a voice call, so this is a correctness
-requirement, not a preference.
+**Turn-taking is set explicitly, not inherited** — one constant, `KIRA_TURN_CONFIG`
+(`lib/kira/turn-config.ts`), on every creation path. Two separate vendor settings matter:
+`turn_eagerness` decides when she thinks the person has *finished speaking* (`patient`, so a pause
+mid-thought is not taken as the end of a turn), and `turn_timeout` decides how long she waits in
+*silence* before re-prompting (vendor default 7 seconds — the "are you still there?" nag). Kira sets
+`turn_timeout: -1`, so an owner who goes to fetch a file returns to a quiet line. The first fix
+changed only the first setting; the nag survived until the second was found. Confirmed by a tester
+on 2026-10-02 (30 seconds of silence, not interrupted).
+
+**The post-call webhook binding is verified, not assumed.** Without it no voice call is recorded,
+distilled or remembered, and nothing errors. Creation binds it last and reads it back (LLD §3.6A).
 
 **The LLM is pinned to `gpt-4.1-mini` (portfolio default) and must not be overridden per-agent.**
 `gpt-4o-mini` was measured *dropping tool calls* as a long conversation proceeds, which silently
@@ -236,8 +344,12 @@ reach Google's APIs and so are business-journey only; the personal journey is a 
 neither.
 
 The tool surface is deliberately narrow. The agent does not execute code, make HTTP requests, or
-reach external APIs directly. All side effects go through the tools above, which are implemented
-in the Kira application and secured by the owner's session.
+reach external APIs directly. All side effects go through the tools above, implemented as webhook
+routes in the Kira application. Those routes have **no user session**: each is authenticated by a
+shared secret header (`x-convai-tool-secret`) and learns whose data it is acting on from the
+`?uid=<person_id>` baked into its URL at provisioning (§2B). Anything that writes to an owner's
+account outside Kira (sending email, filing documents) additionally requires an explicit approval
+the server enforces, not one the prompt merely requests.
 
 ---
 
@@ -276,7 +388,9 @@ memory and documents are derived and can be regenerated.
    classified row is never parked in favour of an unfiled twin. The ordering is load-bearing.
 
 The extractor is an LLM prompt with a strict JSON schema. It is not a chat model — it is a
-structured-information extractor. The schema is versioned and lives in `lib/kira/memory-extractor.ts`.
+structured-information extractor. It lives in `lib/kira/memory-extract.ts`; the distil → dedupe →
+persist → semantic-index sequence it plugs into is `completeConversationMemory` in
+`@caistech/elevenlabs-convai`.
 
 **The distil trigger is a contract, not a detail.** The post-call webhook is the *voice* path's
 distil trigger. The *text* path is separate: a typed message must be explicitly flushed to the
@@ -287,8 +401,16 @@ memory — a hole with no error anywhere to see.
 
 ### Memory privacy
 
-All memory data is scoped to the owner's person id. Row-level security enforces this at the database
-layer. There is no cross-owner search, no shared index, no multi-tenant leakage.
+Memory rows are owned by the organisation (`organisation_id`) and attributed to a person (`user_id`
+holds the canonical `person_id`). Server paths — including every tool webhook and the distil — use
+the service-role key, so isolation there is enforced by each query's `organisation_id` filter, not by
+row-level security (§2B). The semantic index in Mnemo is partitioned per person (scope
+`kira-user-<id>`) and holds distilled facts only, never transcripts. There is no cross-owner search
+or shared index **by design**; that the design holds on every path has not been independently tested.
+
+⚠️ 9 of 90 `kira_memory` rows (2026-10-02) are still attributed to a legacy `users.id` rather than a
+`person_id` — written before the 2026-10-01 identity fix. They are invisible to recall for their
+owners until migrated (§12).
 
 ---
 
@@ -353,28 +475,43 @@ Drive**, part of the write-back path (LLD §6A), not the knowledge library.
 it in `kira_knowledge` without the agent link leaves it in the library and invisible to her — a
 silent failure that looks identical to "the knowledge doesn't work".
 
-### Knowledge in the swarm
-
-The swarm (see §6) can also read knowledge, so owner facts are available to background agents.
-
 ---
 
-## 6. The swarm
+## 6. The swarm (task dispatch) and scheduled jobs
 
-Background jobs, implemented as Next.js cron routes under `app/api/cron/*` — the same Supabase
-client and tooling as the voice agent, not a separate service. What actually ships:
+### 6.1 The swarm — how "do this for me" becomes work
+
+When the owner asks for something to be *done* (a quote, an email, a reminder), the agent calls
+`dispatch_task`. Kira hands every such intent to one interface, `SwarmCoordinator`
+(`lib/kira/swarm/coordinator.ts`), obtained from `getSwarmCoordinator()`, which picks a back end from
+`KIRA_SWARM_ADAPTER`:
+
+| Value | Back end | Handles |
+|---|---|---|
+| unset / `local` (default) | `LocalSwarmStub` (`lib/kira/swarm/stub.ts`) | three task kinds — quote, email, reminder — drafted, held for the owner's approval, then executed; anything else is captured, never dropped |
+| `orchestrator` | `OrchestratorAdapter` over HTTP to the orchestrator's `/v1/dispatch` | the orchestrator's task registry, with results returned by callback to `/api/kira/webhooks/task-events` |
+
+The seam is a **wire contract**, not shared types, so the back end can be swapped by configuration.
+Nothing leaves on the owner's behalf without his approval (`approve_task`); state lives in
+`kira_tasks`. ⚠️ The production value of `KIRA_SWARM_ADAPTER` is an environment setting and is not
+visible in the repository — confirm it before reasoning about which back end handled a task.
+
+### 6.2 Scheduled jobs
+
+Next.js cron routes under `app/api/cron/*`, scheduled in `vercel.json`, authenticated by
+`CRON_SECRET`. Same database and tooling as the rest of the app, not a separate service. Schedules
+are in LLD §12.
 
 - `memory-integrity` — audits the extracted memory for drift and gaps.
-- `genome-classify` — classifies genome entries.
-- `capture-consultant-genomes` — pulls in consultant genomes.
-- `red-team-drift` — runs red-team probes for behavioural drift.
+- `genome-classify` — classifies memories into the nine Genome areas.
+- `capture-consultant-genomes` — creates a placeholder genome for consultant agents without one.
+- `red-team-drift` — runs red-team probes and mails on a change in result.
 - `reconcile-tasks` — reconciles open tasks against what actually happened.
 - `reminders` / `reengagement-emails` / `trial-ending` — lifecycle and trial messaging.
 - `auto-record-absence` — records the working pattern of absent owners.
-- `autobootstrap-portals` — provisions distributor/consultant portals.
+- `autobootstrap-portals` — writes each organisation's canonical portal URL (hourly).
 
-There is no scheduled "weekly synthesis" or "valuation refresh" job in the codebase; if one is
-needed it does not exist yet.
+There is no scheduled "weekly synthesis" or "valuation refresh" job.
 
 ---
 
@@ -538,12 +675,12 @@ most recent build (the branded unsubscribe page and the resend action on the log
 | `coordination-sdk` | the introducer/broker role model |
 | `abn-lookup` | ABN validation and ABR lookup |
 | `beta-gate` | trial clock and usage caps |
-| `portfolio-gate` | portfolio-level access control for the distributor/consultant hierarchy |
-| `platform-trust-middleware` → `sayfix-embed` → `webmcp-kit` | rate limiting + audit → bug reporting → agent discoverability |
-| `brave-search` | web search (used by research_organisation) |
-| `extractors` | document text extraction (used by knowledge ingest) |
-| `mapbox` | mapping (used by the valuation and address flows) |
-| `kira-testing-client` | shared test utilities for the Kira test suite |
+| `portfolio-gate` (dev dependency) | the CI audit runner behind `gate.yml` — deploy status, route/auth smoke, public-route and first-paint checks, memory-loop gate. Not runtime access control. |
+| `sayfix-embed` | the "Report a problem" bug-reporting button on every page |
+| `webmcp-kit` | agent discoverability (`/llms.txt`, structured data) |
+| `platform-trust-middleware` · `mapbox` | installed; not imported directly by Kira code (address lookup reaches Mapbox through `corporate-components`) |
+| `brave-search` · `extractors` | web search and website-content extraction for `research_organisation` (`lib/kira/practice-intelligence/research.ts`) |
+| `kira-testing-client` | red-team runner client (`scripts/red-team.mjs`). ⚠️ Installed as a **local file dependency** (`file:../cais-shared-services/packages/kira-testing-client`): clone `cais-shared-services` beside `Kira` or `npm install` fails (LLD §11). |
 
 ---
 
@@ -568,37 +705,106 @@ no longer directly uses a Supabase service-role key for this capability.
 
 | Concern | Choice |
 |---|---|
-| Hosting | Vercel, Next.js App Router. Server components by default. |
-| Database | Supabase (Postgres + pgvector + Auth), row-level security on every table |
-| Voice | ElevenLabs Conversational AI, one agent per user |
-| Payments | Stripe, live/test selected by an explicit environment flag |
-| Email | Resend, on a verified sending subdomain |
+| Hosting | Vercel, Next.js App Router. Server components by default. **Every push to `main` deploys to production** via the Vercel Git integration; there is no staging environment and no branch protection yet. |
+| Database | Supabase (Postgres + pgvector + Auth), Mumbai region, row-level security on every table |
+| Voice | ElevenLabs Conversational AI, one agent per person, in a workspace shared with other portfolio products |
+| LLM | OpenAI (`gpt-4.1-mini` for the agent and the typed transport; extraction and embeddings also OpenAI) |
+| Payments | Stripe, monthly in arrears; live/test selected by an explicit environment flag |
+| Email | Resend, on the verified subdomain `updates.corporateaisolutions.com` |
+| Scheduled jobs | Vercel cron (`vercel.json`) — ten jobs, listed in LLD §12 |
 | Secrets | Vercel environment variables, marked sensitive, production + preview only |
 
-**CI gate on every push:** typecheck → lint → build → route smoke → auth smoke → memory-loop probe
-→ static voice-memory audit. Green is the bar. Nothing about the memory loop is taken on trust.
+**CI (GitHub Actions, `.github/workflows/`):**
+
+| Workflow | When | What it checks |
+|---|---|---|
+| `gate.yml` | every push and PR | typecheck, lint, build, unit tests, route/auth smoke, app-chrome and voice-reachability checks, design tokens, deploy status, public routes |
+| `memory-loop.yml` | daily + pushes touching the loop | the five-check memory probe against the deployment (LLD §3.4) |
+| `health-sensors.yml` | every 6 hours | production health probes |
+| `red-team.yml` | Mondays | adversarial conversations against the agent, scored by observed side-effects |
+| `naive-tester.yml` | on deployment + Mondays | a scripted persona walking the live product in a browser |
+
+The unit suite is ~2,000 tests (Vitest). It is strong on logic and weak on integration: several of
+the worst defects passed every test because the test exercised a mock, not the database or the
+vendor (§12).
+
+### 11.1 Security model at a glance
+
+| Boundary | Control |
+|---|---|
+| Browser → Kira | Supabase session cookie; middleware gates `/admin` (session + `ADMIN_EMAILS` allowlist), `/distributor` (distributor membership), owner routes (session), `/introducer` (signed cookie, no Supabase account) |
+| ElevenLabs → Kira tool webhooks | Shared secret header; fail-closed (unset secret → 500, wrong secret → 401); person from the baked `?uid=` |
+| ElevenLabs → Kira post-call | HMAC signature over the raw body; unsigned → 401 |
+| Kira → orchestrator | Per-caller shared secrets; email/beta-code callers are scoped and non-interchangeable |
+| Stripe → Kira | Webhook signature; idempotent on event id |
+| Server → database | Service-role key on server paths (bypasses RLS — isolation is in the queries, §2B); publishable key in the browser (RLS applies) |
+| Emergency stop | `haltState('conversations')` — returns 503 on voice start and the typed route; no tools run, nothing is written |
+| Outbound writes on the owner's behalf | Server-enforced explicit approval (`approved === true`), never prompt-only |
+
+### 11.2 Third-party processors
+
+| Processor | Receives | Region / note |
+|---|---|---|
+| Supabase | All application data | Mumbai, India |
+| Vercel | Requests, logs | Global edge |
+| ElevenLabs | Voice audio, transcripts, agent prompts | Workspace shared across portfolio products |
+| OpenAI | Typed conversation turns, extraction and embedding inputs | — |
+| Mnemo | Distilled facts only (no transcripts), per-person scopes | External semantic memory |
+| Resend | Outbound email content and addresses | — |
+| Stripe | Billing identities | — |
+| Google / Microsoft / Xero | Via the orchestrator, only for owners who connect them | OAuth, per-owner consent |
 
 ---
 
 ## 12. Known gaps
 
-Stated rather than omitted.
+Stated rather than omitted. As at 2026-10-02.
 
-- **The valuation band decision is CLOSED** (2026-08-03/04): the sector median is a centre rather
-  than a floor, Kira's claimed uplift is bounded at 0.75 turns, and everyone is rescored rather than
-  frozen at a historical multiple. See BUILD_REGISTER entry for `LLD 6`.
+### 12.1 Production-readiness gaps (the work a development partner is being asked to scope)
 
-- **Voice timing with `turn_eagerness: patient` is unverified by listening** (2026-09-30): the
-  config change was reasoned from the reported symptom and applied across all 30 agents; nobody has
-  been on a call with a real microphone since. If she still interrupts, the next lever is
-  `soft_timeout_config.timeout_seconds` (currently disabled at `-1`), not a prompt change. The
-  relevant entry is BUILD_REGISTER AA.
+| Area | Gap |
+|---|---|
+| Tenant isolation | Server paths use the service-role key, so isolation depends on every query filtering by `organisation_id`. No automated cross-tenant test suite exists; the distributor → client hierarchy multiplies the cases (§2B, §7A). |
+| Type safety in CI | Until 2026-10-02 neither CI nor the production build checked types (`next.config.js` sets `ignoreBuildErrors: true`; the CI step called an `npm run typecheck` script that did not exist, and `--if-present` skipped it silently). `main` failed `tsc` for over a week unnoticed. The `typecheck` script now exists, so CI checks types; the production build still does not. |
+| Integration testing | ~2,000 unit tests, mostly against mocks. Three tools were broken for weeks while their tests passed (§12.2). There is no test that exercises a real database schema or a real vendor callback in CI beyond the memory probe. |
+| Release process | Every push to `main` deploys to production. No staging, no branch protection, no required review. |
+| Observability | Vercel runtime logs are not reachable by the build tooling (permission scope), and retention is short. Silent failures — wrong identity, unbound webhook, tool returning "not found" — produce no alert. |
+| Shared vendor workspace | All portfolio products share one ElevenLabs workspace; a misconfigured script can affect other products' agents. |
+| Data residency | Supabase is in Mumbai; the product's first market is Australia. Not yet decided whether that is acceptable to clients. |
+| Supabase key model | Migration from the legacy JWT keys to the API-key model was validated on Preview only (2026-08-25); production status should be confirmed. |
+| Email outside Australia | Kira will not send email for non-Australian businesses until each country's law is implemented (LLD §5.1A). |
 
-- **`KiraShape` distil flush has not been verified end-to-end in production** (2026-09-30): the
-  code path and trigger set are in place and typechecked; no typed-then-reload-then-verify cycle
-  has been run against a real deployment. See BUILD_REGISTER AA.
+### 12.2 Defect classes seen repeatedly — check for more of each
 
-- **The text-transport `person_id` fix** (2026-09-30, `4bd06c7`) was live-verified against one
-  fresh account; whether any account created **before** the `20260907090000` migration carries a
-  `kira_agents.user_id` that does not resolve to a `persons` row was not checked. Voice transport
-  was reasoned about, not re-tested.
+1. **Session identity in a webhook.** `file_manual` resolved the organisation from a browser session
+   inside an ElevenLabs tool webhook (no session exists) — it had never filed anything. Fixed
+   2026-10-02. Audited the same day: every other webhook path resolves identity with
+   `resolveOrganisationForPerson(uid)`; a new handler that calls `getCurrentOrganisationContext()`
+   reintroduces the bug.
+2. **Code ahead of the schema.** `confirm_fact` inserted columns the table did not have — zero rows
+   ever written, test green against a mock. Fixed 2026-10-02 with a migration-backed column check.
+3. **Legacy id vs person id.** Typed memory, voice conversation rows and tool calls were all, at
+   different times, written under the legacy `users.id` and read by `person_id`. Fixed 2026-09-30 /
+   10-01; **9 of 90 `kira_memory` rows still carry a legacy id** and need migrating.
+4. **Concurrent writes to the same vendor object.** The post-call webhook binding was erased by a
+   concurrent allowlist write on 4 of 5 new agents, each logging success. Fixed 2026-10-01 by
+   sequencing and read-back.
+5. **A setting changed in source but not in the fleet.** Agent configuration lives in ElevenLabs; a
+   source change reaches no live agent until re-provisioned or patched.
+
+### 12.3 Not verified
+
+- **`confirm_fact` and `file_manual` after the 2026-10-02 fixes:** no real confirmation has been
+  written yet (a test write would manufacture a fact on a real person's record). Filing additionally
+  needs the owner to have connected document storage; for one who has not, the expected result is an
+  honest "nowhere to file", not a filed manual.
+- **Typed turns shown in the transcript and the "Copy conversation as text" button**
+  (`@caistech/elevenlabs-convai` 0.17.2/0.17.3): not exercised in a browser.
+- **Accounts created before migration `20260907090000`** — whether every `kira_agents.user_id`
+  resolves to a `persons` row was not checked.
+
+### 12.4 Closed decisions (for context)
+
+- **Valuation band** (2026-08-03/04): the sector median is a centre rather than a floor, Kira's
+  claimed uplift is bounded at 0.75 turns, and everyone is rescored. See LLD §6.2.
+- **Silence re-prompt** (2026-10-01/02): `turn_timeout: -1`; confirmed by a tester (§3).
