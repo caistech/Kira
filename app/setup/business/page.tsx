@@ -14,7 +14,7 @@ import { redirect } from 'next/navigation';
 
 import { getAuthUser, getCurrentAppUser, getCurrentOrganisationContext } from '@/lib/auth';
 import { realSignOffName } from '@/lib/user-name';
-import { canSend } from '@/lib/business-identity';
+import { canSend, isAustralia } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
 import { BusinessIdentityForm } from '@/components/BusinessIdentityForm';
 
@@ -39,7 +39,10 @@ export default async function BusinessSetupPage({
   const editing = sp?.edit === '1';
 
   // Already done and not deliberately editing â€” don't make a configured owner walk through it again.
-  if (canSend(identity) && !editing) redirect('/dashboard');
+  // Outside Australia canSend() is false by design (jurisdiction guard), so a saved non-AU record
+  // counts as done too — otherwise he is sent back to this form on every visit.
+  const savedOutsideAustralia = Boolean(identity?.legal_name?.trim()) && !isAustralia(identity?.country);
+  if ((canSend(identity) || savedOutsideAustralia) && !editing) redirect('/dashboard');
 
   // NEVER PRE-FILL THIS FROM AN EMAIL ADDRESS. This box is what goes at the bottom of a quote to his
   // customer, and it was arriving pre-filled with `dennis+ray` â€” the front half of the address â€”

@@ -13,7 +13,7 @@ import { redirect } from 'next/navigation';
 import { validateAbn } from '@caistech/abn-lookup';
 
 import { getCurrentAppUser, getCurrentOrganisationContext } from '@/lib/auth';
-import { validateBusinessIdentity, type IdentityErrors } from '@/lib/business-identity';
+import { isAustralia, validateBusinessIdentity, type IdentityErrors } from '@/lib/business-identity';
 import { getBusinessIdentity, upsertBusinessIdentity, markSynced, clearSynced } from '@/lib/business-identity/store';
 import { pushIdentityToOrchestrator } from '@/lib/business-identity/sync';
 
@@ -47,6 +47,7 @@ const organisationId = organisationContext?.organisationId;
   // safe because that component clears its own selection the moment the name is edited â€” so a stale
   // selection cannot outrank something typed afterwards.
   const result = validateBusinessIdentity({
+    country: s('country'),
     legalName: s('legal_name'),
     abn: s('abn_lookup') || s('abn'),
     tradingName: s('trading_name'),
@@ -125,13 +126,15 @@ const organisationId = organisationContext?.organisationId;
   try {
     saved = await upsertBusinessIdentity(organisationId, {
       legal_name: v.legalName,
-      abn: v.abn,
+      // No ABN outside Australia — stored as null, never as an empty string that looks like one.
+      abn: v.abn || null,
       trading_name: v.tradingName ?? null,
       street: v.street,
       locality: v.locality,
       state: v.state,
       postcode: v.postcode,
-      country: 'AU',
+      // Was hardcoded 'AU', which is how a business in Calgary came to be recorded as Australian.
+      country: v.country,
       reply_email: v.replyEmail,
       sign_off_name: v.signOffName ?? null,
       sending_domain: sendingDomain,
@@ -145,6 +148,18 @@ const organisationId = organisationContext?.organisationId;
     });
   } catch (error) {
     return { message: error instanceof Error ? error.message : 'Could not save your business details.' };
+  }
+
+  // OUTSIDE AUSTRALIA THERE IS NOTHING TO PUSH. The orchestrator holds the identity it SENDS under,
+  // and Kira does not send email outside Australia yet (jurisdiction guard). Pushing anyway would be
+  // refused for the missing ABN and the dashboard would report "your sender is out of sync" — an
+  // alarming message about a sender that, correctly, does not exist.
+  if (!isAustralia(saved.country)) {
+    await clearSynced(organisationId);
+    revalidatePath('/dashboard');
+    revalidatePath('/settings');
+    revalidatePath('/setup/business');
+    redirect('/dashboard?identity=saved');
   }
 
   const sync = await pushIdentityToOrchestrator(user.person_id, {

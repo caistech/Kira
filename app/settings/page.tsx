@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { getAuthUser, getCurrentAppUser, getCurrentOrganisationContext } from '@/lib/auth';
 import { createServiceClientV2 } from '@/lib/supabase/server';
-import { composePostalAddress, displayName, formatAbn } from '@/lib/business-identity';
+import { composePostalAddress, displayName, formatAbn, isAustralia } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
 import { fetchConnections, DRIVE_ACCESS_LABEL } from '@/lib/connectors/status';
 import { retryIdentitySync } from '@/app/setup/business/actions';
@@ -163,10 +163,12 @@ export default async function SettingsPage() {
                   <dd className="text-gray-600">{identity.legal_name}</dd>
                 </div>
               ) : null}
-              <div>
-                <dt className="sr-only">ABN</dt>
-                <dd className="text-gray-600">ABN {formatAbn(identity.abn)}</dd>
-              </div>
+              {identity.abn ? (
+                <div>
+                  <dt className="sr-only">ABN</dt>
+                  <dd className="text-gray-600">ABN {formatAbn(identity.abn)}</dd>
+                </div>
+              ) : null}
               <div>
                 <dt className="sr-only">Address</dt>
                 <dd className="text-gray-600">{composePostalAddress(identity)}</dd>
@@ -177,7 +179,14 @@ export default async function SettingsPage() {
               </div>
             </dl>
 
-            {identity.synced_to_orchestrator_at ? null : (
+            {!isAustralia(identity.country) ? (
+              // Outside Australia there is no sender to sync — see lib/business-identity COUNTRIES.
+              <p className="mt-4 rounded-xl bg-stone-50 p-4 text-base text-gray-700">
+                Kira can&apos;t send email for businesses outside Australia yet — every country has its own
+                email law, and we&apos;re only set up for Australia&apos;s so far. She can still draft anything
+                for you to send yourself.
+              </p>
+            ) : identity.synced_to_orchestrator_at ? null : (
               <div className="mt-4 rounded-xl bg-amber-50 p-4">
                 <p className="text-base text-gray-800">
                   These are saved here, but the system that sends your email hasn&apos;t confirmed them

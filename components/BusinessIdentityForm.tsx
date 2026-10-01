@@ -19,7 +19,7 @@ import { AddressAutocomplete } from '@caistech/corporate-components/address-auto
 import { useActionState, useEffect, useRef, useState } from 'react';
 import { formatAbn } from '@caistech/abn-lookup';
 import { AbnLookupField } from '@/components/AbnLookupField';
-import { type BusinessIdentity } from '@/lib/business-identity';
+import { COUNTRIES, normaliseCountry, type BusinessIdentity } from '@/lib/business-identity';
 import { saveBusinessIdentity, type IdentityFormState } from '@/app/setup/business/actions';
 
 const INPUT =
@@ -106,6 +106,13 @@ export function BusinessIdentityForm({
   const [stateCode, setStateCode] = useState(identity?.state ?? '');
   const [postcode, setPostcode] = useState(identity?.postcode ?? '');
 
+  // THE COUNTRY DECIDES THE REST OF THE FORM. Australia: the register lookup, ABN, the AU address
+  // lookup and the authority to send. Anywhere else there is no ABN to look up, the address lookup
+  // is Australia-biased and would suggest the wrong continent, and Kira does not send email there
+  // yet — so those three are not shown rather than shown and unanswerable.
+  const [country, setCountry] = useState(normaliseCountry(identity?.country) ?? 'AU');
+  const australian = country === 'AU';
+
   return (
     <form action={formAction} className="space-y-6">
       {errorList.length ? (
@@ -128,8 +135,39 @@ export function BusinessIdentityForm({
         </div>
       ) : null}
 
+      {/* ── Where the business is registered ───────────────────────────────────────────────── */}
+      <Field
+        label="Country your business is registered in"
+        hint={australian ? undefined : 'Outside Australia there is no ABN to look up — just your business name and address.'}
+        error={errors.country}
+        required
+      >
+        <select
+          name="country"
+          value={country}
+          onChange={(e) => setCountry(e.target.value)}
+          autoComplete="country"
+          className={INPUT}
+        >
+          {COUNTRIES.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      {!australian ? (
+        <p className="rounded-xl bg-stone-50 px-4 py-3 text-base text-stone-700">
+          Kira can&apos;t send email for businesses outside Australia yet — every country has its own email
+          law, and we&apos;re only set up for Australia&apos;s so far. Everything else works: she&apos;ll learn
+          your business and draft whatever you need for you to send yourself.
+        </p>
+      ) : null}
+
       {/* ── The entity ─────────────────────────────────────────────────────────────────────── */}
       <div className="space-y-4">
+        {australian ? (
         <AbnLookupField
           nameField="legal_name"
           abnField="abn_lookup"
@@ -149,27 +187,39 @@ export function BusinessIdentityForm({
             if (picked?.state) setStateCode(picked.state);
           }}
         />
+        ) : (
+          <Field label="Your registered business name" required>
+            <input
+              name="legal_name"
+              autoComplete="organization"
+              defaultValue={identity?.legal_name ?? ''}
+              className={INPUT}
+            />
+          </Field>
+        )}
         {errors.legalName ? (
           <p className="text-sm font-medium text-rose-600" role="alert">
             {errors.legalName}
           </p>
         ) : null}
 
-        <Field
-          label="ABN"
-          hint="Filled in when you pick your business above. Type it yourself if the register didn't find you."
-          error={errors.abn}
-        >
-          <input
-            name="abn"
-            inputMode="numeric"
-            autoComplete="off"
-            value={abn}
-            onChange={(e) => setAbn(e.target.value)}
-            placeholder="11 digits"
-            className={INPUT}
-          />
-        </Field>
+        {australian ? (
+          <Field
+            label="ABN"
+            hint="Filled in when you pick your business above. Type it yourself if the register didn't find you."
+            error={errors.abn}
+          >
+            <input
+              name="abn"
+              inputMode="numeric"
+              autoComplete="off"
+              value={abn}
+              onChange={(e) => setAbn(e.target.value)}
+              placeholder="11 digits"
+              className={INPUT}
+            />
+          </Field>
+        ) : null}
 
         {/* ASKED FOR, NEVER DERIVED FROM THE REPLY ADDRESS.
             The shortcut is to take the domain off the email he already gave, and it works only for
@@ -182,7 +232,7 @@ export function BusinessIdentityForm({
             name, his reply address and his ABN — weaker on deliverability, and honest. */}
         <Field
           label="Your website address"
-          hint="Optional. If you have one, Kira can send from it so your emails come from your own business — leave it blank and she'll still send for you."
+          hint="Optional, and with or without https:// — either works. If you have one, Kira can send from it so your emails come from your own business; leave it blank and she'll still send for you."
           error={errors.sendingDomain}
         >
           <input
@@ -191,7 +241,7 @@ export function BusinessIdentityForm({
             inputMode="url"
             autoComplete="url"
             defaultValue={identity?.sending_domain ?? ''}
-            placeholder="bobsplumbing.com.au"
+            placeholder={australian ? 'bobsplumbing.com.au' : 'yourbusiness.com'}
             className={INPUT}
           />
         </Field>
@@ -228,20 +278,31 @@ export function BusinessIdentityForm({
             mistype become one. Typing still works untouched if the lookup finds nothing or the
             token is unset — degrade, never block. */}
         <Field label="Street address" error={errors.street}>
-          <AddressAutocomplete
-            name="street"
-            defaultValue={identity?.street ?? ''}
-            placeholder="Start typing the address"
-            inputClassName={INPUT}
-            onSelect={(a) => {
-              setLocality(a.suburb ?? '');
-              setStateCode(a.state ?? '');
-              setPostcode(a.postcode ?? '');
-            }}
-          />
+          {australian ? (
+            <AddressAutocomplete
+              name="street"
+              defaultValue={identity?.street ?? ''}
+              placeholder="Start typing the address"
+              inputClassName={INPUT}
+              onSelect={(a) => {
+                setLocality(a.suburb ?? '');
+                setStateCode(a.state ?? '');
+                setPostcode(a.postcode ?? '');
+              }}
+            />
+          ) : (
+            // The shared address lookup is biased to Australia, so outside it a plain box is the
+            // honest control — suggestions from the wrong country are worse than none.
+            <input
+              name="street"
+              defaultValue={identity?.street ?? ''}
+              autoComplete="street-address"
+              className={INPUT}
+            />
+          )}
         </Field>
 
-        <Field label="Suburb or town" error={errors.locality}>
+        <Field label={australian ? 'Suburb or town' : 'City or town'} error={errors.locality}>
           <input
             name="locality"
             value={locality}
@@ -262,25 +323,28 @@ export function BusinessIdentityForm({
               can only hold the first; the second matched no option, so the box quietly reverted to
               "Choose…" after an address had been picked, with suburb and postcode visibly correct
               either side of it. normaliseState now accepts both, plus anything typed by hand. */}
-          <Field label="State" error={errors.state}>
+          <Field label={australian ? 'State' : 'State, province or region'} error={errors.state}>
             <input
               name="state"
               value={stateCode}
               onChange={(e) => setStateCode(e.target.value)}
               autoComplete="address-level1"
-              placeholder="WA"
+              placeholder={australian ? 'WA' : ''}
               className={INPUT}
             />
           </Field>
 
-          <Field label="Postcode" error={errors.postcode}>
+          <Field label={australian ? 'Postcode' : 'Postal code'} error={errors.postcode}>
+            {/* Keyed on the country so the numeric keypad and 4-character cap apply to Australia
+                only — a Canadian postal code is letters and digits ("T2C 0A1"). */}
             <input
+              key={australian ? 'au-postcode' : 'intl-postcode'}
               name="postcode"
               value={postcode}
               onChange={(e) => setPostcode(e.target.value)}
-              inputMode="numeric"
+              inputMode={australian ? 'numeric' : 'text'}
               autoComplete="postal-code"
-              maxLength={4}
+              maxLength={australian ? 4 : 12}
               className={INPUT}
             />
           </Field>
@@ -324,6 +388,8 @@ export function BusinessIdentityForm({
       </div>
 
       {/* ── Authority ──────────────────────────────────────────────────────────────────────── */}
+      {/* Australia only: it authorises sending, and outside Australia Kira does not send yet. */}
+      {australian ? (
       <div className="rounded-2xl bg-stone-50 p-4">
         <label className="flex items-start gap-3">
           <input
@@ -344,6 +410,7 @@ export function BusinessIdentityForm({
           </p>
         ) : null}
       </div>
+      ) : null}
 
       {state?.message ? (
         <p className="rounded-xl bg-rose-50 px-4 py-3 text-base text-rose-700" role="alert">

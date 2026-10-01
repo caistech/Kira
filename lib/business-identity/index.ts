@@ -16,6 +16,83 @@ export const AU_STATES = ['ACT', 'NSW', 'NT', 'QLD', 'SA', 'TAS', 'VIC', 'WA'] a
 export type AuState = (typeof AU_STATES)[number];
 
 /**
+ * Countries a business can be registered in, ISO 3166-1 alpha-2 → name. Australia first.
+ *
+ * WHY THIS EXISTS. The form was Australia-only end to end — ABN, AU state, four-digit postcode — so
+ * a consultant in Calgary could not save his own business name: "AB is not an Australian state",
+ * "Enter a 4-digit postcode" (John Orian, 2026-10-01, ZALEX Systems Corp.). The country is asked
+ * FIRST and decides the rest: Australia keeps the ABN lookup and AU address rules; anywhere else
+ * asks for a state/province and postcode in that country's own shape and no ABN.
+ *
+ * ⚠️ SAVING IS NOT SENDING. Kira is cleared to send email in Australia only — every other country
+ * has its own law (CAN-SPAM, CASL, GDPR/PECR). A non-AU business can record its details and use the
+ * product; canSend() stays false for it until that jurisdiction is configured, and the form says so.
+ */
+export const COUNTRIES: ReadonlyArray<{ code: string; name: string }> = [
+  { code: 'AU', name: 'Australia' },
+  { code: 'NZ', name: 'New Zealand' },
+  { code: 'CA', name: 'Canada' },
+  { code: 'US', name: 'United States' },
+  { code: 'GB', name: 'United Kingdom' },
+  { code: 'IE', name: 'Ireland' },
+  { code: 'IN', name: 'India' },
+  { code: 'SG', name: 'Singapore' },
+  { code: 'MY', name: 'Malaysia' },
+  { code: 'HK', name: 'Hong Kong' },
+  { code: 'PH', name: 'Philippines' },
+  { code: 'ID', name: 'Indonesia' },
+  { code: 'VN', name: 'Vietnam' },
+  { code: 'TH', name: 'Thailand' },
+  { code: 'JP', name: 'Japan' },
+  { code: 'CN', name: 'China' },
+  { code: 'KR', name: 'South Korea' },
+  { code: 'PK', name: 'Pakistan' },
+  { code: 'AE', name: 'United Arab Emirates' },
+  { code: 'SA', name: 'Saudi Arabia' },
+  { code: 'ZA', name: 'South Africa' },
+  { code: 'NG', name: 'Nigeria' },
+  { code: 'KE', name: 'Kenya' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'FR', name: 'France' },
+  { code: 'NL', name: 'Netherlands' },
+  { code: 'ES', name: 'Spain' },
+  { code: 'IT', name: 'Italy' },
+  { code: 'CH', name: 'Switzerland' },
+  { code: 'SE', name: 'Sweden' },
+  { code: 'NO', name: 'Norway' },
+  { code: 'DK', name: 'Denmark' },
+  { code: 'BR', name: 'Brazil' },
+  { code: 'MX', name: 'Mexico' },
+  { code: 'IL', name: 'Israel' },
+];
+
+const COUNTRY_NAME: Record<string, string> = Object.fromEntries(COUNTRIES.map((c) => [c.code, c.name]));
+const COUNTRY_BY_NAME: Record<string, string> = Object.fromEntries(
+  COUNTRIES.map((c) => [c.name.toLowerCase(), c.code]),
+);
+
+/** A code, a name, or blank → a supported ISO code, or null. Blank is Australia (every legacy row). */
+export function normaliseCountry(input: string | null | undefined): string | null {
+  const raw = (input || '').trim();
+  if (!raw) return 'AU';
+  const upper = raw.toUpperCase();
+  if (COUNTRY_NAME[upper]) return upper;
+  return COUNTRY_BY_NAME[raw.toLowerCase()] ?? null;
+}
+
+/** ISO code → display name; anything unrecognised passes through as typed. */
+export function countryName(code: string | null | undefined): string {
+  const raw = (code || '').trim();
+  if (!raw) return 'Australia';
+  return COUNTRY_NAME[raw.toUpperCase()] ?? raw;
+}
+
+/** Australia is the only country with an ABN and the only one Kira may send email in. */
+export function isAustralia(country: string | null | undefined): boolean {
+  return normaliseCountry(country) === 'AU';
+}
+
+/**
  * Mail providers, not domains anyone can send from.
  *
  * These are the addresses this ICP actually uses — a tradesman in his sixties is on bigpond or
@@ -151,7 +228,10 @@ export function longDateIn(timeZone: string, value: string | Date): string {
 }
 
 export interface BusinessIdentityInput {
+  /** ISO 3166-1 alpha-2; blank means Australia. Decides which rules the rest of the fields follow. */
+  country?: string | null;
   legalName: string;
+  /** Required for Australia; ignored for every other country. */
   abn: string;
   tradingName: string;
   street: string;
@@ -168,7 +248,7 @@ export interface BusinessIdentityInput {
    * their reply address and their ABN.
    */
   sendingDomain?: string | null;
-  /** The authority checkbox. Absent or false is a refusal to save, not a default. */
+  /** The authority checkbox. Required for Australia, where Kira sends; absent elsewhere. */
   authorised: boolean;
 }
 
@@ -200,8 +280,11 @@ export type IdentityErrors = Partial<Record<keyof BusinessIdentityInput, string>
 export interface ValidationResult {
   ok: boolean;
   errors: IdentityErrors;
-  /** Present only when ok. Normalised: trimmed, ABN digits-only, state upper-cased. */
-  value?: Omit<BusinessIdentityInput, 'authorised'> & { abn: string; state: AuState };
+  /**
+   * Present only when ok. Normalised: trimmed, ISO country code, and for Australia the ABN
+   * digits-only and the state as its code. Outside Australia `abn` is '' and the state is as typed.
+   */
+  value?: Omit<BusinessIdentityInput, 'authorised' | 'country'> & { country: string; abn: string; state: string };
 }
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -282,10 +365,13 @@ export function composePostalAddress(parts: {
   postcode: string;
   country?: string | null;
 }): string {
+  // An Australian state is a code and reads upper-cased ("WA"); a province or county elsewhere is
+  // kept exactly as he typed it ("Alberta", "Greater London").
+  const region = isAustralia(parts.country) ? parts.state.trim().toUpperCase() : parts.state.trim();
   return [
     parts.street.trim(),
-    `${parts.locality.trim()} ${parts.state.trim().toUpperCase()} ${parts.postcode.trim()}`.trim(),
-    (parts.country || 'Australia').trim(),
+    `${parts.locality.trim()} ${region} ${parts.postcode.trim()}`.trim(),
+    countryName(parts.country),
   ]
     .filter(Boolean)
     .join(', ');
@@ -301,12 +387,18 @@ export function composePostalAddress(parts: {
 export function validateBusinessIdentity(input: BusinessIdentityInput): ValidationResult {
   const errors: IdentityErrors = {};
 
+  const country = normaliseCountry(input.country);
+  if (!country) errors.country = 'Choose the country your business is registered in.';
+  const australian = country === 'AU';
+
   const legalName = (input.legalName || '').trim();
   if (!legalName) errors.legalName = 'Enter the registered business name.';
   else if (legalName.length > 200) errors.legalName = 'That is longer than a registered name can be.';
 
-  const abn = normaliseAbn(input.abn || '');
-  if (!abn) {
+  // ABN — Australia only. Anywhere else there is no ABN to ask for, and demanding one is the wall
+  // a Canadian consultant hit trying to save his own business name.
+  const abn = australian ? normaliseAbn(input.abn || '') : '';
+  if (australian && !abn) {
     errors.abn = (input.abn || '').trim()
       ? "That ABN doesn't check out. It should be 11 digits — search your business name above to fill it in."
       : 'Enter your ABN, or search your business name above to fill it in.';
@@ -316,12 +408,21 @@ export function validateBusinessIdentity(input: BusinessIdentityInput): Validati
   if (!street) errors.street = 'Enter the street address.';
 
   const locality = (input.locality || '').trim();
-  if (!locality) errors.locality = 'Enter the suburb or town.';
+  if (!locality) errors.locality = australian ? 'Enter the suburb or town.' : 'Enter the city or town.';
 
-  // Accepts "WA", "wa", or "Western Australia" — see normaliseState for why all three arrive.
-  const state = normaliseState(input.state) ?? '';
-  if (!(input.state || '').trim()) errors.state = 'Enter the state.';
-  else if (!state) errors.state = 'That is not an Australian state or territory — try WA, NSW, VIC and so on.';
+  // Australia: accepts "WA", "wa", or "Western Australia" — see normaliseState for why all three
+  // arrive. Elsewhere: whatever the country calls it (province, state, county), as typed.
+  const rawState = (input.state || '').trim();
+  let state = '';
+  if (australian) {
+    state = normaliseState(input.state) ?? '';
+    if (!rawState) errors.state = 'Enter the state.';
+    else if (!state) errors.state = 'That is not an Australian state or territory — try WA, NSW, VIC and so on.';
+  } else {
+    state = rawState;
+    if (!rawState) errors.state = 'Enter the state, province or region.';
+    else if (rawState.length > 100) errors.state = 'That is longer than a state or province name can be.';
+  }
 
   const tradingName = (input.tradingName || '').trim();
   if (!tradingName) errors.tradingName = 'Enter the name customers know you by.';
@@ -339,15 +440,24 @@ export function validateBusinessIdentity(input: BusinessIdentityInput): Validati
       'That is an email provider, not your own web address. Leave it blank if you don’t have a website — Kira will still send for you.';
   }
 
+  // Australia: four digits. Elsewhere: postal codes are letters, digits, spaces and hyphens in every
+  // shape from "90210" to "T2C 0A1" to "SW1A 1AA", so the check is shape-only, not a format.
   const postcode = (input.postcode || '').trim();
-  if (!/^\d{4}$/.test(postcode)) errors.postcode = 'Enter a 4-digit postcode.';
+  if (australian) {
+    if (!/^\d{4}$/.test(postcode)) errors.postcode = 'Enter a 4-digit postcode.';
+  } else if (!/^[A-Za-z0-9][A-Za-z0-9 -]{1,11}$/.test(postcode)) {
+    errors.postcode = 'Enter the postal code.';
+  }
 
   const replyEmail = (input.replyEmail || '').trim();
   if (!replyEmail) errors.replyEmail = 'Enter the address replies should go to.';
   else if (!EMAIL.test(replyEmail)) errors.replyEmail = "That doesn't look like an email address.";
 
-  // Not a formality. Mail goes out under his ABN; he has to have said so.
-  if (!input.authorised) errors.authorised = 'Please confirm you authorise Kira to send email as this business.';
+  // Not a formality. Mail goes out under his ABN; he has to have said so. Outside Australia Kira
+  // does not send at all yet, so there is nothing to authorise.
+  if (australian && !input.authorised) {
+    errors.authorised = 'Please confirm you authorise Kira to send email as this business.';
+  }
 
   if (Object.keys(errors).length) return { ok: false, errors };
 
@@ -355,12 +465,13 @@ export function validateBusinessIdentity(input: BusinessIdentityInput): Validati
     ok: true,
     errors: {},
     value: {
+      country: country as string,
       legalName,
       abn: abn as string,
       tradingName: (input.tradingName || '').trim(),
       street,
       locality,
-      state: state as AuState,
+      state,
       postcode,
       replyEmail,
       signOffName: (input.signOffName || '').trim() || null,
@@ -378,6 +489,9 @@ export function validateBusinessIdentity(input: BusinessIdentityInput): Validati
  */
 export function canSend(identity: BusinessIdentity | null | undefined): boolean {
   if (!identity) return false;
+  // Jurisdiction guard (PRODUCT_STANDARDS §9): Australia only, until another country's email law is
+  // configured. A complete Canadian record is still not one Kira may send under.
+  if (!isAustralia(identity.country)) return false;
   return Boolean(
     identity.legal_name?.trim() &&
       /^\d{11}$/.test(identity.abn || '') &&

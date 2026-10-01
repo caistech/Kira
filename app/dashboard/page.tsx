@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getCurrentOrganisationContext } from '@/lib/auth';
-import { canSend, DEFAULT_TIME_ZONE as DASHBOARD_TIME_ZONE } from '@/lib/business-identity';
+import { canSend, isAustralia, DEFAULT_TIME_ZONE as DASHBOARD_TIME_ZONE } from '@/lib/business-identity';
 import { getBusinessIdentity } from '@/lib/business-identity/store';
 import { createSessionClientV2 } from '@/lib/supabase/server-session';
 import { KiraShapeSection } from '@/components/KiraShapeSection';
@@ -71,12 +71,16 @@ export default async function DashboardPage({
   // answering it is how a screen ends up reassuring someone about a send that will be refused.
   // The difference is what happens on a NO — he now reads it and keeps going.
   const identity = user?.organisationId ? await getBusinessIdentity(user.organisationId) : null;
-  const cannotSendYet = Boolean(user?.organisationId) && !canSend(identity);
+  // A business registered OUTSIDE Australia with its details saved. It cannot send — the jurisdiction
+  // guard, not a missing field — so "add your business details" would be a nag he can never clear,
+  // and "out of sync" would be an alarm about a sender that correctly does not exist.
+  const outsideAustralia = Boolean(identity?.legal_name?.trim()) && !isAustralia(identity?.country);
+  const cannotSendYet = Boolean(user?.organisationId) && !canSend(identity) && !outsideAustralia;
 
   // Saved here, not held by the system that sends. A real state, and one he must be able to see —
   // he is not trapped in setup over our outage, but he is not told it worked either. The grace
   // period that stops this firing the instant he arrives lives in sendingLooksStuck above.
-  const identityUnsynced = sendingLooksStuck(identity);
+  const identityUnsynced = !outsideAustralia && sendingLooksStuck(identity);
 
   const { data: agents } = user
     ? await svc
@@ -253,6 +257,19 @@ export default async function DashboardPage({
           >
             Add your business details
           </Link>
+        </div>
+      )}
+
+      {outsideAustralia && (
+        <div className="mb-6 rounded-2xl border border-stone-200 bg-stone-50 p-5">
+          <p className="text-base font-semibold text-stone-900">
+            Kira can&apos;t send email for businesses outside Australia yet.
+          </p>
+          <p className="mt-1 max-w-prose text-base text-stone-700">
+            Every country has its own email law, and we&apos;re only set up for Australia&apos;s so far.
+            Everything else works — she can talk with you, learn your business and draft whatever you
+            need for you to send yourself.
+          </p>
         </div>
       )}
 

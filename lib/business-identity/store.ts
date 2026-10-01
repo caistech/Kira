@@ -67,7 +67,8 @@ export async function getBusinessIdentity(
 
 export interface UpsertIdentity {
   legal_name: string;
-  abn: string;
+  /** Null outside Australia — there is no ABN to store. */
+  abn: string | null;
   trading_name: string | null;
   street: string;
   locality: string;
