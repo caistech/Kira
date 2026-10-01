@@ -7,7 +7,7 @@ diligence contact, or a new engineer on day one.
 **Companion:** `docs/LLD.md` holds the contracts, schemas and invariants. This document stops at
 the boundary of "what talks to what, and why."
 
-**Status:** describes `main` as at 2026-09-30. Where something is deliberately *not* built, it says
+**Status:** describes `main` as at 2026-10-01. Where something is deliberately *not* built, it says
 so — an HLD that quietly omits the gaps is worse than none.
 
 ---
@@ -418,9 +418,14 @@ between them (an explicit, locked decision — see the register).
    route, admin-session-gated). Email variant `'partner'` (see `lib/invitation/invitation-service.ts`).
 3. The partner redeems (`/plan?code=…` → `/talk?journey=consultant`) and gets a `journey_type=
    'consultant'` `kira_agents` row (`getKiraPrompt` branches on `journeyType`, `lib/kira/prompts.ts`).
+   ⚠️ **A partner who ALREADY has a Kira login gets no membership from redemption** — the redeem
+   route mints a sign-in link and pins `selected_org_id`, which is honoured only when a membership
+   exists. Create their `owner` membership when inviting them (done for Darshil Patel, 2026-10-01).
 4. The partner's own onboarding conversation runs `getConsultantPrompt` — she asks about their
    practice (who they work with, methodology, outcomes, where Kira should fit) and captures it via
-   the same tool-calling pattern used for the client-owner journey, never a parallel pipeline.
+   the same tool-calling pattern used for the client-owner journey, never a parallel pipeline. The
+   consultant genome is extracted at the end of a voice call AND of a typed session (typed-only
+   interviews produced an empty genome until 2026-10-01).
 5. The partner provisions their own clients at `/distributor` (`provisionClientOrganisation`) — a
    plain form today (voice-driven provisioning here is deliberately deferred, see below), which
    sets `org_type='client_org'`, parents the new org under the PARTNER's own org (not the root), and

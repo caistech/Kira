@@ -7,7 +7,8 @@ breaking it, or a technical reviewer checking that the claims in the HLD are act
 that must survive any future change. An invariant is not a style preference. Each one is here
 because breaking it causes a specific, named failure.
 
-**Status:** `main` as at 2026-09-22.
+**Status:** `main` as at 2026-10-01 (§3.6 invariant 3, §3.6A and the business-identity country rules
+added; the header previously still read 2026-09-22 although §3.6/§3.7 were added on 2026-09-30).
 
 ---
 
@@ -465,6 +466,38 @@ for: the data is all there, the extraction simply never ran.
 Cost of the extra beacons is one indexed query — the route compares `created_at` against
 `distilled_at` and skips when nothing is newer — not one LLM pass.
 
+#### Invariant 3 — one identity across both transports (added 2026-10-01)
+
+Every row a conversation produces — `conversations.user_id`, `conversation_messages.user_id`,
+`kira_memory.user_id` — carries the **canonical `person_id`**, on BOTH transports. Voice reads
+history and memory by `person_id` (`get_conversation_context`, `recall_memory`), so a row under the
+legacy `users.id` is invisible to her: John Orian typed for an hour and her next voice call opened on
+"this is our first conversation".
+
+- The text route writes `agent.person_id ?? agent.user_id` and passes `userId` to
+  `completeConversationMemory` — without `userId` the pipeline stops after the distil and never
+  dedupes, which filed the same facts eight times.
+- A voice post-call whose conversation had no start row is inserted by the hub as `agent.user_id`
+  (legacy). `onConversationComplete` (`lib/kira/convai.ts`) realigns that row and its messages to the
+  agent's `person_id` **before** the distil runs.
+- Consultant-journey sessions extract the consultant genome at the end of a TYPED session too, not
+  only after a voice call.
+
+### 3.6A Agent provisioning invariants (added 2026-10-01)
+
+**Turn-taking is one constant.** Every creation path takes `KIRA_TURN_CONFIG`
+(`lib/kira/turn-config.ts`). `turn_eagerness` (when she decides he has finished) and `turn_timeout`
+(how long she waits in silence before re-prompting — vendor default 7s) are different settings;
+confusing them is how the "are you still there?" nag survived its first fix. `turn_timeout` is `-1`.
+Pinned by `lib/kira/turn-config.test.ts`.
+
+**The post-call webhook is bound LAST and read back.** Allowlist → tools/overrides →
+`bindPostCallWebhookVerified` (`lib/kira/post-call-binding.ts`). All three write `platform_settings`;
+run concurrently, a later write erased the binding on 4 of 5 agents while every bind logged success,
+and an unbound agent's calls are never recorded, distilled or remembered. Pinned by
+`lib/kira/post-call-binding.test.ts`. Repair tool for live agents:
+`scripts/fix-agent-turn-and-postcall.mjs` (dry run by default).
+
 ### 3.7 The knowledge-upload contract — added 2026-09-30
 
 `POST /api/kira/knowledge/upload` accepts a file and/or a URL for the owner, writes to
@@ -534,6 +567,24 @@ the portfolio-canonical `EMAIL_SENDER_*` variables.
 - **Render paths degrade** (`senderIdentityOrNull`). Refusing to show someone their unsubscribe
   confirmation because an operator forgot an environment variable punishes the recipient for our
   mistake.
+
+### 5.1A The owner's business identity — country first (added 2026-10-01)
+
+`lib/business-identity` + `components/BusinessIdentityForm.tsx` + `app/setup/business/actions.ts`.
+Mail Kira sends FOR an owner carries HIS entity, not ours. The **country** (ISO code, `COUNTRIES`,
+blank = Australia) is asked first and decides the rest:
+
+- **Australia** — ABR lookup, ABN (modulus-checked), AU state code, 4-digit postcode, the
+  authority-to-send checkbox, the AU address lookup. Unchanged.
+- **Elsewhere** — registered name, free-text state/province/region, a shape-only postal code, no ABN
+  (stored `null`), no authority checkbox, no Mapbox lookup (it is Australia-biased).
+
+**Invariant: saving is not sending.** `canSend()` is false for any non-AU business (the §5.2
+jurisdiction guard), the orchestrator push is skipped for it (it would be refused for the missing
+ABN), and the dashboard, settings and form say plainly that Kira cannot send email outside Australia
+yet — rather than showing "add your business details" or "out of sync" banners it could never clear.
+A saved non-AU record counts as done for the setup gate. Pinned by
+`lib/business-identity/country.test.ts`.
 
 ### 5.2 Commercial vs transactional
 

@@ -1,5 +1,37 @@
 # Build register — Kira
 
+> ## AB. 2026-10-01 — John Orian's second round: two of AA's fixes were aimed at the wrong thing, and voice calls had not been recorded for anyone since 22 September
+>
+> **Trigger:** John Orian retested on 1 October (screenshots in `docs/beta testers feedback/john orian
+> 1 oct/`): the "are you still there?" nag was still on; voice said "this is our first conversation"
+> after an hour of typing; "Auth session missing!" changing his password; his Calgary business
+> details could not be saved. Diagnosed from the production DB, his two ElevenLabs transcripts and
+> every live agent's config. Vercel logs were NOT available (403 under both team ids, and the repo's
+> own `VERCEL_TOKEN` also 403s on the project).
+>
+> | Symptom | Real cause | Fix |
+> |---|---|---|
+> | Nag every ~7s | `turn_timeout` (silence re-prompt), not `turn_eagerness`. AA's fix **hardcoded `turn_timeout: 7.0`** into all three creation paths. | One `KIRA_TURN_CONFIG` (`lib/kira/turn-config.ts`), `turn_timeout: -1` (API range: -1 or 1–300). All 7 live agents patched + read back. |
+> | Voice never remembered anything | **4 of 7 agents had no post-call webhook.** Bind and allowlist ran concurrently; the allowlist PATCH erased the binding whenever it landed second — every one logged `webhook_bind: success`. Zero voice `conversations` rows since 2026-09-22, for everyone. | Bind last + read-back + retry (`lib/kira/post-call-binding.ts`); 4 agents re-bound and verified. |
+> | Typed ≠ spoken memory | Text chat wrote conversation/messages/memory under the legacy `users.id`; voice reads by `person_id`. And the text distil never passed `userId`, so the pipeline skipped dedupe + semantic index → 8 distils, ~50 duplicate rows. Voice post-call rows inserted without a start row also took the legacy id. | `person_id` throughout; `userId` passed; post-call hook realigns the row before distil. |
+> | Consultant genome 0%, UUID as name | Genome extracted only after VOICE calls; the placeholder cron wrote `person_id` as `identity.name`. | Typed sessions extract too; cron writes the real name. |
+> | "Auth session missing!" | `/auth/callback` re-set session cookies `httpOnly: true`, no maxAge → browser client blind after magic-link login. | `sb-` cookies only, @supabase/ssr defaults. Existing users must sign in once more. |
+> | "I can't enable voice" | Text prompt didn't know the page has a Talk button; the distil then filed "voice is not enabled" as his preference. | Transport note points to the Talk button; false fact removed. |
+> | Couldn't save a Canadian business | Form + save were Australia-only; `country` hardcoded `'AU'`. | Country asked first; ABN/AU rules only for Australia; `canSend()` stays AU-only (jurisdiction guard) and every surface says so. |
+>
+> **Data repairs (prod):** John's rows moved legacy → person_id (0 left); 14 duplicate memories
+> superseded onto keepers (27 active → 12); the false "voice not enabled" fact parked with reason;
+> genome names fixed for John and Craig; John's org country set to CA (he gave AB / T2C).
+>
+> **Also:** `main` had failed `tsc` since 653fe6f (`cc` undeclared on the admin invitations body) —
+> fixed. Commits `732912e`, `465e069`; both deployed (GitHub deployment status `success`).
+>
+> **NOT verified:** no one has listened to a real voice call since the turn change; no real
+> typed→voice continuity walk; the magic-link password change not re-walked in a browser; the
+> country form not opened at 375px/1440px in a browser (typechecked + unit-tested only); the 30 Sept
+> 16:20Z "Connection closed unexpectedly" and a 29 Sept 500 on the post-call endpoint are
+> unexplained without Vercel logs.
+
 > ## AA. 2026-09-30 (same day, continued) — five production bugs from two partners' first live use, then a documentation audit that found the HLD describing a system that does not exist
 >
 > **Trigger:** two partners reported unusable behaviour in their first hands-on test. John Orian:
