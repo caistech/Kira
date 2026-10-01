@@ -45,12 +45,26 @@ export async function GET(request: NextRequest) {
   const target = ok ? `${origin}${next}` : `${origin}/login?error=auth_callback`;
   const res = NextResponse.redirect(target);
 
+  // ⚠️ THE SESSION COOKIES MUST BE READABLE BY THE BROWSER CLIENT — NOT httpOnly.
+  //
+  // This loop used to re-set every cookie httpOnly, with no maxAge. createBrowserClient
+  // reads the session from document.cookie, which cannot see an httpOnly cookie, so after a
+  // MAGIC-LINK login every client-side auth call failed: John Orian, 2026-10-01, Settings → Update
+  // password → "Auth session missing!". Password logins never came through here, which is why it
+  // only bit magic-link users. And with no maxAge the session died when the browser closed.
+  //
+  // These are @supabase/ssr's own DEFAULT_COOKIE_OPTIONS (path, lax, httpOnly false, 400 days), so
+  // the callback writes the cookie exactly as every other Supabase write in the app does. Only the
+  // Supabase auth cookies are re-set; anything else in the jar is left alone rather than rewritten
+  // with options it never had.
   for (const { name, value } of cookieStore.getAll()) {
+    if (!name.startsWith('sb-')) continue;
     res.cookies.set(name, value, {
-      httpOnly: true,
+      httpOnly: false,
       secure: true,
       sameSite: 'lax',
       path: '/',
+      maxAge: value ? 400 * 24 * 60 * 60 : 0,
     });
   }
 

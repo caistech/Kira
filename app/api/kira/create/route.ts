@@ -29,8 +29,10 @@ import {
   KiraFramework,
   JourneyType,
 } from '@/lib/kira/prompts';
-import { bindWorkspaceWebhook, setAllowlist, standardAllowlist, setAgentTools, setAgentOverrides, getAgent, DEFAULT_AGENT_LLM } from '@caistech/elevenlabs-convai';
+import { setAllowlist, standardAllowlist, setAgentTools, setAgentOverrides, getAgent, DEFAULT_AGENT_LLM } from '@caistech/elevenlabs-convai';
 import { kiraAllTools, conversationContinuityPrompt } from '@/lib/kira/convai';
+import { KIRA_TURN_CONFIG } from '@/lib/kira/turn-config';
+import { bindPostCallWebhookVerified } from '@/lib/kira/post-call-binding';
 import { buildProfileBriefing } from '@/lib/kira/discovery-schema';
 import { formatMoneyApprox } from '@/lib/valuation/currency';
 import { displayedFigures } from '@/lib/valuation/displayed';
@@ -53,25 +55,9 @@ const ELEVENLABS_CONFIG = {
   temperature: 0.7,                    // Balanced creativity
   max_duration_seconds: 3600,          // 1 hour max conversation
 
-  // ⚠️ SHE MUST NOT INTERRUPT A MAN WHO IS THINKING. Sent verbatim as conversation_config.turn.
-  //
-  // The hub default is `normal`, and "normal" reads ~7s of silence as the user's turn being over.
-  // For a product whose whole surface is a voice call, that is not a tuning preference — it is the
-  // agent talking over the one person who is still there. John Orian, testing 2026-09-29:
-  // "the constant checking to see if I am still here is so annoying that I turned her off."
-  //
-  // `patient` makes her wait the pause out. She still takes the turn when he has genuinely
-  // finished — it is not a mute switch, and turning her silent is not the goal; being audible
-  // without being intrusive is. The remaining fields are pinned to the values already live on all
-  // 30 agents (verified 2026-09-30) so applying this to a NEW agent produces the same agent as the
-  // fleet, rather than a second silently-different fleet.
-  turn: {
-    mode: 'turn',
-    turn_eagerness: 'patient',
-    turn_timeout: 7.0,
-    silence_end_call_timeout: -1.0,
-    turn_model: 'turn_v3',
-  },
+  // Sent verbatim as conversation_config.turn. Defined once in lib/kira/turn-config.ts — read the
+  // note there before changing it; turn_eagerness and turn_timeout are different settings.
+  turn: KIRA_TURN_CONFIG,
 };
 
 /* ------------------------------------------------------------------ */
@@ -404,7 +390,7 @@ export async function POST(req: NextRequest) {
           },
           // NOTE: the per-agent platform_settings.webhook is deprecated + silently
           // ignored by ElevenLabs — the workspace-scoped post-call webhook is bound
-          // after creation via bindWorkspaceWebhook() below.
+          // after creation, last and verified, via bindPostCallWebhookVerified() below.
         }),
       }
     );
@@ -438,11 +424,15 @@ export async function POST(req: NextRequest) {
     } // end: create-the-first-one branch
 
     /* ---------------- Post-create ElevenLabs binding (all non-fatal) ---------------- */
-    // webhook bind + origin allowlist are independent ElevenLabs round-trips and stay concurrent.
-    // Running everything sequentially added ~15s to the request (allowlist ~7s, tools ~5s) — enough
-    // for a slow client to time out and retry.
+    // ORDER: allowlist → tools → post-call webhook (verified). Strictly sequential.
     //
-    // ⚠️ THE TOOL ATTACH IS NO LONGER IN THIS SET, AND THE REASON IS A MEASURED RACE WINDOW.
+    // ⚠️ THE WEBHOOK BIND AND THE ALLOWLIST USED TO RUN CONCURRENTLY, AND THAT LOST THE BINDING. Both
+    // write `platform_settings`; when the bind landed first, the allowlist PATCH erased it — 4 of 5
+    // agents minted 2026-09-22..29 ended up with no post-call webhook while logging success. See
+    // lib/kira/post-call-binding.ts. Sequencing costs a few seconds; a lost binding costs every call
+    // the owner ever makes.
+    //
+    // ⚠️ THE TOOL ATTACH ALSO RUNS ALONE, AND THE REASON IS A MEASURED RACE WINDOW.
     //
     // All three of these PATCH the SAME agent, and `setAgentTools` is not one call — it is a
     // read-modify-write spanning three round-trips: `ensureWorkspaceTools` (eighteen tools),
@@ -473,46 +463,16 @@ export async function POST(req: NextRequest) {
     // which is the same reasoning that made the read-back the right fix for an unknown cause. It
     // costs about four seconds on a request that already takes fourteen, and it buys the property
     // that nothing else is writing to the agent while its tools are being attached.
-    await Promise.allSettled([
-      // Bind the workspace-scoped post-call webhook (the per-agent platform_settings.webhook shape is
-      // deprecated + silently ignored). The signing secret is returned only on first creation —
-      // capture it into ELEVENLABS_WEBHOOK_SECRET.
-      (async () => {
-        try {
-          const { webhookSecret } = await bindWorkspaceWebhook(ELEVENLABS_API_KEY, agentId, {
-            name: 'Kira post-call',
-            url: `${APP_URL}/api/kira/webhooks/post-call`,
-          });
-          await log(
-            supabase,
-            requestId,
-            'webhook_bind',
-            'success',
-            webhookSecret
-              ? 'workspace webhook created — set ELEVENLABS_WEBHOOK_SECRET to the returned secret (shown once)'
-              : 'reused existing workspace webhook',
-            { secretReturned: Boolean(webhookSecret) }   // never log the secret value
-          );
-          if (webhookSecret) {
-            console.warn('[kira/create] Workspace post-call webhook CREATED — set ELEVENLABS_WEBHOOK_SECRET env to the returned secret (ElevenLabs shows it once).');
-          }
-        } catch (e: any) {
-          await log(supabase, requestId, 'webhook_bind', 'error', e?.message ?? 'webhook bind failed');
-          console.error('[kira/create] webhook bind failed:', e);
-        }
-      })(),
-      // Lock the agent's origin allowlist — without it, anyone who reads the agent ID from the client
-      // bundle can run free voice calls on the workspace key (VOICE AI rule).
-      (async () => {
-        try {
-          await setAllowlist(ELEVENLABS_API_KEY, agentId, standardAllowlist(new URL(APP_URL).hostname));
-          await log(supabase, requestId, 'allowlist_set', 'success');
-        } catch (e: any) {
-          await log(supabase, requestId, 'allowlist_set', 'error', e?.message ?? 'allowlist set failed');
-          console.error('[kira/create] allowlist set failed (non-fatal):', e);
-        }
-      })(),
-    ]);
+    // Lock the agent's origin allowlist — without it, anyone who reads the agent ID from the client
+    // bundle can run free voice calls on the workspace key (VOICE AI rule). The post-call webhook is
+    // bound LAST, after every other platform_settings write — see bindPostCallWebhookVerified.
+    try {
+      await setAllowlist(ELEVENLABS_API_KEY, agentId, standardAllowlist(new URL(APP_URL).hostname));
+      await log(supabase, requestId, 'allowlist_set', 'success');
+    } catch (e: any) {
+      await log(supabase, requestId, 'allowlist_set', 'error', e?.message ?? 'allowlist set failed');
+      console.error('[kira/create] allowlist set failed (non-fatal):', e);
+    }
 
     // Attach the canonical memory/continuity tools (an agent created without tools can't call
     // get_conversation_context / save_memory / recall_memory) as workspace entities on
@@ -578,6 +538,29 @@ export async function POST(req: NextRequest) {
         }
       }
     })();
+
+    // Post-call webhook — LAST, then read back. Without it no call is ever recorded or distilled.
+    const binding = await bindPostCallWebhookVerified(
+      ELEVENLABS_API_KEY,
+      agentId,
+      `${APP_URL}/api/kira/webhooks/post-call`,
+    );
+    await log(
+      supabase,
+      requestId,
+      'webhook_bind',
+      binding.bound ? 'success' : 'error',
+      binding.bound
+        ? binding.webhookSecret
+          ? 'workspace webhook created — set ELEVENLABS_WEBHOOK_SECRET to the returned secret (shown once)'
+          : 'bound and verified by read-back'
+        : `NOT BOUND after ${binding.attempts} attempts — this agent's calls will not be recorded: ${binding.error}`,
+      // never log the secret value
+      { attempts: binding.attempts, observed: binding.observedWebhookId, secretReturned: Boolean(binding.webhookSecret) },
+    );
+    if (!binding.bound) {
+      console.error(`[kira/create] agent ${agentId} post-call webhook not bound:`, binding.error);
+    }
 
     /* ---------------- Save Agent to Database ---------------- */
     await log(supabase, requestId, 'agent_save', 'start');

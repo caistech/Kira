@@ -77,11 +77,21 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
+      // The consultant's NAME, not their id. This placeholder used to write `name: agent.person_id`,
+      // so a genome nobody had filled in yet displayed a UUID as the consultant's name (John Orian,
+      // 2026-10-01). The real values arrive from consultant-genome-extract, which upserts over this.
+      const { data: person } = await db
+        .from('persons')
+        .select('first_name, last_name')
+        .eq('person_id', agent.person_id)
+        .maybeSingle();
+      const displayName = [person?.first_name, person?.last_name].filter(Boolean).join(' ').trim();
+
       const genomeRow = {
         genome_id: randomUUID(),
         organisation_id: agent.organisation_id,
         framework_id: frameworkId,
-        identity: { name: agent.person_id, agent_id: agent.id },
+        identity: { ...(displayName ? { name: displayName } : {}), agent_id: agent.id },
         completeness: 0,
       };
 

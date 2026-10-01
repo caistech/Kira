@@ -104,12 +104,34 @@ export function kiraConvaiRoutes(): ConvaiWebhookRoutes {
       try {
         const { data: crow } = await sb
           .from(KIRA_CONVAI_TABLES.conversations)
-          .select('user_id, organisation_id, duration_seconds')
+          .select('user_id, organisation_id, duration_seconds, agent_id, kira_agent_id')
           .eq('id', conv.id)
           .single();
         userId = crow?.user_id as string | undefined;
         organisationId = crow?.organisation_id as string | undefined;
         durationSeconds = Number(crow?.duration_seconds ?? 0);
+
+        // ⚠️ REALIGN THE ROW TO THE CANONICAL PERSON BEFORE ANYTHING READS IT. When no row was
+        // created at call start — which is every uid-baked call, since get_conversation_context only
+        // READS context — the package inserts this row as `agent.user_id`: the LEGACY users.id. The
+        // distil then files every fact under the legacy id, resolveOrganisationForPerson (which
+        // matches person_id only) finds no org, and her next call — which reads by person_id —
+        // finds no history. One update here keeps conversation, messages and memory on the identity
+        // every reader uses.
+        const agentRowId = (crow?.kira_agent_id ?? crow?.agent_id) as string | undefined;
+        if (agentRowId) {
+          const { data: agentRow } = await sb
+            .from('kira_agents')
+            .select('person_id')
+            .eq('id', agentRowId)
+            .maybeSingle();
+          const personId = agentRow?.person_id as string | undefined;
+          if (personId && personId !== userId) {
+            await sb.from(KIRA_CONVAI_TABLES.conversations).update({ user_id: personId }).eq('id', conv.id);
+            await sb.from(KIRA_CONVAI_TABLES.messages).update({ user_id: personId }).eq('conversation_id', conv.id);
+            userId = personId;
+          }
+        }
       } catch { /* non-fatal */ }
       // P0.4: if the conversation carries no org, resolve it from the canonical membership chain —
       // the memory this call produces must land in an owning organisation, never unowned.

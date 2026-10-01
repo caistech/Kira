@@ -12,6 +12,7 @@ import type {
   KiraTool
 } from './types';
 import { buildSystemPrompt, buildFirstMessage, generateAgentName } from './prompt-builder';
+import { KIRA_TURN_CONFIG } from './turn-config';
 
 // =============================================================================
 // AGENT CREATION
@@ -75,18 +76,9 @@ export async function createElevenLabsAgent(
         voice_id: baseConfig.voiceId,
         model_id: baseConfig.voiceModel || 'eleven_flash_v2',
       },
-      // MUST mirror app/api/kira/create/route.ts's ELEVENLABS_CONFIG.turn. ElevenLabs defaults to
-      // `normal`, which treats ~7s of silence as end-of-turn and has the agent interrupt a man who
-      // is only thinking — the behaviour John Orian reported on 2026-09-29. This path is not
-      // currently wired to a route, but it is a callable agent factory, so leaving the default in
-      // here would reintroduce the bug the moment someone uses it.
-      turn: {
-        mode: 'turn',
-        turn_eagerness: 'patient',
-        turn_timeout: 7.0,
-        silence_end_call_timeout: -1.0,
-        turn_model: 'turn_v3',
-      },
+      // Not currently wired to a route, but a callable agent factory — so it takes the shared
+      // definition rather than the vendor default (lib/kira/turn-config.ts).
+      turn: { ...KIRA_TURN_CONFIG },
     },
     platform_settings: {
       webhook: {

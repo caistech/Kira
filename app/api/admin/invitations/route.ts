@@ -67,6 +67,8 @@ export async function POST(request: NextRequest) {
     variant?: 'founding-beta';
     /** Per-recipient personal opening, 'founding-beta' only — see sendInvitationEmail's own doc. */
     personalNote?: string;
+    /** Copy recipients, 'founding-beta' only — passed straight to sendInvitationEmail. */
+    cc?: string | string[];
   };
   try {
     body = await request.json();

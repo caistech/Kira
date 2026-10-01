@@ -240,7 +240,7 @@ export async function POST(req: NextRequest) {
   // memory behind them is the owner's business. An admin may open one; nobody else may.
   const { data: agent, error: agentError } = await supabase
     .from(KIRA_CONVAI_TABLES.agents)
-    .select('id, user_id, person_id, organisation_id, elevenlabs_agent_id, status')
+    .select('id, user_id, person_id, organisation_id, elevenlabs_agent_id, status, journey_type')
     .eq('elevenlabs_agent_id', agentId)
     .maybeSingle();
 
@@ -382,6 +382,12 @@ export async function POST(req: NextRequest) {
             tables: KIRA_CONVAI_TABLES,
             semantic: { scopePrefix: 'kira-user-' },
             organisationId: agentOrganisationId,
+            // ⚠️ WITHOUT THIS THE PIPELINE STOPS AFTER THE DISTIL. completeConversationMemory runs
+            // its dedupe and semantic-index steps only when it has a userId, and this call never
+            // passed one — so every typed session re-extracted the transcript and nothing collapsed
+            // the repeats (John Orian, 2026-09-30: eight distils in sixteen minutes, the same five
+            // facts filed eight times over). Canonical person_id, the identity voice reads by.
+            userId: (agent.person_id as string | null) ?? (agent.user_id as string),
           },
         ),
       );
@@ -429,6 +435,31 @@ export async function POST(req: NextRequest) {
       }
 
       await sweepDuplicateMemories(agentOrganisationId, KIRA_CONVAI_TABLES.memory);
+
+      // CONSULTANT GENOME — the typed twin of the voice post-call's Stage B (lib/kira/convai.ts).
+      // A consultant's onboarding interview IS their genome, and until now only a VOICE call ever
+      // extracted it: John Orian typed most of his interview and his genome sat at 0% with nothing
+      // in it. Same extractor, same upsert, fail-soft — never costs the session.
+      if (agent.journey_type === 'consultant' && agentOrganisationId) {
+        try {
+          const { data: turns } = await supabase
+            .from(KIRA_CONVAI_TABLES.messages)
+            .select('role, content')
+            .eq('conversation_id', conversationId)
+            .order('created_at', { ascending: true })
+            .limit(400);
+          if (turns?.length) {
+            const { extractConsultantGenome } = await import('@/lib/kira/consultant-genome-extract');
+            await extractConsultantGenome(
+              agentOrganisationId,
+              turns.map((m) => ({ role: String(m.role), content: String(m.content ?? '') })),
+              { apiKey: process.env.OPENAI_API_KEY || '' },
+            );
+          }
+        } catch (error) {
+          console.error('[chat/text] consultant genome extraction failed (memories are safe):', error);
+        }
+      }
 
 
       // Stamped AFTER the pipeline returns, so a failed run is retried by the next trigger rather
@@ -479,7 +510,12 @@ export async function POST(req: NextRequest) {
     const { data: created, error: convError } = await supabase
       .from(KIRA_CONVAI_TABLES.conversations)
       .insert({
-        user_id: agent.user_id,
+        // ⚠️ person_id, NOT the legacy users.id. The distil takes the memory owner from this row,
+        // and voice reads history and memory by person_id (get_conversation_context, recall). Written
+        // under the legacy id, everything an owner TYPED was invisible to her when he next SPOKE —
+        // John Orian typed for an hour and her next voice call opened on "this is our first
+        // conversation". Same correction register Z made for tool identity on line ~613.
+        user_id: (agent.person_id as string | null) ?? agent.user_id,
         // INV-020: conversations are organisation-owned; user_id stays provenance of who started it.
         organisation_id: agentOrganisationId,
         // The INTERNAL agent id — this table keys on kira_agents.id, not the ElevenLabs one.
@@ -512,7 +548,7 @@ export async function POST(req: NextRequest) {
   ]);
 
   const messages = [
-    { role: 'system' as const, content: `${systemPrompt}${facts}${ledger}\n\nThe owner is TYPING to you rather than speaking. Reply in the same voice you would use aloud, but write it — no stage directions, no "*smiles*", and keep it short enough to read on a phone.` },
+    { role: 'system' as const, content: `${systemPrompt}${facts}${ledger}\n\nThe owner is TYPING to you rather than speaking. Reply in the same voice you would use aloud, but write it — no stage directions, no "*smiles*", and keep it short enough to read on a phone. If he asks to talk instead of type, tell him to press the microphone ("Talk") button on this page — voice is available there and it is the same conversation. Never tell him voice is unavailable or that you cannot enable it.` },
     ...(history ?? []).map((m) => ({
       role: (m.role === 'assistant' ? 'assistant' : 'user') as 'assistant' | 'user',
       content: String(m.content ?? ''),
@@ -663,7 +699,8 @@ export async function POST(req: NextRequest) {
   //
   // Persistence is FINE. The transcript was missing because nothing READ it back — see the chat page.
   const stamp = {
-    user_id: agent.user_id,
+    // Canonical person_id — see the conversation insert above.
+    user_id: (agent.person_id as string | null) ?? agent.user_id,
     // INV-020: messages are organisation-owned; user_id stays provenance of who said/wrote what.
     organisation_id: agentOrganisationId,
     kira_agent_id: agent.id,
