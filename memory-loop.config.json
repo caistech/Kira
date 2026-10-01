@@ -1,8 +1,8 @@
 {
   "_doc": "Drives portfolio-gate's voice memory-loop probe in CI. The probe now uses the package's canonical x-convai-tool-secret — no toolSecretHeader override. The override existed only for the middle of the header rename, when production still had to accept the legacy x-kira-tool-secret because the agents were provisioned with it. That window is closed: prod serves the dual-accept route and all 13 operational agents were re-provisioned onto the canonical header. The option stays in portfolio-gate for products that genuinely need a different name; Kira is not one of them.",
-  "_post_call_doc": "postCallPath is ORIGIN-relative on purpose. Kira mounts the conversation TOOLS at /api/kira/webhooks/* but the post-call webhook at /api/convai/webhooks/post-call — a layout that neither a child route ('post-call' under the tool path) nor an absolute URL in a committed file (wrong the moment the gate runs against a preview) can express. Before this key existed the probe derived post-call as a child of the tool path, got a 404, and scored it as 'refused': the check with the most direct security consequence was the one asserting nothing.",
+  "_post_call_doc": "postCallPath is ORIGIN-relative on purpose (an absolute URL in a committed file is wrong the moment the gate runs against a preview). It is the route live agents are bound to: /api/kira/webhooks/post-call. It previously pointed at /api/convai/webhooks/post-call, which was retired to a controlled 410 Gone — the probe then failed the unsigned-payload check on a 410 instead of testing the real route's signature verification.",
   "webhookPath": "/api/kira/webhooks",
-  "postCallPath": "/api/convai/webhooks/post-call",
+  "postCallPath": "/api/kira/webhooks/post-call",
   "memoryTable": "kira_memory",
   "conversationsTable": "conversations",
   "agentsTable": "kira_agents",

@@ -302,11 +302,11 @@ Mounted under `/api/kira/webhooks/*`:
 | `task-events` | callback from the orchestrator with task lifecycle events |
 | `post-call` | **distil + persist** — the live binding is `https://kiraexec.com/api/kira/webhooks/post-call` |
 
-`create_operational_kira/` holds only a `route.ts.example` — **not a mounted route**. An older
-post-call route also exists at `/api/convai/webhooks/post-call` (and older copies of the conversation
-routes under `/api/convai/webhooks/*`); `memory-loop.config.json` still points its post-call probe
-there. Live agents are bound to the `/api/kira/webhooks/post-call` path above; treat the
-`/api/convai` tree as legacy and confirm with a workspace webhook listing before relying on it.
+`create_operational_kira/` holds only a `route.ts.example` — **not a mounted route**. The older
+`/api/convai/webhooks/post-call` is **retired**: it answers a controlled 410 Gone (it belonged to the
+retired separate discovery agent), kept so a stale vendor binding fails loudly rather than as a 404.
+Live agents are bound to `/api/kira/webhooks/post-call` above, and since 2026-10-02 the CI memory
+probe (`memory-loop.config.json` `postCallPath`) tests that route.
 
 **A mounted route is not a held tool.** `save_message` and `update_topic` are implemented and
 mounted, but `toolDefsFor` filters them out — they ask the model to do filing the post-call webhook
@@ -406,7 +406,7 @@ distils on `{ end: true }` sent as a `navigator.sendBeacon` from the browser —
 `memory-loop.config.json` drives a probe on every push:
 
 ```json
-{ "webhookPath": "/api/kira/webhooks", "postCallPath": "/api/convai/webhooks/post-call",
+{ "webhookPath": "/api/kira/webhooks", "postCallPath": "/api/kira/webhooks/post-call",
   "memoryTable": "kira_memory", "conversationsTable": "conversations",
   "agentsTable": "kira_agents", "identityMode": "uid",
   "expectContinuity": true, "startRoute": "start_conversation" }
